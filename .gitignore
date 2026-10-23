@@ -37,6 +37,12 @@ coverage/
 *.sql.bak
 *.dump
 
+# ===== Docker / observability =====
+docker/nginx/ssl/*
+!docker/nginx/ssl/.gitkeep
+grafana-data/
+prometheus-data/
+
 # ===== Editor / OS =====
 .idea/
 .vscode/

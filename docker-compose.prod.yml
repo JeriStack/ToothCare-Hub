@@ -1,0 +1,32 @@
+# ToothCare Hub - production overrides
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Mounts are removed and images are expected to be built/pushed by CI.
+services:
+  nginx:
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+    restart: unless-stopped
+
+  backend:
+    volumes: []
+    restart: unless-stopped
+
+  frontend:
+    restart: unless-stopped
+
+  realtime:
+    restart: unless-stopped
+
+  mysql:
+    ports: []
+    restart: unless-stopped
+
+  prometheus:
+    restart: unless-stopped
+
+  grafana:
+    restart: unless-stopped

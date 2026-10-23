@@ -27,8 +27,30 @@ treatment records, and reporting, with secure role-based access and real-time no
 | `docs/`      | Architecture, database design, workflow, and security docs      |
 | `scripts/`   | Windows PowerShell helpers for local dev tasks                  |
 | `.github/`   | CI/CD workflows and issue / PR templates                        |
+| `docker/`    | Container configs: Nginx, PHP-FPM, Prometheus, Grafana          |
 
 See `docs/directory-structure.md` for the full annotated tree.
+
+## Containerized stack (optional)
+
+The app can run as a multi-container stack with an Nginx reverse proxy and a
+Prometheus + Grafana observability pair:
+
+```
+docker compose up -d
+```
+
+| Service    | URL                    |
+| ---------- | ---------------------- |
+| App (Nginx)| http://localhost:8080  |
+| Prometheus | http://localhost:9090  |
+| Grafana    | http://localhost:3000  |
+
+For production overrides (TLS, restart policies):
+
+```
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
 
 ## Prerequisites
 
