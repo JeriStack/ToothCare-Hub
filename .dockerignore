@@ -1,0 +1,15 @@
+.git
+.github
+node_modules
+**/node_modules
+vendor
+**/vendor
+dist
+**/dist
+.env
+**/.env
+*.log
+**/storage/logs/*
+**/storage/cache/*
+coverage
+docs
