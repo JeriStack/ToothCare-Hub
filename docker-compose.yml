@@ -1,0 +1,102 @@
+# ToothCare Hub - local development stack
+# Brings up the API, frontend, realtime service, database, reverse proxy,
+# and the Prometheus + Grafana observability stack.
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: toothcare-nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./backend/public:/var/www/backend/public:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - toothcare
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../docker/php/Dockerfile
+    container_name: toothcare-backend
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend:/var/www/backend
+    depends_on:
+      - mysql
+    networks:
+      - toothcare
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: toothcare-frontend
+    env_file:
+      - ./frontend/.env
+    networks:
+      - toothcare
+
+  realtime:
+    build:
+      context: ./realtime
+    container_name: toothcare-realtime
+    env_file:
+      - ./realtime/.env
+    ports:
+      - "4000:4000"
+    networks:
+      - toothcare
+
+  mysql:
+    image: mysql:8.0
+    container_name: toothcare-mysql
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-toothcare_hub}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./database/migrations:/docker-entrypoint-initdb.d:ro
+    networks:
+      - toothcare
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: toothcare-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - toothcare
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: toothcare-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - toothcare
+
+networks:
+  toothcare:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  prometheus-data:
+  grafana-data:
