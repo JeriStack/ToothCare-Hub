@@ -41,7 +41,7 @@ docker/
 |   `-- ssl/
 |       `-- .gitkeep              Production TLS certs (never commit real keys)
 |-- php/
-|   `-- Dockerfile                PHP 8.3-FPM image for the backend API
+|   `-- Dockerfile                PHP 8.5.12-FPM image for the backend API
 |-- prometheus/
 |   `-- prometheus.yml            Scrape config (backend, realtime, nginx)
 `-- grafana/

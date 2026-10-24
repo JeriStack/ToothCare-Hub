@@ -54,7 +54,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 ## Prerequisites
 
-- PHP 8.x with Composer
+- PHP 8.5 with Composer
 - Node.js 18+ and npm
 - MySQL 8.x (XAMPP/MariaDB works for local development)
 
