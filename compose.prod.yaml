@@ -1,29 +1,45 @@
-# ToothCare Hub - Production Compose Overrides
+# =============================================================================
+# ToothCare Hub - Production Docker Compose Overrides
 # Usage: docker compose -f compose.yaml -f compose.prod.yaml up -d
+# Hardened production settings: HTTPS ports, strict production environment
+# =============================================================================
+
 services:
   nginx:
     ports:
       - "80:80"
       - "443:443"
     volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/snippets:/etc/nginx/snippets:ro
+      - ./frontend/dist:/var/www/frontend/dist:ro
+      - ./backend/public:/var/www/backend/public:ro
       - ./docker/nginx/ssl:/etc/nginx/ssl:ro
-    restart: unless-stopped
+    restart: always
 
-  backend:
-    restart: unless-stopped
-
-  frontend:
-    restart: unless-stopped
-
-  realtime:
-    restart: unless-stopped
+  php-fpm:
+    environment:
+      APP_DEBUG: "false"
+      APP_ENV: "production"
+    restart: always
 
   mysql:
-    restart: unless-stopped
+    restart: always
+
+  realtime:
+    environment:
+      NODE_ENV: "production"
+    restart: always
+
+  email-worker:
+    environment:
+      APP_DEBUG: "false"
+      APP_ENV: "production"
+    restart: always
 
   prometheus:
-    restart: unless-stopped
+    restart: always
 
   grafana:
-    restart: unless-stopped
+    restart: always

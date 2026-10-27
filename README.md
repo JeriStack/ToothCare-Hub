@@ -27,16 +27,15 @@ A responsive web-based dental appointment and clinic management system. ToothCar
 
 | Layer | Technology | Current Implementation Status |
 |---|---|---|
-| **Frontend** | React, TypeScript/JSX, Vite, Tailwind CSS, shadcn/ui, Lucide React, React Router, Axios, React Hook Form, Zod | Directory & Dockerfile scaffolded; implementation scheduled for Phase 3 / Phase 5+ |
-| **Backend API** | Native PHP (`^8.5`, pinned to `8.5.12-fpm-alpine3.24`), Composer, PDO | `composer.json` & Dockerfile configured; application routes/services scheduled for Phase 5+ |
-| **Database** | MySQL 8.x (`InnoDB`, `utf8mb4`) / Local MariaDB 10.4 compatible | Compose service configured; SQL migrations (`001`–`008`+) scheduled for Phase 4 |
-| **Email** | PHPMailer (`^6.9`) over SMTP + `email_outbox` CLI worker | Declared in `backend/composer.json`; worker scheduled for Phase 13 |
-| **Real-Time** | Node.js (`20-alpine` / `22+`) + Socket.IO | Dockerfile & `.env.example` configured; server scheduled for Phase 14 |
-| **API Docs** | OpenAPI 3.x (`zircote/swagger-php ^4.10`) + Swagger UI | Composer script configured; annotations scheduled for Phase 5 / Phase 17 |
-| **Testing** | PHPUnit (`^11.3`), Vitest + React Testing Library | Configured in `.github/workflows/ci.yml`; suites expanded in Phases 4–16 |
-| **Reverse Proxy & Containers** | Docker Compose (`docker-compose.yml`, `docker-compose.prod.yml`) + Nginx (`1.27-alpine`) | Compose & Nginx routing (`docker/nginx/conf.d/toothcare.conf`) configured |
-| **Observability** | Prometheus + Grafana (provisioned datasource & dashboard) | Configured in `docker/prometheus/` & `docker/grafana/`; hardened in Phase 19 |
-| **CI/CD** | GitHub Actions (`.github/workflows/ci.yml`) | Configured for PHP 8.5 & Node 20 checks |
+| **Frontend** | React, TypeScript/JSX, Vite, Tailwind CSS, shadcn/ui, Lucide React, React Router, Axios, React Hook Form, Zod | Phase 2 containerized SPA static bundle mounted at `/var/www/frontend/dist`; feature development in Phase 5+ |
+| **Backend API** | Native PHP (`^8.5`, pinned to `8.5.12-fpm-alpine3.24`), Composer, PDO | Phase 2 containerized image built; front controller responsive to `/api/v1/health` & `/api/v1/metrics`; feature routes in Phase 5+ |
+| **Database** | MySQL 8.x (`InnoDB`, `utf8mb4`) | Phase 2 containerized service active with persistent volume `toothcare_mysql_data` & `mysqladmin ping` readiness check |
+| **Email Worker** | PHPMailer (`^6.9`) over SMTP + `email_outbox` CLI worker | Phase 2 dedicated background worker daemon (`backend/src/Jobs/ProcessEmailOutbox.php`) reusing PHP image |
+| **Real-Time** | Node.js (`20-alpine`) + Socket.IO (`^4.8.1`) | Phase 2 containerized service active with non-root user, `/health`, `/metrics`, and `/socket.io/` proxying |
+| **Reverse Proxy** | Nginx (`1.27-alpine`) | Phase 2 primary edge entry point; SPA fallback, FastCGI `/api/` routing, WebSocket proxying, and security headers |
+| **Containerization** | Docker Compose v2 (`compose.yaml`, `compose.dev.yaml`, `compose.prod.yaml`) | Fully implemented and verified in Phase 2 |
+| **Observability** | Prometheus (`v2.53.1`) + Grafana (`11.1.0`) + `mysqld-exporter` | Configured under optional Compose profile `monitoring` |
+| **CI/CD** | GitHub Actions (`.github/workflows/ci.yml`) | Automated Docker Compose config, PHP, Node, and test validation on `main`, `develop`, `development` |
 
 ---
 
@@ -48,25 +47,23 @@ A responsive web-based dental appointment and clinic management system. ToothCar
 | `backend/` | Native PHP REST API (`/api/v1` controllers, services, PDO repositories, middleware, validators, jobs) |
 | `realtime/` | Node.js + Socket.IO authenticated real-time notification service |
 | `database/` | Ordered SQL migrations (`database/migrations/`), synthetic seeds (`database/seeds/`), and schema snapshot |
-| `docker/` | Container build files and service configs (`php/`, `nginx/`, `prometheus/`, `grafana/`) |
-| `nginx/` | Reverse proxy routing and security boundary documentation (`nginx/README.md`) |
-| `monitoring/` | Prometheus scrape/alerting and Grafana provisioning documentation (`monitoring/README.md`) |
+| `docker/` | Container build files (`php/Dockerfile`, `nginx/`) |
+| `nginx/` | Reverse proxy configuration (`nginx.conf`, `conf.d/toothcare.conf`, `snippets/`) |
+| `monitoring/` | Prometheus scrape/alerting rules and Grafana datasource/dashboard provisioning |
 | `deployment/` | Deployment, rollback, health-check scripts, and Apache VirtualHost fallback example |
 | `scripts/` | Windows PowerShell helper scripts for local setup, testing, and OpenAPI generation |
-| `docs/` | Architecture, security, Phase 0 scope freeze (`docs/phase-0/`), and Phase 1 environment/workflow docs (`docs/phase-1/`) |
-| `.github/` | GitHub Actions CI/CD workflows, issue templates (`bug_report.yml`, `feature_request.yml`), and PR template |
-
-See [`docs/directory-structure.md`](docs/directory-structure.md) for the complete annotated tree.
+| `docs/` | Architecture, security, Phase 0 specs (`docs/phase-0/`), Phase 1 setup (`docs/phase-1/`), and Phase 2 runbook (`docs/phase-2-implementation.md`) |
+| `.github/` | GitHub Actions CI/CD workflows, issue templates, and PR template |
 
 ---
 
 ## 5. Prerequisites
 
 - **Git:** `2.40+` (Verified locally: `2.56.0.windows.2`)
-- **Docker Engine / Docker Desktop + Compose:** Docker `26+` and Docker Compose (`docker-compose` / `docker compose`) for the canonical containerized stack (Verified locally: Docker `29.9.2`, Compose `v5.6.1`)
-- **PHP & Composer (for direct host CLI / IDE checks):** PHP `8.5.x` (`>= 8.5.12` recommended for security fixes) with extensions `PDO`, `pdo_mysql`, `openssl`, `mbstring`, `json`, `curl`, `fileinfo`, and Composer `2.x`
+- **Docker Engine / Docker Desktop + Compose:** Docker `26+` and Docker Compose v2 (Verified locally: Docker `29.9.2`, Compose `v5.6.1`)
+- **PHP & Composer (for direct host CLI / IDE checks):** PHP `8.5.x` (`>= 8.5.12` recommended) with extensions `PDO`, `pdo_mysql`, `openssl`, `mbstring`, `json`, `curl`, `fileinfo`, and Composer `2.x`
 - **Node.js & npm (for direct host CLI / IDE checks):** Node.js `20 LTS` / `22 LTS` / `24.x` and npm `10+`
-- **MySQL 8.x (or XAMPP MariaDB 10.4+ for non-Docker fallback):** Canonical database runs in Docker (`mysql:8.0`); avoid running host MySQL on port `3306` simultaneously with the Docker `mysql` container.
+- **MySQL 8.x (or non-Docker fallback):** Canonical database runs in Docker (`mysql:8.0`); avoid running host MySQL on port `3306` simultaneously with the Docker `mysql` container.
 
 ---
 
@@ -89,55 +86,70 @@ Copy-Item realtime/.env.example realtime/.env
 
 ## 7. Local Setup & Docker Compose Commands
 
-### Validate Compose Configuration (Verified Working in Phase 1)
+### 7.1 Validate Compose Configuration
 ```powershell
-docker-compose -f docker-compose.yml config -q
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml config -q
-```
-*(Note: Use `docker compose` or `docker-compose` depending on your shell alias; on Windows hosts where `docker-compose.exe` is installed standalone, `docker-compose` works directly).*
+# Validate base compose specification
+docker compose config
 
-### Start and Stop the Containerized Stack (Active as Phase 2–5 Services Are Populated)
-```powershell
-# Start stack in background (use --build once frontend/realtime package.json files are populated in Phase 2+)
-docker-compose up -d
-
-# Inspect running containers and logs
-docker-compose ps
-docker-compose logs --tail=100
-
-# Stop stack (preserves named database and monitoring volumes)
-docker-compose down
+# Validate with development overrides
+docker compose -f compose.yaml -f compose.dev.yaml config
 ```
 
-### Direct Host Dependency Installation (Once Phase 2–5 Manifests Are Populated)
+### 7.2 Start and Stop the Containerized Stack (Phase 2 Standard)
 ```powershell
-# Backend (composer.json is present in Phase 1)
-cd backend; composer install; cd ..
+# Build images and start all baseline services in background
+docker compose -f compose.yaml -f compose.dev.yaml up -d --build
 
-# Frontend & Realtime (populated in Phase 2 / Phase 5 / Phase 14)
-cd frontend; npm install; cd ..
-cd realtime; npm install; cd ..
+# Inspect running containers and health status
+docker compose ps
+
+# View live service logs
+docker compose logs -f
+
+# Inspect specific services
+docker compose logs -f nginx php-fpm realtime email-worker mysql
+
+# Stop stack (preserves named database volume toothcare_mysql_data)
+docker compose down
+```
+
+### 7.3 Optional Observability Stack
+```powershell
+# Start services with Prometheus, Grafana, and MySQL exporter enabled
+docker compose --profile monitoring up -d
+
+# Stop monitoring profile
+docker compose --profile monitoring down
+```
+
+### 7.4 Service Management & Verification
+```powershell
+# Validate Nginx configuration syntax inside container
+docker compose exec nginx nginx -t
+
+# Rebuild an individual service without stopping others
+docker compose build php-fpm
+docker compose up -d --no-deps php-fpm
 ```
 
 ---
 
 ## 8. Expected Local URLs and Port Assumptions
 
-| Service | Local URL / Port | Status in Phase 1 | Exposure Policy |
+| Service | Local URL / Port | Exposure Policy | Expected Response |
 |---|---|---|---|
-| **App & API via Nginx** | `http://localhost:8080` | Configured in `docker-compose.yml` & `toothcare.conf` (serves app once built) | Public entry point (`80`/`443` in prod) |
-| **REST API Base Path** | `http://localhost:8080/api/v1` | Planned (`backend/public/index.php` implemented in Phase 5) | Routed via Nginx FastCGI to `backend:9000` |
-| **Vite Dev Server (Optional Host Mode)** | `http://localhost:5173` | Planned (active when running `npm run dev` in `frontend/`) | Localhost development only |
-| **Socket.IO Realtime Service** | `http://localhost:4000` (or `/socket.io/` via `:8080`) | Configured in `docker-compose.yml` (implemented in Phase 14) | Proxied via Nginx `/socket.io/` in prod |
-| **MySQL Database** | `localhost:3306` | Configured in `docker-compose.yml` | Internal-only in prod (`ports: []` in `docker-compose.prod.yml`) |
-| **Prometheus UI** | `http://localhost:9090` | Configured in `docker-compose.yml` | Localhost / private monitoring network only |
-| **Grafana UI** | `http://localhost:3000` | Configured in `docker-compose.yml` | Localhost / authenticated admin access only |
+| **App & Landing via Nginx** | `http://localhost:8080/` | Public entry point | Interactive ToothCare Hub dashboard & diagnostics |
+| **Nginx Health Check** | `http://localhost:8080/health` | Public entry point | `{"status":"healthy","service":"toothcare-nginx"}` |
+| **REST API Health Check** | `http://localhost:8080/api/v1/health` | Routed via Nginx FastCGI | `{"status":"healthy","service":"toothcare-backend","database":"connected"}` |
+| **Prometheus Metrics** | `http://localhost:8080/api/v1/metrics` | Routed via Nginx FastCGI | Prometheus text format exporter metrics |
+| **Socket.IO Realtime Service** | `http://localhost:8080/socket.io/` | Proxied via Nginx WebSocket | Handshake / `system:connected` event |
+| **MySQL Database** | `127.0.0.1:3306` (dev only) | Private internal network | MySQL 8.0 server (no external exposure) |
+| **Prometheus UI** | `http://127.0.0.1:9090` | Monitoring profile only | Prometheus metrics query interface |
+| **Grafana UI** | `http://127.0.0.1:3000` | Monitoring profile only | Grafana dashboard (default admin/admin) |
 
 ---
 
-## 9. Testing Commands (Planned / Phase-Gated)
-
-Once the respective test suites and `package.json` / `phpunit.xml` configurations are populated in Phases 4–16:
+## 9. Testing Commands
 
 ```powershell
 # Backend unit & integration tests (PHPUnit)
@@ -147,9 +159,9 @@ cd backend; ./vendor/bin/phpunit; cd ..
 cd backend; composer run openapi; cd ..
 
 # Frontend component tests & lint (Vitest / ESLint)
-cd frontend; npm test; npm run lint; cd ..
+cd frontend; npm test; cd ..
 
-# Realtime service event & auth tests
+# Realtime service tests
 cd realtime; npm test; cd ..
 ```
 
@@ -182,6 +194,8 @@ cd realtime; npm test; cd ..
   - [`docs/phase-1/git-workflow.md`](docs/phase-1/git-workflow.md)
   - [`docs/phase-1/local-development.md`](docs/phase-1/local-development.md)
   - [`docs/phase-1/phase-1-exit-checklist.md`](docs/phase-1/phase-1-exit-checklist.md)
+- **Phase 2 — Dockerized Development Environment and Nginx Reverse Proxy:**
+  - [`docs/phase-2-implementation.md`](docs/phase-2-implementation.md)
 - **Reference & Security Guides:**
   - [`docs/directory-structure.md`](docs/directory-structure.md)
   - [`docs/security-checklist.md`](docs/security-checklist.md)

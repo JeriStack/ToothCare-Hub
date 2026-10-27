@@ -14,9 +14,10 @@ node_modules/
 vendor/
 
 # ===== Build / generated assets =====
-dist/
+/dist/
 build/
-/frontend/dist/
+/frontend/dist/*
+!/frontend/dist/index.html
 
 # ===== Logs =====
 *.log

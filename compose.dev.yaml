@@ -1,21 +1,38 @@
-# ToothCare Hub - Development Compose Overrides
+# =============================================================================
+# ToothCare Hub - Development Docker Compose Overrides
 # Usage: docker compose -f compose.yaml -f compose.dev.yaml up -d
+# =============================================================================
+
 services:
   nginx:
-    ports:
-      - "127.0.0.1:8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/snippets:/etc/nginx/snippets:ro
+      - ./frontend/dist:/var/www/frontend/dist:ro
+      - ./backend/public:/var/www/backend/public:ro
 
-  backend:
+  php-fpm:
     volumes:
       - ./backend:/var/www/backend
-
-  realtime:
-    ports:
-      - "127.0.0.1:4000:4000"
+    environment:
+      APP_DEBUG: "true"
+      APP_ENV: "development"
 
   mysql:
     ports:
       - "127.0.0.1:3306:3306"
+
+  realtime:
+    ports:
+      - "127.0.0.1:4000:4000"
+    volumes:
+      - ./realtime:/app
+      - /app/node_modules
+
+  email-worker:
+    volumes:
+      - ./backend:/var/www/backend
 
   prometheus:
     ports:
@@ -24,3 +41,19 @@ services:
   grafana:
     ports:
       - "127.0.0.1:3000:3000"
+
+  # Optional dev container for Vite development with HMR
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: toothcare-frontend-dev
+    profiles:
+      - frontend-dev
+    ports:
+      - "127.0.0.1:5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - edge
