@@ -1,0 +1,89 @@
+# ToothCare Hub - Base Docker Compose Specification (Compose v2)
+# Defines core services, internal networks, named volumes, and health checks.
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: toothcare-nginx
+    volumes:
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./backend/public:/var/www/backend/public:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - toothcare
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../docker/php/Dockerfile
+    container_name: toothcare-backend
+    env_file:
+      - ./backend/.env
+    depends_on:
+      - mysql
+    networks:
+      - toothcare
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: toothcare-frontend
+    env_file:
+      - ./frontend/.env
+    networks:
+      - toothcare
+
+  realtime:
+    build:
+      context: ./realtime
+    container_name: toothcare-realtime
+    env_file:
+      - ./realtime/.env
+    networks:
+      - toothcare
+
+  mysql:
+    image: mysql:8.0
+    container_name: toothcare-mysql
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-toothcare_hub}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./database/migrations:/docker-entrypoint-initdb.d:ro
+    networks:
+      - toothcare
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: toothcare-prometheus
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - toothcare
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: toothcare-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - toothcare
+
+networks:
+  toothcare:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  prometheus-data:
+  grafana-data:

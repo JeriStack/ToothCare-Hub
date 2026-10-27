@@ -1,0 +1,26 @@
+# ToothCare Hub - Development Compose Overrides
+# Usage: docker compose -f compose.yaml -f compose.dev.yaml up -d
+services:
+  nginx:
+    ports:
+      - "127.0.0.1:8080:80"
+
+  backend:
+    volumes:
+      - ./backend:/var/www/backend
+
+  realtime:
+    ports:
+      - "127.0.0.1:4000:4000"
+
+  mysql:
+    ports:
+      - "127.0.0.1:3306:3306"
+
+  prometheus:
+    ports:
+      - "127.0.0.1:9090:9090"
+
+  grafana:
+    ports:
+      - "127.0.0.1:3000:3000"

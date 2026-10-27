@@ -1,0 +1,2 @@
+-- Migration 010: Create auth_tokens table
+-- Stores hashed short-lived tokens for email verification, password reset, and Socket.IO tickets.

@@ -1,0 +1,29 @@
+# ToothCare Hub - Production Compose Overrides
+# Usage: docker compose -f compose.yaml -f compose.prod.yaml up -d
+services:
+  nginx:
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+    restart: unless-stopped
+
+  backend:
+    restart: unless-stopped
+
+  frontend:
+    restart: unless-stopped
+
+  realtime:
+    restart: unless-stopped
+
+  mysql:
+    restart: unless-stopped
+
+  prometheus:
+    restart: unless-stopped
+
+  grafana:
+    restart: unless-stopped
