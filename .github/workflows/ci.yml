@@ -84,8 +84,12 @@ jobs:
       - name: Frontend checks
         working-directory: frontend
         run: |
-          if [ -s package.json ]; then
+          if [ -s package.json ] && [ -s package-lock.json ]; then
             npm ci
+            npm run lint || true
+            npm run build || true
+          elif [ -s package.json ]; then
+            npm install
             npm run lint || true
             npm run build || true
           else
