@@ -1,0 +1,25 @@
+# Backend Docker build context exclusions (./backend)
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+vendor/
+storage/logs/*
+!storage/logs/.gitkeep
+storage/cache/*
+!storage/cache/.gitkeep
+storage/uploads/*
+tests/
+coverage/
+.phpunit.result.cache
+*.log
+*.sql.bak
+*.dump
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+

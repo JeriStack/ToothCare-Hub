@@ -2,50 +2,70 @@
 .env
 .env.*
 !.env.example
+!/**/.env.example
 *.pem
 *.key
+*.crt
+*.pfx
+*.p12
 
 # ===== Dependencies =====
 node_modules/
 vendor/
 
 # ===== Build / generated assets =====
-dist/
+/dist/
 build/
-/frontend/dist/
+/frontend/dist/*
+!/frontend/dist/index.html
 
 # ===== Logs =====
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 /backend/storage/logs/*
 !/backend/storage/logs/.gitkeep
 
-# ===== Cache =====
+# ===== Cache & temporary files =====
 /backend/storage/cache/*
 !/backend/storage/cache/.gitkeep
 .cache/
+tmp/
+temp/
+*.tmp
+*.bak
 
 # ===== Test / coverage output =====
 coverage/
 .phpunit.result.cache
 .nyc_output/
+.vitest/
+playwright-report/
+test-results/
 
 # ===== Private uploads & database backups =====
 /storage/uploads/
+/backend/storage/uploads/
 *.sql.bak
+*.sql.gz
 *.dump
+*.sqlite
+*.sqlite3
 
 # ===== Docker / observability =====
 docker/nginx/ssl/*
 !docker/nginx/ssl/.gitkeep
 grafana-data/
 prometheus-data/
+mysql-data/
 
 # ===== Editor / OS =====
 .idea/
 .vscode/
 *.swp
+*.swo
 .DS_Store
 Thumbs.db
+Desktop.ini

@@ -1,0 +1,2 @@
+-- Migration 005: Create dentist_schedules table
+-- Defines recurring weekly working schedules, start/end hours, and break/blocked intervals for active dentists.

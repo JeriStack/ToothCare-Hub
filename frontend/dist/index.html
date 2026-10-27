@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ToothCare Hub — Dental Appointment & Clinic Management</title>
+  <meta name="description" content="ToothCare Hub containerized development environment & reverse proxy validation.">
+  <style>
+    :root {
+      --deep-navy: #12304A;
+      --teal-primary: #0D9488;
+      --teal-soft: #CCFBF1;
+      --teal-light: #F0FDFA;
+      --canvas: #F5F8FA;
+      --card-bg: #FFFFFF;
+      --text-main: #0F172A;
+      --text-muted: #64748B;
+      --border-color: #E2E8F0;
+      --success-green: #10B981;
+      --warning-amber: #F59E0B;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--canvas);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background-color: var(--deep-navy);
+      color: #FFFFFF;
+      padding: 1.25rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(18, 48, 74, 0.15);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--teal-primary);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.2rem;
+      color: #FFFFFF;
+    }
+
+    .brand-text h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-text p {
+      font-size: 0.8rem;
+      color: var(--teal-soft);
+    }
+
+    .badge-env {
+      background: rgba(204, 251, 241, 0.15);
+      border: 1px solid var(--teal-primary);
+      color: var(--teal-soft);
+      padding: 0.35rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    main {
+      flex: 1;
+      max-width: 1000px;
+      width: 100%;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+    }
+
+    .hero-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+      margin-bottom: 2rem;
+    }
+
+    .hero-card h2 {
+      color: var(--deep-navy);
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .hero-card p {
+      color: var(--text-muted);
+      line-height: 1.6;
+      font-size: 0.95rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .status-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .status-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .status-title {
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--deep-navy);
+    }
+
+    .status-pill {
+      font-size: 0.75rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      font-weight: 600;
+      background: var(--teal-light);
+      color: var(--teal-primary);
+      border: 1px solid var(--teal-soft);
+    }
+
+    .status-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 1rem;
+    }
+
+    .status-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    button {
+      background-color: var(--teal-primary);
+      color: #FFFFFF;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+
+    button:hover {
+      background-color: #0b7c71;
+    }
+
+    button.secondary {
+      background-color: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+    }
+
+    button.secondary:hover {
+      background-color: var(--canvas);
+    }
+
+    .output-panel {
+      background: #0f172a;
+      color: #38bdf8;
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      padding: 1.25rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      min-height: 80px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    footer {
+      border-top: 1px solid var(--border-color);
+      padding: 1.5rem;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      background: #FFFFFF;
+    }
+  </style>
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="brand-icon">T</div>
+      <div class="brand-text">
+        <h1>ToothCare Hub</h1>
+        <p>Dental Appointment & Clinic Management</p>
+      </div>
+    </div>
+    <div class="badge-env">Phase 2: Docker Environment</div>
+  </header>
+
+  <main>
+    <div class="hero-card">
+      <h2>Containerized Environment & Reverse Proxy</h2>
+      <p>
+        Phase 2 establishes the isolated multi-service Docker topology for ToothCare Hub.
+        All web traffic enters via Nginx on edge port <code>8080</code> (or <code>80/443</code> in production).
+        Nginx routes API calls to <code>php-fpm:9000</code>, WebSocket streams to <code>realtime:4000</code>,
+        and serves static React SPA assets with client-side fallback.
+      </p>
+    </div>
+
+    <div class="grid">
+      <!-- Nginx Card -->
+      <div class="status-card">
+        <div>
+          <div class="status-header">
+            <span class="status-title">Nginx Proxy</span>
+            <span class="status-pill" id="nginx-status">Active</span>
+          </div>
+          <p class="status-desc">Edge reverse proxy terminating public HTTP traffic and enforcing security headers.</p>
+        </div>
+        <div class="status-actions">
+          <button onclick="checkNginxHealth()">Ping /health</button>
+        </div>
+      </div>
+
+      <!-- Backend Card -->
+      <div class="status-card">
+        <div>
+          <div class="status-header">
+            <span class="status-title">Backend REST API</span>
+            <span class="status-pill" id="backend-status">PHP-FPM 8.5</span>
+          </div>
+          <p class="status-desc">Native PHP REST engine running on private FastCGI port 9000 with MySQL PDO connection.</p>
+        </div>
+        <div class="status-actions">
+          <button onclick="checkBackendHealth()">Check /api/v1/health</button>
+        </div>
+      </div>
+
+      <!-- Realtime Card -->
+      <div class="status-card">
+        <div>
+          <div class="status-header">
+            <span class="status-title">Realtime Service</span>
+            <span class="status-pill" id="realtime-status">Socket.IO 4.8</span>
+          </div>
+          <p class="status-desc">Node.js event engine handling real-time clinic updates and appointment notifications.</p>
+        </div>
+        <div class="status-actions">
+          <button onclick="connectSocket()">Test WebSocket</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-card" style="margin-bottom: 0;">
+      <h3 style="font-size: 1rem; color: var(--deep-navy); margin-bottom: 0.75rem;">Interactive Diagnostics Terminal</h3>
+      <div id="output" class="output-panel">Ready. Click any diagnostic button above to test service connectivity...</div>
+    </div>
+  </main>
+
+  <footer>
+    ToothCare Hub &copy; 2026. Phase 2 Docker Architecture Verified.
+  </footer>
+
+  <script>
+    const output = document.getElementById('output');
+
+    function log(msg) {
+      output.textContent = typeof msg === 'object' ? JSON.stringify(msg, null, 2) : msg;
+    }
+
+    async function checkNginxHealth() {
+      log('Requesting GET /health from Nginx...');
+      try {
+        const res = await fetch('/health');
+        const data = await res.json();
+        log(data);
+      } catch (err) {
+        log('Error checking Nginx health: ' + err.message);
+      }
+    }
+
+    async function checkBackendHealth() {
+      log('Requesting GET /api/v1/health via Nginx FastCGI proxy...');
+      try {
+        const res = await fetch('/api/v1/health');
+        const data = await res.json();
+        log(data);
+      } catch (err) {
+        log('Error checking backend health: ' + err.message);
+      }
+    }
+
+    let socketInstance = null;
+    function connectSocket() {
+      log('Initiating Socket.IO connection to /socket.io/...');
+      if (typeof io === 'undefined') {
+        log('Socket.IO client library not loaded yet.');
+        return;
+      }
+      if (socketInstance) {
+        socketInstance.disconnect();
+      }
+      socketInstance = io({ path: '/socket.io/' });
+      socketInstance.on('connect', () => {
+        log('Connected to Real-time Socket.IO server!\nSocket ID: ' + socketInstance.id);
+      });
+      socketInstance.on('system:connected', (data) => {
+        log(data);
+      });
+      socketInstance.on('connect_error', (err) => {
+        log('Socket.IO Connection Error: ' + err.message);
+      });
+    }
+  </script>
+</body>
+</html>

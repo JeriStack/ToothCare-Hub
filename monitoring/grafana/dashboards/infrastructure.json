@@ -1,0 +1,34 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "panels": [
+    {
+      "title": "Container CPU Usage",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(container_cpu_usage_seconds_total[5m])) by (container_name)",
+          "legendFormat": "{{ container_name }}"
+        }
+      ]
+    },
+    {
+      "title": "Container Memory Usage",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(container_memory_usage_bytes) by (container_name)",
+          "legendFormat": "{{ container_name }}"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["toothcare", "infrastructure"],
+  "title": "ToothCare Hub - Infrastructure",
+  "version": 1
+}

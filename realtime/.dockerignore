@@ -1,0 +1,15 @@
+# Realtime service Docker build context exclusions (./realtime)
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+node_modules/
+coverage/
+tests/
+*.log
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+

@@ -1,0 +1,19 @@
+# Frontend Docker build context exclusions (./frontend)
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+*.local
+node_modules/
+dist/
+coverage/
+.vitest/
+playwright-report/
+test-results/
+*.log
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
