@@ -1,15 +1,63 @@
+# ===== Version control & CI =====
 .git
+.gitignore
 .github
+
+# ===== Environment & secrets (never bake into images) =====
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!/**/.env.example
+*.pem
+*.key
+*.crt
+*.pfx
+*.p12
+docker/nginx/ssl/*
+!docker/nginx/ssl/.gitkeep
+
+# ===== Dependencies & build outputs (installed/built inside stages) =====
 node_modules
 **/node_modules
 vendor
 **/vendor
 dist
 **/dist
-.env
-**/.env
+build
+**/build
+
+# ===== Logs, caches, and runtime storage =====
 *.log
+**/*.log
 **/storage/logs/*
 **/storage/cache/*
+**/storage/uploads/*
+.cache
+tmp
+temp
+
+# ===== Tests, coverage, and local database dumps =====
 coverage
+**/coverage
+.phpunit.result.cache
+**/.phpunit.result.cache
+.nyc_output
+playwright-report
+test-results
+*.sql.bak
+*.sql.gz
+*.dump
+*.sqlite
+*.sqlite3
+
+# ===== Documentation & IDE clutter =====
 docs
+README.md
+CONTRIBUTING.md
+.idea
+.vscode
+*.swp
+.DS_Store
+Thumbs.db

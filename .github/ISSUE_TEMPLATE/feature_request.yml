@@ -1,0 +1,62 @@
+name: Feature Request
+description: Propose an enhancement or scoped feature for ToothCare Hub
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Scope Note:** Verify against `docs/phase-0/mvp-scope.md` whether this request belongs to the MVP or the post-MVP deferred backlog.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What user or clinic problem does this feature solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_behavior
+    attributes:
+      label: Proposed Behavior
+      description: Describe the desired UI, API, and database behavior.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: intended_users
+    attributes:
+      label: Intended Users
+      description: Which role(s) will use or be affected by this feature?
+      options:
+        - label: Patient (`PATIENT`)
+        - label: Dentist (`DENTIST`)
+        - label: Admin / Receptionist (`ADMIN`)
+        - label: Public Visitor (Unauthenticated)
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      description: List observable, testable conditions required for this feature to be considered done.
+      placeholder: |
+        - [ ] Given ..., when ..., then ...
+        - [ ] Unauthorized roles receive 403 Forbidden
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Related requirements (`FR-*` / `NFR-*`), database migrations, API endpoints, or policy decisions (`DEC-*`).
+
+  - type: textarea
+    id: security_privacy
+    attributes:
+      label: Security and Privacy Considerations
+      description: Describe role permissions, ownership checks, input validation, and patient data minimization rules required.
+    validations:
+      required: true
+
