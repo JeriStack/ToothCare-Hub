@@ -161,6 +161,8 @@ services:
     container_name: toothcare-prometheus
     profiles:
       - monitoring
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
@@ -174,6 +176,8 @@ services:
     container_name: toothcare-grafana
     profiles:
       - monitoring
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3001}:3000"
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
@@ -194,7 +198,10 @@ services:
     profiles:
       - monitoring
     environment:
-      DATA_SOURCE_NAME: "${DB_USER:-toothcare_user}:${DB_PASSWORD:-toothcare_secure_pass}@(${DB_HOST:-mysql}:3306)/${DB_NAME:-toothcare_hub}"
+      DATA_SOURCE_NAME: "root:${DB_ROOT_PASSWORD:-root_secure_pass}@(mysql:3306)/${DB_NAME:-toothcare_hub}"
+    command:
+      - "--mysqld.username=root"
+      - "--mysqld.address=mysql:3306"
     depends_on:
       mysql:
         condition: service_healthy

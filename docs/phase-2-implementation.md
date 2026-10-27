@@ -115,7 +115,7 @@ docker compose ps
 | **Backend API Health** | `http://localhost:8080/api/v1/health` | `{"status":"healthy","service":"toothcare-backend","database":"connected"}` |
 | **Socket.IO Endpoint** | `http://localhost:8080/socket.io/` | WebSocket connection handshake / `system:connected` |
 | **Prometheus (if enabled)** | `http://127.0.0.1:9090` | Prometheus web UI (monitoring profile only) |
-| **Grafana (if enabled)** | `http://127.0.0.1:3000` | Grafana dashboard login (monitoring profile only) |
+| **Grafana (if enabled)** | `http://127.0.0.1:3001` | Grafana dashboard login (default admin/admin, monitoring profile only) |
 
 ### 4.4 Operational Commands
 

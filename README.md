@@ -145,7 +145,7 @@ docker compose up -d --no-deps php-fpm
 | **Socket.IO Realtime Service** | `http://localhost:8080/socket.io/` | Proxied via Nginx WebSocket | Handshake / `system:connected` event |
 | **MySQL Database** | `127.0.0.1:3306` (dev only) | Private internal network | MySQL 8.0 server (no external exposure) |
 | **Prometheus UI** | `http://127.0.0.1:9090` | Monitoring profile only | Prometheus metrics query interface |
-| **Grafana UI** | `http://127.0.0.1:3000` | Monitoring profile only | Grafana dashboard (default admin/admin) |
+| **Grafana UI** | `http://127.0.0.1:3001` | Monitoring profile only | Grafana dashboard (default admin/admin) |
 
 ---
 
