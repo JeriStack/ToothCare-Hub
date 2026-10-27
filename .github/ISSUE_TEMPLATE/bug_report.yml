@@ -1,0 +1,81 @@
+name: Bug Report
+description: Report a reproducible defect in ToothCare Hub (never include real credentials or patient data)
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Security & Privacy Notice:** Never include real passwords, API tokens, `.env` contents, or real patient/clinical information in this issue. Use synthetic data only.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: A clear and concise summary of the bug.
+      placeholder: "Example: Booking wizard fails to refresh slot list after a 409 Conflict response."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction Steps
+      description: Exact steps to reproduce the behavior.
+      placeholder: |
+        1. Log in as a synthetic patient account
+        2. Navigate to '/patient/book'
+        3. Select service 'Dental Cleaning' and dentist 'Dr. Santos'
+        4. Click Submit...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should have happened according to the Phase 0 requirements?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened? Include HTTP status codes or UI error messages if relevant.
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment Details
+      description: OS, browser, runtime mode (Docker Compose vs. local CLI), PHP/Node versions, and Git branch/commit.
+      value: |
+        - OS:
+        - Runtime (Docker Compose / XAMPP / Local CLI):
+        - Browser:
+        - Branch / Commit SHA:
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Sanitized Logs
+      description: Paste sanitized error output or stack traces (redact any local paths or secrets).
+      render: shell
+
+  - type: dropdown
+    id: security_impact
+    attributes:
+      label: Security or Privacy Impact
+      description: Could this bug affect authentication, role authorization, slot concurrency, or data privacy?
+      options:
+        - "None identified"
+        - "Potential authorization / role boundary issue"
+        - "Potential booking concurrency / data integrity issue"
+        - "Potential sensitive data exposure (do NOT paste exploit details publicly)"
+    validations:
+      required: true
+

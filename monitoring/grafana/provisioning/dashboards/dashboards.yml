@@ -1,0 +1,12 @@
+# Grafana dashboard provider
+apiVersion: 1
+
+providers:
+  - name: "ToothCare Hub Dashboards"
+    orgId: 1
+    folder: "ToothCare Hub"
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

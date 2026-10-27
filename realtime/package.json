@@ -1,0 +1,16 @@
+{
+  "name": "toothcare-hub-realtime",
+  "version": "1.0.0",
+  "description": "ToothCare Hub Real-Time Service (Node.js + Socket.IO)",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "socket.io": "^4.8.1"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

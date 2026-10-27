@@ -1,0 +1,38 @@
+groups:
+  - name: toothcare-alerts
+    rules:
+      - alert: TargetDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Prometheus target is down: {{ $labels.job }}"
+          description: "Container target {{ $labels.instance }} has been unreachable for more than 1 minute."
+
+      - alert: ApiHigh5xxRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Elevated HTTP 5xx error rate"
+          description: "More than 5% of API requests returned 5xx errors over the last 5 minutes."
+
+      - alert: ApiHighLatency
+        expr: http_request_duration_seconds{quantile="0.95"} > 1.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API response latency"
+          description: "95th percentile request latency exceeds 1.5 seconds."
+
+      - alert: RealtimeUnavailable
+        expr: up{job="toothcare-realtime"} == 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Socket.IO real-time service unavailable"
+          description: "Real-time notification engine is down. In-app notifications will fall back to REST."

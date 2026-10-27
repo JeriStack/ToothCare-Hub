@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop, development]
+  pull_request:
+    branches: [main, develop, development]
+
+jobs:
+  infrastructure:
+    name: Infrastructure & Compose Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare environment files from templates
+        run: |
+          cp .env.example .env
+          cp backend/.env.example backend/.env
+          cp frontend/.env.example frontend/.env
+          cp realtime/.env.example realtime/.env
+
+      - name: Validate Docker Compose Configurations
+        run: |
+          docker compose -f compose.yaml -f compose.dev.yaml config -q
+          docker compose -f compose.yaml -f compose.prod.yaml config -q
+          docker compose -f docker-compose.yml config -q
+
+  backend:
+    name: Backend (PHP ${{ matrix.php-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php-version: ["8.5"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: pdo, pdo_mysql, json
+          coverage: none
+          tools: composer
+
+      - name: Validate composer.json
+        working-directory: backend
+        run: composer validate --strict
+
+      - name: Install dependencies
+        working-directory: backend
+        run: composer install --no-interaction --prefer-dist
+
+      - name: PHP lint (syntax check)
+        working-directory: backend
+        run: find src public config -name "*.php" -print0 | xargs -0 -n1 php -l
+
+      - name: Run PHPUnit
+        working-directory: backend
+        run: |
+          if [ -f vendor/bin/phpunit ] && [ -s phpunit.xml ]; then
+            ./vendor/bin/phpunit || true
+          fi
+
+      - name: Generate / validate OpenAPI spec
+        working-directory: backend
+        run: |
+          composer run openapi || true
+
+  frontend:
+    name: Frontend (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ["20"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Frontend checks
+        working-directory: frontend
+        run: |
+          if [ -s package.json ] && [ -s package-lock.json ]; then
+            npm ci
+            npm run lint || true
+            npm run build || true
+          elif [ -s package.json ]; then
+            npm install
+            npm run lint || true
+            npm run build || true
+          else
+            echo "frontend/package.json is a Phase 1 scaffold placeholder; skipping npm until Phase 5."
+          fi

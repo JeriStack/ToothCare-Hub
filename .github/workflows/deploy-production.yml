@@ -1,0 +1,22 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  deploy:
+    name: Production Deployment Gate
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify Deployment Artifacts
+        run: |
+          echo "Checking production deployment assets..."
+          test -f compose.yaml || test -f docker-compose.yml
+          test -f deployment/scripts/deploy.sh
+          echo "Production deployment gate ready for release orchestration."
