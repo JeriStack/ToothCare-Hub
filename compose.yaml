@@ -19,7 +19,8 @@ services:
       dockerfile: ../docker/php/Dockerfile
     container_name: toothcare-backend
     env_file:
-      - ./backend/.env
+      - path: ./backend/.env
+        required: false
     depends_on:
       - mysql
     networks:
@@ -30,7 +31,8 @@ services:
       context: ./frontend
     container_name: toothcare-frontend
     env_file:
-      - ./frontend/.env
+      - path: ./frontend/.env
+        required: false
     networks:
       - toothcare
 
@@ -39,7 +41,8 @@ services:
       context: ./realtime
     container_name: toothcare-realtime
     env_file:
-      - ./realtime/.env
+      - path: ./realtime/.env
+        required: false
     networks:
       - toothcare
 

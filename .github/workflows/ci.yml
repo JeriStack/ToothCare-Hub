@@ -13,6 +13,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Prepare environment files from templates
+        run: |
+          cp .env.example .env
+          cp backend/.env.example backend/.env
+          cp frontend/.env.example frontend/.env
+          cp realtime/.env.example realtime/.env
+
       - name: Validate Docker Compose Configurations
         run: |
           docker compose -f compose.yaml -f compose.dev.yaml config -q
