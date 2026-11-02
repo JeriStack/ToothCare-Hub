@@ -17,6 +17,6 @@ jobs:
       - name: Verify Deployment Artifacts
         run: |
           echo "Checking production deployment assets..."
-          test -f compose.yaml || test -f docker-compose.yml
+          test -f compose.yaml
           test -f deployment/scripts/deploy.sh
           echo "Production deployment gate ready for release orchestration."
