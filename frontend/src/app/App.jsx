@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Calendar,
   Clock,
@@ -31,6 +31,100 @@ import {
   INITIAL_NOTIFICATIONS
 } from './mockData';
 
+const SAMPLE_TIME_SLOTS = ['09:00 AM', '09:30 AM', '10:30 AM', '11:15 AM', '01:30 PM', '02:00 PM', '03:30 PM', '04:00 PM'];
+const SAMPLE_CLINIC_CLOSE_MINUTES = 17 * 60;
+const BOOKING_STATUSES = new Set(['PENDING', 'CONFIRMED', 'IN_CHAIR']);
+const WEEKDAY_CODES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const APPOINTMENT_STATUS_LABELS = {
+  PENDING: 'Awaiting clinic review',
+  CONFIRMED: 'Confirmed',
+  IN_CHAIR: 'In progress',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled',
+  REJECTED: 'Declined',
+};
+
+const getAppointmentStatusLabel = status => APPOINTMENT_STATUS_LABELS[status] || status;
+
+const getManilaDate = (date = new Date()) => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const year = parts.find(part => part.type === 'year')?.value;
+  const month = parts.find(part => part.type === 'month')?.value;
+  const day = parts.find(part => part.type === 'day')?.value;
+
+  return `${year}-${month}-${day}`;
+};
+
+const getManilaMinutes = (date = new Date()) => {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Manila',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date);
+  const hour = Number(parts.find(part => part.type === 'hour')?.value);
+  const minute = Number(parts.find(part => part.type === 'minute')?.value);
+
+  return hour * 60 + minute;
+};
+
+const getTimeInMinutes = (time) => {
+  const match = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(time || '');
+  if (!match) return null;
+
+  const [, hourText, minuteText, meridiem] = match;
+  const hour = Number(hourText) % 12 + (meridiem.toUpperCase() === 'PM' ? 12 : 0);
+  return hour * 60 + Number(minuteText);
+};
+
+const getWeekdayCode = (date) => {
+  const [year, month, day] = date.split('-').map(Number);
+  if (!year || !month || !day) return null;
+
+  return WEEKDAY_CODES[new Date(Date.UTC(year, month - 1, day)).getUTCDay()];
+};
+
+const getSampleAvailableSlots = (date, dentist, service, appointments) => {
+  if (!date || !dentist || !service) return [];
+
+  const weekday = getWeekdayCode(date);
+  if (!weekday || !dentist.shifts.includes(weekday)) return [];
+
+  const now = new Date();
+  const isToday = date === getManilaDate(now);
+  const currentMinutes = getManilaMinutes(now);
+
+  return SAMPLE_TIME_SLOTS.filter(slot => {
+    const start = getTimeInMinutes(slot);
+    if (start === null || (isToday && start <= currentMinutes)) return false;
+
+    const end = start + service.durationMinutes;
+    if (end > SAMPLE_CLINIC_CLOSE_MINUTES) return false;
+
+    return !appointments.some(appointment => {
+      if (
+        appointment.date !== date ||
+        appointment.dentistId !== dentist.id ||
+        !BOOKING_STATUSES.has(appointment.status)
+      ) {
+        return false;
+      }
+
+      const appointmentStart = getTimeInMinutes(appointment.timeSlot);
+      const duration = Number(appointment.durationMinutes);
+      if (appointmentStart === null || !Number.isFinite(duration) || duration <= 0) return true;
+
+      const appointmentEnd = appointmentStart + duration;
+      return start < appointmentEnd && appointmentStart < end;
+    });
+  });
+};
+
 export default function App() {
   // Global Role: 'PATIENT' | 'ADMIN' | 'DENTIST'
   const [currentRole, setCurrentRole] = useState('PATIENT');
@@ -60,8 +154,8 @@ export default function App() {
   const [wizardStep, setWizardStep] = useState(1);
   const [selectedServiceId, setSelectedServiceId] = useState(1);
   const [selectedDentistId, setSelectedDentistId] = useState(1);
-  const [selectedDate, setSelectedDate] = useState('2026-11-03');
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState('09:30 AM');
+  const [selectedDate, setSelectedDate] = useState(getManilaDate);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState('');
   const [patientChiefComplaint, setPatientChiefComplaint] = useState('');
   const [isPolicyAgreed, setIsPolicyAgreed] = useState(false);
   const [bookedApptRef, setBookedApptRef] = useState(null);
@@ -80,6 +174,19 @@ export default function App() {
   };
 
   const unreadNotifsCount = notifications.filter(n => !n.isRead).length;
+  const todayManila = getManilaDate();
+  const availableSampleTimeSlots = useMemo(() => {
+    const dentist = dentists.find(d => d.id === selectedDentistId);
+    const service = services.find(s => s.id === selectedServiceId);
+
+    return getSampleAvailableSlots(selectedDate, dentist, service, appointments);
+  }, [appointments, dentists, selectedDate, selectedDentistId, selectedServiceId, services]);
+
+  useEffect(() => {
+    if (!availableSampleTimeSlots.includes(selectedTimeSlot)) {
+      setSelectedTimeSlot(availableSampleTimeSlots[0] || '');
+    }
+  }, [availableSampleTimeSlots, selectedTimeSlot]);
 
   const markAllNotifsRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
@@ -97,6 +204,20 @@ export default function App() {
   const handleCompleteBooking = () => {
     const srv = services.find(s => s.id === selectedServiceId);
     const dnt = dentists.find(d => d.id === selectedDentistId);
+    if (!srv || !dnt) {
+      setWizardStep(3);
+      showToast('Choose a service and dentist before continuing.');
+      return;
+    }
+
+    const currentSampleTimeSlots = getSampleAvailableSlots(selectedDate, dnt, srv, appointments);
+    if (!currentSampleTimeSlots.includes(selectedTimeSlot)) {
+      setSelectedTimeSlot(currentSampleTimeSlots[0] || '');
+      setWizardStep(3);
+      showToast('That sample time is no longer available. Choose another time.');
+      return;
+    }
+
     const newId = Math.floor(1000 + Math.random() * 9000);
 
     const newAppt = {
@@ -120,7 +241,7 @@ export default function App() {
 
     setAppointments(prev => [newAppt, ...prev]);
     setBookedApptRef(newId);
-    setWizardStep(6);
+    setWizardStep(5);
 
     // Add in-app notification
     const newNotif = {
@@ -134,7 +255,7 @@ export default function App() {
       appointmentId: newId,
     };
     setNotifications(prev => [newNotif, ...prev]);
-    showToast(`Appointment request #${newId} submitted for reception review!`);
+    showToast(`Demo appointment request #${newId} added for reception review.`);
   };
 
   // Admin Approve
@@ -175,7 +296,7 @@ export default function App() {
     if (selectedApptDetail && selectedApptDetail.id === id) {
       setSelectedApptDetail(null);
     }
-    showToast(`Appointment #${id} cancelled. The slot has been released.`);
+    showToast(`Appointment #${id} marked cancelled in this demo.`);
   };
 
   // Dentist Complete Treatment
@@ -193,18 +314,9 @@ export default function App() {
       
       {/* 1. DEMO & ROLE SWITCHER BAR */}
       <div className="bg-[#0B1D2D] text-white px-4 py-2 text-xs flex flex-wrap items-center justify-between border-b border-slate-800 gap-2">
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1.5 text-teal-400 font-semibold tracking-wide">
-            <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
-            LIVE APPLICATION (PHASE 3 UX)
-          </span>
-          <span className="text-slate-400">|</span>
-          <span className="text-slate-300">Timezone: <strong>Asia/Manila (UTC+08:00)</strong></span>
-          <span className="text-slate-400 hidden sm:inline">|</span>
-          <span className="text-slate-400 hidden sm:inline">Docker Nginx: Port 8080</span>
-        </div>
+        <span className="rounded-full bg-slate-800 px-2.5 py-1 font-semibold text-slate-200">Demo mode</span>
         <div className="flex items-center gap-1.5">
-          <span className="text-slate-400 mr-1">Switch Experience:</span>
+          <span className="text-slate-400 mr-1">Preview role:</span>
           <button
             onClick={() => handleRoleChange('PATIENT')}
             className={`px-2.5 py-1 rounded transition-colors font-medium ${currentRole === 'PATIENT' ? 'bg-[#0D9488] text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
@@ -293,7 +405,7 @@ export default function App() {
         <aside className={`lg:w-60 shrink-0 ${isMobileMenuOpen ? 'block' : 'hidden lg:block'}`}>
           <div className="bg-white rounded-xl border border-slate-200/80 p-3 shadow-sm sticky top-22">
             <div className="text-[11px] font-semibold uppercase text-slate-400 px-3 py-2 tracking-wider">
-              Navigation Menu
+              Navigation
             </div>
             <nav className="space-y-1">
               {currentRole === 'PATIENT' && (
@@ -392,7 +504,7 @@ export default function App() {
             <div className="mt-6 pt-4 border-t border-slate-100 text-xs text-slate-500">
               <div className="flex items-center gap-2 text-slate-700 font-semibold mb-1">
                 <Phone className="w-3.5 h-3.5 text-[#0D9488]" />
-                Clinic Helpline
+                Call the clinic
               </div>
               <p>(02) 8123-4567</p>
               <p className="text-[11px] text-slate-400 mt-0.5">Mon - Sat: 9:00 AM - 5:00 PM</p>
@@ -414,9 +526,9 @@ export default function App() {
                   {/* Greeting */}
                   <div>
                     <h2 className="text-xl sm:text-2xl font-bold text-[#12304A]">
-                      Good morning, Juan!
+                      Your care overview
                     </h2>
-                    <p className="text-sm text-slate-500">Welcome to your ToothCare Hub dental management portal.</p>
+                    <p className="text-sm text-slate-500">View your upcoming appointment and requests, or book a visit.</p>
                   </div>
 
                   {/* Next Scheduled Visit Hero */}
@@ -426,7 +538,7 @@ export default function App() {
                       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                         <span className="text-xs font-bold tracking-wider uppercase text-[#0D9488] flex items-center gap-1.5">
                           <CheckCircle2 className="w-4 h-4" />
-                          Next Scheduled Visit
+                          Upcoming appointment
                         </span>
                         <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#CCFBF1] text-[#0F766E] border border-teal-200">
                           Confirmed
@@ -444,7 +556,7 @@ export default function App() {
                                 {appt.date} • {appt.timeSlot} (Asia/Manila)
                               </p>
                               <p className="text-xs text-slate-500 mt-1">
-                                Practitioner: <strong>{appt.dentistName}</strong> • {appt.chair}
+                                Dentist: <strong>{appt.dentistName}</strong> • {appt.chair}
                               </p>
                             </div>
                             <div className="flex items-center gap-2">
@@ -467,50 +579,24 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* Quick Actions Strip */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="flex flex-col gap-3 rounded-xl border border-[#BFE8E2] bg-[#F0FDFA] p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h4 className="font-bold text-sm text-[#12304A]">Need an appointment?</h4>
+                      <p className="text-xs text-slate-600 mt-0.5">Choose a service and preferred time.</p>
+                    </div>
                     <button
                       onClick={() => { setActiveTab('book'); setWizardStep(1); }}
-                      className="bg-white p-4 rounded-xl border border-slate-200 hover:border-[#0D9488] hover:shadow-md transition-all text-left flex items-start gap-3.5 group"
+                      className="inline-flex items-center justify-center gap-2 self-start rounded-lg bg-[#0D9488] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#0F766E] sm:self-auto"
                     >
-                      <div className="w-10 h-10 rounded-lg bg-[#CCFBF1] text-[#0D9488] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <Plus className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-sm text-[#12304A]">Book Appointment</h4>
-                        <p className="text-xs text-slate-500 mt-0.5">Choose procedure, dentist & 30-min slot.</p>
-                      </div>
+                      <Plus className="h-4 w-4" />
+                      Book appointment
                     </button>
-
-                    <button
-                      onClick={() => setActiveTab('appointments')}
-                      className="bg-white p-4 rounded-xl border border-slate-200 hover:border-[#0D9488] hover:shadow-md transition-all text-left flex items-start gap-3.5 group"
-                    >
-                      <div className="w-10 h-10 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <FileText className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-sm text-[#12304A]">Visit History</h4>
-                        <p className="text-xs text-slate-500 mt-0.5">Review completed visits and notes.</p>
-                      </div>
-                    </button>
-
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 text-left flex items-start gap-3.5">
-                      <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                        <Phone className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-sm text-[#12304A]">Emergency Assistance</h4>
-                        <p className="text-xs text-slate-500 mt-0.5">Call reception at (02) 8123-4567.</p>
-                      </div>
-                    </div>
                   </div>
 
                   {/* Active Appointments Table */}
                   <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                     <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                      <h4 className="font-bold text-sm text-[#12304A]">Your Appointments & Requests</h4>
-                      <span className="text-xs text-slate-500">{appointments.length} total records</span>
+                      <h4 className="font-bold text-sm text-[#12304A]">Your appointments</h4>
                     </div>
                     <div className="divide-y divide-slate-100">
                       {appointments.map(appt => (
@@ -540,7 +626,7 @@ export default function App() {
                               {appt.status === 'PENDING' && <Clock className="w-3.5 h-3.5" />}
                               {appt.status === 'COMPLETED' && <Check className="w-3.5 h-3.5" />}
                               {appt.status === 'CANCELLED' && <XCircle className="w-3.5 h-3.5" />}
-                              {appt.status}
+                              {getAppointmentStatusLabel(appt.status)}
                             </span>
                             <button
                               onClick={() => setSelectedApptDetail(appt)}
@@ -557,66 +643,76 @@ export default function App() {
                 </div>
               )}
 
-              {/* 6-Step Booking Wizard */}
+              {/* Booking Wizard */}
               {activeTab === 'book' && (
                 <div className="max-w-3xl mx-auto bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
                   {/* Stepper Progress */}
-                  <div className="mb-8">
-                    <div className="flex items-center justify-between text-xs font-bold text-slate-400 mb-2">
-                      <span className={wizardStep >= 1 ? 'text-[#0D9488]' : ''}>1. Service</span>
-                      <span className={wizardStep >= 2 ? 'text-[#0D9488]' : ''}>2. Dentist</span>
-                      <span className={wizardStep >= 3 ? 'text-[#0D9488]' : ''}>3. Date & Slot</span>
-                      <span className={wizardStep >= 4 ? 'text-[#0D9488]' : ''}>4. Notes</span>
-                      <span className={wizardStep >= 5 ? 'text-[#0D9488]' : ''}>5. Review</span>
-                    </div>
-                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                  {wizardStep < 5 && (
+                    <div className="mb-8">
+                      <p className="mb-2 text-xs font-semibold text-slate-600">
+                        Step {wizardStep} of 4 <span className="text-slate-400">·</span> {['Service', 'Dentist', 'Date & time', 'Review'][wizardStep - 1]}
+                      </p>
                       <div
-                        className="bg-[#0D9488] h-full transition-all duration-300"
-                        style={{ width: `${(wizardStep / 5) * 100}%` }}
-                      ></div>
+                        className="w-full overflow-hidden rounded-full bg-slate-100 h-1.5"
+                        role="progressbar"
+                        aria-label="Booking progress"
+                        aria-valuemin={1}
+                        aria-valuemax={4}
+                        aria-valuenow={wizardStep}
+                      >
+                        <div
+                          className="h-full bg-[#0D9488] transition-all duration-300"
+                          style={{ width: `${(wizardStep / 4) * 100}%` }}
+                        ></div>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Wizard Step 1: Services */}
                   {wizardStep === 1 && (
                     <div className="space-y-4">
-                      <h3 className="text-lg font-bold text-[#12304A]">Step 1: Choose Dental Service</h3>
-                      <p className="text-xs text-slate-500">Select the procedure required. Durations calibrate bookable slot blocks.</p>
-                      <div className="space-y-3 pt-2">
+                      <h3 className="text-lg font-bold text-[#12304A]">Choose a dental service</h3>
+                      <p className="text-xs text-slate-500">Service duration helps filter sample appointment times.</p>
+                      <fieldset className="space-y-3 pt-2">
+                        <legend className="sr-only">Choose a dental service</legend>
                         {services.map(srv => (
-                          <div
+                          <label
                             key={srv.id}
-                            onClick={() => setSelectedServiceId(srv.id)}
-                            className={`p-4 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
+                            className="block cursor-pointer"
+                          >
+                            <input
+                              type="radio"
+                              name="booking-service"
+                              value={srv.id}
+                              checked={selectedServiceId === srv.id}
+                              onChange={() => setSelectedServiceId(srv.id)}
+                              className="peer sr-only"
+                            />
+                            <div className={`p-4 rounded-xl border transition-all flex items-center justify-between peer-focus-visible:ring-2 peer-focus-visible:ring-[#0D9488] peer-focus-visible:ring-offset-2 ${
                               selectedServiceId === srv.id
                                 ? 'border-[#0D9488] bg-[#F0FDFA] ring-2 ring-[#0D9488]/20'
                                 : 'border-slate-200 hover:border-slate-300'
-                            }`}
-                          >
-                            <div>
-                              <div className="flex items-center gap-2">
+                            }`}>
+                              <div>
                                 <h4 className="font-bold text-sm text-[#12304A]">{srv.name}</h4>
-                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
-                                  {srv.category}
-                                </span>
+                                <p className="text-xs text-slate-500 mt-1">{srv.description}</p>
+                                <p className="text-xs font-semibold text-[#0D9488] mt-1">
+                                  Estimated duration: {srv.durationMinutes} min
+                                </p>
                               </div>
-                              <p className="text-xs text-slate-500 mt-1">{srv.description}</p>
-                              <p className="text-xs font-semibold text-[#0D9488] mt-1">
-                                Est. Duration: {srv.durationMinutes} minutes
-                              </p>
+                              <div className="text-right shrink-0">
+                                <span className="text-base font-bold text-[#12304A]">₱{srv.price.toLocaleString()}</span>
+                              </div>
                             </div>
-                            <div className="text-right shrink-0">
-                              <span className="text-base font-bold text-[#12304A]">₱{srv.price.toLocaleString()}</span>
-                            </div>
-                          </div>
+                          </label>
                         ))}
-                      </div>
+                      </fieldset>
                       <div className="pt-4 flex justify-end">
                         <button
                           onClick={() => setWizardStep(2)}
                           className="px-6 py-2.5 rounded-lg bg-[#0D9488] text-white font-semibold text-sm hover:bg-[#0F766E] transition-colors shadow-sm"
                         >
-                          Continue to Dentist Selection &gt;
+                          Continue
                         </button>
                       </div>
                     </div>
@@ -625,33 +721,42 @@ export default function App() {
                   {/* Wizard Step 2: Dentists */}
                   {wizardStep === 2 && (
                     <div className="space-y-4">
-                      <h3 className="text-lg font-bold text-[#12304A]">Step 2: Choose Dental Practitioner</h3>
-                      <p className="text-xs text-slate-500">Pick an attending dentist licensed for your selected procedure.</p>
-                      <div className="space-y-3 pt-2">
+                      <h3 className="text-lg font-bold text-[#12304A]">Choose a dentist</h3>
+                      <p className="text-xs text-slate-500">Listed clinic days help filter sample appointment dates.</p>
+                      <fieldset className="space-y-3 pt-2">
+                        <legend className="sr-only">Choose a dentist</legend>
                         {dentists.map(dnt => (
-                          <div
+                          <label
                             key={dnt.id}
-                            onClick={() => setSelectedDentistId(dnt.id)}
-                            className={`p-4 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
+                            className="block cursor-pointer"
+                          >
+                            <input
+                              type="radio"
+                              name="booking-dentist"
+                              value={dnt.id}
+                              checked={selectedDentistId === dnt.id}
+                              onChange={() => setSelectedDentistId(dnt.id)}
+                              className="peer sr-only"
+                            />
+                            <div className={`p-4 rounded-xl border transition-all flex items-center justify-between peer-focus-visible:ring-2 peer-focus-visible:ring-[#0D9488] peer-focus-visible:ring-offset-2 ${
                               selectedDentistId === dnt.id
                                 ? 'border-[#0D9488] bg-[#F0FDFA] ring-2 ring-[#0D9488]/20'
                                 : 'border-slate-200 hover:border-slate-300'
-                            }`}
-                          >
-                            <div className="flex items-center gap-3.5">
-                              <span className="text-2xl">{dnt.avatar}</span>
-                              <div>
-                                <h4 className="font-bold text-sm text-[#12304A]">{dnt.name}</h4>
-                                <p className="text-xs text-slate-500">{dnt.specialty}</p>
-                                <p className="text-[11px] text-slate-400 mt-0.5">{dnt.license} • {dnt.chair}</p>
+                            }`}>
+                              <div className="flex items-center gap-3.5">
+                                <span className="text-2xl">{dnt.avatar}</span>
+                                <div>
+                                  <h4 className="font-bold text-sm text-[#12304A]">{dnt.name}</h4>
+                                  <p className="text-xs text-slate-500">{dnt.specialty}</p>
+                                </div>
                               </div>
+                              <span className="text-right text-xs font-medium text-slate-600">
+                                Clinic days {dnt.shifts.join(', ')}
+                              </span>
                             </div>
-                            <span className="text-xs font-semibold text-[#0D9488] bg-[#CCFBF1] px-2.5 py-1 rounded-full">
-                              Available
-                            </span>
-                          </div>
+                          </label>
                         ))}
-                      </div>
+                      </fieldset>
                       <div className="pt-4 flex justify-between">
                         <button
                           onClick={() => setWizardStep(1)}
@@ -663,37 +768,54 @@ export default function App() {
                           onClick={() => setWizardStep(3)}
                           className="px-6 py-2.5 rounded-lg bg-[#0D9488] text-white font-semibold text-sm hover:bg-[#0F766E] transition-colors shadow-sm"
                         >
-                          Continue to Date & Slot &gt;
+                          Continue
                         </button>
                       </div>
                     </div>
                   )}
 
-                  {/* Wizard Step 3: Date & 30-min Slot */}
+                  {/* Wizard Step 3: Date & Sample Time */}
                   {wizardStep === 3 && (
                     <div className="space-y-4">
-                      <h3 className="text-lg font-bold text-[#12304A]">Step 3: Select Date & 30-Minute Time Slot</h3>
-                      <p className="text-xs text-slate-500">Anchored in clinic timezone <strong>Asia/Manila (UTC+08:00)</strong>.</p>
+                      <h3 className="text-lg font-bold text-[#12304A]">Choose a date and time</h3>
+                      <p className="text-xs text-slate-500">Times shown in the clinic timezone: <strong>Asia/Manila (UTC+08:00)</strong>.</p>
+                      {(() => {
+                        const srv = services.find(s => s.id === selectedServiceId);
+                        const dnt = dentists.find(d => d.id === selectedDentistId);
+                        return srv && dnt ? (
+                          <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                            <span className="font-semibold">{srv.name}</span> ({srv.durationMinutes} min) with <span className="font-semibold">{dnt.name}</span>
+                          </p>
+                        ) : null;
+                      })()}
                       
                       <div className="pt-2">
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">Appointment Date</label>
+                        <label htmlFor="appointment-date" className="block text-xs font-semibold text-slate-700 mb-1">Appointment date</label>
                         <input
+                          id="appointment-date"
                           type="date"
                           value={selectedDate}
-                          min="2026-10-28"
-                          onChange={e => setSelectedDate(e.target.value)}
+                          min={todayManila}
+                          onChange={e => {
+                            if (e.target.value) setSelectedDate(e.target.value);
+                          }}
                           className="w-full sm:w-64 px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-[#0D9488] focus:ring-2 focus:ring-[#CCFBF1] outline-none"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-2">Available 30-Minute Starting Slots</label>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                          {['09:00 AM', '09:30 AM', '10:30 AM', '11:15 AM', '01:30 PM', '02:00 PM', '03:30 PM', '04:00 PM'].map(slot => (
+                        <p className="block text-xs font-semibold text-slate-700 mb-2">Sample start times</p>
+                        <p className="text-xs text-slate-600 mb-3">
+                          Sample options only—not live availability. Reception must confirm your request.
+                        </p>
+                        {availableSampleTimeSlots.length > 0 ? (
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                            {availableSampleTimeSlots.map(slot => (
                             <button
                               key={slot}
                               type="button"
                               onClick={() => setSelectedTimeSlot(slot)}
+                              aria-pressed={selectedTimeSlot === slot}
                               className={`py-2 px-3 rounded-lg text-xs font-bold transition-all border ${
                                 selectedTimeSlot === slot
                                   ? 'bg-[#0D9488] text-white border-[#0D9488] shadow-sm'
@@ -702,8 +824,15 @@ export default function App() {
                             >
                               {slot}
                             </button>
-                          ))}
-                        </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p role="status" className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                            {selectedDate && dentists.find(d => d.id === selectedDentistId)?.shifts.includes(getWeekdayCode(selectedDate))
+                              ? 'No sample times fit this service and the appointments shown. Choose another date or dentist.'
+                              : 'This dentist is not scheduled on that day in the sample calendar. Choose another date or dentist.'}
+                          </p>
+                        )}
                       </div>
 
                       <div className="pt-4 flex justify-between">
@@ -715,53 +844,36 @@ export default function App() {
                         </button>
                         <button
                           onClick={() => setWizardStep(4)}
-                          className="px-6 py-2.5 rounded-lg bg-[#0D9488] text-white font-semibold text-sm hover:bg-[#0F766E] transition-colors shadow-sm"
+                          disabled={!availableSampleTimeSlots.includes(selectedTimeSlot)}
+                          className="px-6 py-2.5 rounded-lg bg-[#0D9488] text-white font-semibold text-sm hover:bg-[#0F766E] transition-colors shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          Continue to Patient Notes &gt;
+                          Continue to review
                         </button>
                       </div>
                     </div>
                   )}
 
-                  {/* Wizard Step 4: Notes */}
+                  {/* Wizard Step 4: Review & Submit */}
                   {wizardStep === 4 && (
                     <div className="space-y-4">
-                      <h3 className="text-lg font-bold text-[#12304A]">Step 4: Chief Complaint & Notes</h3>
-                      <p className="text-xs text-slate-500">Describe any current discomfort, symptoms, or special accommodations.</p>
-                      
-                      <div className="pt-2">
+                      <h3 className="text-lg font-bold text-[#12304A]">Review your request</h3>
+                      <p className="text-xs text-slate-500">Check the details below before confirming.</p>
+
+                      <div>
+                        <label htmlFor="patient-visit-notes" className="mb-1 block text-xs font-semibold text-slate-700">
+                          Anything the clinic should know? <span className="font-normal text-slate-500">(optional)</span>
+                        </label>
                         <textarea
-                          rows={4}
+                          id="patient-visit-notes"
+                          rows={3}
+                          maxLength={500}
                           value={patientChiefComplaint}
                           onChange={e => setPatientChiefComplaint(e.target.value)}
-                          placeholder="e.g., Routine cleaning, slight gum bleeding when brushing, sensitive to cold water on upper right molar."
-                          className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:border-[#0D9488] focus:ring-2 focus:ring-[#CCFBF1] outline-none"
+                          placeholder="Share symptoms or accommodation needs."
+                          className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-[#0D9488] focus:ring-2 focus:ring-[#CCFBF1] outline-none"
                         ></textarea>
-                        <p className="text-[11px] text-slate-400 mt-1">Maximum 500 characters.</p>
+                        <p className="mt-1 text-[11px] text-slate-500">Up to 500 characters.</p>
                       </div>
-
-                      <div className="pt-4 flex justify-between">
-                        <button
-                          onClick={() => setWizardStep(3)}
-                          className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50"
-                        >
-                          &lt; Back
-                        </button>
-                        <button
-                          onClick={() => setWizardStep(5)}
-                          className="px-6 py-2.5 rounded-lg bg-[#0D9488] text-white font-semibold text-sm hover:bg-[#0F766E] transition-colors shadow-sm"
-                        >
-                          Review & Agreement &gt;
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Wizard Step 5: Review & Submit */}
-                  {wizardStep === 5 && (
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-bold text-[#12304A]">Step 5: Review & Confirm Request</h3>
-                      <p className="text-xs text-slate-500">Please verify your booking details before submission to clinic reception.</p>
 
                       {(() => {
                         const srv = services.find(s => s.id === selectedServiceId);
@@ -777,7 +889,7 @@ export default function App() {
                               <span className="font-bold text-[#12304A]">{dnt.name} ({dnt.specialty})</span>
                             </div>
                             <div className="flex justify-between py-1 border-b border-slate-200/60">
-                              <span className="text-slate-500">Schedule:</span>
+                              <span className="text-slate-500">Date & time:</span>
                               <span className="font-bold text-[#12304A]">{selectedDate} at {selectedTimeSlot} (Asia/Manila)</span>
                             </div>
                             <div className="flex justify-between py-1 border-b border-slate-200/60">
@@ -786,8 +898,8 @@ export default function App() {
                             </div>
                             {patientChiefComplaint && (
                               <div className="py-1">
-                                <span className="text-slate-500 block mb-0.5">Notes / Chief Complaint:</span>
-                                <span className="text-slate-700 italic font-medium">"{patientChiefComplaint}"</span>
+                                <span className="text-slate-500 block mb-0.5">Note for the clinic:</span>
+                                <span className="text-slate-700 font-medium">{patientChiefComplaint}</span>
                               </div>
                             )}
                           </div>
@@ -803,14 +915,14 @@ export default function App() {
                             className="mt-0.5 rounded text-[#0D9488] focus:ring-[#0D9488]"
                           />
                           <span className="text-xs text-slate-600 leading-relaxed">
-                            I understand that appointment requests are subject to clinic review and confirmation. Cancellations must be made at least <strong>24 hours</strong> in advance.
+                            Sample times are not live availability. This request is not confirmed until reception approves it. Contact reception to check cancellation rules.
                           </span>
                         </label>
                       </div>
 
                       <div className="pt-4 flex justify-between">
                         <button
-                          onClick={() => setWizardStep(4)}
+                          onClick={() => setWizardStep(3)}
                           className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50"
                         >
                           &lt; Back
@@ -820,34 +932,35 @@ export default function App() {
                           onClick={handleCompleteBooking}
                           className="px-6 py-2.5 rounded-lg bg-[#0D9488] text-white font-semibold text-sm hover:bg-[#0F766E] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          Confirm & Submit Request
+                          Create demo request
                         </button>
                       </div>
                     </div>
                   )}
 
-                  {/* Wizard Step 6: Confirmation Success */}
-                  {wizardStep === 6 && (
+                  {/* Wizard confirmation */}
+                  {wizardStep === 5 && (
                     <div className="text-center py-6 space-y-4">
                       <div className="w-16 h-16 bg-[#CCFBF1] text-[#0D9488] rounded-full flex items-center justify-center mx-auto shadow-inner">
                         <Check className="w-8 h-8" />
                       </div>
-                      <h3 className="text-xl font-bold text-[#12304A]">Appointment Request Submitted!</h3>
+                      <h3 className="text-xl font-bold text-[#12304A]">Demo request created</h3>
                       <p className="text-sm text-slate-600 max-w-md mx-auto">
-                        Your request has been queued for review by reception under reference ID:
+                        This preview marks your request as awaiting clinic review. It has not been sent to the clinic.
                       </p>
+                      <p className="text-xs font-semibold text-slate-600">Demo reference</p>
                       <div className="inline-block bg-slate-100 border border-slate-200 rounded-lg px-4 py-2 font-mono font-bold text-sm text-[#0D9488]">
                         #APP-{bookedApptRef}
                       </div>
                       <p className="text-xs text-slate-500">
-                        Status: <span className="text-amber-700 font-semibold">Pending Clinic Review</span>. You will receive an in-app alert when approved.
+                        Check My Appointments to view its status in this demo.
                       </p>
                       <div className="pt-4">
                         <button
-                          onClick={() => { setActiveTab('dashboard'); setWizardStep(1); }}
+                          onClick={() => { setActiveTab('appointments'); setWizardStep(1); }}
                           className="px-6 py-2.5 rounded-lg bg-[#0D9488] text-white font-semibold text-sm hover:bg-[#0F766E] shadow-sm transition-colors"
                         >
-                          Back to Patient Dashboard
+                          View My Appointments
                         </button>
                       </div>
                     </div>
@@ -860,14 +973,14 @@ export default function App() {
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-lg font-bold text-[#12304A]">My Appointment History</h3>
-                      <p className="text-xs text-slate-500">Track current booking statuses and past clinical treatments.</p>
+                      <h3 className="text-lg font-bold text-[#12304A]">My appointments</h3>
+                      <p className="text-xs text-slate-500">View appointment dates and request statuses.</p>
                     </div>
                     <button
                       onClick={() => { setActiveTab('book'); setWizardStep(1); }}
                       className="px-3 py-1.5 rounded-lg bg-[#0D9488] text-white text-xs font-semibold hover:bg-[#0F766E]"
                     >
-                      + Book New
+                      Book appointment
                     </button>
                   </div>
 
@@ -883,7 +996,7 @@ export default function App() {
                               appt.status === 'PENDING' ? 'bg-amber-100 text-amber-800' :
                               appt.status === 'COMPLETED' ? 'bg-sky-100 text-sky-800' : 'bg-rose-100 text-rose-800'
                             }`}>
-                              {appt.status}
+                              {getAppointmentStatusLabel(appt.status)}
                             </span>
                           </div>
                           <p className="text-xs text-slate-500 mt-1">
@@ -1367,7 +1480,7 @@ export default function App() {
             <div className="p-4 border-b border-slate-100 flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-sm text-[#12304A]">Notification Center</h3>
-                <p className="text-xs text-slate-500">{unreadNotifsCount} unread updates</p>
+                <p className="text-xs text-slate-500">{unreadNotifsCount} unread notifications</p>
               </div>
               <button
                 onClick={() => setIsNotifDrawerOpen(false)}
@@ -1378,7 +1491,7 @@ export default function App() {
             </div>
 
             <div className="p-3 bg-slate-50 border-b border-slate-100 flex justify-between items-center text-xs">
-              <span className="text-slate-500 font-medium">Real-time socket sync: Active</span>
+              <span className="text-slate-500 font-medium">Demo notifications</span>
               <button
                 onClick={markAllNotifsRead}
                 className="text-[#0D9488] font-bold hover:underline"
@@ -1419,18 +1532,18 @@ export default function App() {
             <div className="space-y-2 text-xs">
               <div className="flex justify-between py-1 border-b border-slate-100">
                 <span className="text-slate-500">Status:</span>
-                <span className="font-bold text-[#0D9488]">{selectedApptDetail.status}</span>
+                <span className="font-bold text-[#0D9488]">{getAppointmentStatusLabel(selectedApptDetail.status)}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-100">
                 <span className="text-slate-500">Schedule:</span>
-                <span className="font-bold text-slate-800">{selectedApptDetail.date} at {selectedTimeSlot}</span>
+                <span className="font-bold text-slate-800">{selectedApptDetail.date} at {selectedApptDetail.timeSlot}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-100">
                 <span className="text-slate-500">Dentist:</span>
                 <span className="font-bold text-slate-800">{selectedApptDetail.dentistName}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">Operatory:</span>
+                <span className="text-slate-500">Chair:</span>
                 <span className="font-bold text-slate-800">{selectedApptDetail.chair}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-100">
@@ -1439,7 +1552,7 @@ export default function App() {
               </div>
               {selectedApptDetail.chiefComplaint && (
                 <div className="py-1">
-                  <span className="text-slate-500 block mb-0.5">Patient Notes:</span>
+                  <span className="text-slate-500 block mb-0.5">Notes for the clinic:</span>
                   <p className="text-slate-700 bg-slate-50 p-2 rounded">{selectedApptDetail.chiefComplaint}</p>
                 </div>
               )}
@@ -1480,8 +1593,8 @@ export default function App() {
               </select>
             </div>
 
-            <div className="bg-amber-50 p-2.5 rounded border border-amber-200 text-[11px] text-amber-800">
-              Free cancellation is allowed up to 24 hours prior to scheduled visit time.
+            <div className="bg-amber-50 p-3 rounded border border-amber-200 text-xs text-amber-900">
+              Cancellation eligibility follows clinic policy. This demo does not check the clinic's rules; contact reception if you are unsure.
             </div>
 
             <div className="pt-2 flex justify-end gap-2">
@@ -1620,7 +1733,7 @@ export default function App() {
 
       {/* 5. FOOTER */}
       <footer className="bg-white border-t border-slate-200 mt-auto py-4 text-center text-xs text-slate-400">
-        ToothCare Hub — Dental Appointment & Clinic Management System &copy; 2026. Phase 3 Design Foundations Applied.
+        ToothCare Hub &copy; 2026.
       </footer>
     </div>
   );
