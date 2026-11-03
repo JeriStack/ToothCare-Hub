@@ -9,7 +9,7 @@ on:
 jobs:
   infrastructure:
     name: Infrastructure & Compose Validation
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
 
@@ -27,7 +27,7 @@ jobs:
 
   backend:
     name: Backend (PHP ${{ matrix.php-version }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     strategy:
       matrix:
         php-version: ["8.5"]
@@ -68,10 +68,10 @@ jobs:
 
   frontend:
     name: Frontend (Node ${{ matrix.node-version }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     strategy:
       matrix:
-        node-version: ["20"]
+        node-version: ["24"]
     steps:
       - uses: actions/checkout@v7
 

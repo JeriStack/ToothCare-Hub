@@ -1,5 +1,5 @@
 # Node.js + Socket.IO realtime service
-FROM node:20-alpine
+FROM node:24-alpine
 
 # Use unprivileged node user
 WORKDIR /app

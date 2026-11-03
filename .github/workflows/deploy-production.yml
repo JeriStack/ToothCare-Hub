@@ -8,7 +8,7 @@ on:
 jobs:
   deploy:
     name: Production Deployment Gate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     environment: production
     steps:
       - name: Checkout repository

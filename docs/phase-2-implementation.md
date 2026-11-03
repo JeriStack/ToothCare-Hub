@@ -31,7 +31,7 @@ Phase 2 establishes a fully containerized, reproducible development and staging 
        (edge & app net)   │                        │ (edge & app net)
                           ▼                        ▼
      ┌───────────────────────────────┐   ┌───────────────────────────────┐
-     │       php-fpm (PHP 8.5)       │   │      realtime (Node 20)       │
+     │       php-fpm (PHP 8.5)       │   │      realtime (Node 24)       │
      │  - REST API Front Controller  │   │  - Socket.IO Server           │
      │  - MySQL PDO Driver           │   │  - Unprivileged `node` user   │
      │  - Health: /api/v1/health     │   │  - Health: /health            │
@@ -73,7 +73,7 @@ Phase 2 establishes a fully containerized, reproducible development and staging 
 - [x] **Base Compose (`compose.yaml`):** Standardized Compose v2 definition with `nginx`, `php-fpm`, `mysql`, `realtime`, `email-worker`, and optional `monitoring` profile.
 - [x] **Development Overlay (`compose.dev.yaml`):** Configured hot-reloading bind mounts (`./backend`, `./realtime`) and debugging ports bound strictly to `127.0.0.1`.
 - [x] **PHP-FPM Dockerfile (`docker/php/Dockerfile`):** Pinned to `php:8.5.12-fpm-alpine3.24`, installed `pdo_mysql`, OPcache enabled, CVE-2026-115560 hardening applied, unprivileged permissions configured.
-- [x] **Real-Time Dockerfile (`realtime/Dockerfile`):** Pinned to `node:20-alpine`, runs as non-root `USER node`, reproducible `npm ci`, and built-in healthcheck.
+- [x] **Real-Time Dockerfile (`realtime/Dockerfile`):** Pinned to `node:24-alpine`, runs as non-root `USER node`, reproducible `npm ci`, and built-in healthcheck.
 - [x] **Nginx Proxy Configuration (`nginx/conf.d/toothcare.conf`):** SPA fallback for client-side routing, FastCGI `/api/` routing to `php-fpm:9000`, WebSocket proxying to `realtime:4000`, and direct `/health` status endpoint.
 - [x] **Minimal Front Controller (`backend/public/index.php`):** Responsive to `/api/v1/health` with live PDO MySQL connectivity test and Prometheus metrics format `/api/v1/metrics`.
 - [x] **Background Email Worker (`backend/src/Jobs/ProcessEmailOutbox.php`):** Non-blocking polling daemon reusing backend PHP container with signal handling.
