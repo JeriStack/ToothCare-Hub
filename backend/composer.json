@@ -33,7 +33,10 @@
     },
     "scripts": {
         "test": "phpunit",
-        "openapi": "openapi src -o docs/openapi.yaml"
+        "test:unit": "phpunit --testsuite Unit",
+        "test:integration": "phpunit --testsuite Integration",
+        "openapi": "openapi src -o docs/openapi.yaml",
+        "openapi:validate": "php scripts/validate-openapi.php"
     },
     "minimum-stability": "stable",
     "prefer-stable": true

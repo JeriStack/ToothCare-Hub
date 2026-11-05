@@ -1,0 +1,570 @@
+openapi: 3.0.3
+info:
+  title: ToothCare Hub REST API
+  description: |
+    Native PHP REST API for ToothCare Hub Dental Appointment and Clinic Management System.
+    Provides session-based authentication with HttpOnly cookies, CSRF protection, and unified JSON response envelopes.
+  version: 1.0.0
+  contact:
+    name: ToothCare Hub Engineering Team
+    email: dev@toothcarehub.local
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local Docker Compose API Gateway
+  - url: http://localhost/api/v1
+    description: Production / Localhost Port 80 Proxy
+
+paths:
+  /health:
+    get:
+      summary: Health and Liveness Check
+      description: Returns service status, environment, and optional dependency readiness.
+      operationId: getHealth
+      tags:
+        - System
+      parameters:
+        - name: check
+          in: query
+          required: false
+          description: Set to 'ready' to verify database connectivity.
+          schema:
+            type: string
+            enum: [ready]
+      responses:
+        '200':
+          description: Service is healthy and operational.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required:
+                          - status
+                          - service
+                          - environment
+                          - timestamp
+                        properties:
+                          status:
+                            type: string
+                            example: ok
+                          service:
+                            type: string
+                            example: toothcare-backend
+                          environment:
+                            type: string
+                            example: development
+                          timestamp:
+                            type: string
+                            format: date-time
+                            example: '2026-11-05T19:20:00+08:00'
+                          database:
+                            type: string
+                            example: connected
+        '503':
+          description: Dependency check failed (e.g. database unreachable).
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /auth/csrf-token:
+    get:
+      summary: Retrieve CSRF Token
+      description: Retrieves or generates an active CSRF token for state-changing operations.
+      operationId: getCsrfToken
+      tags:
+        - Authentication
+      responses:
+        '200':
+          description: CSRF token successfully retrieved.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required:
+                          - csrf_token
+                        properties:
+                          csrf_token:
+                            type: string
+                            example: 6a3f910b8e91c784...
+
+  /auth/register:
+    post:
+      summary: Register Patient Account (Planned Phase 6)
+      description: Registers a new patient user account with email verification requirement.
+      operationId: registerPatient
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - first_name
+                - last_name
+                - email
+                - password
+                - phone_number
+              properties:
+                first_name:
+                  type: string
+                  example: Maria
+                last_name:
+                  type: string
+                  example: Santos
+                email:
+                  type: string
+                  format: email
+                  example: maria.santos@example.com
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  example: StrongP@ssw0rd!
+                phone_number:
+                  type: string
+                  example: '+639171234567'
+      responses:
+        '201':
+          description: Patient account created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '422':
+          description: Validation error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+
+  /auth/login:
+    post:
+      summary: User Login (Planned Phase 6)
+      description: Authenticates user credentials and establishes HttpOnly session cookie.
+      operationId: loginUser
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: patient@example.com
+                password:
+                  type: string
+                  format: password
+                  example: SecurePassword123!
+      responses:
+        '200':
+          description: Successfully authenticated.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: toothcare_session=abc123xyz; Path=/; HttpOnly; SameSite=Lax
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '401':
+          description: Invalid email or password.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+
+  /auth/logout:
+    post:
+      summary: User Logout (Planned Phase 6)
+      description: Destroys current session and clears session cookie.
+      operationId: logoutUser
+      tags:
+        - Authentication
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      responses:
+        '200':
+          description: Successfully logged out.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+
+  /services:
+    get:
+      summary: List Dental Services (Planned Phase 8)
+      description: Returns active clinic dental services and prices.
+      operationId: listServices
+      tags:
+        - Services
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of dental services.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+
+  /dentists:
+    get:
+      summary: List Dentists (Planned Phase 8)
+      description: Returns active dentists, specializations, and bios.
+      operationId: listDentists
+      tags:
+        - Dentists
+      responses:
+        '200':
+          description: List of clinic dentists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+
+  /availability:
+    get:
+      summary: Query Available Appointment Slots (Planned Phase 9)
+      description: Calculates open time slots for a specified dentist, date, and service duration.
+      operationId: getAvailability
+      tags:
+        - Appointments
+      parameters:
+        - name: dentist_id
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: service_id
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+            example: '2026-11-10'
+      responses:
+        '200':
+          description: Available time slots.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+
+  /appointments:
+    get:
+      summary: List Appointments (Planned Phase 9)
+      description: Lists appointments scoped to caller role (Patient, Dentist, Receptionist, Admin).
+      operationId: listAppointments
+      tags:
+        - Appointments
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, confirmed, cancelled, rejected, completed, no_show]
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Filtered paginated appointments.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+
+    post:
+      summary: Request Dental Appointment (Planned Phase 9)
+      description: Submits a new appointment booking request.
+      operationId: createAppointment
+      tags:
+        - Appointments
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - service_id
+                - dentist_id
+                - appointment_date
+                - start_time
+              properties:
+                service_id:
+                  type: integer
+                  example: 1
+                dentist_id:
+                  type: integer
+                  example: 2
+                appointment_date:
+                  type: string
+                  format: date
+                  example: '2026-11-15'
+                start_time:
+                  type: string
+                  example: '10:00:00'
+                notes:
+                  type: string
+                  example: 'Routine checkup and cleaning.'
+      responses:
+        '201':
+          description: Appointment requested successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '409':
+          description: Slot conflict or double-booking detected.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+
+components:
+  securitySchemes:
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: toothcare_session
+      description: Server-side PHP session cookie with HttpOnly and SameSite=Lax flags.
+    CsrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: Anti-CSRF token validated for unsafe HTTP methods (POST, PUT, PATCH, DELETE).
+
+  headers:
+    X-Request-ID:
+      description: Unique correlation request ID attached to every request and response.
+      schema:
+        type: string
+        example: 3c26210f-6fb6-4556-9e90-c2d96abcf76a
+
+  schemas:
+    SuccessEnvelope:
+      type: object
+      required:
+        - data
+        - meta
+        - error
+      properties:
+        data:
+          type: object
+          nullable: true
+          description: Primary response payload data.
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+        error:
+          type: object
+          nullable: true
+          default: null
+          example: null
+
+    ErrorEnvelope:
+      type: object
+      required:
+        - data
+        - meta
+        - error
+      properties:
+        data:
+          type: object
+          nullable: true
+          default: null
+          example: null
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+
+    ResponseMeta:
+      type: object
+      required:
+        - request_id
+      properties:
+        request_id:
+          type: string
+          example: 3c26210f-6fb6-4556-9e90-c2d96abcf76a
+        pagination:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    PaginationMeta:
+      type: object
+      required:
+        - current_page
+        - per_page
+        - total_items
+        - total_pages
+      properties:
+        current_page:
+          type: integer
+          example: 1
+        per_page:
+          type: integer
+          example: 20
+        total_items:
+          type: integer
+          example: 54
+        total_pages:
+          type: integer
+          example: 3
+
+    ErrorDetail:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: VALIDATION_ERROR
+          enum:
+            - VALIDATION_ERROR
+            - UNAUTHENTICATED
+            - FORBIDDEN
+            - CSRF_TOKEN_INVALID
+            - NOT_FOUND
+            - METHOD_NOT_ALLOWED
+            - CONFLICT
+            - PAYLOAD_TOO_LARGE
+            - UNSUPPORTED_MEDIA_TYPE
+            - INTERNAL_SERVER_ERROR
+            - SERVICE_UNAVAILABLE
+            - NOT_IMPLEMENTED
+        message:
+          type: string
+          example: 'The submitted data is invalid.'
+        details:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          example:
+            email:
+              - 'A valid email address is required.'
+
+  responses:
+    Unauthorized:
+      description: Authentication required or invalid session.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/X-Request-ID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+    Forbidden:
+      description: Access denied or insufficient role permissions.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/X-Request-ID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+    NotFound:
+      description: Resource or route not found.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/X-Request-ID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+    NotImplemented:
+      description: Endpoint planned for implementation in subsequent project phases.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/X-Request-ID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
