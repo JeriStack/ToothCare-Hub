@@ -23,7 +23,7 @@ export interface BrowserbaseTestFixtures {
 export const test = base.extend<BrowserbaseTestFixtures>({
   browserbaseSessionId: [null, { option: true }],
 
-  page: async ({ page: localPage }, use, testInfo) => {
+  page: async ({ page: localPage, baseURL }, use, testInfo) => {
     const isRemote =
       testInfo.project.name === 'remote-browserbase' ||
       process.env.USE_BROWSERBASE === 'true';
@@ -31,6 +31,24 @@ export const test = base.extend<BrowserbaseTestFixtures>({
     // If not remote, use default local Playwright page
     if (!isRemote) {
       await use(localPage);
+      return;
+    }
+
+    const rawBaseUrl =
+      process.env.PLAYWRIGHT_BASE_URL || baseURL || 'http://localhost:5173';
+    const effectiveBaseUrl = rawBaseUrl.replace(/\/+$/, '');
+
+    // A remote cloud browser cannot reach 'localhost' or '127.0.0.1' without a tunnel
+    const isLocalhost =
+      /^(https?:\/\/)?(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?(\/.*)?$/i.test(
+        effectiveBaseUrl
+      );
+
+    if (isLocalhost) {
+      testInfo.skip(
+        true,
+        `[Browserbase] Remote cloud browser cannot reach local host "${effectiveBaseUrl}". For local testing, run 'npm run test:e2e:local'. For remote cloud testing, expose port 5173 via a public tunnel (e.g. ngrok http 5173) and set PLAYWRIGHT_BASE_URL=<tunnel-url> in .env.`
+      );
       return;
     }
 
@@ -61,9 +79,21 @@ export const test = base.extend<BrowserbaseTestFixtures>({
     // 2. Connect Playwright to the remote browser session over CDP
     const remoteBrowser = await chromium.connectOverCDP(session.connectUrl);
     const defaultContext =
-      remoteBrowser.contexts()[0] ?? (await remoteBrowser.newContext());
+      remoteBrowser.contexts()[0] ??
+      (await remoteBrowser.newContext({ baseURL: effectiveBaseUrl }));
     const page =
       defaultContext.pages()[0] ?? (await defaultContext.newPage());
+
+    // Intercept page.goto to ensure relative URLs always resolve against effectiveBaseUrl
+    const originalGoto = page.goto.bind(page);
+    page.goto = async (url: string, options?: Parameters<typeof originalGoto>[1]) => {
+      let resolvedUrl = url;
+      if (!/^https?:\/\//i.test(url)) {
+        const cleanPath = url.startsWith('/') ? url : `/${url}`;
+        resolvedUrl = `${effectiveBaseUrl}${cleanPath}`;
+      }
+      return originalGoto(resolvedUrl, options);
+    };
 
     try {
       // 3. Run the test with the remote page
