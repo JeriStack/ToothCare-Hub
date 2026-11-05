@@ -86,6 +86,51 @@ class TestDb
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
+            CREATE TABLE IF NOT EXISTS dentist_schedules (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                dentist_id INTEGER NOT NULL,
+                day_of_week INTEGER NOT NULL,
+                start_time TEXT NOT NULL,
+                end_time TEXT NOT NULL,
+                operatory_chair TEXT NOT NULL DEFAULT "Chair 1",
+                is_active INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS dentist_time_off (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                dentist_id INTEGER NOT NULL,
+                start_at TEXT NOT NULL,
+                end_at TEXT NOT NULL,
+                reason TEXT NOT NULL,
+                approved_by_user_id INTEGER NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS clinic_operating_hours (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                day_of_week INTEGER NOT NULL,
+                opening_time TEXT NOT NULL DEFAULT "08:00:00",
+                closing_time TEXT NOT NULL DEFAULT "17:00:00",
+                is_closed INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS clinic_closures (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                start_at TEXT NOT NULL,
+                end_at TEXT NOT NULL,
+                closure_type TEXT NOT NULL DEFAULT "HOLIDAY",
+                notes TEXT NULL,
+                created_by_user_id INTEGER NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
             CREATE TABLE IF NOT EXISTS appointments (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 patient_id INTEGER NOT NULL,
@@ -157,6 +202,15 @@ class TestDb
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
+
+            INSERT INTO clinic_operating_hours (day_of_week, opening_time, closing_time, is_closed) VALUES
+            (1, "08:00:00", "17:00:00", 0),
+            (2, "08:00:00", "17:00:00", 0),
+            (3, "08:00:00", "17:00:00", 0),
+            (4, "08:00:00", "17:00:00", 0),
+            (5, "08:00:00", "17:00:00", 0),
+            (6, "08:00:00", "12:00:00", 0),
+            (7, "08:00:00", "17:00:00", 1);
         ');
 
         Database::getInstance()->setConnection($pdo);

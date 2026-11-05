@@ -20,6 +20,7 @@ class AdminCrudApiTest extends TestCase
 
     protected function setUp(): void
     {
+        $_SESSION = [];
         TestDb::create();
         $this->app = new Application(null, false);
         $this->userRepository = new UserRepository();

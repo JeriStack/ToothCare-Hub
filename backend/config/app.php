@@ -42,5 +42,12 @@ return [
             ],
         ],
     ],
+    'scheduling' => [
+        'timezone' => $config->getString('scheduling_timezone', 'Asia/Manila'),
+        'min_advance_notice_minutes' => $config->getInt('scheduling_min_advance_notice_minutes', 120),
+        'max_booking_horizon_days' => $config->getInt('scheduling_max_booking_horizon_days', 90),
+        'default_buffer_minutes' => $config->getInt('scheduling_default_buffer_minutes', 10),
+        'slot_interval_minutes' => $config->getInt('scheduling_slot_interval_minutes', 15),
+    ],
 ];
 

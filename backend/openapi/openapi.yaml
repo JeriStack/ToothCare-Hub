@@ -508,41 +508,6 @@ paths:
           $ref: '#/components/responses/NotFound'
 
 
-  /availability:
-    get:
-      summary: Query Available Appointment Slots (Planned Phase 9)
-      description: Calculates open time slots for a specified dentist, date, and service duration.
-      operationId: getAvailability
-      tags:
-        - Appointments
-      parameters:
-        - name: dentist_id
-          in: query
-          required: true
-          schema:
-            type: integer
-        - name: service_id
-          in: query
-          required: true
-          schema:
-            type: integer
-        - name: date
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date
-            example: '2026-11-10'
-      responses:
-        '200':
-          description: Available time slots.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
-
   /appointments:
     get:
       summary: List Appointments (Planned Phase 9)
@@ -1257,6 +1222,443 @@ paths:
         '200':
           description: Patient account status updated.
 
+  /availability:
+    get:
+      summary: Compute Available Appointment Slots
+      description: |
+        Centralized availability engine query. Computes real-time bookable intervals
+        based on practitioner shifts, facility hours, service durations, buffers,
+        approved practitioner leaves, facility closures, and confirmed bookings.
+      operationId: getAvailability
+      tags:
+        - Availability
+      parameters:
+        - name: dentist_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            example: 1
+        - name: service_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            example: 1
+        - name: date
+          in: query
+          required: true
+          description: Target start date in YYYY-MM-DD format (Asia/Manila).
+          schema:
+            type: string
+            format: date
+            example: "2026-11-10"
+        - name: end_date
+          in: query
+          required: false
+          description: Optional end date for range queries (up to 14 days maximum).
+          schema:
+            type: string
+            format: date
+            example: "2026-11-10"
+      responses:
+        '200':
+          description: Calculated available appointment slots.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AvailabilityResult'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /clinic/hours:
+    get:
+      summary: Retrieve Clinic Operating Hours
+      description: Returns the facility operating schedule across all 7 days of the week.
+      operationId: getClinicHours
+      tags:
+        - Clinic Schedule
+      responses:
+        '200':
+          description: List of operating hours per day of week.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ClinicOperatingHour'
+
+  /admin/clinic/hours:
+    put:
+      summary: Update Clinic Operating Hours
+      description: Configures facility opening and closing boundaries for one or all days of the week.
+      operationId: updateClinicHours
+      tags:
+        - Clinic Schedule
+      security:
+        - CookieAuth: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                day_of_week:
+                  type: integer
+                  minimum: 1
+                  maximum: 7
+                opening_time:
+                  type: string
+                  example: "08:00:00"
+                closing_time:
+                  type: string
+                  example: "17:00:00"
+                is_closed:
+                  type: integer
+                  enum: [0, 1]
+      responses:
+        '200':
+          description: Operating hours updated successfully.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /clinic/closures:
+    get:
+      summary: List Scheduled Clinic Closures
+      description: Returns facility-wide holiday, maintenance, and emergency closure intervals.
+      operationId: getClinicClosures
+      tags:
+        - Clinic Schedule
+      parameters:
+        - name: start_date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: List of scheduled clinic closures.
+
+  /admin/clinic/closures:
+    post:
+      summary: Schedule Clinic Facility Closure
+      description: Creates a clinic closure interval that blocks all dentist slots during that window.
+      operationId: createClinicClosure
+      tags:
+        - Clinic Schedule
+      security:
+        - CookieAuth: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - start_at
+                - end_at
+              properties:
+                title:
+                  type: string
+                start_at:
+                  type: string
+                  format: date-time
+                end_at:
+                  type: string
+                  format: date-time
+                closure_type:
+                  type: string
+                  enum: [HOLIDAY, MAINTENANCE, EMERGENCY, SPECIAL_CLOSURE]
+                notes:
+                  type: string
+                  nullable: true
+      responses:
+        '201':
+          description: Clinic closure registered successfully.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /admin/clinic/closures/{id}:
+    delete:
+      summary: Remove Scheduled Clinic Closure
+      description: Removes an existing facility closure.
+      operationId: deleteClinicClosure
+      tags:
+        - Clinic Schedule
+      security:
+        - CookieAuth: []
+          CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Clinic closure deleted successfully.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /dentists/{id}/schedules:
+    get:
+      summary: Get Weekly Shifts for Dentist
+      description: Lists weekly recurring working shifts and chair assignments for a dentist.
+      operationId: getDentistSchedules
+      tags:
+        - Dentist Schedules
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Recurring shift schedules for the dentist.
+
+  /admin/dentists/{id}/schedules:
+    post:
+      summary: Create Recurring Shift for Dentist
+      description: Adds a recurring weekly shift with validation against clinic hours and other shifts.
+      operationId: createDentistSchedule
+      tags:
+        - Dentist Schedules
+      security:
+        - CookieAuth: []
+          CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - day_of_week
+                - start_time
+                - end_time
+              properties:
+                day_of_week:
+                  type: integer
+                  minimum: 1
+                  maximum: 7
+                start_time:
+                  type: string
+                  example: "08:00:00"
+                end_time:
+                  type: string
+                  example: "12:00:00"
+                operatory_chair:
+                  type: string
+                  example: "Chair 1"
+                is_active:
+                  type: integer
+                  enum: [0, 1]
+      responses:
+        '201':
+          description: Shift schedule created successfully.
+        '409':
+          description: Shift overlaps with another shift on the same day.
+        '422':
+          description: Shift exceeds clinic operating hours or has invalid times.
+
+  /admin/dentists/{id}/schedules/{scheduleId}:
+    put:
+      summary: Update Recurring Shift for Dentist
+      description: Modifies an existing recurring shift.
+      operationId: updateDentistSchedule
+      tags:
+        - Dentist Schedules
+      security:
+        - CookieAuth: []
+          CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: scheduleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - day_of_week
+                - start_time
+                - end_time
+              properties:
+                day_of_week:
+                  type: integer
+                start_time:
+                  type: string
+                end_time:
+                  type: string
+                operatory_chair:
+                  type: string
+                is_active:
+                  type: integer
+      responses:
+        '200':
+          description: Shift updated successfully.
+    delete:
+      summary: Delete Recurring Shift
+      description: Removes a weekly shift for a dentist.
+      operationId: deleteDentistSchedule
+      tags:
+        - Dentist Schedules
+      security:
+        - CookieAuth: []
+          CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: scheduleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Shift deleted successfully.
+
+  /dentists/{id}/time-off:
+    get:
+      summary: Get Approved Leaves for Dentist
+      description: Retrieves scheduled leaves for a dentist. Reasons are masked for non-admin viewers.
+      operationId: getDentistTimeOff
+      tags:
+        - Dentist Time Off
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of time-off intervals.
+
+  /admin/dentists/{id}/time-off:
+    post:
+      summary: Schedule Practitioner Time-Off
+      description: Records an approved leave or vacation for a dentist.
+      operationId: createDentistTimeOff
+      tags:
+        - Dentist Time Off
+      security:
+        - CookieAuth: []
+          CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - start_at
+                - end_at
+                - reason
+              properties:
+                start_at:
+                  type: string
+                  format: date-time
+                end_at:
+                  type: string
+                  format: date-time
+                reason:
+                  type: string
+      responses:
+        '201':
+          description: Leave scheduled successfully.
+        '409':
+          description: Leave overlaps with an existing time-off record.
+
+  /admin/dentists/{id}/time-off/{timeOffId}:
+    delete:
+      summary: Remove Practitioner Time-Off
+      description: Deletes an approved leave record.
+      operationId: deleteDentistTimeOff
+      tags:
+        - Dentist Time Off
+      security:
+        - CookieAuth: []
+          CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: timeOffId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Leave record deleted successfully.
+
 components:
   securitySchemes:
     CookieAuth:
@@ -1557,6 +1959,138 @@ components:
           type: string
           format: date-time
 
+    ClinicOperatingHour:
+      type: object
+      properties:
+        id:
+          type: integer
+        day_of_week:
+          type: integer
+          example: 1
+        opening_time:
+          type: string
+          example: "08:00:00"
+        closing_time:
+          type: string
+          example: "17:00:00"
+        is_closed:
+          type: integer
+          example: 0
+
+    ClinicClosure:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        start_at:
+          type: string
+          format: date-time
+        end_at:
+          type: string
+          format: date-time
+        closure_type:
+          type: string
+          enum: [HOLIDAY, MAINTENANCE, EMERGENCY, SPECIAL_CLOSURE]
+        notes:
+          type: string
+          nullable: true
+
+    DentistSchedule:
+      type: object
+      properties:
+        id:
+          type: integer
+        dentist_id:
+          type: integer
+        day_of_week:
+          type: integer
+        start_time:
+          type: string
+        end_time:
+          type: string
+        operatory_chair:
+          type: string
+        is_active:
+          type: integer
+
+    DentistTimeOff:
+      type: object
+      properties:
+        id:
+          type: integer
+        dentist_id:
+          type: integer
+        start_at:
+          type: string
+        end_at:
+          type: string
+        reason:
+          type: string
+
+    AvailabilityResult:
+      type: object
+      properties:
+        dentist:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            specialization:
+              type: string
+        service:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            duration_minutes:
+              type: integer
+            price:
+              type: number
+            buffer_minutes:
+              type: integer
+        timezone:
+          type: string
+          example: "Asia/Manila"
+        availability:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+              day_of_week:
+                type: integer
+              is_clinic_open:
+                type: boolean
+              slots:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    start_at:
+                      type: string
+                      format: date-time
+                    end_at:
+                      type: string
+                      format: date-time
+                    blocking_end_at:
+                      type: string
+                      format: date-time
+                    duration_minutes:
+                      type: integer
+                    buffer_minutes:
+                      type: integer
+                    operatory_chair:
+                      type: string
+                    available:
+                      type: boolean
+
   responses:
     Unauthorized:
       description: Authentication required or invalid session.
@@ -1580,6 +2114,26 @@ components:
 
     NotFound:
       description: Resource or route not found.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/X-Request-ID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+    Conflict:
+      description: Scheduling conflict, duplicate shift, or overlapping booking.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/X-Request-ID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+    UnprocessableEntity:
+      description: Input validation failure or constraint violation.
       headers:
         X-Request-ID:
           $ref: '#/components/headers/X-Request-ID'

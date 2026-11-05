@@ -31,9 +31,11 @@ import {
   INITIAL_NOTIFICATIONS
 } from './mockData';
 import { AdminDashboard } from '../features/dashboard/AdminDashboard';
+import { DentistDashboard } from '../features/dashboard/DentistDashboard';
 import { ServicesPage } from '../features/services/pages/ServicesPage';
 import { DentistListPage } from '../features/dentists/pages/DentistListPage';
 import { PatientListPage } from '../features/patients/pages/PatientListPage';
+import { AdminSchedulePage } from '../features/schedules/pages/AdminSchedulePage';
 
 const SAMPLE_TIME_SLOTS = ['09:00 AM', '09:30 AM', '10:30 AM', '11:15 AM', '01:30 PM', '02:00 PM', '03:30 PM', '04:00 PM'];
 const SAMPLE_CLINIC_CLOSE_MINUTES = 17 * 60;
@@ -482,6 +484,13 @@ export default function App() {
                     <Shield className="w-4 h-4" />
                     Dentist Roster
                   </button>
+                  <button
+                    onClick={() => { setActiveTab('schedules'); setIsMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'schedules' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
+                  >
+                    <Clock className="w-4 h-4" />
+                    Hours & Schedules
+                  </button>
                 </>
               )}
 
@@ -507,6 +516,13 @@ export default function App() {
                   >
                     <FileText className="w-4 h-4" />
                     Treatment Entry
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('shifts'); setIsMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'shifts' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
+                  >
+                    <Calendar className="w-4 h-4" />
+                    My Shifts & Leaves
                   </button>
                 </>
               )}
@@ -1120,6 +1136,11 @@ export default function App() {
               {activeTab === 'dentists' && (
                 <DentistListPage />
               )}
+
+              {/* Admin Clinic Operating Hours & Dentist Shifts */}
+              {activeTab === 'schedules' && (
+                <AdminSchedulePage />
+              )}
             </>
           )}
 
@@ -1323,6 +1344,11 @@ export default function App() {
                     </button>
                   </div>
                 </div>
+              )}
+
+              {/* Dentist Shifts & Approved Leaves View */}
+              {activeTab === 'shifts' && (
+                <DentistDashboard dentistId={1} onNavigateTab={setActiveTab} />
               )}
             </>
           )}

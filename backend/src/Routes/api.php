@@ -3,8 +3,12 @@
 declare(strict_types=1);
 
 use App\Controllers\AuthController;
+use App\Controllers\AvailabilityController;
+use App\Controllers\ClinicScheduleController;
 use App\Controllers\DashboardController;
 use App\Controllers\DentistController;
+use App\Controllers\DentistScheduleController;
+use App\Controllers\DentistTimeOffController;
 use App\Controllers\HealthController;
 use App\Controllers\MetricsController;
 use App\Controllers\PatientController;
@@ -55,7 +59,15 @@ $router->group('/api/v1', function (Router $r): void {
     $r->get('/patients/{id}', [PatientController::class, 'show'], [AuthenticationMiddleware::class]);
     $r->patch('/patients/{id}', [PatientController::class, 'update'], [AuthenticationMiddleware::class]);
 
-    // 5. Administrative Modules (Phase 8 Master CRUD)
+    // 5. Phase 9: Scheduling, Operating Hours & Availability Engine
+    // Public/booking availability computation
+    $r->get('/availability', [AvailabilityController::class, 'getAvailability']);
+    $r->get('/clinic/hours', [ClinicScheduleController::class, 'getHours']);
+    $r->get('/clinic/closures', [ClinicScheduleController::class, 'getClosures']);
+    $r->get('/dentists/{id}/schedules', [DentistScheduleController::class, 'index']);
+    $r->get('/dentists/{id}/time-off', [DentistTimeOffController::class, 'index']);
+
+    // 6. Administrative Modules (Phase 8 & 9 Master CRUD)
     $adminAuth = [AuthenticationMiddleware::class, new AuthorizationMiddleware(['ADMIN'])];
 
     // Admin Dashboard Aggregates
@@ -77,6 +89,23 @@ $router->group('/api/v1', function (Router $r): void {
     $r->patch('/admin/dentists/{id}', [DentistController::class, 'update'], $adminAuth);
     $r->patch('/admin/dentists/{id}/status', [DentistController::class, 'updateStatus'], $adminAuth);
 
+    // Admin Clinic Operating Hours & Closures Management (Phase 9)
+    $r->put('/admin/clinic/hours', [ClinicScheduleController::class, 'updateHours'], $adminAuth);
+    $r->get('/admin/clinic/closures', [ClinicScheduleController::class, 'getClosures'], $adminAuth);
+    $r->post('/admin/clinic/closures', [ClinicScheduleController::class, 'storeClosure'], $adminAuth);
+    $r->delete('/admin/clinic/closures/{id}', [ClinicScheduleController::class, 'destroyClosure'], $adminAuth);
+
+    // Admin Dentist Schedules Management (Phase 9)
+    $r->get('/admin/dentists/{id}/schedules', [DentistScheduleController::class, 'index'], $adminAuth);
+    $r->post('/admin/dentists/{id}/schedules', [DentistScheduleController::class, 'store'], $adminAuth);
+    $r->put('/admin/dentists/{id}/schedules/{scheduleId}', [DentistScheduleController::class, 'update'], $adminAuth);
+    $r->delete('/admin/dentists/{id}/schedules/{scheduleId}', [DentistScheduleController::class, 'destroy'], $adminAuth);
+
+    // Admin Dentist Time-Off Management (Phase 9)
+    $r->get('/admin/dentists/{id}/time-off', [DentistTimeOffController::class, 'index'], $adminAuth);
+    $r->post('/admin/dentists/{id}/time-off', [DentistTimeOffController::class, 'store'], $adminAuth);
+    $r->delete('/admin/dentists/{id}/time-off/{timeOffId}', [DentistTimeOffController::class, 'destroy'], $adminAuth);
+
     // Admin Patients Management
     $r->get('/admin/patients', [PatientController::class, 'index'], $adminAuth);
     $r->get('/admin/patients/{id}', [PatientController::class, 'show'], $adminAuth);
@@ -93,19 +122,16 @@ $router->group('/api/v1', function (Router $r): void {
         ]);
     }, $adminAuth);
 
-    // 6. Future Phases - Structured Placeholders
+    // 7. Future Phases - Structured Placeholders
     $notImplemented = fn (string $name) => function (Request $req) use ($name) {
-        throw HttpException::notImplemented("Endpoint '{$name}' is planned for Phase 9+ implementation.");
+        throw HttpException::notImplemented("Endpoint '{$name}' is planned for Phase 10+ implementation.");
     };
 
-    // Future Patient self-listing or public directory (Phase 9+)
+    // Future Patient self-listing or public directory (Phase 10+)
     $r->get('/patients', $notImplemented('GET /api/v1/patients'));
     $r->post('/patients', $notImplemented('POST /api/v1/patients'));
 
-    // Availability & Slots Query
-    $r->get('/availability', $notImplemented('GET /api/v1/availability'));
-
-    // Appointments Lifecycle Group
+    // Appointments Lifecycle Group (Phase 10)
     $r->get('/appointments', $notImplemented('GET /api/v1/appointments'));
     $r->post('/appointments', $notImplemented('POST /api/v1/appointments'));
     $r->get('/appointments/{id}', $notImplemented('GET /api/v1/appointments/{id}'));
