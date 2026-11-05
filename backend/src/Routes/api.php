@@ -3,9 +3,12 @@
 declare(strict_types=1);
 
 use App\Controllers\AuthController;
+use App\Controllers\DashboardController;
+use App\Controllers\DentistController;
 use App\Controllers\HealthController;
 use App\Controllers\MetricsController;
 use App\Controllers\PatientController;
+use App\Controllers\ServiceController;
 use App\Core\HttpException;
 use App\Core\Request;
 use App\Core\Response;
@@ -44,39 +47,60 @@ $router->group('/api/v1', function (Router $r): void {
     $r->post('/auth/logout', [AuthController::class, 'logout'], [AuthenticationMiddleware::class]);
     $r->get('/auth/me', [AuthController::class, 'me'], [AuthenticationMiddleware::class]);
 
-    // 3. Patients Management Group (Implemented Ownership checks in Phase 7)
+    // 3. Public Catalog Endpoints (Active items for booking/discovery)
+    $r->get('/services', [ServiceController::class, 'listPublic']);
+    $r->get('/dentists', [DentistController::class, 'listPublic']);
+
+    // 4. Patients Self-Management Group (Phase 7 ownership checks)
     $r->get('/patients/{id}', [PatientController::class, 'show'], [AuthenticationMiddleware::class]);
     $r->patch('/patients/{id}', [PatientController::class, 'update'], [AuthenticationMiddleware::class]);
 
-    // 4. Administrative RBAC verification route
+    // 5. Administrative Modules (Phase 8 Master CRUD)
+    $adminAuth = [AuthenticationMiddleware::class, new AuthorizationMiddleware(['ADMIN'])];
+
+    // Admin Dashboard Aggregates
+    $r->get('/admin/dashboard', [DashboardController::class, 'metrics'], $adminAuth);
+
+    // Admin Dental Services CRUD
+    $r->get('/admin/services', [ServiceController::class, 'index'], $adminAuth);
+    $r->post('/admin/services', [ServiceController::class, 'create'], $adminAuth);
+    $r->get('/admin/services/{id}', [ServiceController::class, 'show'], $adminAuth);
+    $r->put('/admin/services/{id}', [ServiceController::class, 'update'], $adminAuth);
+    $r->patch('/admin/services/{id}', [ServiceController::class, 'update'], $adminAuth);
+    $r->patch('/admin/services/{id}/status', [ServiceController::class, 'updateStatus'], $adminAuth);
+
+    // Admin Dentists CRUD
+    $r->get('/admin/dentists', [DentistController::class, 'index'], $adminAuth);
+    $r->post('/admin/dentists', [DentistController::class, 'create'], $adminAuth);
+    $r->get('/admin/dentists/{id}', [DentistController::class, 'show'], $adminAuth);
+    $r->put('/admin/dentists/{id}', [DentistController::class, 'update'], $adminAuth);
+    $r->patch('/admin/dentists/{id}', [DentistController::class, 'update'], $adminAuth);
+    $r->patch('/admin/dentists/{id}/status', [DentistController::class, 'updateStatus'], $adminAuth);
+
+    // Admin Patients Management
+    $r->get('/admin/patients', [PatientController::class, 'index'], $adminAuth);
+    $r->get('/admin/patients/{id}', [PatientController::class, 'show'], $adminAuth);
+    $r->put('/admin/patients/{id}', [PatientController::class, 'update'], $adminAuth);
+    $r->patch('/admin/patients/{id}', [PatientController::class, 'update'], $adminAuth);
+    $r->patch('/admin/patients/{id}/status', [PatientController::class, 'updateStatus'], $adminAuth);
+
+    // Admin Audit Logs
     $r->get('/admin/audit-logs', function (Request $req): Response {
         $user = $req->getUser();
         return Response::success([
             'message' => 'Admin audit logs accessed successfully.',
             'actor' => $user['email'] ?? 'admin',
         ]);
-    }, [AuthenticationMiddleware::class, new AuthorizationMiddleware(['ADMIN'])]);
+    }, $adminAuth);
 
-    // 5. Future Phases - Structured Placeholders
+    // 6. Future Phases - Structured Placeholders
     $notImplemented = fn (string $name) => function (Request $req) use ($name) {
-        throw HttpException::notImplemented("Endpoint '{$name}' is planned for Phase 8+ implementation.");
+        throw HttpException::notImplemented("Endpoint '{$name}' is planned for Phase 9+ implementation.");
     };
 
+    // Future Patient self-listing or public directory (Phase 9+)
     $r->get('/patients', $notImplemented('GET /api/v1/patients'));
     $r->post('/patients', $notImplemented('POST /api/v1/patients'));
-
-    // Dentists & Schedule Group
-    $r->get('/dentists', $notImplemented('GET /api/v1/dentists'));
-    $r->post('/dentists', $notImplemented('POST /api/v1/dentists'));
-    $r->get('/dentists/{id}', $notImplemented('GET /api/v1/dentists/{id}'));
-    $r->patch('/dentists/{id}', $notImplemented('PATCH /api/v1/dentists/{id}'));
-
-    // Clinic Services Group
-    $r->get('/services', $notImplemented('GET /api/v1/services'));
-    $r->post('/services', $notImplemented('POST /api/v1/services'));
-    $r->get('/services/{id}', $notImplemented('GET /api/v1/services/{id}'));
-    $r->patch('/services/{id}', $notImplemented('PATCH /api/v1/services/{id}'));
-    $r->delete('/services/{id}', $notImplemented('DELETE /api/v1/services/{id}'));
 
     // Availability & Slots Query
     $r->get('/availability', $notImplemented('GET /api/v1/availability'));

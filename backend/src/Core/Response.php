@@ -61,6 +61,15 @@ class Response
         return new self(201, $data, $meta, null, $headers);
     }
 
+    /**
+     * @param array<string, mixed> $meta
+     * @param array<string, string> $headers
+     */
+    public static function paginated(mixed $data, array $meta = [], int $statusCode = 200, array $headers = []): self
+    {
+        return new self($statusCode, $data, $meta, null, $headers);
+    }
+
     public static function noContent(array $headers = []): self
     {
         $response = new self(204, null, [], null, $headers);

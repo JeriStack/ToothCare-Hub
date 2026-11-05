@@ -30,6 +30,10 @@ import {
   INITIAL_APPOINTMENTS,
   INITIAL_NOTIFICATIONS
 } from './mockData';
+import { AdminDashboard } from '../features/dashboard/AdminDashboard';
+import { ServicesPage } from '../features/services/pages/ServicesPage';
+import { DentistListPage } from '../features/dentists/pages/DentistListPage';
+import { PatientListPage } from '../features/patients/pages/PatientListPage';
 
 const SAMPLE_TIME_SLOTS = ['09:00 AM', '09:30 AM', '10:30 AM', '11:15 AM', '01:30 PM', '02:00 PM', '03:30 PM', '04:00 PM'];
 const SAMPLE_CLINIC_CLOSE_MINUTES = 17 * 60;
@@ -470,6 +474,13 @@ export default function App() {
                   >
                     <Stethoscope className="w-4 h-4" />
                     Services & Fees
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('dentists'); setIsMobileMenuOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'dentists' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
+                  >
+                    <Shield className="w-4 h-4" />
+                    Dentist Roster
                   </button>
                 </>
               )}
@@ -1033,87 +1044,7 @@ export default function App() {
           {currentRole === 'ADMIN' && (
             <>
               {activeTab === 'dashboard' && (
-                <div className="space-y-6">
-                  {/* Admin KPI Cards */}
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                      <span className="text-xs font-semibold text-slate-400 uppercase">Today's Visits</span>
-                      <p className="text-2xl font-bold text-[#12304A] mt-1">14</p>
-                      <span className="text-[11px] text-teal-600 font-medium">4 chairs active</span>
-                    </div>
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                      <span className="text-xs font-semibold text-slate-400 uppercase">Pending Requests</span>
-                      <p className="text-2xl font-bold text-amber-600 mt-1">
-                        {appointments.filter(a => a.status === 'PENDING').length}
-                      </p>
-                      <span className="text-[11px] text-amber-700 font-medium">Needs review</span>
-                    </div>
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                      <span className="text-xs font-semibold text-slate-400 uppercase">Dentists On Duty</span>
-                      <p className="text-2xl font-bold text-[#12304A] mt-1">3</p>
-                      <span className="text-[11px] text-slate-500 font-medium">1 on leave</span>
-                    </div>
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                      <span className="text-xs font-semibold text-slate-400 uppercase">Est. Revenue</span>
-                      <p className="text-2xl font-bold text-[#0D9488] mt-1">₱28,500</p>
-                      <span className="text-[11px] text-slate-500 font-medium">Today's schedule</span>
-                    </div>
-                  </div>
-
-                  {/* Triage Alert Banner */}
-                  {appointments.filter(a => a.status === 'PENDING').length > 0 && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
-                        <div>
-                          <p className="text-xs font-bold text-amber-900">
-                            {appointments.filter(a => a.status === 'PENDING').length} Appointment Requests Awaiting Review
-                          </p>
-                          <p className="text-[11px] text-amber-700">Review pending slots before schedule locks.</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => setActiveTab('triage')}
-                        className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold transition-colors shrink-0"
-                      >
-                        Open Triage Queue &gt;
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Operatory Chairs Visualizer */}
-                  <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-3">
-                    <h4 className="font-bold text-sm text-[#12304A]">Live Operatory Chairs Status</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <div className="border border-teal-200 bg-[#F0FDFA] p-3 rounded-lg">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="font-bold text-[#12304A]">Operatory Chair 1</span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#CCFBF1] text-[#0F766E]">Active</span>
-                        </div>
-                        <p className="text-xs text-slate-600 mt-2 font-medium">Dr. Maria Santos, DMD</p>
-                        <p className="text-[11px] text-slate-500">In Chair: Elena Gomez (Filling)</p>
-                      </div>
-
-                      <div className="border border-slate-200 p-3 rounded-lg">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="font-bold text-[#12304A]">Operatory Chair 2</span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">Available</span>
-                        </div>
-                        <p className="text-xs text-slate-600 mt-2 font-medium">Dr. Roberto Reyes, DMD</p>
-                        <p className="text-[11px] text-slate-500">Next: 02:00 PM (Maria Garcia)</p>
-                      </div>
-
-                      <div className="border border-slate-200 p-3 rounded-lg">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="font-bold text-[#12304A]">Operatory Chair 3</span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">Available</span>
-                        </div>
-                        <p className="text-xs text-slate-600 mt-2 font-medium">Dr. Carmela Lim, DMD</p>
-                        <p className="text-[11px] text-slate-500">Next: 03:00 PM (Consultation)</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <AdminDashboard onNavigateTab={(tab) => setActiveTab(tab)} />
               )}
 
               {/* Admin Appointment Triage Queue */}
@@ -1177,87 +1108,17 @@ export default function App() {
 
               {/* Admin Patient Registry */}
               {activeTab === 'patients' && (
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-lg font-bold text-[#12304A]">Patient Registry Directory</h3>
-                      <p className="text-xs text-slate-500">Master record of all registered clinic dental patients.</p>
-                    </div>
-                    <button
-                      onClick={() => setIsWalkInModalOpen(true)}
-                      className="px-3.5 py-2 rounded-lg bg-[#0D9488] text-white text-xs font-semibold hover:bg-[#0F766E] shadow-sm flex items-center gap-1.5"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Register Walk-In Patient
-                    </button>
-                  </div>
-
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
-                        <tr>
-                          <th className="py-2.5 px-3">ID</th>
-                          <th className="py-2.5 px-3">Patient Name</th>
-                          <th className="py-2.5 px-3">Phone</th>
-                          <th className="py-2.5 px-3">Date of Birth</th>
-                          <th className="py-2.5 px-3">Medical Allergies</th>
-                          <th className="py-2.5 px-3">Visits</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {patients.map(p => (
-                          <tr key={p.id} className="hover:bg-slate-50">
-                            <td className="py-3 px-3 font-mono font-bold text-slate-400">#{p.id}</td>
-                            <td className="py-3 px-3 font-bold text-[#12304A]">{p.name}</td>
-                            <td className="py-3 px-3 text-slate-600">{p.phone}</td>
-                            <td className="py-3 px-3 text-slate-600">{p.dob}</td>
-                            <td className="py-3 px-3">
-                              {p.allergies.includes('Penicillin') ? (
-                                <span className="bg-red-100 text-red-800 font-bold px-2 py-0.5 rounded text-[10px]">
-                                  ⚠️ {p.allergies}
-                                </span>
-                              ) : (
-                                <span className="text-slate-500">{p.allergies}</span>
-                              )}
-                            </td>
-                            <td className="py-3 px-3 font-semibold text-slate-700">{p.pastVisitsCount} visits</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                <PatientListPage />
               )}
 
               {/* Admin Services & Pricing Catalog */}
               {activeTab === 'services' && (
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-                  <div>
-                    <h3 className="text-lg font-bold text-[#12304A]">Dental Services & Pricing Catalog</h3>
-                    <p className="text-xs text-slate-500">Standard clinic procedures, durations (driving 30-min slot math), and fees.</p>
-                  </div>
+                <ServicesPage />
+              )}
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {services.map(srv => (
-                      <div key={srv.id} className="border border-slate-200 rounded-xl p-4 hover:border-[#0D9488] transition-colors">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <span className="text-[10px] font-bold uppercase bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
-                              {srv.category}
-                            </span>
-                            <h4 className="font-bold text-sm text-[#12304A] mt-1">{srv.name}</h4>
-                          </div>
-                          <span className="font-bold text-base text-[#0D9488]">₱{srv.price.toLocaleString()}</span>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-2">{srv.description}</p>
-                        <div className="mt-3 pt-2 border-t border-slate-100 flex justify-between items-center text-xs">
-                          <span className="text-slate-600">Standard Duration:</span>
-                          <span className="font-semibold text-slate-800">{srv.durationMinutes} mins</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+              {/* Admin Dentist Roster */}
+              {activeTab === 'dentists' && (
+                <DentistListPage />
               )}
             </>
           )}

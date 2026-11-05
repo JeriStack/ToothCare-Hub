@@ -7,6 +7,10 @@ namespace Tests\Support;
 use App\Core\Database;
 use PDO;
 
+/**
+ * Test Database Helper
+ * Configures an isolated SQLite in-memory database with production-matching schema for fast tests.
+ */
 class TestDb
 {
     public static function create(): PDO
@@ -63,7 +67,44 @@ class TestDb
                 last_name TEXT NOT NULL,
                 specialization TEXT NOT NULL,
                 phone TEXT NOT NULL,
+                default_operatory_chair TEXT NOT NULL DEFAULT "Chair 1",
                 bio TEXT NULL,
+                is_active INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS services (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                category TEXT NOT NULL DEFAULT "General",
+                description TEXT NULL,
+                price REAL NOT NULL,
+                duration_minutes INTEGER NOT NULL,
+                is_active INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS appointments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                patient_id INTEGER NOT NULL,
+                dentist_id INTEGER NOT NULL,
+                service_id INTEGER NOT NULL,
+                start_at TEXT NOT NULL,
+                end_at TEXT NOT NULL,
+                duration_snapshot INTEGER NOT NULL,
+                price_snapshot REAL NOT NULL,
+                status TEXT NOT NULL DEFAULT "PENDING",
+                chief_complaint TEXT NULL,
+                operatory_chair TEXT NOT NULL DEFAULT "Chair 1",
+                rescheduled_from_id INTEGER NULL,
+                cancellation_reason TEXT NULL,
+                cancelled_by_user_id INTEGER NULL,
+                cancelled_at TEXT NULL,
+                reviewed_by_user_id INTEGER NULL,
+                reviewed_at TEXT NULL,
+                completed_at TEXT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );

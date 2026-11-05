@@ -508,58 +508,6 @@ paths:
           $ref: '#/components/responses/NotFound'
 
 
-  /services:
-    get:
-      summary: List Dental Services (Planned Phase 8)
-      description: Returns active clinic dental services and prices.
-      operationId: listServices
-      tags:
-        - Services
-      parameters:
-        - name: category
-          in: query
-          required: false
-          schema:
-            type: string
-        - name: page
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 1
-        - name: per_page
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 20
-      responses:
-        '200':
-          description: List of dental services.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
-
-  /dentists:
-    get:
-      summary: List Dentists (Planned Phase 8)
-      description: Returns active dentists, specializations, and bios.
-      operationId: listDentists
-      tags:
-        - Dentists
-      responses:
-        '200':
-          description: List of clinic dentists.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
-
   /availability:
     get:
       summary: Query Available Appointment Slots (Planned Phase 9)
@@ -687,6 +635,627 @@ paths:
                 $ref: '#/components/schemas/ErrorEnvelope'
         '501':
           $ref: '#/components/responses/NotImplemented'
+
+  /services:
+    get:
+      summary: Public Dental Services Catalog
+      description: Returns active procedures available for public discovery and appointment scheduling.
+      operationId: getPublicServices
+      tags:
+        - Services
+      responses:
+        '200':
+          description: Active dental services list.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Service'
+
+  /dentists:
+    get:
+      summary: Public Dentists Directory
+      description: Returns active licensed dental practitioners for patient provider selection.
+      operationId: getPublicDentists
+      tags:
+        - Dentists
+      responses:
+        '200':
+          description: Active dentists list.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Dentist'
+
+  /admin/dashboard:
+    get:
+      summary: Administrative Executive Dashboard
+      description: Returns real MySQL aggregate counts for patients, dentists, services, and appointment status metrics.
+      operationId: getAdminDashboard
+      tags:
+        - Admin Dashboard
+      security:
+        - CookieAuth: []
+      responses:
+        '200':
+          description: Aggregated operational metrics.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DashboardMetrics'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/services:
+    get:
+      summary: List Services (Admin)
+      description: Paginated service catalog with search, category filtering, and allowlisted sorting.
+      operationId: getAdminServices
+      tags:
+        - Admin Services
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: is_active
+          in: query
+          schema:
+            type: integer
+            enum: [0, 1]
+        - name: sort_by
+          in: query
+          schema:
+            type: string
+            enum: [id, name, price, duration_minutes, category, is_active, created_at]
+        - name: sort_dir
+          in: query
+          schema:
+            type: string
+            enum: [ASC, DESC]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Paginated service list.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Service'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      summary: Create Dental Service
+      description: Adds a new procedure to the clinic catalog.
+      operationId: createAdminService
+      tags:
+        - Admin Services
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - price
+                - duration_minutes
+              properties:
+                name:
+                  type: string
+                  example: Root Canal Therapy (Molar)
+                category:
+                  type: string
+                  example: Endodontics
+                description:
+                  type: string
+                  example: Complete pulpectomy and root canal obturation.
+                price:
+                  type: number
+                  format: float
+                  example: 8500.00
+                duration_minutes:
+                  type: integer
+                  enum: [15, 30, 45, 60, 90, 120]
+                  example: 90
+                is_active:
+                  type: integer
+                  enum: [0, 1]
+                  default: 1
+      responses:
+        '201':
+          description: Service created successfully.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Service'
+        '409':
+          description: Service name already exists.
+        '422':
+          description: Validation failure (e.g. negative price, invalid duration).
+
+  /admin/services/{id}:
+    get:
+      summary: Get Service Details
+      operationId: getAdminServiceById
+      tags:
+        - Admin Services
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Service details retrieved.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Service'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Update Dental Service
+      operationId: updateAdminService
+      tags:
+        - Admin Services
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                category:
+                  type: string
+                description:
+                  type: string
+                price:
+                  type: number
+                duration_minutes:
+                  type: integer
+                  enum: [15, 30, 45, 60, 90, 120]
+      responses:
+        '200':
+          description: Service updated successfully.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Service'
+
+  /admin/services/{id}/status:
+    patch:
+      summary: Toggle Service Status
+      description: Soft activate or deactivate procedure, preserving clinical history.
+      operationId: toggleAdminServiceStatus
+      tags:
+        - Admin Services
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - is_active
+              properties:
+                is_active:
+                  type: integer
+                  enum: [0, 1]
+      responses:
+        '200':
+          description: Service status updated.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Service'
+
+  /admin/dentists:
+    get:
+      summary: List Dentists (Admin)
+      description: Paginated practitioner roster with search and status filtering.
+      operationId: getAdminDentists
+      tags:
+        - Admin Dentists
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: specialization
+          in: query
+          schema:
+            type: string
+        - name: is_active
+          in: query
+          schema:
+            type: integer
+            enum: [0, 1]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Paginated dentists list.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Dentist'
+    post:
+      summary: Register Licensed Dentist
+      description: Atomically creates DENTIST user account and clinical profile.
+      operationId: createAdminDentist
+      tags:
+        - Admin Dentists
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - first_name
+                - last_name
+                - email
+                - password
+                - license_number
+                - specialization
+                - phone
+              properties:
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                license_number:
+                  type: string
+                specialization:
+                  type: string
+                phone:
+                  type: string
+                default_operatory_chair:
+                  type: string
+                bio:
+                  type: string
+                is_active:
+                  type: integer
+                  enum: [0, 1]
+                  default: 1
+      responses:
+        '201':
+          description: Dentist registered successfully.
+        '409':
+          description: Email or license number already exists.
+
+  /admin/dentists/{id}:
+    get:
+      summary: Get Dentist Profile
+      operationId: getAdminDentistById
+      tags:
+        - Admin Dentists
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Dentist details retrieved.
+    put:
+      summary: Update Dentist Profile
+      operationId: updateAdminDentist
+      tags:
+        - Admin Dentists
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                specialization:
+                  type: string
+                phone:
+                  type: string
+                default_operatory_chair:
+                  type: string
+                bio:
+                  type: string
+      responses:
+        '200':
+          description: Dentist profile updated.
+
+  /admin/dentists/{id}/status:
+    patch:
+      summary: Toggle Dentist Practice Status
+      description: Synchronizes dentists.is_active and users.is_active to govern login access.
+      operationId: toggleAdminDentistStatus
+      tags:
+        - Admin Dentists
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - is_active
+              properties:
+                is_active:
+                  type: integer
+                  enum: [0, 1]
+      responses:
+        '200':
+          description: Dentist practice status updated.
+
+  /admin/patients:
+    get:
+      summary: List Patients (Admin Registry)
+      description: Paginated patient directory with search, gender filtering, and allowlisted sorting.
+      operationId: getAdminPatients
+      tags:
+        - Admin Patients
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: gender
+          in: query
+          schema:
+            type: string
+            enum: [MALE, FEMALE, OTHER, PREFER_NOT_TO_SAY]
+        - name: is_active
+          in: query
+          schema:
+            type: integer
+            enum: [0, 1]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 15
+      responses:
+        '200':
+          description: Paginated patient registry.
+
+  /admin/patients/{id}:
+    get:
+      summary: Get Patient Profile (Admin)
+      operationId: getAdminPatientById
+      tags:
+        - Admin Patients
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Detailed patient profile with user account metadata.
+    put:
+      summary: Update Patient Profile (Admin)
+      operationId: updateAdminPatient
+      tags:
+        - Admin Patients
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                date_of_birth:
+                  type: string
+                  format: date
+                phone:
+                  type: string
+                gender:
+                  type: string
+                address:
+                  type: string
+                emergency_contact_name:
+                  type: string
+                emergency_contact_phone:
+                  type: string
+                medical_alerts:
+                  type: string
+      responses:
+        '200':
+          description: Patient profile updated.
+
+  /admin/patients/{id}/status:
+    patch:
+      summary: Toggle Patient Account Status
+      description: Activates or disables patient user account while preserving all clinical appointment history.
+      operationId: toggleAdminPatientStatus
+      tags:
+        - Admin Patients
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - is_active
+              properties:
+                is_active:
+                  type: integer
+                  enum: [0, 1]
+      responses:
+        '200':
+          description: Patient account status updated.
 
 components:
   securitySchemes:
@@ -816,6 +1385,177 @@ components:
           example:
             email:
               - 'A valid email address is required.'
+
+    Service:
+      type: object
+      required:
+        - id
+        - name
+        - price
+        - duration_minutes
+        - is_active
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Comprehensive Oral Prophylaxis
+        category:
+          type: string
+          example: General
+        description:
+          type: string
+          nullable: true
+          example: Scaling, stain removal, and polishing.
+        price:
+          type: number
+          example: 1500.00
+        duration_minutes:
+          type: integer
+          example: 45
+        is_active:
+          type: integer
+          enum: [0, 1]
+          example: 1
+
+    Dentist:
+      type: object
+      required:
+        - id
+        - user_id
+        - first_name
+        - last_name
+        - license_number
+        - specialization
+        - is_active
+      properties:
+        id:
+          type: integer
+          example: 2
+        user_id:
+          type: integer
+          example: 10
+        first_name:
+          type: string
+          example: Maria
+        last_name:
+          type: string
+          example: Santos
+        specialization:
+          type: string
+          example: Orthodontics
+        license_number:
+          type: string
+          example: PRC-DEN-004321
+        phone:
+          type: string
+          example: +639171234567
+        default_operatory_chair:
+          type: string
+          example: Chair 1
+        bio:
+          type: string
+          nullable: true
+        is_active:
+          type: integer
+          enum: [0, 1]
+          example: 1
+
+    Patient:
+      type: object
+      required:
+        - id
+        - user_id
+        - first_name
+        - last_name
+        - date_of_birth
+        - phone
+      properties:
+        id:
+          type: integer
+          example: 5
+        user_id:
+          type: integer
+          example: 12
+        first_name:
+          type: string
+          example: Juan
+        last_name:
+          type: string
+          example: Dela Cruz
+        date_of_birth:
+          type: string
+          format: date
+          example: 1990-08-20
+        phone:
+          type: string
+          example: +639178889999
+        gender:
+          type: string
+          example: MALE
+        address:
+          type: string
+          nullable: true
+        medical_alerts:
+          type: string
+          nullable: true
+          example: Penicillin allergy
+
+    DashboardMetrics:
+      type: object
+      required:
+        - counts
+        - generated_at
+      properties:
+        counts:
+          type: object
+          properties:
+            patients:
+              type: object
+              properties:
+                total:
+                  type: integer
+                active:
+                  type: integer
+                inactive:
+                  type: integer
+            dentists:
+              type: object
+              properties:
+                total:
+                  type: integer
+                active:
+                  type: integer
+                inactive:
+                  type: integer
+            services:
+              type: object
+              properties:
+                total:
+                  type: integer
+                active:
+                  type: integer
+                inactive:
+                  type: integer
+            appointments:
+              type: object
+              properties:
+                total:
+                  type: integer
+                pending:
+                  type: integer
+                confirmed:
+                  type: integer
+                completed:
+                  type: integer
+                cancelled:
+                  type: integer
+                today:
+                  type: integer
+        generated_at:
+          type: string
+          format: date-time
 
   responses:
     Unauthorized:

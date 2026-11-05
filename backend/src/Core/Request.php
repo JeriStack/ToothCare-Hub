@@ -138,6 +138,14 @@ class Request
             throw HttpException::payloadTooLarge();
         }
 
+        $parsedPath = parse_url($path, PHP_URL_PATH) ?: $path;
+        $queryString = parse_url($path, PHP_URL_QUERY);
+        if ($queryString !== null) {
+            $parsedQuery = [];
+            parse_str($queryString, $parsedQuery);
+            $queryParams = array_merge($parsedQuery, $queryParams);
+        }
+
         $normalizedHeaders = [];
         foreach ($headers as $k => $v) {
             $normalizedHeaders[strtolower($k)] = (string) $v;
@@ -164,7 +172,7 @@ class Request
 
         return new self(
             $method,
-            $path,
+            $parsedPath,
             $normalizedHeaders,
             $queryParams,
             $body,
