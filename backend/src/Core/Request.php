@@ -30,6 +30,10 @@ class Request
      */
     private array $routeParams = [];
     private string $requestId = '';
+    /**
+     * @var array<string, mixed>
+     */
+    private array $attributes = [];
 
     /**
      * @param array<string, string> $headers
@@ -279,6 +283,63 @@ class Request
     public function setRequestId(string $requestId): void
     {
         $this->requestId = $requestId;
+    }
+
+    public function getAttribute(string $key, mixed $default = null): mixed
+    {
+        return $this->attributes[$key] ?? $default;
+    }
+
+    public function setAttribute(string $key, mixed $value): self
+    {
+        $this->attributes[$key] = $value;
+        return $this;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getAttributes(): array
+    {
+        return $this->attributes;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getUser(): ?array
+    {
+        $user = $this->getAttribute('user');
+        return is_array($user) ? $user : null;
+    }
+
+    /**
+     * @param array<string, mixed>|null $user
+     */
+    public function setUser(?array $user): self
+    {
+        $this->setAttribute('user', $user);
+        return $this;
+    }
+
+    public function getClientIp(): string
+    {
+        $forwarded = $this->getHeader('x-forwarded-for');
+        if ($forwarded !== null && $forwarded !== '') {
+            $parts = explode(',', $forwarded);
+            $client = trim($parts[0]);
+            if (filter_var($client, FILTER_VALIDATE_IP)) {
+                return $client;
+            }
+        }
+
+        $realIp = $this->getHeader('x-real-ip');
+        if ($realIp !== null && filter_var($realIp, FILTER_VALIDATE_IP)) {
+            return $realIp;
+        }
+
+        $remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+        return filter_var($remoteAddr, FILTER_VALIDATE_IP) ? (string) $remoteAddr : '127.0.0.1';
     }
 }
 

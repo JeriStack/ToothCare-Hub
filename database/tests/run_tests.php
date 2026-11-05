@@ -56,13 +56,13 @@ echo "ToothCare Hub — Phase 4 Database Validation Test Suite\n";
 echo "Database: {$dbName} | Server: MySQL 8.0 (InnoDB)\n";
 echo "====================================================================\n\n";
 
-// 1. All 14 tables exist with InnoDB & utf8mb4
-assertTest("All 14 core & support tables exist with InnoDB & utf8mb4", function() use ($pdo, $dbName) {
+// 1. All 15 core & support tables exist with InnoDB & utf8mb4
+assertTest("All 15 core & support tables exist with InnoDB & utf8mb4", function() use ($pdo, $dbName) {
     $expected = [
         'schema_migrations', 'users', 'patients', 'dentists', 'services',
         'dentist_schedules', 'dentist_time_off', 'appointments',
         'appointment_status_history', 'treatment_records', 'notifications',
-        'email_outbox', 'auth_tokens', 'audit_logs'
+        'email_outbox', 'auth_tokens', 'audit_logs', 'rate_limits'
     ];
     $stmt = $pdo->prepare("SELECT table_name, engine, table_collation FROM information_schema.tables WHERE table_schema = ?");
     $stmt->execute([$dbName]);
@@ -82,7 +82,7 @@ assertTest("All 14 core & support tables exist with InnoDB & utf8mb4", function(
             throw new RuntimeException("Missing expected table: {$table}");
         }
     }
-    return count($expected) === 14;
+    return count($expected) === 15;
 });
 
 // 2. Foreign Key Rejection on Invalid Patient ID

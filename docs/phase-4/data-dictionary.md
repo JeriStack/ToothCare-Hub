@@ -293,3 +293,19 @@ This data dictionary documents the complete database schema for **ToothCare Hub*
 | `user_agent` | `VARCHAR(255)` | YES | `NULL` | None | Internal | Client browser / device user agent |
 | `sanitized_payload`| `JSON` | YES | `NULL` | None | Internal | Structured metadata (passwords and tokens stripped) |
 | `created_at` | `DATETIME` | NO | `CURRENT_TIMESTAMP` | INDEX (`idx_audit_logs_action`, `idx_audit_logs_created_at`) | Internal | Audit timestamp |
+
+---
+
+### 2.15 Table: `rate_limits`
+- **Purpose:** Server-side persistent sliding-window rate limit counters for authentication and sensitive operations.
+- **Storage Engine:** InnoDB | **Collation:** `utf8mb4_unicode_ci`
+
+| Column Name | Data Type | Nullable | Default | Constraints & Keys | Sensitivity | Description |
+| :--- | :--- | :---: | :---: | :--- | :---: | :--- |
+| `id` | `BIGINT UNSIGNED` | NO | AUTO_INCREMENT | PK | Internal | Rate limit entry ID |
+| `rate_key` | `VARCHAR(191)` | NO | None | UNIQUE (`uq_rate_limits_key`) | Internal | Unique rate limiting key (e.g., action:ip or action:user) |
+| `hits` | `INT UNSIGNED` | NO | 1 | None | Internal | Current hit count within window |
+| `reset_at` | `DATETIME` | NO | None | INDEX (`idx_rate_limits_reset`) | Internal | Expiration timestamp for the current bucket window |
+| `created_at` | `DATETIME` | NO | `CURRENT_TIMESTAMP` | None | Internal | Creation timestamp |
+| `updated_at` | `DATETIME` | NO | `CURRENT_TIMESTAMP` | None | Internal | Last updated timestamp |
+

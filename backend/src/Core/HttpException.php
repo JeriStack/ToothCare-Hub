@@ -118,6 +118,11 @@ class HttpException extends Exception
         return new self(422, 'VALIDATION_ERROR', $message, $details);
     }
 
+    public static function tooManyRequests(string $message = 'Too many requests. Please try again later.', int $retryAfter = 60, string $errorCode = 'RATE_LIMIT_EXCEEDED'): self
+    {
+        return new self(429, $errorCode, $message, ['retry_after' => $retryAfter]);
+    }
+
     public static function internalError(string $message = 'An unexpected server error occurred.', ?Throwable $previous = null): self
     {
         return new self(500, 'INTERNAL_SERVER_ERROR', $message, [], $previous);

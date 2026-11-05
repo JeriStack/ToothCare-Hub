@@ -183,11 +183,19 @@ class Router
         while ($middleware = array_pop($pipeline)) {
             $next = $runner;
             $runner = function (Request $req) use ($middleware, $next): Response {
-                if (is_string($middleware)) {
-                    $mw = new $middleware();
-                    return $mw->handle($req, $next);
+                if ($middleware instanceof \App\Middleware\MiddlewareInterface) {
+                    return $middleware->handle($req, $next);
                 }
-                return $middleware($req, $next);
+                if (is_string($middleware) && class_exists($middleware)) {
+                    $mw = new $middleware();
+                    if ($mw instanceof \App\Middleware\MiddlewareInterface) {
+                        return $mw->handle($req, $next);
+                    }
+                }
+                if (is_callable($middleware)) {
+                    return $middleware($req, $next);
+                }
+                throw new \RuntimeException('Invalid route middleware provided.');
             };
         }
 
