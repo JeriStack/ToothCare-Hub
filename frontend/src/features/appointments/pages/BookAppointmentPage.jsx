@@ -18,9 +18,13 @@ import { dentistsApi } from '../../dentists/api';
 import { appointmentsApi } from '../api';
 import { AvailabilitySlotPicker } from '../../schedules/components/AvailabilitySlotPicker';
 
-export function BookAppointmentPage({ onNavigateToAppointments }) {
+export function BookAppointmentPage({
+  initialService = null,
+  initialDentist = null,
+  onNavigateToAppointments,
+}) {
   // Wizard steps: 1: Service, 2: Dentist, 3: Date & Slot, 4: Review, 5: Confirmed
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(initialService && initialDentist ? 3 : initialService ? 2 : 1);
 
   // Catalogs
   const [services, setServices] = useState([]);
@@ -29,8 +33,8 @@ export function BookAppointmentPage({ onNavigateToAppointments }) {
   const [catalogError, setCatalogError] = useState(null);
 
   // Selections
-  const [selectedService, setSelectedService] = useState(null);
-  const [selectedDentist, setSelectedDentist] = useState(null);
+  const [selectedService, setSelectedService] = useState(initialService);
+  const [selectedDentist, setSelectedDentist] = useState(initialDentist);
   const [selectedDate, setSelectedDate] = useState(() => {
     // Tomorrow as sensible default
     const d = new Date();
@@ -61,8 +65,19 @@ export function BookAppointmentPage({ onNavigateToAppointments }) {
         setServices(activeSrv);
         setDentists(activeDnt);
 
-        if (activeSrv.length > 0) setSelectedService(activeSrv[0]);
-        if (activeDnt.length > 0) setSelectedDentist(activeDnt[0]);
+        if (initialService) {
+          const matchSrv = activeSrv.find((s) => s.id === initialService.id) || initialService;
+          setSelectedService(matchSrv);
+        } else if (activeSrv.length > 0) {
+          setSelectedService(activeSrv[0]);
+        }
+
+        if (initialDentist) {
+          const matchDnt = activeDnt.find((d) => d.id === initialDentist.id) || initialDentist;
+          setSelectedDentist(matchDnt);
+        } else if (activeDnt.length > 0) {
+          setSelectedDentist(activeDnt[0]);
+        }
       })
       .catch((err) => {
         if (!isMounted) return;

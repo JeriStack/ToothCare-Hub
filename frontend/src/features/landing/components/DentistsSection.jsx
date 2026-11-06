@@ -1,70 +1,45 @@
-import React, { useState, useEffect } from 'react';
-import { Stethoscope, Calendar, ArrowRight, UserCheck } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Calendar, ArrowRight, AlertCircle, RefreshCw, Stethoscope } from 'lucide-react';
 import { dentistsApi } from '../../dentists/api';
-import { INITIAL_DENTISTS } from '../../../app/mockData';
+import { Button } from '../../../components/ui/Button';
+import { EmptyState } from '../../../components/ui/EmptyState';
 
 export function DentistsSection({ onSelectDentist }) {
   const [dentists, setDentists] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    let isMounted = true;
+  const fetchDentists = useCallback(async () => {
     setLoading(true);
+    setError(null);
 
-    dentistsApi
-      .getPublicDentists()
-      .then((data) => {
-        if (!isMounted) return;
-        if (Array.isArray(data) && data.length > 0) {
-          const activeOnly = data.filter((d) => Number(d.is_active) === 1);
-          setDentists(activeOnly.length > 0 ? activeOnly : data);
-        } else {
-          // Fallback to verified fixtures
-          setDentists(
-            INITIAL_DENTISTS.map((d) => ({
-              id: d.id,
-              first_name: d.name.split(' ')[1] || d.name,
-              last_name: d.name.split(' ')[2] || '',
-              specialization: d.specialty,
-              room_number: `Chair ${d.id}`,
-              bio: d.bio || 'Dedicated to comfortable and precise dental procedures for the whole family.',
-              shifts: d.shifts,
-              avatar: d.avatar,
-            }))
-          );
-        }
-      })
-      .catch(() => {
-        if (!isMounted) return;
-        setDentists(
-          INITIAL_DENTISTS.map((d) => ({
-            id: d.id,
-            first_name: d.name.split(' ')[1] || d.name,
-            last_name: d.name.split(' ')[2] || '',
-            specialization: d.specialty,
-            room_number: `Chair ${d.id}`,
-            bio: d.bio || 'Dedicated to comfortable and precise dental procedures for the whole family.',
-            shifts: d.shifts,
-            avatar: d.avatar,
-          }))
-        );
-      })
-      .finally(() => {
-        if (isMounted) setLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
+    try {
+      const data = await dentistsApi.getPublicDentists();
+      if (Array.isArray(data)) {
+        const activeOnly = data.filter((d) => Number(d.is_active) === 1);
+        setDentists(activeOnly);
+      } else {
+        setDentists([]);
+      }
+    } catch (err) {
+      setError(err?.response?.data?.error?.message || 'Unable to load dentist roster. Please check your connection and try again.');
+      setDentists([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    fetchDentists();
+  }, [fetchDentists]);
+
   return (
-    <section id="dentists" className="py-20 bg-slate-50/60 border-t border-slate-100">
+    <section id="dentists" className="py-20 bg-slate-50/60 border-t border-slate-100" aria-labelledby="dentists-heading">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
         
         {/* Section Heading */}
         <div className="text-center max-w-2xl mx-auto space-y-3">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#12304A] tracking-tight">
+          <h2 id="dentists-heading" className="text-3xl sm:text-4xl font-extrabold text-[#12304A] tracking-tight">
             Meet the People Behind Your Smile
           </h2>
           <p className="text-sm sm:text-base text-slate-600 font-normal">
@@ -72,9 +47,9 @@ export function DentistsSection({ onSelectDentist }) {
           </p>
         </div>
 
-        {/* Dentists Grid */}
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Loading State */}
+        {loading && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6" aria-busy="true">
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
@@ -86,7 +61,41 @@ export function DentistsSection({ onSelectDentist }) {
               </div>
             ))}
           </div>
-        ) : (
+        )}
+
+        {/* Error State with Retry Button */}
+        {!loading && error && (
+          <div className="max-w-md mx-auto p-6 rounded-2xl bg-rose-50/70 border border-rose-200 text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-bold text-slate-900 text-sm">Dentists Unavailable</h3>
+              <p className="text-xs text-slate-600">{error}</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchDentists}
+              className="gap-2 mx-auto"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Try Again</span>
+            </Button>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && !error && dentists.length === 0 && (
+          <EmptyState
+            icon={Stethoscope}
+            title="No Dentists Currently Available"
+            description="Our licensed dentist roster is currently being updated. Please contact our reception desk to inquire about clinical availability."
+          />
+        )}
+
+        {/* Active Dentists Grid */}
+        {!loading && !error && dentists.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {dentists.map((dentist) => {
               const fullName = dentist.first_name && dentist.last_name
@@ -94,7 +103,7 @@ export function DentistsSection({ onSelectDentist }) {
                 : dentist.name || 'Dr. Dental Specialist';
 
               return (
-                <div
+                <article
                   key={dentist.id}
                   className="bg-white border border-slate-200/90 rounded-2xl p-6 hover:shadow-xl hover:shadow-slate-200/60 transition-all flex flex-col justify-between space-y-6 group"
                 >
@@ -121,7 +130,7 @@ export function DentistsSection({ onSelectDentist }) {
 
                   {/* Clinic Schedule Shifts & Booking CTA */}
                   <div className="space-y-4 pt-4 border-t border-slate-100">
-                    {dentist.shifts && (
+                    {dentist.shifts && Array.isArray(dentist.shifts) && dentist.shifts.length > 0 && (
                       <div className="flex items-center justify-center gap-1.5 flex-wrap">
                         <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">
                           Clinic Days:
@@ -140,14 +149,14 @@ export function DentistsSection({ onSelectDentist }) {
                     <button
                       type="button"
                       onClick={() => onSelectDentist?.(dentist)}
-                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-[#0D9488] hover:text-white hover:border-[#0D9488] transition-all shadow-2xs group/btn"
+                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-[#0D9488] hover:text-white hover:border-[#0D9488] transition-all shadow-2xs group/btn focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
                     >
                       <Calendar className="w-3.5 h-3.5" />
                       <span>Consult with Doctor</span>
                       <ArrowRight className="w-3.5 h-3.5 opacity-60 group-hover/btn:opacity-100 transition-opacity" />
                     </button>
                   </div>
-                </div>
+                </article>
               );
             })}
           </div>
@@ -157,3 +166,5 @@ export function DentistsSection({ onSelectDentist }) {
     </section>
   );
 }
+
+export default DentistsSection;

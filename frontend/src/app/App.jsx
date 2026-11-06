@@ -62,6 +62,7 @@ function AppContent() {
   // UI Panels
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
+  const [bookingPrefill, setBookingPrefill] = useState(null);
 
   // Trigger Toast helper
   const showToast = (msg) => {
@@ -86,14 +87,23 @@ function AppContent() {
     navigateTo('LANDING', '/');
   };
 
-  // Popstate listener to support browser Back and Forward navigation
+  // Popstate & Global Auth Event Listeners
   useEffect(() => {
     const handlePopState = () => {
       const route = getInitialRoute();
       setCurrentRoute(route);
     };
+
+    const handleForbidden = (e) => {
+      showToast(e.detail?.message || 'Access denied: Insufficient permissions for this resource.');
+    };
+
     window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    window.addEventListener('toothcare:forbidden', handleForbidden);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('toothcare:forbidden', handleForbidden);
+    };
   }, []);
 
   // Server-Governed Route & Role Authorization Guard
@@ -215,7 +225,10 @@ function AppContent() {
   if (currentRoute === 'LANDING') {
     return (
       <LandingPage
-        onBookAppointment={() => {
+        onBookAppointment={(service, dentist) => {
+          if (service || dentist) {
+            setBookingPrefill({ service, dentist });
+          }
           if (isAuthenticated) {
             const role = user?.role?.toUpperCase();
             if (role === 'PATIENT') {
@@ -501,7 +514,11 @@ function AppContent() {
               )}
 
               {activeTab === 'book' && (
-                <BookAppointmentPage onNavigateToAppointments={() => setActiveTab('appointments')} />
+                <BookAppointmentPage
+                  initialService={bookingPrefill?.service}
+                  initialDentist={bookingPrefill?.dentist}
+                  onNavigateToAppointments={() => setActiveTab('appointments')}
+                />
               )}
 
               {activeTab === 'appointments' && (

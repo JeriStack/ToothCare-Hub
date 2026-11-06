@@ -159,8 +159,20 @@ async function request(method, path, data = null, options = {}) {
           })
         );
       }
-    } else if (response.status === 403 && responseData?.error?.code === 'CSRF_TOKEN_INVALID') {
-      clearCsrfToken();
+    } else if (response.status === 403) {
+      if (responseData?.error?.code === 'CSRF_TOKEN_INVALID') {
+        clearCsrfToken();
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('toothcare:forbidden', {
+            detail: {
+              code: responseData?.error?.code || 'FORBIDDEN',
+              message: responseData?.error?.message || 'You do not have permission to perform this action.',
+            },
+          })
+        );
+      }
     }
 
     throw error;

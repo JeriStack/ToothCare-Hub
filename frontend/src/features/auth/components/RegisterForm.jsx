@@ -12,6 +12,9 @@ import {
   Calendar,
   Lock,
   ChevronDown,
+  ChevronUp,
+  MapPin,
+  HeartPulse,
   Shield,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -33,11 +36,16 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
     phone: '',
     dateOfBirth: '',
     gender: 'PREFER_NOT_TO_SAY',
+    address: '',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
+    medicalAlerts: '',
     password: '',
     confirmPassword: '',
     agreeTerms: false,
   });
 
+  const [showOptionalFields, setShowOptionalFields] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formError, setFormError] = useState(null);
@@ -72,6 +80,11 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
     const dobErr = validateDateOfBirth(formData.dateOfBirth);
     if (dobErr) errors.dateOfBirth = dobErr;
 
+    if (formData.emergencyContactPhone?.trim()) {
+      const emergencyPhoneErr = validatePhone(formData.emergencyContactPhone);
+      if (emergencyPhoneErr) errors.emergencyContactPhone = 'Emergency phone format is invalid.';
+    }
+
     if (!formData.password) {
       errors.password = 'Password is required.';
     } else if (!passwordAnalysis.isValid) {
@@ -100,6 +113,10 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
       date_of_birth: formData.dateOfBirth,
       gender: formData.gender,
       password: formData.password,
+      ...(formData.address?.trim() ? { address: formData.address.trim() } : {}),
+      ...(formData.emergencyContactName?.trim() ? { emergency_contact_name: formData.emergencyContactName.trim() } : {}),
+      ...(formData.emergencyContactPhone?.trim() ? { emergency_contact_phone: formData.emergencyContactPhone.trim() } : {}),
+      ...(formData.medicalAlerts?.trim() ? { medical_alerts: formData.medicalAlerts.trim() } : {}),
     };
 
     const res = await register(payload);
@@ -165,7 +182,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
                 onClick={handleResend}
                 className="text-xs text-slate-500 hover:text-slate-800 transition-colors underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded"
               >
-                {resendStatus === 'loading' ? 'Sending link...' : 'Didn\'t receive an email? Resend verification'}
+                {resendStatus === 'loading' ? 'Sending link...' : "Didn't receive an email? Resend verification"}
               </button>
             )}
           </div>
@@ -326,7 +343,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
               required
               value={formData.dateOfBirth}
               onChange={(e) => handleChange('dateOfBirth', e.target.value)}
-              placeholder="dd/mm/yyyy"
+              placeholder="yyyy-mm-dd"
               aria-invalid={Boolean(fieldErrors.dateOfBirth)}
               className={`w-full pl-12 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 placeholder:text-slate-400 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer ${
                 fieldErrors.dateOfBirth ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
@@ -350,7 +367,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
               onChange={(e) => handleChange('gender', e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-sm text-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] hover:border-slate-400 appearance-none pr-10"
             >
-              <option value="PREFER_NOT_TO_SAY">Select</option>
+              <option value="PREFER_NOT_TO_SAY">Prefer not to say</option>
               <option value="FEMALE">Female</option>
               <option value="MALE">Male</option>
               <option value="OTHER">Other</option>
@@ -358,6 +375,98 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
             <ChevronDown className="w-5 h-5 text-[#12304A] absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none stroke-[2.2]" />
           </div>
         </div>
+      </div>
+
+      {/* Expandable Optional Medical & Emergency Section */}
+      <div className="pt-1">
+        <button
+          type="button"
+          onClick={() => setShowOptionalFields(!showOptionalFields)}
+          className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200/90 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+        >
+          <span className="flex items-center gap-2">
+            <HeartPulse className="w-4 h-4 text-[#0D9488]" />
+            Address, Medical History & Emergency Contact (Optional)
+          </span>
+          {showOptionalFields ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
+
+        {showOptionalFields && (
+          <div className="mt-3 p-4 rounded-2xl bg-[#F8FAFC] border border-slate-200/80 space-y-3.5 animate-in fade-in duration-200">
+            {/* Address */}
+            <div>
+              <label htmlFor="reg-address" className="block text-[11px] font-bold text-[#12304A] mb-1">
+                Complete address
+              </label>
+              <div className="relative">
+                <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg bg-white flex items-center justify-center text-slate-400 pointer-events-none border border-slate-200">
+                  <MapPin className="w-3.5 h-3.5" />
+                </div>
+                <input
+                  id="reg-address"
+                  name="address"
+                  type="text"
+                  value={formData.address}
+                  onChange={(e) => handleChange('address', e.target.value)}
+                  placeholder="Unit, Street, Barangay, City / Municipality"
+                  className="w-full pl-11 pr-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-800 bg-white placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                />
+              </div>
+            </div>
+
+            {/* Emergency Contact Name & Phone */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="reg-emergency-name" className="block text-[11px] font-bold text-[#12304A] mb-1">
+                  Emergency contact name
+                </label>
+                <input
+                  id="reg-emergency-name"
+                  name="emergencyContactName"
+                  type="text"
+                  value={formData.emergencyContactName}
+                  onChange={(e) => handleChange('emergencyContactName', e.target.value)}
+                  placeholder="e.g. Juan Santos (Spouse)"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-800 bg-white placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="reg-emergency-phone" className="block text-[11px] font-bold text-[#12304A] mb-1">
+                  Emergency contact phone
+                </label>
+                <input
+                  id="reg-emergency-phone"
+                  name="emergencyContactPhone"
+                  type="tel"
+                  value={formData.emergencyContactPhone}
+                  onChange={(e) => handleChange('emergencyContactPhone', e.target.value)}
+                  placeholder="+63 918 765 4321"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-800 bg-white placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                />
+                {fieldErrors.emergencyContactPhone && (
+                  <p className="mt-1 text-[11px] text-rose-600">{fieldErrors.emergencyContactPhone}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Medical History & Alerts */}
+            <div>
+              <label htmlFor="reg-medical-alerts" className="block text-[11px] font-bold text-[#12304A] mb-1">
+                Medical history & allergies disclosure
+              </label>
+              <textarea
+                id="reg-medical-alerts"
+                name="medicalAlerts"
+                rows={2}
+                value={formData.medicalAlerts}
+                onChange={(e) => handleChange('medicalAlerts', e.target.value)}
+                placeholder="List any drug allergies (e.g. Penicillin), medical conditions (hypertension, diabetes), bleeding disorders, or current medications."
+                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-800 bg-white placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] resize-none"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Password Fields */}
