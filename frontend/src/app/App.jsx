@@ -21,8 +21,18 @@ import {
   AlertTriangle,
   ArrowLeft,
   Sparkles,
-  Info
+  Info,
+  LogOut
 } from 'lucide-react';
+import {
+  AuthProvider,
+  useAuth,
+  LoginPage,
+  RegisterPage,
+  ForgotPasswordPage,
+  ResetPasswordPage,
+  VerifyEmailPage,
+} from '../features/auth';
 import {
   INITIAL_SERVICES,
   INITIAL_DENTISTS,
@@ -135,9 +145,32 @@ const getSampleAvailableSlots = (date, dentist, service, appointments) => {
   });
 };
 
-export default function App() {
+function getInitialRoute() {
+  if (typeof window === 'undefined') return 'LANDING';
+  const path = window.location.pathname.toLowerCase();
+  if (path === '/login') return 'LOGIN';
+  if (path === '/register') return 'REGISTER';
+  if (path === '/forgot-password' || path === '/forgot') return 'FORGOT_PASSWORD';
+  if (path === '/reset-password' || path === '/reset') return 'RESET_PASSWORD';
+  if (path === '/verify-email' || path === '/verify') return 'VERIFY_EMAIL';
+  if (path === '/patient') return 'PATIENT';
+  if (path === '/admin') return 'ADMIN';
+  if (path === '/dentist') return 'DENTIST';
+  return 'LANDING';
+}
+
+function AppContent() {
+  const { user, isAuthenticated, logout } = useAuth();
+
+  // Active View / Route
+  const [currentRoute, setCurrentRoute] = useState(getInitialRoute);
+
   // Global Role: 'LANDING' | 'PATIENT' | 'ADMIN' | 'DENTIST'
-  const [currentRole, setCurrentRole] = useState('LANDING');
+  const [currentRole, setCurrentRole] = useState(() => {
+    const init = getInitialRoute();
+    if (init === 'ADMIN' || init === 'DENTIST' || init === 'PATIENT') return init;
+    return 'LANDING';
+  });
   
   // Navigation tabs per role
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -203,12 +236,49 @@ export default function App() {
     showToast('All notifications marked as read.');
   };
 
-  // Switch role reset
-  const handleRoleChange = (newRole) => {
-    setCurrentRole(newRole);
-    setActiveTab('dashboard');
+  // Navigation handler with browser URL sync
+  const navigateTo = (route, path) => {
+    setCurrentRoute(route);
+    if (route === 'PATIENT' || route === 'ADMIN' || route === 'DENTIST') {
+      setCurrentRole(route);
+    }
+    if (path && window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+    }
     setIsMobileMenuOpen(false);
   };
+
+  // Switch role reset
+  const handleRoleChange = (newRole, path) => {
+    setCurrentRole(newRole);
+    setCurrentRoute(newRole);
+    setActiveTab('dashboard');
+    setIsMobileMenuOpen(false);
+    const targetPath = path || (newRole === 'LANDING' ? '/' : `/${newRole.toLowerCase()}`);
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState({}, '', targetPath);
+    }
+  };
+
+  // Sign out handler
+  const handleSignOut = async () => {
+    await logout();
+    showToast('You have been signed out successfully.');
+    navigateTo('LANDING', '/');
+  };
+
+  // Popstate listener to support browser Back and Forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const route = getInitialRoute();
+      setCurrentRoute(route);
+      if (route === 'PATIENT' || route === 'ADMIN' || route === 'DENTIST') {
+        setCurrentRole(route);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Booking Wizard submit
   const handleCompleteBooking = () => {
@@ -319,7 +389,69 @@ export default function App() {
     showToast(`Visit #${id} completed. Treatment record archived with 24h edit window.`);
   };
 
-  if (currentRole === 'LANDING') {
+  // 1. Auth Page Views
+  if (currentRoute === 'LOGIN') {
+    return (
+      <LoginPage
+        onSuccess={(loggedUser) => {
+          showToast(`Welcome back, ${loggedUser?.first_name || 'Patient'}!`);
+          if (loggedUser?.role === 'ADMIN') {
+            handleRoleChange('ADMIN', '/admin');
+          } else if (loggedUser?.role === 'DENTIST') {
+            handleRoleChange('DENTIST', '/dentist');
+          } else {
+            handleRoleChange('PATIENT', '/patient');
+          }
+        }}
+        onNavigateRegister={() => navigateTo('REGISTER', '/register')}
+        onNavigateForgotPassword={() => navigateTo('FORGOT_PASSWORD', '/forgot-password')}
+        onNavigateHome={() => navigateTo('LANDING', '/')}
+      />
+    );
+  }
+
+  if (currentRoute === 'REGISTER') {
+    return (
+      <RegisterPage
+        onSuccess={() => {
+          showToast('Account created successfully! Check email for verification.');
+        }}
+        onNavigateLogin={() => navigateTo('LOGIN', '/login')}
+        onNavigateHome={() => navigateTo('LANDING', '/')}
+      />
+    );
+  }
+
+  if (currentRoute === 'FORGOT_PASSWORD') {
+    return (
+      <ForgotPasswordPage
+        onNavigateLogin={() => navigateTo('LOGIN', '/login')}
+        onNavigateHome={() => navigateTo('LANDING', '/')}
+      />
+    );
+  }
+
+  if (currentRoute === 'RESET_PASSWORD') {
+    return (
+      <ResetPasswordPage
+        onNavigateLogin={() => navigateTo('LOGIN', '/login')}
+        onNavigateForgotPassword={() => navigateTo('FORGOT_PASSWORD', '/forgot-password')}
+        onNavigateHome={() => navigateTo('LANDING', '/')}
+      />
+    );
+  }
+
+  if (currentRoute === 'VERIFY_EMAIL') {
+    return (
+      <VerifyEmailPage
+        onNavigateLogin={() => navigateTo('LOGIN', '/login')}
+        onNavigateHome={() => navigateTo('LANDING', '/')}
+      />
+    );
+  }
+
+  // 2. Public Landing Page
+  if (currentRoute === 'LANDING') {
     return (
       <div className="min-h-screen bg-white text-[#334155] flex flex-col font-sans selection:bg-[#CCFBF1] selection:text-[#0F766E]">
         {/* Top Demo Bar */}
@@ -333,27 +465,39 @@ export default function App() {
             </span>
           </div>
           <div className="flex items-center gap-1.5 text-xs">
-            <span className="text-slate-400 mr-1 hidden sm:inline">Preview portals:</span>
+            <span className="text-slate-400 mr-1 hidden sm:inline">Portals & Access:</span>
             <button
-              onClick={() => handleRoleChange('LANDING')}
+              onClick={() => navigateTo('LANDING', '/')}
               className="px-2.5 py-1 rounded transition-colors font-semibold text-xs bg-[#0D9488] text-white"
             >
               Public Website
             </button>
             <button
-              onClick={() => handleRoleChange('PATIENT')}
+              onClick={() => navigateTo('LOGIN', '/login')}
+              className="px-2.5 py-1 rounded transition-colors font-medium text-xs bg-slate-800 text-slate-300 hover:bg-slate-700"
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => navigateTo('REGISTER', '/register')}
+              className="px-2.5 py-1 rounded transition-colors font-medium text-xs bg-slate-800 text-slate-300 hover:bg-slate-700"
+            >
+              Register
+            </button>
+            <button
+              onClick={() => handleRoleChange('PATIENT', '/patient')}
               className="px-2.5 py-1 rounded transition-colors font-medium text-xs bg-slate-800 text-slate-300 hover:bg-slate-700"
             >
               Patient Portal
             </button>
             <button
-              onClick={() => handleRoleChange('ADMIN')}
+              onClick={() => handleRoleChange('ADMIN', '/admin')}
               className="px-2.5 py-1 rounded transition-colors font-medium text-xs bg-slate-800 text-slate-300 hover:bg-slate-700"
             >
               Admin Triage
             </button>
             <button
-              onClick={() => handleRoleChange('DENTIST')}
+              onClick={() => handleRoleChange('DENTIST', '/dentist')}
               className="px-2.5 py-1 rounded transition-colors font-medium text-xs bg-slate-800 text-slate-300 hover:bg-slate-700"
             >
               Dentist Practice
@@ -363,16 +507,28 @@ export default function App() {
 
         <LandingPage
           onBookAppointment={() => {
-            setCurrentRole('PATIENT');
-            setActiveTab('book');
+            if (isAuthenticated) {
+              handleRoleChange('PATIENT', '/patient');
+              setActiveTab('book');
+            } else {
+              navigateTo('LOGIN', '/login');
+              showToast('Please sign in or create an account to schedule an appointment.');
+            }
           }}
           onLogin={() => {
-            setCurrentRole('PATIENT');
-            setActiveTab('dashboard');
+            if (isAuthenticated) {
+              const role = user?.role || 'PATIENT';
+              handleRoleChange(role, `/${role.toLowerCase()}`);
+            } else {
+              navigateTo('LOGIN', '/login');
+            }
           }}
           onAdminLogin={() => {
-            setCurrentRole('ADMIN');
-            setActiveTab('dashboard');
+            if (isAuthenticated && user?.role === 'ADMIN') {
+              handleRoleChange('ADMIN', '/admin');
+            } else {
+              navigateTo('LOGIN', '/login');
+            }
           }}
         />
       </div>
@@ -384,33 +540,50 @@ export default function App() {
       
       {/* 1. DEMO & ROLE SWITCHER BAR */}
       <div className="bg-[#0B1D2D] text-white px-4 py-2 text-xs flex flex-wrap items-center justify-between border-b border-slate-800 gap-2">
-        <span className="rounded-full bg-slate-800 px-2.5 py-1 font-semibold text-slate-200">Demo mode</span>
+        <span className="rounded-full bg-slate-800 px-2.5 py-1 font-semibold text-slate-200">
+          {isAuthenticated ? 'Authenticated Session' : 'Demo Preview Mode'}
+        </span>
         <div className="flex items-center gap-1.5">
-          <span className="text-slate-400 mr-1">Preview role:</span>
+          <span className="text-slate-400 mr-1 hidden sm:inline">Navigate:</span>
           <button
-            onClick={() => handleRoleChange('LANDING')}
+            onClick={() => handleRoleChange('LANDING', '/')}
             className="px-2.5 py-1 rounded transition-colors font-medium text-slate-300 hover:bg-slate-700"
           >
             Public Website
           </button>
           <button
-            onClick={() => handleRoleChange('PATIENT')}
+            onClick={() => handleRoleChange('PATIENT', '/patient')}
             className={`px-2.5 py-1 rounded transition-colors font-medium ${currentRole === 'PATIENT' ? 'bg-[#0D9488] text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
           >
             Patient Portal
           </button>
           <button
-            onClick={() => handleRoleChange('ADMIN')}
+            onClick={() => handleRoleChange('ADMIN', '/admin')}
             className={`px-2.5 py-1 rounded transition-colors font-medium ${currentRole === 'ADMIN' ? 'bg-[#0D9488] text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
           >
             Admin / Receptionist
           </button>
           <button
-            onClick={() => handleRoleChange('DENTIST')}
+            onClick={() => handleRoleChange('DENTIST', '/dentist')}
             className={`px-2.5 py-1 rounded transition-colors font-medium ${currentRole === 'DENTIST' ? 'bg-[#0D9488] text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
           >
             Dentist Practice
           </button>
+          {isAuthenticated ? (
+            <button
+              onClick={handleSignOut}
+              className="px-2.5 py-1 rounded transition-colors font-medium text-xs bg-rose-900/60 text-rose-200 hover:bg-rose-900"
+            >
+              Sign Out
+            </button>
+          ) : (
+            <button
+              onClick={() => navigateTo('LOGIN', '/login')}
+              className="px-2.5 py-1 rounded transition-colors font-medium text-xs bg-teal-900/60 text-teal-200 hover:bg-teal-900"
+            >
+              Sign In
+            </button>
+          )}
         </div>
       </div>
 
@@ -459,16 +632,30 @@ export default function App() {
             {/* User Profile Info */}
             <div className="flex items-center gap-2 pl-2 border-l border-white/10">
               <div className="w-8 h-8 rounded-full bg-[#0D9488]/30 border border-[#0D9488] text-teal-200 flex items-center justify-center font-semibold text-xs">
-                {currentRole === 'PATIENT' ? 'JD' : currentRole === 'ADMIN' ? 'AD' : 'MS'}
+                {user ? (
+                  `${(user.first_name?.[0] || 'U').toUpperCase()}${(user.last_name?.[0] || '').toUpperCase()}`
+                ) : (
+                  currentRole === 'PATIENT' ? 'JD' : currentRole === 'ADMIN' ? 'AD' : 'MS'
+                )}
               </div>
               <div className="hidden md:block text-left">
                 <p className="text-xs font-semibold leading-tight text-white">
-                  {currentRole === 'PATIENT' ? 'Juan Dela Cruz' : currentRole === 'ADMIN' ? 'Clinic Admin' : 'Dr. Maria Santos'}
+                  {user ? `${user.first_name} ${user.last_name}` : (currentRole === 'PATIENT' ? 'Juan Dela Cruz' : currentRole === 'ADMIN' ? 'Clinic Admin' : 'Dr. Maria Santos')}
                 </p>
                 <p className="text-[10px] text-teal-200/70">
-                  {currentRole === 'PATIENT' ? 'Patient' : currentRole === 'ADMIN' ? 'Receptionist' : 'Attending Dentist'}
+                  {user ? (user.role === 'ADMIN' ? 'Administrator' : user.role === 'DENTIST' ? 'Attending Dentist' : 'Patient') : (currentRole === 'PATIENT' ? 'Patient' : currentRole === 'ADMIN' ? 'Receptionist' : 'Attending Dentist')}
                 </p>
               </div>
+              {isAuthenticated && (
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  title="Sign out of account"
+                  className="ml-1 p-1.5 text-slate-300 hover:text-white rounded-lg hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -506,6 +693,13 @@ export default function App() {
                   >
                     <FileText className="w-4 h-4" />
                     My Appointments
+                  </button>
+                  <button
+                    onClick={() => navigateTo('LANDING', '/')}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Back to Website
                   </button>
                 </>
               )}
@@ -1256,7 +1450,7 @@ export default function App() {
 
       {/* Floating Toast Feedback */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#12304A] text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 border border-slate-700 text-xs animate-bounce">
+        <div className="fixed bottom-6 right-6 z-50 bg-[#12304A] text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 border border-slate-700 text-xs animate-in fade-in slide-in-from-bottom-2 duration-300">
           <Sparkles className="w-4 h-4 text-teal-400" />
           <span>{toastMessage}</span>
         </div>
@@ -1269,3 +1463,12 @@ export default function App() {
     </div>
   );
 }
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+}
+
