@@ -34,6 +34,11 @@ services:
     volumes:
       - ./backend:/var/www/backend
 
+  db-backup:
+    volumes:
+      - ./backups:/var/www/backups
+      - ./database/scripts:/var/www/backend/database/scripts:ro
+
   prometheus:
     ports:
       - "127.0.0.1:9090:9090"

@@ -50,9 +50,16 @@ test-results/
 /backend/storage/uploads/
 *.sql.bak
 *.sql.gz
+*.sql.gz.enc
 *.dump
 *.sqlite
 *.sqlite3
+/backups/
+backups/*
+!backups/.gitkeep
+*.key
+*.sha256
+*.backup-meta.json
 
 # ===== Docker / observability =====
 docker/nginx/ssl/*

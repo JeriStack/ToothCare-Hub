@@ -83,7 +83,28 @@ if (empty($pending)) {
 $stmt = $pdo->query("SELECT COALESCE(MAX(batch), 0) + 1 FROM schema_migrations");
 $nextBatch = (int)$stmt->fetchColumn();
 
-echo "\nDiscovered " . count($pending) . " pending migration(s) for Batch #{$nextBatch}:\n";
+// Execute automated pre-migration backup safeguard
+if (!in_array('--no-backup', $argv, true)) {
+    echo "\n[PRE-MIGRATION] Initiating safety database backup for Batch #{$nextBatch}...\n";
+    $preMigrationScript = __DIR__ . '/scripts/pre-migration-backup.php';
+    if (file_exists($preMigrationScript)) {
+        $backupCmd = sprintf('php "%s" --batch=%d', $preMigrationScript, $nextBatch);
+        $backupOutput = [];
+        $backupExit = 0;
+        exec($backupCmd, $backupOutput, $backupExit);
+        if ($backupExit !== 0) {
+            echo "[FATAL ERROR] Pre-migration backup failed. Migration aborted to protect database state.\n";
+            echo implode("\n", $backupOutput) . "\n";
+            exit(1);
+        }
+        foreach ($backupOutput as $line) {
+            echo "  {$line}\n";
+        }
+        echo "\n";
+    }
+}
+
+echo "Discovered " . count($pending) . " pending migration(s) for Batch #{$nextBatch}:\n";
 
 $appliedCount = 0;
 foreach ($pending as $version => $filePath) {

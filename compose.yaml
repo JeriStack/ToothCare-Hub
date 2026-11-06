@@ -154,6 +154,51 @@ services:
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
+  # 6. Database Automated Backup Daemon (2:00 AM Daily Full Backup + Retention)
+  # ---------------------------------------------------------------------------
+  db-backup:
+    image: toothcare-php-fpm:latest
+    container_name: toothcare-db-backup
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        echo "ToothCare Hub Backup Daemon Initialized."
+        while true; do
+          HOUR=$$(date +%H)
+          MIN=$$(date +%M)
+          if [ "$$HOUR" = "02" ] && [ "$$MIN" = "00" ]; then
+            echo "[CRON] Triggering automated 02:00 AM database backup..."
+            php /var/www/backend/database/scripts/backup.php --type=daily || true
+            php /var/www/backend/database/scripts/cleanup-backups.php --days=30 || true
+            sleep 65
+          fi
+          sleep 30
+        done
+    env_file:
+      - path: .env
+        required: false
+      - path: ./backend/.env
+        required: false
+    environment:
+      DB_HOST: ${DB_HOST:-mysql}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME:-toothcare_hub}
+      DB_USER: ${DB_USER:-toothcare_user}
+      DB_PASSWORD: ${DB_PASSWORD:-toothcare_secure_pass}
+      BACKUP_STORAGE_DIR: /var/www/backups
+      BACKUP_ENCRYPTION_ENABLED: ${BACKUP_ENCRYPTION_ENABLED:-true}
+      BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY:-}
+    volumes:
+      - ./backups:/var/www/backups
+      - ./database/scripts:/var/www/backend/database/scripts:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - app
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
   # 6. Observability Stack (Optional Monitoring Profile)
   # ---------------------------------------------------------------------------
   prometheus:
