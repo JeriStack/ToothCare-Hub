@@ -12,26 +12,19 @@ export function AuthLayout({ children, onNavigateHome, title, subtitle }) {
             onClick={onNavigateHome}
             className="flex items-center gap-2.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded-lg"
           >
-            <div className="w-9 h-9 rounded-xl bg-[#0D9488] flex items-center justify-center text-white shadow-xs">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="w-4 h-4"
-              >
-                <path d="M12 2C8.5 2 6 4.5 6 7.5c0 2 .8 4.2 1.5 6.5.8 2.5 1.5 5 2 8 0 .5.5 1 1 1s1-.5 1-1c.5-3 1.2-5.5 2-8 .7-2.3 1.5-4.5 1.5-6.5C18 4.5 15.5 2 12 2z" />
-                <path d="M9 10c1.5-1 4.5-1 6 0" />
-              </svg>
+            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-xs group-hover:scale-105 transition-transform bg-white border border-slate-100 flex items-center justify-center p-0.5">
+              <img
+                src="/images/logo-full.png"
+                alt="ToothCare Hub Logo"
+                className="w-full h-full object-contain"
+              />
             </div>
             <div className="text-left">
               <span className="font-bold text-lg tracking-tight text-[#12304A]">
-                ToothCare<span className="text-[#0D9488]">Hub</span>
+                Tooth<span className="text-[#0D9488]">Care</span> Hub
               </span>
               <span className="hidden sm:block text-[11px] text-slate-500 font-medium">
-                Patient Portal
+                Healthier Smiles. Brighter Futures.
               </span>
             </div>
           </button>

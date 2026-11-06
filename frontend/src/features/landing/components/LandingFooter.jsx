@@ -18,12 +18,21 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
           {/* Brand Info */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#0D9488] to-[#14B8A6] flex items-center justify-center text-white font-bold text-base shadow-sm">
-                T
+              <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm bg-slate-950 border border-slate-800 flex items-center justify-center">
+                <img
+                  src="/images/logo-icon-dark.jpg"
+                  alt="ToothCare Hub Logo"
+                  className="w-full h-full object-cover"
+                />
               </div>
-              <span className="font-bold text-xl text-white tracking-tight">
-                ToothCare<span className="text-[#0D9488]">Hub</span>
-              </span>
+              <div className="flex flex-col text-left">
+                <span className="font-bold text-xl text-white tracking-tight leading-tight">
+                  Tooth<span className="text-[#0D9488]">Care</span> Hub
+                </span>
+                <span className="text-[10px] text-teal-400 font-medium">
+                  Healthier Smiles. Brighter Futures.
+                </span>
+              </div>
             </div>
             <p className="text-xs text-slate-400 max-w-sm leading-relaxed font-normal">
               A comprehensive dental appointment and clinic management platform designed to help patients discover

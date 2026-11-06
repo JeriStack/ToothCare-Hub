@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="toothGrad" x1="16" y1="8" x2="48" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="50%" stop-color="#0EA5E9" />
+      <stop offset="100%" stop-color="#0369A1" />
+    </linearGradient>
+    <linearGradient id="ringGrad" x1="8" y1="28" x2="56" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0D9488" />
+      <stop offset="50%" stop-color="#14B8A6" />
+      <stop offset="100%" stop-color="#2DD4BF" />
+    </linearGradient>
+    <filter id="shadow" x="-4" y="-4" width="72" height="72" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#0F172A" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Base Tooth Silhouette with Gradient -->
+  <path
+    d="M20 10C14 10 10 15 11 23C12 28 15 34 17 44C18 49 20 54 23 54C26 54 27 48 32 40C37 48 38 54 41 54C44 54 46 49 47 44C49 34 52 28 53 23C54 15 50 10 44 10C38 10 35 14 32 14C29 14 26 10 20 10Z"
+    fill="url(#toothGrad)"
+    filter="url(#shadow)"
+  />
+
+  <!-- Inner Tooth Specular Highlight -->
+  <path
+    d="M22 13C17 13 13 17 14 23C15 28 17 32 19 40C20 37 21 34 23 32C25 29 28 27 32 27C36 27 39 29 41 32C43 34 44 37 45 40C47 32 49 28 50 23C51 17 47 13 42 13C37 13 34 16 32 16C30 16 27 13 22 13Z"
+    fill="#E0F2FE"
+    opacity="0.9"
+  />
+
+  <!-- Orbital Swoosh Ring -->
+  <path
+    d="M8 36C8 30 18 25 32 25C46 25 56 30 56 36C56 42 46 47 32 47C18 47 8 42 8 36Z"
+    stroke="url(#ringGrad)"
+    stroke-width="4.5"
+    stroke-linecap="round"
+    fill="none"
+  />
+
+  <!-- Cross (+) on right orbital ring tip -->
+  <rect x="50" y="22" width="10" height="4" rx="2" fill="#2DD4BF" />
+  <rect x="53" y="19" width="4" height="10" rx="2" fill="#2DD4BF" />
+</svg>
