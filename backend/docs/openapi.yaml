@@ -2550,6 +2550,16 @@ components:
           format: date-time
 
   responses:
+    BadRequest:
+      description: Malformed payload, invalid syntax, or missing mandatory fields.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/X-Request-ID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
     Unauthorized:
       description: Authentication required or invalid session.
       headers:
