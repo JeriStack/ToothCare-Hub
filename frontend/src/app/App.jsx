@@ -458,7 +458,7 @@ function AppContent() {
         <div className="bg-[#0B1D2D] text-white px-4 py-1.5 text-xs flex flex-wrap items-center justify-between border-b border-slate-800 gap-2 sticky top-0 z-[60]">
           <div className="flex items-center gap-2">
             <span className="rounded-full bg-slate-800 px-2 py-0.5 font-semibold text-slate-200 text-[11px] flex items-center gap-1.5">
-              <img src="/images/logo-icon-dark.jpg" alt="" className="w-3.5 h-3.5 rounded-full object-cover" />
+              <img src="/images/logo-icon.png" alt="" className="w-3.5 h-3.5 object-contain" />
               ToothCare Hub
             </span>
             <span className="text-[11px] text-teal-400 font-medium hidden sm:inline">
@@ -600,11 +600,11 @@ function AppContent() {
               <Menu className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
-              <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm bg-slate-950 border border-slate-700/80 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 flex items-center justify-center shrink-0">
                 <img
-                  src="/images/logo-icon-dark.jpg"
+                  src="/images/logo-icon.png"
                   alt="ToothCare Hub Logo"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                 />
               </div>
               <div>

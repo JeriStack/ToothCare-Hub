@@ -32,9 +32,9 @@ export function ToothCareLogo({
         className={`relative inline-flex items-center justify-center shrink-0 ${sizeClasses.icon} ${className}`}
       >
         <img
-          src={theme === 'dark' ? '/images/logo-icon-dark.jpg' : '/images/logo-full.png'}
+          src="/images/logo-icon.png"
           alt="ToothCare Hub Emblem"
-          className="w-full h-full object-contain rounded-xl select-none"
+          className="w-full h-full object-contain select-none"
           loading="eager"
         />
       </div>
@@ -59,10 +59,10 @@ export function ToothCareLogo({
       onClick={onClick}
       className={`inline-flex items-center gap-2.5 ${onClick ? 'cursor-pointer' : ''} ${className}`}
     >
-      <div className={`relative ${sizeClasses.icon} shrink-0 rounded-xl overflow-hidden shadow-xs flex items-center justify-center`}>
+      <div className={`relative ${sizeClasses.icon} shrink-0 flex items-center justify-center`}>
         <img
-          src={theme === 'dark' ? '/images/logo-icon-dark.jpg' : '/images/logo-full.png'}
-          alt="ToothCare Hub"
+          src="/images/logo-icon.png"
+          alt="ToothCare Hub Emblem"
           className="w-full h-full object-contain select-none"
           loading="eager"
         />

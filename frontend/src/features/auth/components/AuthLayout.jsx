@@ -12,10 +12,10 @@ export function AuthLayout({ children, onNavigateHome, title, subtitle }) {
             onClick={onNavigateHome}
             className="flex items-center gap-2.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded-lg"
           >
-            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-xs group-hover:scale-105 transition-transform bg-white border border-slate-100 flex items-center justify-center p-0.5">
+            <div className="w-10 h-10 group-hover:scale-105 transition-transform flex items-center justify-center shrink-0">
               <img
-                src="/images/logo-full.png"
-                alt="ToothCare Hub Logo"
+                src="/images/logo-icon.png"
+                alt="ToothCare Hub Emblem"
                 className="w-full h-full object-contain"
               />
             </div>

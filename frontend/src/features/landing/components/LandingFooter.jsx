@@ -18,11 +18,11 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
           {/* Brand Info */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm bg-slate-950 border border-slate-800 flex items-center justify-center">
+              <div className="w-10 h-10 flex items-center justify-center shrink-0">
                 <img
-                  src="/images/logo-icon-dark.jpg"
+                  src="/images/logo-icon.png"
                   alt="ToothCare Hub Logo"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                 />
               </div>
               <div className="flex flex-col text-left">
