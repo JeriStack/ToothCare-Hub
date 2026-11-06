@@ -39,6 +39,7 @@ import { AdminSchedulePage } from '../features/schedules/pages/AdminSchedulePage
 import { BookAppointmentPage } from '../features/appointments/pages/BookAppointmentPage';
 import { AppointmentHistoryPage } from '../features/appointments/pages/AppointmentHistoryPage';
 import { AdminAppointmentsPage } from '../features/appointments/pages/AdminAppointmentsPage';
+import { LandingPage } from '../features/landing/LandingPage';
 
 const SAMPLE_TIME_SLOTS = ['09:00 AM', '09:30 AM', '10:30 AM', '11:15 AM', '01:30 PM', '02:00 PM', '03:30 PM', '04:00 PM'];
 const SAMPLE_CLINIC_CLOSE_MINUTES = 17 * 60;
@@ -135,8 +136,8 @@ const getSampleAvailableSlots = (date, dentist, service, appointments) => {
 };
 
 export default function App() {
-  // Global Role: 'PATIENT' | 'ADMIN' | 'DENTIST'
-  const [currentRole, setCurrentRole] = useState('PATIENT');
+  // Global Role: 'LANDING' | 'PATIENT' | 'ADMIN' | 'DENTIST'
+  const [currentRole, setCurrentRole] = useState('LANDING');
   
   // Navigation tabs per role
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -318,6 +319,66 @@ export default function App() {
     showToast(`Visit #${id} completed. Treatment record archived with 24h edit window.`);
   };
 
+  if (currentRole === 'LANDING') {
+    return (
+      <div className="min-h-screen bg-white text-[#334155] flex flex-col font-sans selection:bg-[#CCFBF1] selection:text-[#0F766E]">
+        {/* Top Demo Bar */}
+        <div className="bg-[#0B1D2D] text-white px-4 py-1.5 text-xs flex flex-wrap items-center justify-between border-b border-slate-800 gap-2 sticky top-0 z-[60]">
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-slate-800 px-2.5 py-0.5 font-semibold text-slate-200 text-[11px]">
+              ToothCare Hub
+            </span>
+            <span className="text-[11px] text-teal-400 font-medium hidden sm:inline">
+              Public Dental Practice Website
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-slate-400 mr-1 hidden sm:inline">Preview portals:</span>
+            <button
+              onClick={() => handleRoleChange('LANDING')}
+              className="px-2.5 py-1 rounded transition-colors font-semibold text-xs bg-[#0D9488] text-white"
+            >
+              Public Website
+            </button>
+            <button
+              onClick={() => handleRoleChange('PATIENT')}
+              className="px-2.5 py-1 rounded transition-colors font-medium text-xs bg-slate-800 text-slate-300 hover:bg-slate-700"
+            >
+              Patient Portal
+            </button>
+            <button
+              onClick={() => handleRoleChange('ADMIN')}
+              className="px-2.5 py-1 rounded transition-colors font-medium text-xs bg-slate-800 text-slate-300 hover:bg-slate-700"
+            >
+              Admin Triage
+            </button>
+            <button
+              onClick={() => handleRoleChange('DENTIST')}
+              className="px-2.5 py-1 rounded transition-colors font-medium text-xs bg-slate-800 text-slate-300 hover:bg-slate-700"
+            >
+              Dentist Practice
+            </button>
+          </div>
+        </div>
+
+        <LandingPage
+          onBookAppointment={() => {
+            setCurrentRole('PATIENT');
+            setActiveTab('book');
+          }}
+          onLogin={() => {
+            setCurrentRole('PATIENT');
+            setActiveTab('dashboard');
+          }}
+          onAdminLogin={() => {
+            setCurrentRole('ADMIN');
+            setActiveTab('dashboard');
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F5F8FA] text-[#334155] flex flex-col font-sans selection:bg-[#CCFBF1] selection:text-[#0F766E]">
       
@@ -326,6 +387,12 @@ export default function App() {
         <span className="rounded-full bg-slate-800 px-2.5 py-1 font-semibold text-slate-200">Demo mode</span>
         <div className="flex items-center gap-1.5">
           <span className="text-slate-400 mr-1">Preview role:</span>
+          <button
+            onClick={() => handleRoleChange('LANDING')}
+            className="px-2.5 py-1 rounded transition-colors font-medium text-slate-300 hover:bg-slate-700"
+          >
+            Public Website
+          </button>
           <button
             onClick={() => handleRoleChange('PATIENT')}
             className={`px-2.5 py-1 rounded transition-colors font-medium ${currentRole === 'PATIENT' ? 'bg-[#0D9488] text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
