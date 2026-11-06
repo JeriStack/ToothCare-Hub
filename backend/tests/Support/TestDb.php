@@ -154,6 +154,17 @@ class TestDb
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
+            CREATE TABLE IF NOT EXISTS appointment_status_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                appointment_id INTEGER NOT NULL,
+                old_status TEXT NULL,
+                new_status TEXT NOT NULL,
+                actor_user_id INTEGER NULL,
+                reason TEXT NULL,
+                metadata TEXT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
             CREATE TABLE IF NOT EXISTS auth_tokens (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,

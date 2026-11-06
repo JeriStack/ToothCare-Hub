@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Controllers\AppointmentController;
 use App\Controllers\AuthController;
 use App\Controllers\AvailabilityController;
 use App\Controllers\ClinicScheduleController;
@@ -113,6 +114,13 @@ $router->group('/api/v1', function (Router $r): void {
     $r->patch('/admin/patients/{id}', [PatientController::class, 'update'], $adminAuth);
     $r->patch('/admin/patients/{id}/status', [PatientController::class, 'updateStatus'], $adminAuth);
 
+    // Admin Appointments Lifecycle Review (Phase 10)
+    $r->get('/admin/appointments', [AppointmentController::class, 'adminIndex'], $adminAuth);
+    $r->get('/admin/appointments/{id}', [AppointmentController::class, 'adminShow'], $adminAuth);
+    $r->patch('/admin/appointments/{id}/confirm', [AppointmentController::class, 'confirm'], $adminAuth);
+    $r->patch('/admin/appointments/{id}/reject', [AppointmentController::class, 'reject'], $adminAuth);
+    $r->patch('/admin/appointments/{id}/complete', [AppointmentController::class, 'complete'], $adminAuth);
+
     // Admin Audit Logs
     $r->get('/admin/audit-logs', function (Request $req): Response {
         $user = $req->getUser();
@@ -122,22 +130,22 @@ $router->group('/api/v1', function (Router $r): void {
         ]);
     }, $adminAuth);
 
-    // 7. Future Phases - Structured Placeholders
+    // 7. Patient Appointment Booking & Lifecycle (Phase 10)
+    $patientAuth = [AuthenticationMiddleware::class];
+    $r->post('/appointments', [AppointmentController::class, 'book'], $patientAuth);
+    $r->get('/appointments', [AppointmentController::class, 'index'], $patientAuth);
+    $r->get('/appointments/{id}', [AppointmentController::class, 'show'], $patientAuth);
+    $r->post('/appointments/{id}/cancel', [AppointmentController::class, 'cancel'], $patientAuth);
+    $r->post('/appointments/{id}/reschedule', [AppointmentController::class, 'reschedule'], $patientAuth);
+
+    // 8. Future Phases - Structured Placeholders
     $notImplemented = fn (string $name) => function (Request $req) use ($name) {
-        throw HttpException::notImplemented("Endpoint '{$name}' is planned for Phase 10+ implementation.");
+        throw HttpException::notImplemented("Endpoint '{$name}' is planned for Phase 11+ implementation.");
     };
 
-    // Future Patient self-listing or public directory (Phase 10+)
+    // Future Patient self-listing or public directory
     $r->get('/patients', $notImplemented('GET /api/v1/patients'));
     $r->post('/patients', $notImplemented('POST /api/v1/patients'));
-
-    // Appointments Lifecycle Group (Phase 10)
-    $r->get('/appointments', $notImplemented('GET /api/v1/appointments'));
-    $r->post('/appointments', $notImplemented('POST /api/v1/appointments'));
-    $r->get('/appointments/{id}', $notImplemented('GET /api/v1/appointments/{id}'));
-    $r->patch('/appointments/{id}', $notImplemented('PATCH /api/v1/appointments/{id}'));
-    $r->post('/appointments/{id}/cancel', $notImplemented('POST /api/v1/appointments/{id}/cancel'));
-    $r->post('/appointments/{id}/reschedule', $notImplemented('POST /api/v1/appointments/{id}/reschedule'));
 
     // Treatment Records Group
     $r->get('/treatment-records', $notImplemented('GET /api/v1/treatment-records'));

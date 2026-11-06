@@ -510,48 +510,37 @@ paths:
 
   /appointments:
     get:
-      summary: List Appointments (Planned Phase 9)
-      description: Lists appointments scoped to caller role (Patient, Dentist, Receptionist, Admin).
-      operationId: listAppointments
+      summary: List Patient Appointments
+      description: Lists consultation appointments for the authenticated patient, ordered by scheduled date descending.
+      operationId: listPatientAppointments
       tags:
         - Appointments
       security:
         - CookieAuth: []
-      parameters:
-        - name: status
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: [pending, confirmed, cancelled, rejected, completed, no_show]
-        - name: page
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 1
-        - name: per_page
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 20
       responses:
         '200':
-          description: Filtered paginated appointments.
+          description: List of patient appointments.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Appointment'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
 
     post:
-      summary: Request Dental Appointment (Planned Phase 9)
-      description: Submits a new appointment booking request.
-      operationId: createAppointment
+      summary: Book Dental Appointment
+      description: |
+        Books a new dental appointment for the authenticated patient.
+        Executes within a MySQL InnoDB transaction with dentist row-locking (SELECT ... FOR UPDATE).
+        Server recalculates slot availability using AvailabilityService to guarantee zero double-booking.
+      operationId: bookAppointment
       tags:
         - Appointments
       security:
@@ -564,42 +553,193 @@ paths:
             schema:
               type: object
               required:
-                - service_id
                 - dentist_id
-                - appointment_date
-                - start_time
+                - service_id
+                - start_at
               properties:
+                dentist_id:
+                  type: integer
+                  example: 1
                 service_id:
                   type: integer
                   example: 1
-                dentist_id:
-                  type: integer
-                  example: 2
-                appointment_date:
+                start_at:
                   type: string
-                  format: date
-                  example: '2026-11-15'
-                start_time:
+                  format: date-time
+                  example: '2026-11-10 09:00:00'
+                chief_complaint:
                   type: string
-                  example: '10:00:00'
-                notes:
-                  type: string
-                  example: 'Routine checkup and cleaning.'
+                  maxLength: 500
+                  example: 'Routine dental prophylaxis and checkup.'
       responses:
         '201':
-          description: Appointment requested successfully.
+          description: Appointment requested and placed in PENDING triage queue.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Appointment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
-          description: Slot conflict or double-booking detected.
+          description: Concurrency slot conflict or double-booking detected.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /appointments/{id}:
+    get:
+      summary: Get Patient Appointment Details
+      description: Retrieves complete appointment details including immutable status transition history. Access restricted to owning patient or staff.
+      operationId: getPatientAppointment
+      tags:
+        - Appointments
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Appointment details with status history timeline.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AppointmentWithHistory'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /appointments/{id}/cancel:
+    post:
+      summary: Cancel Appointment
+      description: Cancels a PENDING or CONFIRMED appointment. Releases the booked interval back into clinic availability.
+      operationId: cancelAppointment
+      tags:
+        - Appointments
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  maxLength: 255
+                  example: 'Family emergency schedule conflict.'
+      responses:
+        '200':
+          description: Appointment cancelled successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Invalid lifecycle status transition.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /appointments/{id}/reschedule:
+    post:
+      summary: Reschedule Appointment
+      description: |
+        Executes Option A atomic rescheduling: cancels original appointment with reason and creates
+        a new linked appointment referencing `rescheduled_from_id` within a single MySQL transaction.
+      operationId: rescheduleAppointment
+      tags:
+        - Appointments
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - new_start_at
+              properties:
+                new_start_at:
+                  type: string
+                  format: date-time
+                  example: '2026-11-12 14:00:00'
+                reason:
+                  type: string
+                  maxLength: 255
+                  example: 'Need afternoon consultation slot.'
+      responses:
+        '201':
+          description: Appointment successfully rescheduled. Returns new appointment record.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Appointment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Target slot is no longer available.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
 
   /services:
     get:
@@ -1221,6 +1361,241 @@ paths:
       responses:
         '200':
           description: Patient account status updated.
+
+  /admin/appointments:
+    get:
+      summary: List Admin Appointments with Filters
+      description: Paginated multi-filter query for administrative appointment review and triage.
+      operationId: listAdminAppointments
+      tags:
+        - Appointments Admin
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, CONFIRMED, CANCELLED, REJECTED, COMPLETED]
+        - name: dentist_id
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: date_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 15
+      responses:
+        '200':
+          description: Paginated appointments list with metadata.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Appointment'
+                      meta:
+                        $ref: '#/components/schemas/PaginationMeta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/appointments/{id}:
+    get:
+      summary: Admin Get Appointment Details
+      description: Administrative view of full appointment record including complete transition history.
+      operationId: getAdminAppointment
+      tags:
+        - Appointments Admin
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Full appointment record.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AppointmentWithHistory'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/appointments/{id}/confirm:
+    patch:
+      summary: Confirm Pending Appointment
+      description: Approves a PENDING appointment, re-validating slot availability and locking chair time.
+      operationId: confirmAppointment
+      tags:
+        - Appointments Admin
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Appointment confirmed.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Appointment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Dentist slot conflict detected during confirmation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /admin/appointments/{id}/reject:
+    patch:
+      summary: Reject Pending Appointment
+      description: Declines a PENDING appointment with mandatory recorded reason.
+      operationId: rejectAppointment
+      tags:
+        - Appointments Admin
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - reason
+              properties:
+                reason:
+                  type: string
+                  maxLength: 255
+                  example: 'Practitioner emergency surgery reassignment.'
+      responses:
+        '200':
+          description: Appointment rejected.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Appointment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /admin/appointments/{id}/complete:
+    patch:
+      summary: Mark Appointment Completed
+      description: Advances a CONFIRMED appointment to COMPLETED status upon conclusion of clinical visit.
+      operationId: completeAppointment
+      tags:
+        - Appointments Admin
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Appointment marked completed.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Appointment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
 
   /availability:
     get:
@@ -2090,6 +2465,89 @@ components:
                       type: string
                     available:
                       type: boolean
+
+    Appointment:
+      type: object
+      properties:
+        id:
+          type: integer
+        patient_id:
+          type: integer
+        dentist_id:
+          type: integer
+        service_id:
+          type: integer
+        start_at:
+          type: string
+          format: date-time
+        end_at:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [PENDING, CONFIRMED, CANCELLED, REJECTED, COMPLETED]
+        price_snapshot:
+          type: number
+          format: float
+        duration_snapshot:
+          type: integer
+        chief_complaint:
+          type: string
+          nullable: true
+        cancellation_reason:
+          type: string
+          nullable: true
+        rescheduled_from_id:
+          type: integer
+          nullable: true
+        service_name:
+          type: string
+        dentist_first_name:
+          type: string
+        dentist_last_name:
+          type: string
+        dentist_specialization:
+          type: string
+        dentist_room_number:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AppointmentWithHistory:
+      allOf:
+        - $ref: '#/components/schemas/Appointment'
+        - type: object
+          properties:
+            status_history:
+              type: array
+              items:
+                $ref: '#/components/schemas/AppointmentStatusHistory'
+
+    AppointmentStatusHistory:
+      type: object
+      properties:
+        id:
+          type: integer
+        appointment_id:
+          type: integer
+        from_status:
+          type: string
+          nullable: true
+        to_status:
+          type: string
+        changed_by_user_id:
+          type: integer
+          nullable: true
+        reason:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
 
   responses:
     Unauthorized:

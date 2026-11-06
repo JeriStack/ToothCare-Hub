@@ -66,6 +66,103 @@ class EmailService
         return $this->enqueueEmail($recipientEmail, $recipientName, $subject, $bodyHtml, $bodyText, $userId);
     }
 
+    public function sendAppointmentSubmittedEmail(string $recipientEmail, string $recipientName, array $appointment, ?int $userId = null): bool
+    {
+        $startAt = htmlspecialchars((string) ($appointment['start_at'] ?? ''));
+        $serviceName = htmlspecialchars((string) ($appointment['service_name'] ?? 'Dental Procedure'));
+        $dentistName = htmlspecialchars((string) ($appointment['dentist_name'] ?? 'Assigned Dentist'));
+
+        $subject = 'ToothCare Hub — Appointment Booking Request Submitted';
+        $bodyHtml = "
+            <h2>Appointment Request Received</h2>
+            <p>Dear {$recipientName},</p>
+            <p>Your appointment request for <strong>{$serviceName}</strong> with <strong>Dr. {$dentistName}</strong> on <strong>{$startAt}</strong> has been received.</p>
+            <p>Status: <span style=\"color:#f59e0b;font-weight:bold;\">PENDING REVIEW</span></p>
+            <p>Our clinical staff will review your schedule and confirm your slot shortly.</p>
+        ";
+        $bodyText = "Dear {$recipientName},\n\nYour appointment request for {$serviceName} with Dr. {$dentistName} on {$startAt} has been received and is PENDING review.";
+
+        return $this->enqueueEmail($recipientEmail, $recipientName, $subject, $bodyHtml, $bodyText, $userId);
+    }
+
+    public function sendAppointmentConfirmedEmail(string $recipientEmail, string $recipientName, array $appointment, ?int $userId = null): bool
+    {
+        $startAt = htmlspecialchars((string) ($appointment['start_at'] ?? ''));
+        $serviceName = htmlspecialchars((string) ($appointment['service_name'] ?? 'Dental Procedure'));
+        $dentistName = htmlspecialchars((string) ($appointment['dentist_name'] ?? 'Assigned Dentist'));
+        $chair = htmlspecialchars((string) ($appointment['operatory_chair'] ?? 'Chair 1'));
+
+        $subject = 'ToothCare Hub — Appointment Confirmed!';
+        $bodyHtml = "
+            <h2>Your Appointment is Confirmed</h2>
+            <p>Dear {$recipientName},</p>
+            <p>Great news! Your dental appointment has been accepted and confirmed by the clinic.</p>
+            <ul>
+                <li><strong>Service:</strong> {$serviceName}</li>
+                <li><strong>Dentist:</strong> Dr. {$dentistName}</li>
+                <li><strong>Date & Time:</strong> {$startAt}</li>
+                <li><strong>Operatory:</strong> {$chair}</li>
+            </ul>
+            <p>Please arrive 10 minutes before your scheduled appointment.</p>
+        ";
+        $bodyText = "Dear {$recipientName},\n\nYour appointment for {$serviceName} with Dr. {$dentistName} on {$startAt} ({$chair}) is CONFIRMED. Please arrive 10 minutes early.";
+
+        return $this->enqueueEmail($recipientEmail, $recipientName, $subject, $bodyHtml, $bodyText, $userId);
+    }
+
+    public function sendAppointmentRejectedEmail(string $recipientEmail, string $recipientName, array $appointment, ?string $reason = null, ?int $userId = null): bool
+    {
+        $startAt = htmlspecialchars((string) ($appointment['start_at'] ?? ''));
+        $serviceName = htmlspecialchars((string) ($appointment['service_name'] ?? 'Dental Procedure'));
+        $safeReason = htmlspecialchars($reason ?? 'Schedule conflict or provider unavailability.');
+
+        $subject = 'ToothCare Hub — Appointment Request Declined';
+        $bodyHtml = "
+            <h2>Appointment Request Declined</h2>
+            <p>Dear {$recipientName},</p>
+            <p>We regret to inform you that your appointment request for <strong>{$serviceName}</strong> on <strong>{$startAt}</strong> could not be accepted.</p>
+            <p><strong>Reason:</strong> {$safeReason}</p>
+            <p>Please log in to your patient portal to choose another suitable date and time.</p>
+        ";
+        $bodyText = "Dear {$recipientName},\n\nYour appointment request for {$serviceName} on {$startAt} was declined.\nReason: {$safeReason}\nPlease log in to select an alternative slot.";
+
+        return $this->enqueueEmail($recipientEmail, $recipientName, $subject, $bodyHtml, $bodyText, $userId);
+    }
+
+    public function sendAppointmentCancelledEmail(string $recipientEmail, string $recipientName, array $appointment, ?string $reason = null, ?int $userId = null): bool
+    {
+        $startAt = htmlspecialchars((string) ($appointment['start_at'] ?? ''));
+        $serviceName = htmlspecialchars((string) ($appointment['service_name'] ?? 'Dental Procedure'));
+        $safeReason = htmlspecialchars($reason ?? 'Cancelled by request.');
+
+        $subject = 'ToothCare Hub — Appointment Cancelled';
+        $bodyHtml = "
+            <h2>Appointment Cancelled</h2>
+            <p>Dear {$recipientName},</p>
+            <p>Your appointment for <strong>{$serviceName}</strong> on <strong>{$startAt}</strong> has been cancelled.</p>
+            <p><strong>Reason:</strong> {$safeReason}</p>
+        ";
+        $bodyText = "Dear {$recipientName},\n\nYour appointment for {$serviceName} on {$startAt} has been cancelled.\nReason: {$safeReason}";
+
+        return $this->enqueueEmail($recipientEmail, $recipientName, $subject, $bodyHtml, $bodyText, $userId);
+    }
+
+    public function sendAppointmentCompletedEmail(string $recipientEmail, string $recipientName, array $appointment, ?int $userId = null): bool
+    {
+        $serviceName = htmlspecialchars((string) ($appointment['service_name'] ?? 'Dental Procedure'));
+
+        $subject = 'ToothCare Hub — Treatment Completed';
+        $bodyHtml = "
+            <h2>Thank You for Visiting ToothCare Hub</h2>
+            <p>Dear {$recipientName},</p>
+            <p>Your visit for <strong>{$serviceName}</strong> has been marked as completed.</p>
+            <p>We hope you had a comfortable experience! You can view your visit records and summary in your patient dashboard.</p>
+        ";
+        $bodyText = "Dear {$recipientName},\n\nYour visit for {$serviceName} has been marked as completed. Thank you for choosing ToothCare Hub!";
+
+        return $this->enqueueEmail($recipientEmail, $recipientName, $subject, $bodyHtml, $bodyText, $userId);
+    }
+
     private function enqueueEmail(
         string $recipientEmail,
         string $recipientName,
