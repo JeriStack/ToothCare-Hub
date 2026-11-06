@@ -24,7 +24,7 @@ return [
         'lifetime' => $config->getInt('session_lifetime', 7200),
     ],
     'auth' => [
-        'password_min_length' => $config->getInt('auth_password_min_length', 12),
+        'password_min_length' => $config->getInt('auth_password_min_length', 8),
         'email_verification_token_ttl' => $config->getInt('email_verification_token_ttl', 86400),
         'password_reset_token_ttl' => $config->getInt('password_reset_token_ttl', 1800),
         'rate_limits' => [

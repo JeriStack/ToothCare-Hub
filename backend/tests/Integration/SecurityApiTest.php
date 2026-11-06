@@ -35,7 +35,7 @@ class SecurityApiTest extends TestCase
         RateLimitRepository::resetInMemory();
 
         $config = Config::getInstance();
-        $config->set('auth_password_min_length', 12);
+        $config->set('auth_password_min_length', 8);
         $config->set('auth_login_rate_limit', 5);
         $config->set('auth_login_rate_window', 900);
         $config->set('auth_register_rate_limit', 10);

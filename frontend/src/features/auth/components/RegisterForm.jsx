@@ -377,7 +377,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
             required
             value={formData.password}
             onChange={(e) => handleChange('password', e.target.value)}
-            placeholder="At least 12 characters"
+            placeholder="At least 8 characters"
             aria-invalid={Boolean(fieldErrors.password)}
             className={`w-full pl-12 pr-11 py-2.5 rounded-xl border text-sm text-slate-800 placeholder:text-slate-400 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
               fieldErrors.password ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
@@ -393,48 +393,34 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
           </button>
         </div>
 
-        {/* Live Password Strength Checklist */}
-        <div className="mt-2.5 p-3.5 rounded-2xl bg-[#E6F7F5]/80 border border-[#CCFBF1] space-y-2">
-          <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-[#0D9488]" />
-            <span className="text-xs font-bold text-[#12304A]">Password security requirements:</span>
+        {/* Password Strength Progress Bar & Requirements */}
+        <div className="mt-2 space-y-1.5">
+          <div
+            className="flex gap-1.5"
+            role="progressbar"
+            aria-valuenow={passwordAnalysis.strengthScore}
+            aria-valuemin="0"
+            aria-valuemax="5"
+            aria-label="Password security requirements strength"
+          >
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+                  i < passwordAnalysis.strengthScore
+                    ? 'bg-emerald-600'
+                    : 'bg-slate-200'
+                }`}
+              />
+            ))}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2">
-                <Check className="w-3.5 h-3.5 text-[#0D9488] stroke-[2.5] shrink-0" />
-                <span className={formData.password.length >= 12 ? 'text-[#0D9488] font-semibold' : 'text-slate-700'}>
-                  At least 12 characters
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Check className="w-3.5 h-3.5 text-[#0D9488] stroke-[2.5] shrink-0" />
-                <span className={/[a-z]/.test(formData.password) ? 'text-[#0D9488] font-semibold' : 'text-slate-700'}>
-                  One lowercase letter (a-z)
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Check className="w-3.5 h-3.5 text-[#0D9488] stroke-[2.5] shrink-0" />
-                <span className={/[^A-Za-z0-9]/.test(formData.password) ? 'text-[#0D9488] font-semibold' : 'text-slate-700'}>
-                  One special symbol (!@#$%^&*)
-                </span>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2">
-                <Check className="w-3.5 h-3.5 text-[#0D9488] stroke-[2.5] shrink-0" />
-                <span className={/[A-Z]/.test(formData.password) ? 'text-[#0D9488] font-semibold' : 'text-slate-700'}>
-                  One uppercase letter (A-Z)
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Check className="w-3.5 h-3.5 text-[#0D9488] stroke-[2.5] shrink-0" />
-                <span className={/[0-9]/.test(formData.password) ? 'text-[#0D9488] font-semibold' : 'text-slate-700'}>
-                  One number (0-9)
-                </span>
-              </div>
-            </div>
-          </div>
+          <p
+            className={`text-[11px] text-justify leading-relaxed transition-colors ${
+              passwordAnalysis.isValid ? 'text-emerald-700 font-medium' : 'text-rose-500'
+            }`}
+          >
+            Min. 8 characters, 1 lowercase, 1 uppercase and 1 number. ONLY the following special characters are allowed: !@#$%^&*
+          </p>
         </div>
         {fieldErrors.password && (
           <p className="mt-1 text-xs text-rose-600 font-medium">{fieldErrors.password}</p>

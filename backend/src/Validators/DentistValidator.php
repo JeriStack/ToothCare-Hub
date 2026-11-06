@@ -21,7 +21,7 @@ class DentistValidator
     {
         $errors = [];
         $config = Config::getInstance();
-        $minPasswordLength = $config->getInt('auth_password_min_length', 12);
+        $minPasswordLength = $config->getInt('auth_password_min_length', 8);
 
         // 1. Email
         $rawEmail = isset($data['email']) ? trim((string) $data['email']) : '';

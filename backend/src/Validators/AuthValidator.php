@@ -24,7 +24,7 @@ class AuthValidator
     {
         $errors = [];
         $config = Config::getInstance();
-        $minPasswordLength = $config->getInt('auth_password_min_length', 12);
+        $minPasswordLength = $config->getInt('auth_password_min_length', 8);
 
         // 1. Email
         $rawEmail = isset($data['email']) ? trim((string) $data['email']) : '';
@@ -231,7 +231,7 @@ class AuthValidator
     {
         $errors = [];
         $config = Config::getInstance();
-        $minPasswordLength = $config->getInt('auth_password_min_length', 12);
+        $minPasswordLength = $config->getInt('auth_password_min_length', 8);
 
         $token = isset($data['token']) ? trim((string) $data['token']) : '';
         if ($token === '' || strlen($token) < 16) {
