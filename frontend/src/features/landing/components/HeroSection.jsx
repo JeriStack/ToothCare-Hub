@@ -83,7 +83,7 @@ export function HeroSection({ onBookAppointment, onExploreServices }) {
               <div className="relative rounded-3xl overflow-hidden shadow-2xl shadow-slate-200/80 border border-slate-100 bg-white">
                 <img
                   src="/images/hero-dentist-photo.jpg"
-                  alt="Friendly dentist in clinical coat providing attentive care to a smiling patient in a modern operatory chair"
+                  alt="Dentist consulting with patient and reviewing digital dental X-ray on tablet in modern clinic operatory"
                   className="w-full h-[380px] sm:h-[460px] lg:h-[500px] object-cover object-center"
                   loading="eager"
                 />
