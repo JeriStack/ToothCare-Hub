@@ -633,14 +633,24 @@ function AppContent() {
             <div className="flex items-center gap-2 pl-2 border-l border-white/10">
               <div className="w-8 h-8 rounded-full bg-[#0D9488]/30 border border-[#0D9488] text-teal-200 flex items-center justify-center font-semibold text-xs">
                 {user ? (
-                  `${(user.first_name?.[0] || 'U').toUpperCase()}${(user.last_name?.[0] || '').toUpperCase()}`
+                  `${(user.patient?.first_name?.[0] || user.dentist?.first_name?.[0] || user.first_name?.[0] || user.email?.[0] || 'U').toUpperCase()}${(user.patient?.last_name?.[0] || user.dentist?.last_name?.[0] || user.last_name?.[0] || '').toUpperCase()}`
                 ) : (
                   currentRole === 'PATIENT' ? 'JD' : currentRole === 'ADMIN' ? 'AD' : 'MS'
                 )}
               </div>
               <div className="hidden md:block text-left">
                 <p className="text-xs font-semibold leading-tight text-white">
-                  {user ? `${user.first_name} ${user.last_name}` : (currentRole === 'PATIENT' ? 'Juan Dela Cruz' : currentRole === 'ADMIN' ? 'Clinic Admin' : 'Dr. Maria Santos')}
+                  {user ? (
+                    user.patient
+                      ? `${user.patient.first_name} ${user.patient.last_name}`
+                      : user.dentist
+                      ? `Dr. ${user.dentist.first_name} ${user.dentist.last_name}`
+                      : user.first_name
+                      ? `${user.first_name} ${user.last_name}`
+                      : user.email
+                  ) : (
+                    currentRole === 'PATIENT' ? 'Juan Dela Cruz' : currentRole === 'ADMIN' ? 'Clinic Admin' : 'Dr. Maria Santos'
+                  )}
                 </p>
                 <p className="text-[10px] text-teal-200/70">
                   {user ? (user.role === 'ADMIN' ? 'Administrator' : user.role === 'DENTIST' ? 'Attending Dentist' : 'Patient') : (currentRole === 'PATIENT' ? 'Patient' : currentRole === 'ADMIN' ? 'Receptionist' : 'Attending Dentist')}

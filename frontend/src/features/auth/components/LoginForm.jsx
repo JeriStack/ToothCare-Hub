@@ -176,26 +176,33 @@ export function LoginForm({
         )}
       </button>
 
-      {/* Demo Credentials Quick Fill */}
+      {/* Demo Credentials Quick Fill for all 3 Roles */}
       <div className="pt-3 border-t border-slate-100">
         <p className="text-[11px] text-slate-500 font-medium mb-1.5 flex items-center gap-1">
           <KeyRound className="w-3 h-3 text-slate-400" />
-          <span>Quick Demo Access:</span>
+          <span>Quick Demo Access (Phase 4 / Seed Users):</span>
         </p>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-1.5">
           <button
             type="button"
-            onClick={() => handleQuickFill('maria.santos@example.com', 'StrongP@ssw0rd123!')}
+            onClick={() => handleQuickFill('patient.juan@example.com', 'Password123!')}
             className="py-1.5 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] text-slate-700 font-medium transition-colors text-center"
           >
-            Fill Patient
+            Patient
           </button>
           <button
             type="button"
-            onClick={() => handleQuickFill('admin@toothcare.com', 'AdminP@ss123!')}
+            onClick={() => handleQuickFill('dr.santos@toothcare.local', 'Password123!')}
             className="py-1.5 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] text-slate-700 font-medium transition-colors text-center"
           >
-            Fill Admin
+            Dentist
+          </button>
+          <button
+            type="button"
+            onClick={() => handleQuickFill('admin@toothcare.local', 'Password123!')}
+            className="py-1.5 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] text-slate-700 font-medium transition-colors text-center"
+          >
+            Admin
           </button>
         </div>
       </div>
