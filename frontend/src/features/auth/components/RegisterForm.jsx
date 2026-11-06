@@ -35,7 +35,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
     email: '',
     phone: '',
     dateOfBirth: '',
-    gender: 'PREFER_NOT_TO_SAY',
+    gender: '',
     address: '',
     emergencyContactName: '',
     emergencyContactPhone: '',
@@ -111,7 +111,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
       email: formData.email.trim(),
       phone: formData.phone.trim(),
       date_of_birth: formData.dateOfBirth,
-      gender: formData.gender,
+      gender: formData.gender || 'PREFER_NOT_TO_SAY',
       password: formData.password,
       ...(formData.address?.trim() ? { address: formData.address.trim() } : {}),
       ...(formData.emergencyContactName?.trim() ? { emergency_contact_name: formData.emergencyContactName.trim() } : {}),
@@ -367,10 +367,11 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
               onChange={(e) => handleChange('gender', e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-sm text-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] hover:border-slate-400 appearance-none pr-10"
             >
-              <option value="PREFER_NOT_TO_SAY">Prefer not to say</option>
+              <option value="">Select</option>
               <option value="FEMALE">Female</option>
               <option value="MALE">Male</option>
               <option value="OTHER">Other</option>
+              <option value="PREFER_NOT_TO_SAY">Prefer not to say</option>
             </select>
             <ChevronDown className="w-5 h-5 text-[#12304A] absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none stroke-[2.2]" />
           </div>
@@ -462,7 +463,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
                 value={formData.medicalAlerts}
                 onChange={(e) => handleChange('medicalAlerts', e.target.value)}
                 placeholder="List any drug allergies (e.g. Penicillin), medical conditions (hypertension, diabetes), bleeding disorders, or current medications."
-                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-800 bg-white placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] resize-none"
+                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-800 bg-white placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] resize-none text-justify placeholder:text-justify"
               />
             </div>
           </div>
