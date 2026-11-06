@@ -138,6 +138,10 @@ $router->group('/api/v1', function (Router $r): void {
     $r->post('/appointments/{id}/cancel', [AppointmentController::class, 'cancel'], $patientAuth);
     $r->post('/appointments/{id}/reschedule', [AppointmentController::class, 'reschedule'], $patientAuth);
 
+    // Dentist Scoped Appointments
+    $dentistAuth = [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN'])];
+    $r->get('/dentist/appointments', [AppointmentController::class, 'dentistIndex'], $dentistAuth);
+
     // 8. Future Phases - Structured Placeholders
     $notImplemented = fn (string $name) => function (Request $req) use ($name) {
         throw HttpException::notImplemented("Endpoint '{$name}' is planned for Phase 11+ implementation.");

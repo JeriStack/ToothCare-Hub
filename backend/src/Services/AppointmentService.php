@@ -891,4 +891,43 @@ class AppointmentService
     {
         return $this->appointmentRepo->findAllFiltered($filters, $page, $perPage);
     }
+
+    /**
+     * List appointments assigned to the authenticated dentist.
+     *
+     * @param int $userId
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    public function listDentistAppointments(int $userId, array $params = []): array
+    {
+        $dentist = $this->dentistRepo->findByUserId($userId);
+        if (!$dentist) {
+            return [
+                'items' => [],
+                'meta' => [
+                    'total' => 0,
+                    'page' => 1,
+                    'per_page' => 20,
+                    'last_page' => 1,
+                ],
+            ];
+        }
+
+        $from = isset($params['from']) && is_string($params['from']) ? $params['from'] : null;
+        $to = isset($params['to']) && is_string($params['to']) ? $params['to'] : null;
+        $status = isset($params['status']) && is_string($params['status']) ? strtoupper($params['status']) : null;
+
+        $items = $this->appointmentRepo->findByDentist((int) $dentist['id'], $from, $to, $status);
+
+        return [
+            'items' => $items,
+            'meta' => [
+                'total' => count($items),
+                'page' => 1,
+                'per_page' => count($items) ?: 20,
+                'last_page' => 1,
+            ],
+        ];
+    }
 }

@@ -7,8 +7,11 @@ import {
   CheckCircle2,
   Stethoscope,
   RefreshCw,
+  FileText,
+  AlertCircle,
 } from 'lucide-react';
 import { schedulesApi } from '../schedules/api';
+import { appointmentsApi } from '../appointments/api';
 
 const DAYS_OF_WEEK = [
   { id: 1, name: 'Monday' },
@@ -23,6 +26,7 @@ const DAYS_OF_WEEK = [
 export function DentistDashboard({ dentistId = 1, onNavigateTab }) {
   const [shifts, setShifts] = useState([]);
   const [timeOffList, setTimeOffList] = useState([]);
+  const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,11 +36,13 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab }) {
     Promise.all([
       schedulesApi.getDentistSchedules(dentistId).catch(() => []),
       schedulesApi.getDentistTimeOff(dentistId).catch(() => []),
+      appointmentsApi.listDentist().catch(() => []),
     ])
-      .then(([s, t]) => {
+      .then(([s, t, a]) => {
         if (!isMounted) return;
         setShifts(s || []);
         setTimeOffList(t || []);
+        setAppointments(Array.isArray(a) ? a : a?.items || []);
       })
       .finally(() => {
         if (isMounted) setLoading(false);
@@ -51,9 +57,9 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab }) {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-[#12304A]">Today's Clinical Practice</h2>
+          <h2 className="text-xl font-bold text-[#12304A]">Today&apos;s Clinical Practice</h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Your assigned weekly chair shifts, working hours, and upcoming approved leaves.
+            Your assigned weekly chair shifts, working hours, and patient appointments.
           </p>
         </div>
       </div>
@@ -133,6 +139,55 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab }) {
                     <p className="text-[11px] text-slate-500 mt-0.5">
                       📅 {t.start_at} → {t.end_at}
                     </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Assigned Appointments Card */}
+          <div className="md:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-teal-600" />
+                <h3 className="text-sm font-bold text-[#12304A]">Assigned Patient Appointments</h3>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700">
+                {appointments.length} assigned
+              </span>
+            </div>
+
+            {appointments.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl">
+                No patient appointments currently assigned to your practice.
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {appointments.map((appt) => (
+                  <div
+                    key={appt.id}
+                    className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-800">
+                          {appt.patient_first_name
+                            ? `${appt.patient_first_name} ${appt.patient_last_name}`
+                            : `Patient #${appt.patient_id}`}
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full font-medium">
+                          {appt.status}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        {appt.service_name || 'Consultation'} • 📅 {appt.start_at}
+                      </p>
+                    </div>
+                    {appt.chief_complaint && (
+                      <p className="text-xs text-slate-600 italic bg-slate-50 px-2.5 py-1 rounded max-w-xs truncate">
+                        &quot;{appt.chief_complaint}&quot;
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>

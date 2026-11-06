@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, AlertCircle, Loader2, KeyRound } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { validateEmail } from '../schemas/authSchema';
 
@@ -37,13 +37,6 @@ export function LoginForm({
     } else {
       setFormError(res.error || 'Invalid email or password. Please verify your credentials.');
     }
-  };
-
-  const handleQuickFill = (demoEmail, demoPassword) => {
-    setEmail(demoEmail);
-    setPassword(demoPassword);
-    setFormError(null);
-    setFieldErrors({});
   };
 
   return (
@@ -175,37 +168,6 @@ export function LoginForm({
           <span>Sign In</span>
         )}
       </button>
-
-      {/* Demo Credentials Quick Fill for all 3 Roles */}
-      <div className="pt-3 border-t border-slate-100">
-        <p className="text-[11px] text-slate-500 font-medium mb-1.5 flex items-center gap-1">
-          <KeyRound className="w-3 h-3 text-slate-400" />
-          <span>Quick Demo Access (Phase 4 / Seed Users):</span>
-        </p>
-        <div className="grid grid-cols-3 gap-1.5">
-          <button
-            type="button"
-            onClick={() => handleQuickFill('patient.juan@example.com', 'Password123!')}
-            className="py-1.5 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] text-slate-700 font-medium transition-colors text-center"
-          >
-            Patient
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuickFill('dr.santos@toothcare.local', 'Password123!')}
-            className="py-1.5 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] text-slate-700 font-medium transition-colors text-center"
-          >
-            Dentist
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuickFill('admin@toothcare.local', 'Password123!')}
-            className="py-1.5 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] text-slate-700 font-medium transition-colors text-center"
-          >
-            Admin
-          </button>
-        </div>
-      </div>
 
       {/* Link to Register */}
       <p className="text-center text-xs text-slate-600 pt-2">

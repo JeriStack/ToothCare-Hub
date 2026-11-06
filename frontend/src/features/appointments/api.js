@@ -22,6 +22,14 @@ export const appointmentsApi = {
   },
 
   /**
+   * List assigned appointments for the authenticated dentist
+   */
+  async listDentist(params = {}) {
+    const res = await apiClient.get('/dentist/appointments', { params });
+    return res.data?.data?.items || res.data?.data || [];
+  },
+
+  /**
    * Get single appointment details (with status history)
    */
   async getById(id) {

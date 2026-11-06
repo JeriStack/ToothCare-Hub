@@ -356,4 +356,33 @@ class AppointmentApiTest extends TestCase
 
         $this->assertSame(403, $res->getStatusCode());
     }
+
+    public function testDentistCanListAssignedAppointments(): void
+    {
+        $bookingDate = $this->getNextValidWeekdayDate() . ' 10:00:00';
+        $reqCreate = $this->makeJsonRequest('POST', '/api/v1/appointments', [
+            'dentist_id' => $this->dentistId,
+            'service_id' => $this->serviceId,
+            'start_at' => $bookingDate,
+        ], $this->patientUser1);
+        $resCreate = $this->app->handle($reqCreate);
+        $this->assertSame(201, $resCreate->getStatusCode());
+
+        // Dentist accesses assigned appointments
+        $reqDentist = $this->makeJsonRequest('GET', '/api/v1/dentist/appointments', null, $this->dentistUser);
+        $resDentist = $this->app->handle($reqDentist);
+
+        $this->assertSame(200, $resDentist->getStatusCode());
+        $body = json_decode($resDentist->getBody(), true);
+        $this->assertNotEmpty($body['data']['items']);
+        $this->assertSame($this->dentistId, (int) $body['data']['items'][0]['dentist_id']);
+    }
+
+    public function testPatientCannotAccessDentistAppointments(): void
+    {
+        $req = $this->makeJsonRequest('GET', '/api/v1/dentist/appointments', null, $this->patientUser1);
+        $res = $this->app->handle($req);
+
+        $this->assertSame(403, $res->getStatusCode());
+    }
 }

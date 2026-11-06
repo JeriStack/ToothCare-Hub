@@ -36,7 +36,8 @@
         "test:unit": "phpunit --testsuite Unit",
         "test:integration": "phpunit --testsuite Integration",
         "openapi": "openapi src -o docs/openapi.yaml",
-        "openapi:validate": "php scripts/validate-openapi.php"
+        "openapi:validate": "php scripts/validate-openapi.php",
+        "db:seed": "php scripts/seed.php"
     },
     "minimum-stability": "stable",
     "prefer-stable": true

@@ -136,6 +136,23 @@ class AppointmentController
     }
 
     /**
+     * GET /api/v1/dentist/appointments
+     * List appointments assigned to the authenticated dentist.
+     */
+    public function dentistIndex(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required to view dentist appointments.');
+        }
+
+        $queryParams = $request->getQueryParams();
+        $result = $this->appointmentService->listDentistAppointments((int) $user['id'], $queryParams);
+
+        return Response::success($result);
+    }
+
+    /**
      * GET /api/v1/admin/appointments
      * Administrative filterable & paginated appointments overview.
      */
