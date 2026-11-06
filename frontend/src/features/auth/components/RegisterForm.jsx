@@ -1,5 +1,19 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, AlertCircle, CheckCircle2, Loader2, Check, X } from 'lucide-react';
+import {
+  Eye,
+  EyeOff,
+  AlertCircle,
+  CheckCircle2,
+  Loader2,
+  Check,
+  User,
+  Mail,
+  Phone,
+  Calendar,
+  Lock,
+  ChevronDown,
+  Shield,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import {
   PASSWORD_RULES,
@@ -179,44 +193,54 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
       {/* Name Fields (First & Last) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label htmlFor="reg-first-name" className="block text-xs font-semibold text-slate-700 mb-1">
-            First name *
+          <label htmlFor="reg-first-name" className="block text-xs font-bold text-[#12304A] mb-1.5">
+            First name
           </label>
-          <input
-            id="reg-first-name"
-            name="firstName"
-            type="text"
-            required
-            value={formData.firstName}
-            onChange={(e) => handleChange('firstName', e.target.value)}
-            placeholder="e.g. Maria"
-            aria-invalid={Boolean(fieldErrors.firstName)}
-            className={`w-full px-3 py-2 rounded-xl border text-sm text-slate-800 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
-              fieldErrors.firstName ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
-            }`}
-          />
+          <div className="relative">
+            <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] flex items-center justify-center text-[#0D9488] pointer-events-none">
+              <User className="w-4 h-4 stroke-[2.2]" />
+            </div>
+            <input
+              id="reg-first-name"
+              name="firstName"
+              type="text"
+              required
+              value={formData.firstName}
+              onChange={(e) => handleChange('firstName', e.target.value)}
+              placeholder="e.g. Maria"
+              aria-invalid={Boolean(fieldErrors.firstName)}
+              className={`w-full pl-12 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 placeholder:text-slate-400 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
+                fieldErrors.firstName ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
+              }`}
+            />
+          </div>
           {fieldErrors.firstName && (
             <p className="mt-1 text-xs text-rose-600 font-medium">{fieldErrors.firstName}</p>
           )}
         </div>
 
         <div>
-          <label htmlFor="reg-last-name" className="block text-xs font-semibold text-slate-700 mb-1">
-            Last name *
+          <label htmlFor="reg-last-name" className="block text-xs font-bold text-[#12304A] mb-1.5">
+            Last name
           </label>
-          <input
-            id="reg-last-name"
-            name="lastName"
-            type="text"
-            required
-            value={formData.lastName}
-            onChange={(e) => handleChange('lastName', e.target.value)}
-            placeholder="e.g. Santos"
-            aria-invalid={Boolean(fieldErrors.lastName)}
-            className={`w-full px-3 py-2 rounded-xl border text-sm text-slate-800 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
-              fieldErrors.lastName ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
-            }`}
-          />
+          <div className="relative">
+            <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] flex items-center justify-center text-[#0D9488] pointer-events-none">
+              <User className="w-4 h-4 stroke-[2.2]" />
+            </div>
+            <input
+              id="reg-last-name"
+              name="lastName"
+              type="text"
+              required
+              value={formData.lastName}
+              onChange={(e) => handleChange('lastName', e.target.value)}
+              placeholder="e.g. Santos"
+              aria-invalid={Boolean(fieldErrors.lastName)}
+              className={`w-full pl-12 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 placeholder:text-slate-400 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
+                fieldErrors.lastName ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
+              }`}
+            />
+          </div>
           {fieldErrors.lastName && (
             <p className="mt-1 text-xs text-rose-600 font-medium">{fieldErrors.lastName}</p>
           )}
@@ -225,23 +249,28 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
 
       {/* Email Address */}
       <div>
-        <label htmlFor="reg-email" className="block text-xs font-semibold text-slate-700 mb-1">
-          Email address *
+        <label htmlFor="reg-email" className="block text-xs font-bold text-[#12304A] mb-1.5">
+          Email address
         </label>
-        <input
-          id="reg-email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-          value={formData.email}
-          onChange={(e) => handleChange('email', e.target.value)}
-          placeholder="maria.santos@example.com"
-          aria-invalid={Boolean(fieldErrors.email)}
-          className={`w-full px-3 py-2 rounded-xl border text-sm text-slate-800 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
-            fieldErrors.email ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
-          }`}
-        />
+        <div className="relative">
+          <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] flex items-center justify-center text-[#0D9488] pointer-events-none">
+            <Mail className="w-4 h-4 stroke-[2.2]" />
+          </div>
+          <input
+            id="reg-email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            required
+            value={formData.email}
+            onChange={(e) => handleChange('email', e.target.value)}
+            placeholder="maria.santos@example.com"
+            aria-invalid={Boolean(fieldErrors.email)}
+            className={`w-full pl-12 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 placeholder:text-slate-400 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
+              fieldErrors.email ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
+            }`}
+          />
+        </div>
         {fieldErrors.email && (
           <p className="mt-1 text-xs text-rose-600 font-medium">{fieldErrors.email}</p>
         )}
@@ -249,23 +278,28 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
 
       {/* Phone Number */}
       <div>
-        <label htmlFor="reg-phone" className="block text-xs font-semibold text-slate-700 mb-1">
-          Phone number *
+        <label htmlFor="reg-phone" className="block text-xs font-bold text-[#12304A] mb-1.5">
+          Phone number
         </label>
-        <input
-          id="reg-phone"
-          name="phone"
-          type="tel"
-          autoComplete="tel"
-          required
-          value={formData.phone}
-          onChange={(e) => handleChange('phone', e.target.value)}
-          placeholder="+63 917 123 4567"
-          aria-invalid={Boolean(fieldErrors.phone)}
-          className={`w-full px-3 py-2 rounded-xl border text-sm text-slate-800 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
-            fieldErrors.phone ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
-          }`}
-        />
+        <div className="relative">
+          <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] flex items-center justify-center text-[#0D9488] pointer-events-none">
+            <Phone className="w-4 h-4 stroke-[2.2]" />
+          </div>
+          <input
+            id="reg-phone"
+            name="phone"
+            type="tel"
+            autoComplete="tel"
+            required
+            value={formData.phone}
+            onChange={(e) => handleChange('phone', e.target.value)}
+            placeholder="+63 917 123 4567"
+            aria-invalid={Boolean(fieldErrors.phone)}
+            className={`w-full pl-12 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 placeholder:text-slate-400 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
+              fieldErrors.phone ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
+            }`}
+          />
+        </div>
         {fieldErrors.phone && (
           <p className="mt-1 text-xs text-rose-600 font-medium">{fieldErrors.phone}</p>
         )}
@@ -274,51 +308,67 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
       {/* DOB and Gender */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label htmlFor="reg-dob" className="block text-xs font-semibold text-slate-700 mb-1">
-            Date of birth *
+          <label htmlFor="reg-dob" className="block text-xs font-bold text-[#12304A] mb-1.5">
+            Date of birth
           </label>
-          <input
-            id="reg-dob"
-            name="dateOfBirth"
-            type="date"
-            required
-            value={formData.dateOfBirth}
-            onChange={(e) => handleChange('dateOfBirth', e.target.value)}
-            aria-invalid={Boolean(fieldErrors.dateOfBirth)}
-            className={`w-full px-3 py-2 rounded-xl border text-sm text-slate-800 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
-              fieldErrors.dateOfBirth ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
-            }`}
-          />
+          <div className="relative">
+            <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] flex items-center justify-center text-[#0D9488] pointer-events-none">
+              <Calendar className="w-4 h-4 stroke-[2.2]" />
+            </div>
+            <input
+              id="reg-dob"
+              name="dateOfBirth"
+              type={formData.dateOfBirth ? 'date' : 'text'}
+              onFocus={(e) => (e.target.type = 'date')}
+              onBlur={(e) => {
+                if (!e.target.value) e.target.type = 'text';
+              }}
+              required
+              value={formData.dateOfBirth}
+              onChange={(e) => handleChange('dateOfBirth', e.target.value)}
+              placeholder="dd/mm/yyyy"
+              aria-invalid={Boolean(fieldErrors.dateOfBirth)}
+              className={`w-full pl-12 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 placeholder:text-slate-400 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer ${
+                fieldErrors.dateOfBirth ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
+              }`}
+            />
+          </div>
           {fieldErrors.dateOfBirth && (
             <p className="mt-1 text-xs text-rose-600 font-medium">{fieldErrors.dateOfBirth}</p>
           )}
         </div>
 
         <div>
-          <label htmlFor="reg-gender" className="block text-xs font-semibold text-slate-700 mb-1">
+          <label htmlFor="reg-gender" className="block text-xs font-bold text-[#12304A] mb-1.5">
             Gender
           </label>
-          <select
-            id="reg-gender"
-            name="gender"
-            value={formData.gender}
-            onChange={(e) => handleChange('gender', e.target.value)}
-            className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm text-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
-          >
-            <option value="PREFER_NOT_TO_SAY">Prefer not to say</option>
-            <option value="FEMALE">Female</option>
-            <option value="MALE">Male</option>
-            <option value="OTHER">Other</option>
-          </select>
+          <div className="relative">
+            <select
+              id="reg-gender"
+              name="gender"
+              value={formData.gender}
+              onChange={(e) => handleChange('gender', e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-sm text-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] hover:border-slate-400 appearance-none pr-10"
+            >
+              <option value="PREFER_NOT_TO_SAY">Select</option>
+              <option value="FEMALE">Female</option>
+              <option value="MALE">Male</option>
+              <option value="OTHER">Other</option>
+            </select>
+            <ChevronDown className="w-5 h-5 text-[#12304A] absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none stroke-[2.2]" />
+          </div>
         </div>
       </div>
 
       {/* Password Fields */}
       <div>
-        <label htmlFor="reg-password" className="block text-xs font-semibold text-slate-700 mb-1">
-          Password *
+        <label htmlFor="reg-password" className="block text-xs font-bold text-[#12304A] mb-1.5">
+          Password
         </label>
         <div className="relative">
+          <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] flex items-center justify-center text-[#0D9488] pointer-events-none">
+            <Lock className="w-4 h-4 stroke-[2.2]" />
+          </div>
           <input
             id="reg-password"
             name="password"
@@ -329,7 +379,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
             onChange={(e) => handleChange('password', e.target.value)}
             placeholder="At least 12 characters"
             aria-invalid={Boolean(fieldErrors.password)}
-            className={`w-full pl-3 pr-10 py-2 rounded-xl border text-sm text-slate-800 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
+            className={`w-full pl-12 pr-11 py-2.5 rounded-xl border text-sm text-slate-800 placeholder:text-slate-400 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
               fieldErrors.password ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
             }`}
           />
@@ -337,41 +387,69 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
             type="button"
             onClick={() => setShowPassword(!showPassword)}
             aria-label={showPassword ? 'Hide password' : 'Show password'}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded"
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded p-0.5"
           >
-            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            {showPassword ? <EyeOff className="w-4 h-4 stroke-[2]" /> : <Eye className="w-4 h-4 stroke-[2]" />}
           </button>
         </div>
 
         {/* Live Password Strength Checklist */}
-        <div className="mt-2 p-2.5 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
-          <p className="text-[11px] font-semibold text-slate-600 mb-1">Password security requirements:</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px]">
-            {PASSWORD_RULES.map((rule) => {
-              const passed = rule.test(formData.password);
-              return (
-                <div key={rule.id} className="flex items-center gap-1.5">
-                  {passed ? (
-                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  ) : (
-                    <X className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  )}
-                  <span className={passed ? 'text-emerald-700 font-medium' : 'text-slate-500'}>
-                    {rule.label}
-                  </span>
-                </div>
-              );
-            })}
+        <div className="mt-2.5 p-3.5 rounded-2xl bg-[#E6F7F5]/80 border border-[#CCFBF1] space-y-2">
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4 text-[#0D9488]" />
+            <span className="text-xs font-bold text-[#12304A]">Password security requirements:</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Check className="w-3.5 h-3.5 text-[#0D9488] stroke-[2.5] shrink-0" />
+                <span className={formData.password.length >= 12 ? 'text-[#0D9488] font-semibold' : 'text-slate-700'}>
+                  At least 12 characters
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Check className="w-3.5 h-3.5 text-[#0D9488] stroke-[2.5] shrink-0" />
+                <span className={/[a-z]/.test(formData.password) ? 'text-[#0D9488] font-semibold' : 'text-slate-700'}>
+                  One lowercase letter (a-z)
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Check className="w-3.5 h-3.5 text-[#0D9488] stroke-[2.5] shrink-0" />
+                <span className={/[^A-Za-z0-9]/.test(formData.password) ? 'text-[#0D9488] font-semibold' : 'text-slate-700'}>
+                  One special symbol (!@#$%^&*)
+                </span>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Check className="w-3.5 h-3.5 text-[#0D9488] stroke-[2.5] shrink-0" />
+                <span className={/[A-Z]/.test(formData.password) ? 'text-[#0D9488] font-semibold' : 'text-slate-700'}>
+                  One uppercase letter (A-Z)
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Check className="w-3.5 h-3.5 text-[#0D9488] stroke-[2.5] shrink-0" />
+                <span className={/[0-9]/.test(formData.password) ? 'text-[#0D9488] font-semibold' : 'text-slate-700'}>
+                  One number (0-9)
+                </span>
+              </div>
+            </div>
           </div>
         </div>
+        {fieldErrors.password && (
+          <p className="mt-1 text-xs text-rose-600 font-medium">{fieldErrors.password}</p>
+        )}
       </div>
 
       {/* Confirm Password */}
       <div>
-        <label htmlFor="reg-confirm-password" className="block text-xs font-semibold text-slate-700 mb-1">
-          Confirm password *
+        <label htmlFor="reg-confirm-password" className="block text-xs font-bold text-[#12304A] mb-1.5">
+          Confirm password
         </label>
         <div className="relative">
+          <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] flex items-center justify-center text-[#0D9488] pointer-events-none">
+            <Lock className="w-4 h-4 stroke-[2.2]" />
+          </div>
           <input
             id="reg-confirm-password"
             name="confirmPassword"
@@ -382,7 +460,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
             onChange={(e) => handleChange('confirmPassword', e.target.value)}
             placeholder="Repeat your password"
             aria-invalid={Boolean(fieldErrors.confirmPassword)}
-            className={`w-full pl-3 pr-10 py-2 rounded-xl border text-sm text-slate-800 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
+            className={`w-full pl-12 pr-11 py-2.5 rounded-xl border text-sm text-slate-800 placeholder:text-slate-400 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
               fieldErrors.confirmPassword ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
             }`}
           />
@@ -390,9 +468,9 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
             type="button"
             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
             aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded"
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded p-0.5"
           >
-            {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            {showConfirmPassword ? <EyeOff className="w-4 h-4 stroke-[2]" /> : <Eye className="w-4 h-4 stroke-[2]" />}
           </button>
         </div>
         {fieldErrors.confirmPassword && (
