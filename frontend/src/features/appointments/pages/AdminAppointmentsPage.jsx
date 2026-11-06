@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { appointmentsApi } from '../api';
 import { dentistsApi } from '../../dentists/api';
+import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
 import { STATUS_STYLES } from '../components/AppointmentCard';
 
 export function AdminAppointmentsPage() {
@@ -399,12 +400,7 @@ export function AdminAppointmentsPage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
-                    <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-[#0D9488]" />
-                    Loading appointment records...
-                  </td>
-                </tr>
+                <TableSkeleton.Rows count={6} columns={7} />
               ) : appointments.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-500">

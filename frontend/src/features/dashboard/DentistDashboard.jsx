@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { schedulesApi } from '../schedules/api';
 import { appointmentsApi } from '../appointments/api';
+import { DashboardSkeleton } from '../../components/skeletons/DashboardSkeleton';
 
 const DAYS_OF_WEEK = [
   { id: 1, name: 'Monday' },
@@ -65,10 +66,7 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab }) {
       </div>
 
       {loading ? (
-        <div className="p-8 text-center bg-white rounded-2xl border border-slate-200">
-          <RefreshCw className="w-5 h-5 text-teal-600 animate-spin mx-auto mb-2" />
-          <p className="text-xs text-slate-500">Loading your schedule and shifts...</p>
-        </div>
+        <DashboardSkeleton role="dentist" />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Shifts Card */}

@@ -18,6 +18,7 @@ import {
   UserCheck
 } from 'lucide-react';
 import { dentistsApi } from '../api';
+import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
 
 const SPECIALIZATION_OPTIONS = [
   'General Dentistry',
@@ -348,13 +349,14 @@ export function DentistListPage() {
       </div>
 
       {/* Table / State Views */}
+      {loading && dentists.length === 0 ? (
+        <TableSkeleton
+          rows={6}
+          columns={['w-12', 'w-48', 'w-36', 'w-28', 'w-24', 'w-24', 'w-28']}
+        />
+      ) : (
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        {loading && dentists.length === 0 ? (
-          <div className="p-12 text-center">
-            <RefreshCw className="w-8 h-8 text-teal-600 animate-spin mx-auto mb-3" />
-            <p className="text-slate-500 text-sm">Loading practitioner roster...</p>
-          </div>
-        ) : error ? (
+        {error ? (
           <div className="p-12 text-center">
             <AlertTriangle className="w-8 h-8 text-rose-500 mx-auto mb-3" />
             <p className="text-slate-800 font-medium">{error}</p>
@@ -516,6 +518,7 @@ export function DentistListPage() {
           </div>
         )}
       </div>
+      )}
 
       {/* Dentist Modal (Create / Edit) */}
       {isModalOpen && (

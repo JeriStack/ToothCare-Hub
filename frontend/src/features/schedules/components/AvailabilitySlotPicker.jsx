@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
 import { schedulesApi } from '../api';
+import { BookingStepSkeleton } from '../../../components/skeletons/BookingStepSkeleton';
 
 /**
  * Interactive Availability Slot Picker
@@ -80,12 +81,7 @@ export function AvailabilitySlotPicker({
   }
 
   if (loading) {
-    return (
-      <div className="p-6 rounded-xl border border-slate-200 text-center space-y-2">
-        <RefreshCw className="w-5 h-5 text-teal-600 animate-spin mx-auto" />
-        <p className="text-xs text-slate-500">Calculating real-time appointment availability...</p>
-      </div>
-    );
+    return <BookingStepSkeleton.Slots count={8} />;
   }
 
   if (error) {

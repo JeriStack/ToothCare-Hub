@@ -19,6 +19,7 @@ import {
   FileText
 } from 'lucide-react';
 import { patientsApi } from '../api';
+import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
 
 const GENDER_OPTIONS = [
   { value: 'MALE', label: 'Male' },
@@ -286,13 +287,14 @@ export function PatientListPage() {
       </div>
 
       {/* Main Table / State Views */}
+      {loading && patients.length === 0 ? (
+        <TableSkeleton
+          rows={8}
+          columns={['w-12', 'w-48', 'w-28', 'w-32', 'w-28', 'w-20', 'w-24']}
+        />
+      ) : (
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        {loading && patients.length === 0 ? (
-          <div className="p-12 text-center">
-            <RefreshCw className="w-8 h-8 text-teal-600 animate-spin mx-auto mb-3" />
-            <p className="text-slate-500 text-sm">Loading patient records...</p>
-          </div>
-        ) : error ? (
+        {error ? (
           <div className="p-12 text-center">
             <AlertTriangle className="w-8 h-8 text-rose-500 mx-auto mb-3" />
             <p className="text-slate-800 font-medium">{error}</p>
@@ -449,6 +451,7 @@ export function PatientListPage() {
           </div>
         )}
       </div>
+      )}
 
       {/* Patient View & Edit Modal */}
       {isModalOpen && selectedPatient && (

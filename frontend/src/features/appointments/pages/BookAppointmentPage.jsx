@@ -17,6 +17,7 @@ import { servicesApi } from '../../services/api';
 import { dentistsApi } from '../../dentists/api';
 import { appointmentsApi } from '../api';
 import { AvailabilitySlotPicker } from '../../schedules/components/AvailabilitySlotPicker';
+import { BookingStepSkeleton } from '../../../components/skeletons/BookingStepSkeleton';
 
 export function BookAppointmentPage({
   initialService = null,
@@ -173,10 +174,28 @@ export function BookAppointmentPage({
 
   if (loadingCatalogs) {
     return (
-      <div className="max-w-4xl mx-auto bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm">
-        <RefreshCw className="w-8 h-8 text-[#0D9488] animate-spin mx-auto mb-3" />
-        <h3 className="text-base font-semibold text-slate-800">Loading Clinic Catalog...</h3>
-        <p className="text-xs text-slate-500 mt-1">Retrieving licensed dentists and active dental procedures.</p>
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-slate-100">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Book Dental Appointment</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Secure patient scheduling with real-time slot reservation and clinic validation.
+              </p>
+            </div>
+            <span className="text-xs font-semibold px-3 py-1 rounded-full bg-[#CCFBF1] text-[#0F766E] self-start sm:self-auto">
+              Step 1 of 4: Service
+            </span>
+          </div>
+          <div className="pt-4">
+            <div className="w-full overflow-hidden rounded-full bg-slate-100 h-1.5">
+              <div className="h-full bg-[#0D9488]" style={{ width: '25%' }} />
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+          <BookingStepSkeleton step={1} />
+        </div>
       </div>
     );
   }

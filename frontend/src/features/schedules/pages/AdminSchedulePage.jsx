@@ -21,6 +21,7 @@ import { schedulesApi } from '../api';
 import { dentistsApi } from '../../dentists/api';
 import { servicesApi } from '../../services/api';
 import { AvailabilitySlotPicker } from '../components/AvailabilitySlotPicker';
+import { ScheduleCalendarSkeleton } from '../../../components/skeletons/ScheduleCalendarSkeleton';
 
 const DAYS_OF_WEEK = [
   { id: 1, name: 'Monday' },
@@ -34,6 +35,7 @@ const DAYS_OF_WEEK = [
 
 export function AdminSchedulePage() {
   const [activeTab, setActiveTab] = useState('clinic'); // 'clinic', 'shifts', 'timeoff', 'tester'
+  const [initialLoading, setInitialLoading] = useState(true);
 
   // Common data
   const [dentists, setDentists] = useState([]);
@@ -89,23 +91,33 @@ export function AdminSchedulePage() {
 
   // Initial Load: Dentists and Services
   useEffect(() => {
-    dentistsApi.getAdminDentists({ per_page: 50 }).then((res) => {
-      const list = res.data || [];
-      setDentists(list);
-      if (list.length > 0 && !selectedDentistId) {
-        setSelectedDentistId(list[0].id);
-      }
-    }).catch(() => {});
+    Promise.all([
+      dentistsApi
+        .getAdminDentists({ per_page: 50 })
+        .then((res) => {
+          const list = res.data || [];
+          setDentists(list);
+          if (list.length > 0 && !selectedDentistId) {
+            setSelectedDentistId(list[0].id);
+          }
+        })
+        .catch(() => {}),
 
-    servicesApi.getPublicServices().then((res) => {
-      const list = res || [];
-      setServices(list);
-      if (list.length > 0 && !testServiceId) {
-        setTestServiceId(list[0].id);
-      }
-    }).catch(() => {});
+      servicesApi
+        .getPublicServices()
+        .then((res) => {
+          const list = res || [];
+          setServices(list);
+          if (list.length > 0 && !testServiceId) {
+            setTestServiceId(list[0].id);
+          }
+        })
+        .catch(() => {}),
 
-    loadClinicData();
+      loadClinicData(),
+    ]).finally(() => {
+      setInitialLoading(false);
+    });
   }, []);
 
   // Reload shifts or time-off when selected dentist changes
@@ -351,6 +363,9 @@ export function AdminSchedulePage() {
       {/* TAB 1: CLINIC OPERATING HOURS & FACILITY CLOSURES */}
       {/* ========================================================= */}
       {activeTab === 'clinic' && (
+        initialLoading ? (
+          <ScheduleCalendarSkeleton view="hours" />
+        ) : (
         <div className="space-y-6">
           {/* Weekly Hours Card */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
@@ -482,12 +497,16 @@ export function AdminSchedulePage() {
             )}
           </div>
         </div>
+        )
       )}
 
       {/* ========================================================= */}
       {/* TAB 2: DENTIST WEEKLY SHIFT PLANNER */}
       {/* ========================================================= */}
       {activeTab === 'shifts' && (
+        initialLoading ? (
+          <ScheduleCalendarSkeleton view="shifts" />
+        ) : (
         <div className="space-y-6">
           {/* Dentist Selector Bar */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -594,6 +613,7 @@ export function AdminSchedulePage() {
             })}
           </div>
         </div>
+        )
       )}
 
       {/* ========================================================= */}

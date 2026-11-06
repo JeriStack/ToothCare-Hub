@@ -13,6 +13,7 @@ import {
   Stethoscope,
 } from 'lucide-react';
 import { appointmentsApi } from '../appointments/api';
+import { DashboardSkeleton } from '../../components/skeletons/DashboardSkeleton';
 
 const STATUS_BADGE = {
   PENDING: 'bg-amber-100 text-amber-800 border-amber-200',
@@ -110,10 +111,7 @@ export function PatientDashboard({ user, onNavigateToBook, onNavigateToAppointme
 
       {/* Loading Skeleton */}
       {loading ? (
-        <div className="p-12 text-center bg-white rounded-2xl border border-slate-200">
-          <RefreshCw className="w-6 h-6 text-[#0D9488] animate-spin mx-auto mb-2" />
-          <p className="text-xs text-slate-500">Loading your appointments from database...</p>
-        </div>
+        <DashboardSkeleton role="patient" />
       ) : (
         <>
           {/* Upcoming Visit Highlight */}

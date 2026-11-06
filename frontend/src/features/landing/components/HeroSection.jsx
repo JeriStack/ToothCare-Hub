@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Calendar, ArrowRight, CheckCircle2, ShieldCheck, Clock, Star } from 'lucide-react';
+import { Skeleton } from '../../../components/ui/Skeleton';
 
 export function HeroSection({ onBookAppointment, onExploreServices }) {
+  const [imageLoaded, setImageLoaded] = useState(false);
   return (
     <section
       id="home"
@@ -81,11 +83,17 @@ export function HeroSection({ onBookAppointment, onExploreServices }) {
               
               {/* Asymmetric Organic Decorative Container */}
               <div className="relative rounded-3xl overflow-hidden shadow-2xl shadow-slate-200/80 border border-slate-100 bg-white">
+                {!imageLoaded && (
+                  <Skeleton className="absolute inset-0 w-full h-[380px] sm:h-[460px] lg:h-[500px] rounded-3xl z-0" />
+                )}
                 <img
                   src="/images/hero-dentist-photo.jpg"
                   alt="Dentist consulting with patient and reviewing digital dental X-ray on tablet in modern clinic operatory"
-                  className="w-full h-[380px] sm:h-[460px] lg:h-[500px] object-cover object-center"
+                  className={`w-full h-[380px] sm:h-[460px] lg:h-[500px] object-cover object-center transition-opacity duration-300 ${
+                    imageLoaded ? 'opacity-100' : 'opacity-0'
+                  }`}
                   loading="eager"
+                  onLoad={() => setImageLoaded(true)}
                 />
 
                 {/* Subtle Inner Gradient Overlay for Depth */}

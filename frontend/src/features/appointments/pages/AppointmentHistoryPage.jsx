@@ -21,6 +21,7 @@ import {
 import { appointmentsApi } from '../api';
 import { AppointmentCard, STATUS_STYLES } from '../components/AppointmentCard';
 import { AvailabilitySlotPicker } from '../../schedules/components/AvailabilitySlotPicker';
+import { AppointmentCardSkeleton } from '../../../components/skeletons/AppointmentCardSkeleton';
 
 export function AppointmentHistoryPage({ onNavigateToBook }) {
   const [appointments, setAppointments] = useState([]);
@@ -317,15 +318,7 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
 
       {/* Appointment Cards List */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-3 animate-pulse">
-              <div className="h-5 bg-slate-200 rounded w-1/3"></div>
-              <div className="h-4 bg-slate-100 rounded w-2/3"></div>
-              <div className="h-16 bg-slate-50 rounded"></div>
-            </div>
-          ))}
-        </div>
+        <AppointmentCardSkeleton count={4} />
       ) : filteredAppointments.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm space-y-4">
           <div className="w-14 h-14 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto">

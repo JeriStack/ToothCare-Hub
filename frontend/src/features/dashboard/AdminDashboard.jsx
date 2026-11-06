@@ -16,6 +16,7 @@ import {
   UserCheck
 } from 'lucide-react';
 import { dashboardApi } from './api';
+import { DashboardSkeleton } from '../../components/skeletons/DashboardSkeleton';
 
 export function AdminDashboard({ onNavigateTab }) {
   const [metrics, setMetrics] = useState(null);
@@ -58,6 +59,10 @@ export function AdminDashboard({ onNavigateTab }) {
   };
 
   const recent = metrics?.recent || { patients: [], services: [] };
+
+  if (loading && !metrics) {
+    return <DashboardSkeleton role="admin" />;
+  }
 
   return (
     <div className="space-y-8">

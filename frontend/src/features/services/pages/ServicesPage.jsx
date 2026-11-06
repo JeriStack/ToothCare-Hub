@@ -16,6 +16,7 @@ import {
   FileText
 } from 'lucide-react';
 import { servicesApi } from '../api';
+import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
 
 const DURATION_OPTIONS = [15, 30, 45, 60, 90, 120];
 const CATEGORY_OPTIONS = [
@@ -312,13 +313,14 @@ export function ServicesPage() {
       </div>
 
       {/* Main Table / State Views */}
+      {loading && services.length === 0 ? (
+        <TableSkeleton
+          rows={6}
+          columns={['w-12', 'w-44', 'w-28', 'w-24', 'w-20', 'w-24', 'w-28']}
+        />
+      ) : (
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        {loading && services.length === 0 ? (
-          <div className="p-12 text-center">
-            <RefreshCw className="w-8 h-8 text-teal-600 animate-spin mx-auto mb-3" />
-            <p className="text-slate-500 text-sm">Loading clinic catalog...</p>
-          </div>
-        ) : error ? (
+        {error ? (
           <div className="p-12 text-center">
             <AlertTriangle className="w-8 h-8 text-rose-500 mx-auto mb-3" />
             <p className="text-slate-800 font-medium">{error}</p>
@@ -481,6 +483,7 @@ export function ServicesPage() {
           </div>
         )}
       </div>
+      )}
 
       {/* Service Create / Edit Modal */}
       {isModalOpen && (

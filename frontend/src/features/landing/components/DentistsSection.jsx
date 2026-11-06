@@ -3,6 +3,7 @@ import { Calendar, ArrowRight, AlertCircle, RefreshCw, Stethoscope } from 'lucid
 import { dentistsApi } from '../../dentists/api';
 import { Button } from '../../../components/ui/Button';
 import { EmptyState } from '../../../components/ui/EmptyState';
+import { CardSkeleton } from '../../../components/skeletons/CardSkeleton';
 
 export function DentistsSection({ onSelectDentist }) {
   const [dentists, setDentists] = useState([]);
@@ -47,21 +48,8 @@ export function DentistsSection({ onSelectDentist }) {
           </p>
         </div>
 
-        {/* Loading State */}
-        {loading && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6" aria-busy="true">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="bg-white border border-slate-200/80 rounded-2xl p-6 space-y-4 animate-pulse"
-              >
-                <div className="w-16 h-16 bg-slate-200 rounded-full mx-auto" />
-                <div className="h-5 bg-slate-200 rounded w-1/2 mx-auto" />
-                <div className="h-4 bg-slate-100 rounded w-2/3 mx-auto" />
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Loading Skeleton */}
+        {loading && <CardSkeleton variant="dentist" count={3} />}
 
         {/* Error State with Retry Button */}
         {!loading && error && (
