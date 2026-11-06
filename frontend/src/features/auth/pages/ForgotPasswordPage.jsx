@@ -93,11 +93,14 @@ export function ForgotPasswordPage({
           <div>
             <label
               htmlFor="forgot-email"
-              className="block text-xs font-semibold text-slate-700 mb-1.5"
+              className="block text-xs font-bold text-[#12304A] mb-1.5"
             >
               Email address
             </label>
             <div className="relative">
+              <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] flex items-center justify-center text-[#0D9488] pointer-events-none">
+                <Mail className="w-4 h-4 stroke-[2.2]" />
+              </div>
               <input
                 id="forgot-email"
                 name="email"
@@ -109,14 +112,13 @@ export function ForgotPasswordPage({
                   setEmail(e.target.value);
                   if (fieldError) setFieldError(null);
                 }}
-                placeholder="your.email@example.com"
+                placeholder="youremail@example.com"
                 aria-invalid={Boolean(fieldError)}
                 aria-describedby={fieldError ? 'forgot-email-error' : undefined}
-                className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 placeholder:text-slate-400 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
+                className={`w-full pl-12 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 placeholder:text-slate-400 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
                   fieldError ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
                 }`}
               />
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             </div>
             {fieldError && (
               <p id="forgot-email-error" className="mt-1 text-xs text-rose-600 font-medium">

@@ -59,29 +59,33 @@ export function LoginForm({
       <div>
         <label
           htmlFor="login-email"
-          className="flex items-center gap-2 text-sm font-bold text-[#12304A] mb-2"
+          className="block text-xs font-bold text-[#12304A] mb-1.5"
         >
-          <Mail className="w-4 h-4 text-[#12304A] stroke-[2.2]" />
-          <span>Email Address</span>
+          Email address
         </label>
-        <input
-          id="login-email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-          value={email}
-          onChange={(e) => {
-            setEmail(e.target.value);
-            if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: null }));
-          }}
-          placeholder="youremail@example.com"
-          aria-invalid={Boolean(fieldErrors.email)}
-          aria-describedby={fieldErrors.email ? 'login-email-error' : undefined}
-          className={`w-full px-3.5 py-2.5 rounded-xl border text-sm text-slate-800 placeholder:text-slate-400 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
-            fieldErrors.email ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
-          }`}
-        />
+        <div className="relative">
+          <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] flex items-center justify-center text-[#0D9488] pointer-events-none">
+            <Mail className="w-4 h-4 stroke-[2.2]" />
+          </div>
+          <input
+            id="login-email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: null }));
+            }}
+            placeholder="youremail@example.com"
+            aria-invalid={Boolean(fieldErrors.email)}
+            aria-describedby={fieldErrors.email ? 'login-email-error' : undefined}
+            className={`w-full pl-12 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 placeholder:text-slate-400 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
+              fieldErrors.email ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
+            }`}
+          />
+        </div>
         {fieldErrors.email && (
           <p id="login-email-error" className="mt-1 text-xs text-rose-600 font-medium">
             {fieldErrors.email}
@@ -93,12 +97,14 @@ export function LoginForm({
       <div>
         <label
           htmlFor="login-password"
-          className="flex items-center gap-2 text-sm font-bold text-[#12304A] mb-2"
+          className="block text-xs font-bold text-[#12304A] mb-1.5"
         >
-          <Lock className="w-4 h-4 text-[#12304A] stroke-[2.2]" />
-          <span>Password</span>
+          Password
         </label>
         <div className="relative">
+          <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] flex items-center justify-center text-[#0D9488] pointer-events-none">
+            <Lock className="w-4 h-4 stroke-[2.2]" />
+          </div>
           <input
             id="login-password"
             name="password"
@@ -113,7 +119,7 @@ export function LoginForm({
             placeholder="Enter your password"
             aria-invalid={Boolean(fieldErrors.password)}
             aria-describedby={fieldErrors.password ? 'login-password-error' : undefined}
-            className={`w-full pl-3.5 pr-10 py-2.5 rounded-xl border text-sm text-slate-800 placeholder:text-slate-400 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
+            className={`w-full pl-12 pr-11 py-2.5 rounded-xl border text-sm text-slate-800 placeholder:text-slate-400 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
               fieldErrors.password ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
             }`}
           />
@@ -121,9 +127,9 @@ export function LoginForm({
             type="button"
             onClick={() => setShowPassword(!showPassword)}
             aria-label={showPassword ? 'Hide password' : 'Show password'}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-700 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded p-0.5"
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded p-0.5"
           >
-            {showPassword ? <Eye className="w-4 h-4 stroke-[2]" /> : <EyeOff className="w-4 h-4 stroke-[2]" />}
+            {showPassword ? <EyeOff className="w-4 h-4 stroke-[2]" /> : <Eye className="w-4 h-4 stroke-[2]" />}
           </button>
         </div>
         {fieldErrors.password && (
