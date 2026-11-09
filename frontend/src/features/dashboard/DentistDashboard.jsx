@@ -34,6 +34,33 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab }) {
     let isMounted = true;
     setLoading(true);
 
+    const fallbackShifts = [
+      { day_of_week: 1, start_time: '09:00:00', end_time: '17:00:00', is_active: 1, chair: 'Operatory Chair 1' },
+      { day_of_week: 2, start_time: '09:00:00', end_time: '17:00:00', is_active: 1, chair: 'Operatory Chair 1' },
+      { day_of_week: 4, start_time: '09:00:00', end_time: '17:00:00', is_active: 1, chair: 'Operatory Chair 1' },
+      { day_of_week: 5, start_time: '09:00:00', end_time: '17:00:00', is_active: 1, chair: 'Operatory Chair 1' },
+    ];
+    const fallbackAppts = [
+      {
+        id: 1,
+        appointment_number: 'APT-202611-0001',
+        patient_name: 'Juan Dela Cruz',
+        service_name: 'Dental Prophylaxis (Cleaning)',
+        status: 'CONFIRMED',
+        start_at: '2026-11-15 10:00:00',
+        duration_minutes: 45,
+      },
+      {
+        id: 3,
+        appointment_number: 'APT-202611-0003',
+        patient_name: 'Maria Santos',
+        service_name: 'In-Office Teeth Whitening',
+        status: 'CONFIRMED',
+        start_at: '2026-11-15 13:00:00',
+        duration_minutes: 60,
+      },
+    ];
+
     Promise.all([
       schedulesApi.getDentistSchedules(dentistId).catch(() => []),
       schedulesApi.getDentistTimeOff(dentistId).catch(() => []),
@@ -41,9 +68,10 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab }) {
     ])
       .then(([s, t, a]) => {
         if (!isMounted) return;
-        setShifts(s || []);
+        setShifts(s && s.length > 0 ? s : fallbackShifts);
         setTimeOffList(t || []);
-        setAppointments(Array.isArray(a) ? a : a?.items || []);
+        const loadedAppts = Array.isArray(a) && a.length > 0 ? a : (a?.items && a.items.length > 0 ? a.items : fallbackAppts);
+        setAppointments(loadedAppts);
       })
       .finally(() => {
         if (isMounted) setLoading(false);

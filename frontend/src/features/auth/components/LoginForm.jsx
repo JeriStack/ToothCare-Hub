@@ -175,6 +175,64 @@ export function LoginForm({
         )}
       </button>
 
+      {/* Quick Demo Access Bar */}
+      <div className="pt-3 border-t border-slate-100">
+        <p className="text-[11px] text-slate-500 font-semibold mb-2 flex items-center justify-between">
+          <span>Quick Demo Access:</span>
+          <span className="text-[10px] text-teal-600 font-normal">Password: Password123!</span>
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+          <button
+            type="button"
+            onClick={() => {
+              setEmail('patient.juan@example.com');
+              setPassword('Password123!');
+              setFormError(null);
+              setFieldErrors({});
+            }}
+            className="py-1.5 px-2 rounded-lg bg-slate-50 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200 border border-slate-200 text-[11px] text-slate-700 font-medium transition-all text-center"
+          >
+            Patient
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setEmail('dr.santos@toothcare.local');
+              setPassword('Password123!');
+              setFormError(null);
+              setFieldErrors({});
+            }}
+            className="py-1.5 px-2 rounded-lg bg-slate-50 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200 border border-slate-200 text-[11px] text-slate-700 font-medium transition-all text-center"
+          >
+            Dentist
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setEmail('admin@toothcare.local');
+              setPassword('Password123!');
+              setFormError(null);
+              setFieldErrors({});
+            }}
+            className="py-1.5 px-2 rounded-lg bg-slate-50 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200 border border-slate-200 text-[11px] text-slate-700 font-medium transition-all text-center"
+          >
+            Admin
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setEmail('receptionist@toothcare.local');
+              setPassword('Password123!');
+              setFormError(null);
+              setFieldErrors({});
+            }}
+            className="py-1.5 px-2 rounded-lg bg-slate-50 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200 border border-slate-200 text-[11px] text-slate-700 font-medium transition-all text-center"
+          >
+            Staff
+          </button>
+        </div>
+      </div>
+
       {/* Link to Register */}
       <p className="text-center text-xs text-slate-600 pt-2">
         Don&apos;t have an account?{' '}
