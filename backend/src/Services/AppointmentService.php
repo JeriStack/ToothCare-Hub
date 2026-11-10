@@ -995,17 +995,265 @@ class AppointmentService
         $from = isset($params['from']) && is_string($params['from']) ? $params['from'] : null;
         $to = isset($params['to']) && is_string($params['to']) ? $params['to'] : null;
         $status = isset($params['status']) && is_string($params['status']) ? strtoupper($params['status']) : null;
+        $search = isset($params['search']) && is_string($params['search']) ? $params['search'] : null;
 
-        $items = $this->appointmentRepo->findByDentist((int) $dentist['id'], $from, $to, $status);
+        $items = $this->appointmentRepo->findByDentist((int) $dentist['id'], $from, $to, $status, $search);
+
+        $page = isset($params['page']) ? max(1, (int) $params['page']) : 1;
+        $perPage = isset($params['per_page']) ? max(1, min(100, (int) $params['per_page'])) : 20;
+        $total = count($items);
+        $offset = ($page - 1) * $perPage;
+        $pagedItems = array_slice($items, $offset, $perPage);
+        $totalPages = $total > 0 ? (int) ceil($total / $perPage) : 1;
 
         return [
-            'items' => $items,
+            'items' => $pagedItems,
             'meta' => [
-                'total' => count($items),
-                'page' => 1,
-                'per_page' => count($items) ?: 20,
-                'last_page' => 1,
+                'total' => $total,
+                'page' => $page,
+                'per_page' => $perPage,
+                'last_page' => $totalPages,
             ],
+        ];
+    }
+
+    /**
+     * Get single appointment assigned to the authenticated dentist, with attached treatment record.
+     *
+     * @param int $userId
+     * @param int $appointmentId
+     * @return array<string, mixed>
+     * @throws HttpException
+     */
+    public function getDentistAppointment(int $userId, int $appointmentId): array
+    {
+        $dentist = $this->dentistRepo->findByUserId($userId);
+        if (!$dentist) {
+            throw HttpException::forbidden('Account is not linked to an active dentist profile.');
+        }
+
+        $appointment = $this->appointmentRepo->findById($appointmentId);
+        if (!$appointment) {
+            throw HttpException::notFound("Appointment #{$appointmentId} was not found.");
+        }
+
+        if ((int) $appointment['dentist_id'] !== (int) $dentist['id']) {
+            $this->auditRepo->record(
+                'UNAUTHORIZED_APPOINTMENT_ACCESS_ATTEMPT',
+                'appointment',
+                $appointmentId,
+                $userId,
+                null,
+                null,
+                ['reason' => 'Dentist attempted to access another clinician\'s appointment']
+            );
+            throw HttpException::forbidden('You are not authorized to view appointments assigned to another practitioner.');
+        }
+
+        // Attach treatment record if it exists
+        $treatmentRepo = new \App\Repositories\TreatmentRecordRepository($this->database);
+        $appointment['treatment_record'] = $treatmentRepo->findByAppointmentId($appointmentId);
+
+        return $appointment;
+    }
+
+    /**
+     * Mark an assigned appointment as COMPLETED by the attending dentist.
+     * Enforces clinical ownership, status transition, and optional treatment record attachment.
+     *
+     * @param int $userId Authenticated user ID
+     * @param int $appointmentId
+     * @param array<string, mixed>|null $treatmentRecordData
+     * @return array<string, mixed>
+     * @throws HttpException
+     */
+    public function completeDentistAppointment(int $userId, int $appointmentId, ?array $treatmentRecordData = null): array
+    {
+        $dentist = $this->dentistRepo->findByUserId($userId);
+        if (!$dentist) {
+            throw HttpException::forbidden('Your account is not linked to an active dentist profile.');
+        }
+
+        $pdo = $this->database->getConnection();
+        $pdo->beginTransaction();
+
+        try {
+            $appointment = $this->appointmentRepo->findByIdForUpdate($appointmentId, $pdo);
+            if (!$appointment) {
+                throw HttpException::notFound('Appointment #' . $appointmentId . ' was not found.');
+            }
+
+            // Clinical ownership validation
+            if ((int) $appointment['dentist_id'] !== (int) $dentist['id']) {
+                $this->auditRepo->record(
+                    'UNAUTHORIZED_APPOINTMENT_COMPLETION_ATTEMPT',
+                    'appointment',
+                    $appointmentId,
+                    $userId,
+                    null,
+                    null,
+                    ['reason' => 'Dentist attempted to complete an appointment assigned to another clinician']
+                );
+                throw HttpException::forbidden('You are only authorized to complete appointments assigned to your schedule.');
+            }
+
+            // Lifecycle status transition check: must be CONFIRMED
+            AppointmentValidator::validateStatusTransition(
+                $appointment['status'],
+                AppointmentValidator::STATUS_COMPLETED
+            );
+
+            // Update status to COMPLETED
+            $this->appointmentRepo->updateStatus(
+                $appointmentId,
+                AppointmentValidator::STATUS_COMPLETED,
+                $userId,
+                null,
+                $pdo
+            );
+
+            $this->appointmentRepo->recordStatusHistory(
+                $appointmentId,
+                $appointment['status'],
+                AppointmentValidator::STATUS_COMPLETED,
+                $userId,
+                'Appointment visit completed by attending dentist Dr. ' . $dentist['last_name'],
+                null,
+                $pdo
+            );
+
+            // If treatment documentation was provided in the completion payload, persist it
+            if (!empty($treatmentRecordData) && !empty($treatmentRecordData['diagnosis']) && !empty($treatmentRecordData['procedure_notes'])) {
+                $treatmentRepo = new \App\Repositories\TreatmentRecordRepository($this->database);
+                $existing = $treatmentRepo->findByAppointmentId($appointmentId);
+                if (!$existing) {
+                    $treatmentRepo->create([
+                        'appointment_id' => $appointmentId,
+                        'dentist_id' => (int) $dentist['id'],
+                        'patient_id' => (int) $appointment['patient_id'],
+                        'teeth_treated' => $treatmentRecordData['teeth_treated'] ?? [],
+                        'diagnosis' => $treatmentRecordData['diagnosis'],
+                        'procedure_notes' => $treatmentRecordData['procedure_notes'],
+                        'prescription_notes' => $treatmentRecordData['prescription_notes'] ?? null,
+                        'home_care_advice' => $treatmentRecordData['home_care_advice'] ?? null,
+                    ], $pdo);
+                }
+            }
+
+            $this->auditRepo->record(
+                'APPOINTMENT_COMPLETED',
+                'appointment',
+                $appointmentId,
+                $userId,
+                null,
+                null,
+                ['dentist_id' => (int) $dentist['id']]
+            );
+
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            if ($e instanceof HttpException) {
+                throw $e;
+            }
+            $this->logger->error('Dentist appointment completion failed: ' . $e->getMessage(), [
+                'appointment_id' => $appointmentId,
+                'dentist_id' => $dentist['id'] ?? null,
+            ]);
+            throw HttpException::badRequest('Failed to complete appointment.');
+        }
+
+        $updated = $this->appointmentRepo->findById($appointmentId);
+
+        if ($updated) {
+            if (!empty($updated['patient_user_id'])) {
+                $this->notificationService->createNotification(
+                    (int) $updated['patient_user_id'],
+                    'PATIENT',
+                    'APPOINTMENT_COMPLETED',
+                    'Appointment Completed',
+                    "Your visit for {$updated['service_name']} on {$updated['start_at']} is complete. Thank you for visiting ToothCare Hub!",
+                    'appointments',
+                    $appointmentId
+                );
+            }
+
+            if (!empty($updated['patient_email'])) {
+                $this->emailService->sendAppointmentCompletedEmail(
+                    (string) $updated['patient_email'],
+                    $updated['patient_first_name'] . ' ' . $updated['patient_last_name'],
+                    [
+                        'service_name' => $updated['service_name'],
+                        'start_at' => $updated['start_at'],
+                    ],
+                    $userId
+                );
+            }
+        }
+
+        return $updated ?? [];
+    }
+
+    /**
+     * Get real-time summary statistics and today's schedule for dentist dashboard.
+     *
+     * @param int $userId
+     * @return array<string, mixed>
+     */
+    public function getDentistDashboardSummary(int $userId): array
+    {
+        $dentist = $this->dentistRepo->findByUserId($userId);
+        if (!$dentist) {
+            return [
+                'today_count' => 0,
+                'upcoming_count' => 0,
+                'pending_count' => 0,
+                'completed_count' => 0,
+                'today_appointments' => [],
+            ];
+        }
+
+        $dentistId = (int) $dentist['id'];
+        $now = new DateTimeImmutable('now', $this->timezone);
+        $todayStart = $now->format('Y-m-d 00:00:00');
+        $todayEnd = $now->format('Y-m-d 23:59:59');
+
+        $todayAppts = $this->appointmentRepo->findByDentist($dentistId, $todayStart, $todayEnd);
+        $all = $this->appointmentRepo->findByDentist($dentistId);
+
+        $upcomingCount = 0;
+        $pendingCount = 0;
+        $completedCount = 0;
+
+        foreach ($all as $a) {
+            $status = strtoupper((string) $a['status']);
+            if ($status === 'CONFIRMED') {
+                if ($a['start_at'] >= $now->format('Y-m-d H:i:s')) {
+                    $upcomingCount++;
+                }
+            } elseif ($status === 'PENDING') {
+                $pendingCount++;
+            } elseif ($status === 'COMPLETED') {
+                $completedCount++;
+            }
+        }
+
+        return [
+            'dentist' => [
+                'id' => $dentistId,
+                'first_name' => $dentist['first_name'],
+                'last_name' => $dentist['last_name'],
+                'specialization' => $dentist['specialization'],
+                'license_number' => $dentist['license_number'],
+                'chair' => $dentist['default_operatory_chair'],
+            ],
+            'today_count' => count($todayAppts),
+            'upcoming_count' => $upcomingCount,
+            'pending_count' => $pendingCount,
+            'completed_count' => $completedCount,
+            'today_appointments' => $todayAppts,
         ];
     }
 }

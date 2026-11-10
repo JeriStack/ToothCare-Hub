@@ -153,6 +153,57 @@ class AppointmentController
     }
 
     /**
+     * GET /api/v1/dentist/appointments/{id}
+     * Retrieve single assigned appointment details with permitted patient context.
+     */
+    public function dentistShow(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required.');
+        }
+
+        $id = (int) $request->getParam('id');
+        $appointment = $this->appointmentService->getDentistAppointment((int) $user['id'], $id);
+
+        return Response::success($appointment);
+    }
+
+    /**
+     * PATCH /api/v1/dentist/appointments/{id}/complete
+     * Complete an assigned clinical appointment with optional treatment documentation.
+     */
+    public function dentistComplete(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required to complete appointments.');
+        }
+
+        $id = (int) $request->getParam('id');
+        $body = $request->getBody();
+        $result = $this->appointmentService->completeDentistAppointment((int) $user['id'], $id, $body);
+
+        return Response::success($result);
+    }
+
+    /**
+     * GET /api/v1/dentist/dashboard
+     * Dashboard clinical workload overview for the authenticated dentist.
+     */
+    public function dentistDashboard(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required.');
+        }
+
+        $result = $this->appointmentService->getDentistDashboardSummary((int) $user['id']);
+
+        return Response::success($result);
+    }
+
+    /**
      * GET /api/v1/admin/appointments
      * Administrative filterable & paginated appointments overview.
      */

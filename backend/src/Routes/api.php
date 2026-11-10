@@ -15,6 +15,7 @@ use App\Controllers\MetricsController;
 use App\Controllers\NotificationController;
 use App\Controllers\PatientController;
 use App\Controllers\ServiceController;
+use App\Controllers\TreatmentRecordController;
 use App\Core\HttpException;
 use App\Core\Request;
 use App\Core\Response;
@@ -142,24 +143,30 @@ $router->group('/api/v1', function (Router $r): void {
     $r->post('/appointments/{id}/cancel', [AppointmentController::class, 'cancel'], $patientAuth);
     $r->post('/appointments/{id}/reschedule', [AppointmentController::class, 'reschedule'], $patientAuth);
 
-    // Dentist Scoped Appointments
+    // Dentist Scoped Endpoints (Phase 12 Dentist Dashboard & Assigned Workload)
     $dentistAuth = [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN'])];
+    $r->get('/dentist/dashboard', [AppointmentController::class, 'dentistDashboard'], $dentistAuth);
     $r->get('/dentist/appointments', [AppointmentController::class, 'dentistIndex'], $dentistAuth);
+    $r->get('/dentist/appointments/{id}', [AppointmentController::class, 'dentistShow'], $dentistAuth);
+    $r->patch('/dentist/appointments/{id}/complete', [AppointmentController::class, 'dentistComplete'], $dentistAuth);
+    $r->post('/dentist/appointments/{id}/complete', [AppointmentController::class, 'dentistComplete'], $dentistAuth);
+
+    // Treatment Records Group (Phase 12 Treatment Records & Clinical Documentation)
+    $r->get('/treatment-records', [TreatmentRecordController::class, 'index'], $dentistAuth);
+    $r->post('/treatment-records', [TreatmentRecordController::class, 'create'], $dentistAuth);
+    $r->get('/treatment-records/{id}', [TreatmentRecordController::class, 'show'], $dentistAuth);
+    $r->patch('/treatment-records/{id}', [TreatmentRecordController::class, 'update'], $dentistAuth);
+    $r->put('/treatment-records/{id}', [TreatmentRecordController::class, 'update'], $dentistAuth);
+    $r->get('/appointments/{id}/treatment-record', [TreatmentRecordController::class, 'showByAppointment'], $dentistAuth);
 
     // 8. Future Phases - Structured Placeholders
     $notImplemented = fn (string $name) => function (Request $req) use ($name) {
-        throw HttpException::notImplemented("Endpoint '{$name}' is planned for Phase 11+ implementation.");
+        throw HttpException::notImplemented("Endpoint '{$name}' is planned for Phase 13+ implementation.");
     };
 
     // Future Patient self-listing or public directory
     $r->get('/patients', $notImplemented('GET /api/v1/patients'));
     $r->post('/patients', $notImplemented('POST /api/v1/patients'));
-
-    // Treatment Records Group
-    $r->get('/treatment-records', $notImplemented('GET /api/v1/treatment-records'));
-    $r->post('/treatment-records', $notImplemented('POST /api/v1/treatment-records'));
-    $r->get('/treatment-records/{id}', $notImplemented('GET /api/v1/treatment-records/{id}'));
-    $r->patch('/treatment-records/{id}', $notImplemented('PATCH /api/v1/treatment-records/{id}'));
 
     // Notifications Group (Phase 11 Persistent In-App Notifications)
     $r->get('/notifications', [NotificationController::class, 'index'], $patientAuth);

@@ -31,6 +31,7 @@ class AppointmentRepository
         $stmt = $pdo->prepare('
             SELECT a.*,
                    p.first_name AS patient_first_name, p.last_name AS patient_last_name, p.phone AS patient_phone,
+                   p.medical_alerts AS patient_medical_alerts, p.date_of_birth AS patient_date_of_birth, p.gender AS patient_gender,
                    u_p.id AS patient_user_id, u_p.email AS patient_email,
                    d.license_number, d.specialization,
                    d.first_name AS dentist_first_name, d.last_name AS dentist_last_name,
@@ -451,12 +452,15 @@ class AppointmentRepository
         int $dentistId,
         ?string $from = null,
         ?string $to = null,
-        ?string $status = null
+        ?string $status = null,
+        ?string $search = null
     ): array {
         $pdo = $this->database->getConnection();
         $sql = '
             SELECT a.*,
                    p.first_name AS patient_first_name, p.last_name AS patient_last_name,
+                   p.phone AS patient_phone, p.medical_alerts AS patient_medical_alerts,
+                   p.date_of_birth AS patient_date_of_birth, p.gender AS patient_gender,
                    s.name AS service_name, s.duration_minutes AS service_duration
             FROM appointments a
             JOIN patients p ON a.patient_id = p.id
@@ -473,9 +477,16 @@ class AppointmentRepository
             $sql .= ' AND a.start_at <= ?';
             $params[] = $to;
         }
-        if ($status !== null) {
+        if ($status !== null && $status !== 'ALL') {
             $sql .= ' AND a.status = ?';
             $params[] = $status;
+        }
+        if ($search !== null && trim($search) !== '') {
+            $term = '%' . str_replace(['%', '_'], ['\\%', '\\_'], trim($search)) . '%';
+            $sql .= ' AND (p.first_name LIKE ? OR p.last_name LIKE ? OR s.name LIKE ?)';
+            $params[] = $term;
+            $params[] = $term;
+            $params[] = $term;
         }
 
         $sql .= ' ORDER BY a.start_at ASC';

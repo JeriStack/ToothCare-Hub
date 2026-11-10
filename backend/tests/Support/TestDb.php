@@ -178,6 +178,21 @@ class TestDb
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
+            CREATE TABLE IF NOT EXISTS treatment_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                appointment_id INTEGER NOT NULL UNIQUE,
+                dentist_id INTEGER NOT NULL,
+                patient_id INTEGER NOT NULL,
+                teeth_treated TEXT NULL,
+                diagnosis TEXT NOT NULL,
+                procedure_notes TEXT NOT NULL,
+                prescription_notes TEXT NULL,
+                home_care_advice TEXT NULL,
+                locked_at TEXT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
             CREATE TABLE IF NOT EXISTS auth_tokens (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,

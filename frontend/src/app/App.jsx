@@ -41,6 +41,9 @@ import { PatientDentistsPage } from '../features/dentists/pages/PatientDentistsP
 import { PatientProfilePage } from '../features/patients/pages/PatientProfilePage';
 import { PatientNotificationsPage } from '../features/notifications/pages/PatientNotificationsPage';
 import { NotificationCenter } from '../features/notifications/components/NotificationCenter';
+import { DentistAppointmentsPage } from '../features/dentists/pages/DentistAppointmentsPage';
+import { DentistAppointmentDetailPage } from '../features/dentists/pages/DentistAppointmentDetailPage';
+import { DentistTreatmentRecordsPage } from '../features/treatment-records/pages/DentistTreatmentRecordsPage';
 
 function getInitialRoute() {
   if (typeof window === 'undefined') return 'LANDING';
@@ -81,6 +84,7 @@ function AppContent() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const [bookingPrefill, setBookingPrefill] = useState(null);
+  const [selectedDentistAppointmentId, setSelectedDentistAppointmentId] = useState(null);
 
   // Trigger Toast helper
   const showToast = (msg) => {
@@ -535,17 +539,55 @@ function AppContent() {
               {currentRole === 'DENTIST' && (
                 <>
                   <button
-                    onClick={() => { setActiveTab('dashboard'); setIsMobileMenuOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'dashboard' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
+                    onClick={() => {
+                      setActiveTab('dashboard');
+                      setSelectedDentistAppointmentId(null);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                      activeTab === 'dashboard' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'
+                    }`}
                   >
                     <Clock className="w-4 h-4" />
-                    Clinical Practice
+                    Overview
                   </button>
                   <button
-                    onClick={() => { setActiveTab('shifts'); setIsMobileMenuOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'shifts' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
+                    onClick={() => {
+                      setActiveTab('appointments');
+                      setSelectedDentistAppointmentId(null);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                      activeTab === 'appointments' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'
+                    }`}
                   >
                     <Calendar className="w-4 h-4" />
+                    Assigned Appointments
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveTab('treatment-records');
+                      setSelectedDentistAppointmentId(null);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                      activeTab === 'treatment-records' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <FileText className="w-4 h-4" />
+                    Treatment Records
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveTab('shifts');
+                      setSelectedDentistAppointmentId(null);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                      activeTab === 'shifts' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Clock className="w-4 h-4" />
                     My Shifts & Leaves
                   </button>
                   <button
@@ -672,8 +714,32 @@ function AppContent() {
               {(activeTab === 'dashboard' || activeTab === 'shifts') && (
                 <DentistDashboard
                   dentistId={user?.dentist?.id || user?.id || 1}
-                  onNavigateTab={setActiveTab}
+                  onNavigateTab={(tab) => {
+                    setActiveTab(tab);
+                    setSelectedDentistAppointmentId(null);
+                  }}
+                  onSelectAppointment={(id) => {
+                    setSelectedDentistAppointmentId(id);
+                    setActiveTab('appointments');
+                  }}
                 />
+              )}
+
+              {activeTab === 'appointments' && (
+                selectedDentistAppointmentId ? (
+                  <DentistAppointmentDetailPage
+                    appointmentId={selectedDentistAppointmentId}
+                    onBack={() => setSelectedDentistAppointmentId(null)}
+                  />
+                ) : (
+                  <DentistAppointmentsPage
+                    onSelectAppointment={(id) => setSelectedDentistAppointmentId(id)}
+                  />
+                )
+              )}
+
+              {activeTab === 'treatment-records' && (
+                <DentistTreatmentRecordsPage />
               )}
             </>
           )}

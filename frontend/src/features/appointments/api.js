@@ -26,7 +26,31 @@ export const appointmentsApi = {
    */
   async listDentist(params = {}) {
     const res = await apiClient.get('/dentist/appointments', { params });
-    return res.data?.data?.items || res.data?.data || [];
+    return res.data?.data || { items: [], meta: { total: 0, page: 1, per_page: 20, last_page: 1 } };
+  },
+
+  /**
+   * Retrieve single assigned appointment for the authenticated dentist with patient context.
+   */
+  async getDentistAppointment(id) {
+    const res = await apiClient.get(`/dentist/appointments/${id}`);
+    return res.data?.data;
+  },
+
+  /**
+   * Fetch dentist dashboard metrics and today's schedule summary.
+   */
+  async getDentistDashboard() {
+    const res = await apiClient.get('/dentist/dashboard');
+    return res.data?.data;
+  },
+
+  /**
+   * Mark assigned appointment as COMPLETED with optional clinical notes.
+   */
+  async completeDentistAppointment(id, payload = {}) {
+    const res = await apiClient.post(`/dentist/appointments/${id}/complete`, payload);
+    return res.data?.data;
   },
 
   /**
