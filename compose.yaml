@@ -100,6 +100,26 @@ services:
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
+  # 3b. Web Database Management (phpMyAdmin)
+  # ---------------------------------------------------------------------------
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: toothcare-phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_ARBITRARY: 0
+      UPLOAD_LIMIT: 64M
+    ports:
+      - "${PHPMYADMIN_PORT:-8085}:80"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - app
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
   # 4. Real-Time Service (Node.js + Socket.IO)
   # ---------------------------------------------------------------------------
   realtime:
