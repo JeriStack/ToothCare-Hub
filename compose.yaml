@@ -155,6 +155,8 @@ services:
         condition: service_healthy
     networks:
       - app
+    healthcheck:
+      disable: true
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
@@ -201,6 +203,8 @@ services:
         condition: service_healthy
     networks:
       - app
+    healthcheck:
+      disable: true
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
