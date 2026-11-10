@@ -69,6 +69,32 @@ class DentistController
     }
 
     /**
+     * GET /api/v1/dentists/{id}
+     * Public/patient profile for single active dentist
+     */
+    public function showPublic(Request $request): Response
+    {
+        $id = (int) $request->getParam('id');
+        $dentist = $this->dentistRepository->findById($id);
+
+        if ($dentist === null || empty($dentist['is_active'])) {
+            throw HttpException::notFound("Dentist profile #{$id} was not found or is currently unavailable.");
+        }
+
+        return Response::success([
+            'id' => (int) $dentist['id'],
+            'first_name' => $dentist['first_name'],
+            'last_name' => $dentist['last_name'],
+            'specialization' => $dentist['specialization'],
+            'license_number' => $dentist['license_number'],
+            'default_operatory_chair' => $dentist['default_operatory_chair'],
+            'bio' => $dentist['bio'],
+            'phone' => $dentist['phone'],
+            'is_active' => (int) $dentist['is_active'],
+        ]);
+    }
+
+    /**
      * GET /api/v1/admin/dentists/{id} or GET /api/v1/dentists/{id}
      */
     public function show(Request $request): Response

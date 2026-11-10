@@ -31,7 +31,7 @@ class AppointmentRepository
         $stmt = $pdo->prepare('
             SELECT a.*,
                    p.first_name AS patient_first_name, p.last_name AS patient_last_name, p.phone AS patient_phone,
-                   u_p.email AS patient_email,
+                   u_p.id AS patient_user_id, u_p.email AS patient_email,
                    d.license_number, d.specialization,
                    d.first_name AS dentist_first_name, d.last_name AS dentist_last_name,
                    u_d.email AS dentist_email,

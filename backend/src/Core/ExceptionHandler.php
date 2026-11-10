@@ -112,6 +112,7 @@ class ExceptionHandler
         if ($this->config->isDebug()) {
             $details = [
                 'exception' => get_class($e),
+                'message' => $e->getMessage(),
                 'file' => basename($e->getFile()),
                 'line' => $e->getLine(),
             ];

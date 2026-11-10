@@ -14,6 +14,7 @@ import {
   Sparkles,
   LogOut,
   RefreshCw,
+  Bell,
 } from 'lucide-react';
 import {
   AuthProvider,
@@ -35,6 +36,11 @@ import { BookAppointmentPage } from '../features/appointments/pages/BookAppointm
 import { AppointmentHistoryPage } from '../features/appointments/pages/AppointmentHistoryPage';
 import { AdminAppointmentsPage } from '../features/appointments/pages/AdminAppointmentsPage';
 import { LandingPage } from '../features/landing/LandingPage';
+import { PatientServicesPage } from '../features/services/pages/PatientServicesPage';
+import { PatientDentistsPage } from '../features/dentists/pages/PatientDentistsPage';
+import { PatientProfilePage } from '../features/patients/pages/PatientProfilePage';
+import { PatientNotificationsPage } from '../features/notifications/pages/PatientNotificationsPage';
+import { NotificationCenter } from '../features/notifications/components/NotificationCenter';
 
 function getInitialRoute() {
   if (typeof window === 'undefined') return 'LANDING';
@@ -44,10 +50,22 @@ function getInitialRoute() {
   if (path === '/forgot-password' || path === '/forgot') return 'FORGOT_PASSWORD';
   if (path === '/reset-password' || path === '/reset') return 'RESET_PASSWORD';
   if (path === '/verify-email' || path === '/verify') return 'VERIFY_EMAIL';
-  if (path === '/patient') return 'PATIENT';
-  if (path === '/admin') return 'ADMIN';
-  if (path === '/dentist') return 'DENTIST';
+  if (path.startsWith('/patient')) return 'PATIENT';
+  if (path.startsWith('/admin')) return 'ADMIN';
+  if (path.startsWith('/dentist')) return 'DENTIST';
   return 'LANDING';
+}
+
+function getInitialTab() {
+  if (typeof window === 'undefined') return 'dashboard';
+  const path = window.location.pathname.toLowerCase();
+  if (path.startsWith('/patient/')) {
+    const sub = path.replace('/patient/', '').split('/')[0];
+    if (['dashboard', 'book', 'services', 'dentists', 'appointments', 'notifications', 'profile'].includes(sub)) {
+      return sub;
+    }
+  }
+  return 'dashboard';
 }
 
 function AppContent() {
@@ -57,7 +75,7 @@ function AppContent() {
   const [currentRoute, setCurrentRoute] = useState(getInitialRoute);
   
   // Navigation tabs per role
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(getInitialTab);
   
   // UI Panels
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -68,6 +86,16 @@ function AppContent() {
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  // Patient Sub-Route Navigation with URL History Sync
+  const handlePatientNav = (tab) => {
+    setActiveTab(tab);
+    setIsMobileMenuOpen(false);
+    const subPath = tab === 'dashboard' ? '/patient' : `/patient/${tab}`;
+    if (window.location.pathname !== subPath) {
+      window.history.pushState({}, '', subPath);
+    }
   };
 
   // Navigation handler with browser URL sync
@@ -92,6 +120,7 @@ function AppContent() {
     const handlePopState = () => {
       const route = getInitialRoute();
       setCurrentRoute(route);
+      setActiveTab(getInitialTab());
     };
 
     const handleForbidden = (e) => {
@@ -330,8 +359,21 @@ function AppContent() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Patient In-App Notifications Dropdown */}
+            {currentRole === 'PATIENT' && (
+              <NotificationCenter
+                onNavigateAll={() => handlePatientNav('notifications')}
+              />
+            )}
+
             {/* User Profile Info */}
-            <div className="flex items-center gap-2.5 pl-2 border-l border-white/10">
+            <div
+              className={`flex items-center gap-2.5 pl-2 border-l border-white/10 ${
+                currentRole === 'PATIENT' ? 'cursor-pointer hover:opacity-90 transition-opacity' : ''
+              }`}
+              onClick={currentRole === 'PATIENT' ? () => handlePatientNav('profile') : undefined}
+              title={currentRole === 'PATIENT' ? 'View & Edit My Profile' : undefined}
+            >
               <div className="w-8 h-8 rounded-full bg-[#0D9488]/30 border border-[#0D9488] text-teal-200 flex items-center justify-center font-semibold text-xs">
                 {userInitials}
               </div>
@@ -350,7 +392,10 @@ function AppContent() {
 
               <button
                 type="button"
-                onClick={handleSignOut}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSignOut();
+                }}
                 title="Sign out of account"
                 className="ml-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-200 hover:text-white bg-white/10 hover:bg-white/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
               >
@@ -375,25 +420,53 @@ function AppContent() {
               {currentRole === 'PATIENT' && (
                 <>
                   <button
-                    onClick={() => { setActiveTab('dashboard'); setIsMobileMenuOpen(false); }}
+                    onClick={() => handlePatientNav('dashboard')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'dashboard' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
                   >
                     <Calendar className="w-4 h-4" />
                     Dashboard
                   </button>
                   <button
-                    onClick={() => { setActiveTab('book'); setIsMobileMenuOpen(false); }}
+                    onClick={() => handlePatientNav('book')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'book' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
                   >
                     <Plus className="w-4 h-4" />
                     Book Appointment
                   </button>
                   <button
-                    onClick={() => { setActiveTab('appointments'); setIsMobileMenuOpen(false); }}
+                    onClick={() => handlePatientNav('services')}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'services' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    Services
+                  </button>
+                  <button
+                    onClick={() => handlePatientNav('dentists')}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'dentists' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
+                  >
+                    <Stethoscope className="w-4 h-4" />
+                    Dentists
+                  </button>
+                  <button
+                    onClick={() => handlePatientNav('appointments')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'appointments' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
                   >
                     <FileText className="w-4 h-4" />
                     My Appointments
+                  </button>
+                  <button
+                    onClick={() => handlePatientNav('notifications')}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'notifications' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
+                  >
+                    <Bell className="w-4 h-4" />
+                    Notifications
+                  </button>
+                  <button
+                    onClick={() => handlePatientNav('profile')}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'profile' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
+                  >
+                    <Shield className="w-4 h-4" />
+                    My Profile
                   </button>
                   <button
                     onClick={() => navigateTo('LANDING', '/')}
@@ -508,8 +581,11 @@ function AppContent() {
               {activeTab === 'dashboard' && (
                 <PatientDashboard
                   user={user}
-                  onNavigateToBook={() => setActiveTab('book')}
-                  onNavigateToAppointments={() => setActiveTab('appointments')}
+                  onNavigateToBook={() => handlePatientNav('book')}
+                  onNavigateToAppointments={() => handlePatientNav('appointments')}
+                  onNavigateToServices={() => handlePatientNav('services')}
+                  onNavigateToDentists={() => handlePatientNav('dentists')}
+                  onNavigateToProfile={() => handlePatientNav('profile')}
                 />
               )}
 
@@ -517,12 +593,42 @@ function AppContent() {
                 <BookAppointmentPage
                   initialService={bookingPrefill?.service}
                   initialDentist={bookingPrefill?.dentist}
-                  onNavigateToAppointments={() => setActiveTab('appointments')}
+                  onNavigateToAppointments={() => handlePatientNav('appointments')}
+                />
+              )}
+
+              {activeTab === 'services' && (
+                <PatientServicesPage
+                  onBookService={(service) => {
+                    setBookingPrefill((prev) => ({ ...prev, service }));
+                    handlePatientNav('book');
+                  }}
+                />
+              )}
+
+              {activeTab === 'dentists' && (
+                <PatientDentistsPage
+                  onBookDentist={(dentist) => {
+                    setBookingPrefill((prev) => ({ ...prev, dentist }));
+                    handlePatientNav('book');
+                  }}
                 />
               )}
 
               {activeTab === 'appointments' && (
-                <AppointmentHistoryPage onNavigateToBook={() => setActiveTab('book')} />
+                <AppointmentHistoryPage onNavigateToBook={() => handlePatientNav('book')} />
+              )}
+
+              {activeTab === 'notifications' && (
+                <PatientNotificationsPage
+                  onNavigateAppointment={() => handlePatientNav('appointments')}
+                />
+              )}
+
+              {activeTab === 'profile' && (
+                <PatientProfilePage
+                  onProfileUpdated={() => showToast('Your clinical profile has been updated.')}
+                />
               )}
             </>
           )}

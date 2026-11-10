@@ -72,6 +72,67 @@ class PatientController
     }
 
     /**
+     * GET /api/v1/patients/me
+     * Retrieve authenticated patient's own profile with full identity info.
+     */
+    public function me(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required.', 'AUTHENTICATION_REQUIRED');
+        }
+
+        $userId = (int) $user['id'];
+        $patient = $this->patientRepository->findByUserId($userId);
+        if ($patient === null) {
+            throw HttpException::notFound('Patient profile not found for this account.');
+        }
+
+        $fullPatient = $this->patientRepository->findWithUserById((int) $patient['id']) ?? $patient;
+        $fullPatient['appointment_count'] = $this->patientRepository->countAppointmentsReferencing((int) $patient['id']);
+
+        return Response::success($fullPatient);
+    }
+
+    /**
+     * PATCH /api/v1/patients/me
+     * Update authenticated patient's own profile with server-side validation.
+     */
+    public function updateMe(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required.', 'AUTHENTICATION_REQUIRED');
+        }
+
+        $userId = (int) $user['id'];
+        $patient = $this->patientRepository->findByUserId($userId);
+        if ($patient === null) {
+            throw HttpException::notFound('Patient profile not found for this account.');
+        }
+
+        $patientId = (int) $patient['id'];
+        $body = $request->getBody();
+        unset($body['id'], $body['user_id'], $body['created_at']);
+
+        $validated = PatientValidator::validate($body, true);
+        $this->patientRepository->update($patientId, $validated);
+
+        $this->auditLogRepository->record(
+            'PATIENT_SELF_PROFILE_UPDATED',
+            'patients',
+            $patientId,
+            $userId,
+            $request->getClientIp(),
+            $request->getHeader('user-agent'),
+            ['updated_fields' => array_keys($validated)]
+        );
+
+        $fresh = $this->patientRepository->findWithUserById($patientId) ?? $this->patientRepository->findById($patientId);
+        return Response::success($fresh);
+    }
+
+    /**
      * GET /api/v1/patients/{id} or /api/v1/admin/patients/{id}
      * Retrieve patient details with strict ownership verification
      */

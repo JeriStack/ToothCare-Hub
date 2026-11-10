@@ -35,6 +35,7 @@ class AppointmentService
     private AvailabilityService $availabilityService;
     private AuditLogRepository $auditRepo;
     private EmailService $emailService;
+    private NotificationService $notificationService;
     private Logger $logger;
     private DateTimeZone $timezone;
 
@@ -48,7 +49,8 @@ class AppointmentService
         ?AuditLogRepository $auditRepo = null,
         ?EmailService $emailService = null,
         ?Logger $logger = null,
-        ?Database $database = null
+        ?Database $database = null,
+        ?NotificationService $notificationService = null
     ) {
         $this->database = $database ?? Database::getInstance();
         $this->appointmentRepo = $appointmentRepo ?? new AppointmentRepository($this->database);
@@ -68,6 +70,10 @@ class AppointmentService
         $this->auditRepo = $auditRepo ?? new AuditLogRepository($this->database);
         $this->emailService = $emailService ?? new EmailService($this->database);
         $this->logger = $logger ?? Logger::getInstance();
+        $this->notificationService = $notificationService ?? new NotificationService(
+            new \App\Repositories\NotificationRepository($this->database),
+            $this->logger
+        );
         $this->timezone = $this->availabilityService->getTimezone();
     }
 
@@ -248,6 +254,17 @@ class AppointmentService
                     $userId
                 );
             }
+
+            // In-app Notification
+            $this->notificationService->createNotification(
+                $userId,
+                'PATIENT',
+                'APPOINTMENT_REQUESTED',
+                'Appointment Request Submitted',
+                "Your appointment request for {$persisted['service_name']} on {$persisted['start_at']} has been received.",
+                'appointments',
+                $appointmentId
+            );
         }
 
         return $persisted ?? [];
@@ -367,6 +384,18 @@ class AppointmentService
             );
         }
 
+        if ($updated && !empty($updated['patient_user_id'])) {
+            $this->notificationService->createNotification(
+                (int) $updated['patient_user_id'],
+                'PATIENT',
+                'APPOINTMENT_CONFIRMED',
+                'Appointment Confirmed',
+                "Your appointment for {$updated['service_name']} on {$updated['start_at']} has been confirmed.",
+                'appointments',
+                $appointmentId
+            );
+        }
+
         return $updated ?? [];
     }
 
@@ -452,6 +481,18 @@ class AppointmentService
                 ],
                 $validated['reason'],
                 $adminUserId
+            );
+        }
+
+        if ($updated && !empty($updated['patient_user_id'])) {
+            $this->notificationService->createNotification(
+                (int) $updated['patient_user_id'],
+                'PATIENT',
+                'APPOINTMENT_REJECTED',
+                'Appointment Request Declined',
+                "Your appointment request for {$updated['service_name']} could not be approved.",
+                'appointments',
+                $appointmentId
             );
         }
 
@@ -552,6 +593,18 @@ class AppointmentService
             );
         }
 
+        if ($updated && !empty($updated['patient_user_id'])) {
+            $this->notificationService->createNotification(
+                (int) $updated['patient_user_id'],
+                'PATIENT',
+                'APPOINTMENT_CANCELLED',
+                'Appointment Cancelled',
+                "Your appointment for {$updated['service_name']} on {$updated['start_at']} has been cancelled.",
+                'appointments',
+                $appointmentId
+            );
+        }
+
         return $updated ?? [];
     }
 
@@ -631,6 +684,18 @@ class AppointmentService
                     'service_name' => $updated['service_name'],
                 ],
                 $adminUserId
+            );
+        }
+
+        if ($updated && !empty($updated['patient_user_id'])) {
+            $this->notificationService->createNotification(
+                (int) $updated['patient_user_id'],
+                'PATIENT',
+                'APPOINTMENT_COMPLETED',
+                'Appointment Completed',
+                "Your visit for {$updated['service_name']} on {$updated['start_at']} is complete. Thank you for visiting ToothCare Hub!",
+                'appointments',
+                $appointmentId
             );
         }
 
@@ -810,7 +875,20 @@ class AppointmentService
             throw HttpException::badRequest('Failed to reschedule appointment.');
         }
 
-        return $this->appointmentRepo->findById($newAppointmentId) ?? [];
+        $rescheduled = $this->appointmentRepo->findById($newAppointmentId);
+        if ($rescheduled && !empty($rescheduled['patient_user_id'])) {
+            $this->notificationService->createNotification(
+                (int) $rescheduled['patient_user_id'],
+                'PATIENT',
+                'APPOINTMENT_RESCHEDULED',
+                'Appointment Rescheduled',
+                "Your appointment has been rescheduled to {$rescheduled['start_at']}.",
+                'appointments',
+                $newAppointmentId
+            );
+        }
+
+        return $rescheduled ?? [];
     }
 
     /**

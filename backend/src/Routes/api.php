@@ -12,6 +12,7 @@ use App\Controllers\DentistScheduleController;
 use App\Controllers\DentistTimeOffController;
 use App\Controllers\HealthController;
 use App\Controllers\MetricsController;
+use App\Controllers\NotificationController;
 use App\Controllers\PatientController;
 use App\Controllers\ServiceController;
 use App\Core\HttpException;
@@ -55,8 +56,11 @@ $router->group('/api/v1', function (Router $r): void {
     // 3. Public Catalog Endpoints (Active items for booking/discovery)
     $r->get('/services', [ServiceController::class, 'listPublic']);
     $r->get('/dentists', [DentistController::class, 'listPublic']);
+    $r->get('/dentists/{id}', [DentistController::class, 'showPublic']);
 
-    // 4. Patients Self-Management Group (Phase 7 ownership checks)
+    // 4. Patients Self-Management Group (Phase 7 & 11 ownership checks)
+    $r->get('/patients/me', [PatientController::class, 'me'], [AuthenticationMiddleware::class]);
+    $r->patch('/patients/me', [PatientController::class, 'updateMe'], [AuthenticationMiddleware::class]);
     $r->get('/patients/{id}', [PatientController::class, 'show'], [AuthenticationMiddleware::class]);
     $r->patch('/patients/{id}', [PatientController::class, 'update'], [AuthenticationMiddleware::class]);
 
@@ -157,9 +161,12 @@ $router->group('/api/v1', function (Router $r): void {
     $r->get('/treatment-records/{id}', $notImplemented('GET /api/v1/treatment-records/{id}'));
     $r->patch('/treatment-records/{id}', $notImplemented('PATCH /api/v1/treatment-records/{id}'));
 
-    // Notifications Group
-    $r->get('/notifications', $notImplemented('GET /api/v1/notifications'));
-    $r->patch('/notifications/{id}/read', $notImplemented('PATCH /api/v1/notifications/{id}/read'));
+    // Notifications Group (Phase 11 Persistent In-App Notifications)
+    $r->get('/notifications', [NotificationController::class, 'index'], $patientAuth);
+    $r->get('/notifications/unread-count', [NotificationController::class, 'unreadCount'], $patientAuth);
+    $r->patch('/notifications/{id}/read', [NotificationController::class, 'markRead'], $patientAuth);
+    $r->post('/notifications/read-all', [NotificationController::class, 'markAllRead'], $patientAuth);
+    $r->patch('/notifications/read-all', [NotificationController::class, 'markAllRead'], $patientAuth);
 
     // Reports Group
     $r->get('/reports/overview', $notImplemented('GET /api/v1/reports/overview'));

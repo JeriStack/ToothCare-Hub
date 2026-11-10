@@ -7,6 +7,22 @@ import apiClient from '../../lib/apiClient';
 
 export const patientsApi = {
   /**
+   * Fetch authenticated patient's own profile
+   */
+  async getMyProfile() {
+    const res = await apiClient.get('/patients/me');
+    return res.data?.data;
+  },
+
+  /**
+   * Update authenticated patient's own profile
+   */
+  async updateMyProfile(payload) {
+    const res = await apiClient.patch('/patients/me', payload);
+    return res.data?.data;
+  },
+
+  /**
    * Fetch paginated patient registry for administration
    */
   async getAdminPatients(params = {}) {

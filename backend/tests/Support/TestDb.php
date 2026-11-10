@@ -154,6 +154,19 @@ class TestDb
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
+            CREATE TABLE IF NOT EXISTS notifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                role TEXT NOT NULL DEFAULT "PATIENT",
+                type TEXT NOT NULL,
+                title TEXT NOT NULL,
+                message TEXT NOT NULL,
+                reference_type TEXT DEFAULT "appointments",
+                reference_id INTEGER NULL,
+                read_at TEXT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
             CREATE TABLE IF NOT EXISTS appointment_status_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 appointment_id INTEGER NOT NULL,
