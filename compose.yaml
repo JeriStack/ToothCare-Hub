@@ -54,6 +54,7 @@ services:
       DB_PORT: ${DB_PORT:-3306}
       DB_NAME: ${DB_NAME:-toothcare_hub}
       DB_USER: ${DB_USER:-toothcare_user}
+      DB_USERNAME: ${DB_USER:-toothcare_user}
       DB_PASSWORD: ${DB_PASSWORD:-toothcare_secure_pass}
       APP_ENV: ${APP_ENV:-development}
       APP_DEBUG: ${APP_DEBUG:-true}
@@ -86,6 +87,8 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
       - ./database/migrations:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
     networks:
       - app
     healthcheck:
@@ -141,6 +144,7 @@ services:
       DB_PORT: ${DB_PORT:-3306}
       DB_NAME: ${DB_NAME:-toothcare_hub}
       DB_USER: ${DB_USER:-toothcare_user}
+      DB_USERNAME: ${DB_USER:-toothcare_user}
       DB_PASSWORD: ${DB_PASSWORD:-toothcare_secure_pass}
       WORKER_POLL_INTERVAL_SECONDS: ${WORKER_POLL_INTERVAL_SECONDS:-5}
       APP_ENV: ${APP_ENV:-development}
@@ -184,6 +188,7 @@ services:
       DB_PORT: ${DB_PORT:-3306}
       DB_NAME: ${DB_NAME:-toothcare_hub}
       DB_USER: ${DB_USER:-toothcare_user}
+      DB_USERNAME: ${DB_USER:-toothcare_user}
       DB_PASSWORD: ${DB_PASSWORD:-toothcare_secure_pass}
       BACKUP_STORAGE_DIR: /var/www/backups
       BACKUP_ENCRYPTION_ENABLED: ${BACKUP_ENCRYPTION_ENABLED:-true}

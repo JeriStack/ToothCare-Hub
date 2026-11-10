@@ -184,4 +184,41 @@ VALUES
     (3, 3, 'TREATMENT_RECORD_CREATED', 'treatment_records', 1, '127.0.0.1', 'Mozilla/5.0 (iPad; CPU OS 17_0)', '{"appointment_id": 981, "dentist_id": 1}', '2026-10-12 10:45:00')
 ON DUPLICATE KEY UPDATE id=id;
 
+-- 14. Seed User Roles Mapping (Enterprise RBAC)
+INSERT INTO user_roles (user_id, role_id)
+SELECT u.id, r.id 
+FROM users u
+JOIN roles r ON LOWER(u.role) = r.slug
+ON DUPLICATE KEY UPDATE user_id = user_id;
+
+-- 15. Seed Dentist Services Matrix
+INSERT INTO dentist_services (dentist_id, service_id, is_primary)
+SELECT d.id, s.id, 1
+FROM dentists d
+CROSS JOIN services s
+WHERE d.is_active = 1 AND s.is_active = 1
+ON DUPLICATE KEY UPDATE is_primary = VALUES(is_primary);
+
+-- 16. Seed Treatment Record Versions
+INSERT INTO treatment_record_versions (
+    treatment_record_id, version_number, teeth_treated, diagnosis, procedure_notes,
+    prescription_notes, home_care_advice, clinical_notes, amended_by_user_id, amendment_reason, created_at
+)
+VALUES
+    (1, 1, JSON_ARRAY(11, 12, 21, 22, 31, 32, 41, 42),
+     'Mild localized marginal gingivitis associated with plaque accumulation. No loss of clinical attachment.',
+     'Ultrasonic supragingival scaling and subgingival debridement performed. Polishing with fine grit paste and neutral sodium fluoride varnish applied.',
+     'None required.',
+     'Instructed on Bass brushing technique twice daily and daily dental flossing. Advised 6-month recall visit.',
+     NULL, 3, 'Initial clinical documentation finalized post-procedure', '2026-10-12 10:45:00')
+ON DUPLICATE KEY UPDATE version_number = version_number;
+
+-- 17. Seed Security Events Telemetry
+INSERT INTO security_events (id, user_id, event_type, ip_address, user_agent, metadata, created_at)
+VALUES
+    (1, 1, 'LOGIN_SUCCESS', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', '{"channel": "web"}', '2026-10-27 08:30:00'),
+    (2, 6, 'LOGIN_SUCCESS', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', '{"channel": "web"}', '2026-10-27 10:00:00'),
+    (3, 3, 'LOGIN_SUCCESS', '127.0.0.1', 'Mozilla/5.0 (iPad; CPU OS 17_0)', '{"channel": "web"}', '2026-10-27 10:30:00')
+ON DUPLICATE KEY UPDATE id=id;
+
 SET FOREIGN_KEY_CHECKS = 1;

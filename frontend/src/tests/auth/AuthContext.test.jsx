@@ -2,21 +2,18 @@ import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AuthProvider, useAuth } from '../../features/auth/context/AuthContext';
+import authApi from '../../features/auth/api';
 
 vi.mock('../../features/auth/api', () => {
+  const mockApi = {
+    getMe: vi.fn().mockRejectedValue(new Error('Network error: offline')),
+    login: vi.fn(),
+    logout: vi.fn().mockResolvedValue({}),
+    getCsrfToken: vi.fn().mockRejectedValue(new Error('Network error: offline')),
+  };
   return {
-    default: {
-      getMe: vi.fn().mockRejectedValue(new Error('Network error: offline')),
-      login: vi.fn().mockRejectedValue(new Error('Network error: offline')),
-      logout: vi.fn().mockResolvedValue({}),
-      getCsrfToken: vi.fn().mockRejectedValue(new Error('Network error: offline')),
-    },
-    authApi: {
-      getMe: vi.fn().mockRejectedValue(new Error('Network error: offline')),
-      login: vi.fn().mockRejectedValue(new Error('Network error: offline')),
-      logout: vi.fn().mockResolvedValue({}),
-      getCsrfToken: vi.fn().mockRejectedValue(new Error('Network error: offline')),
-    },
+    default: mockApi,
+    authApi: mockApi,
   };
 });
 
@@ -71,12 +68,72 @@ function TestConsumer() {
   );
 }
 
-describe('AuthContext Offline & Demo Verification', () => {
+describe('AuthContext Backend Verification & State Lifecycle', () => {
   beforeEach(() => {
     localStorage.clear();
+    vi.clearAllMocks();
+    authApi.getMe.mockRejectedValue(new Error('No active session'));
+    authApi.login.mockImplementation(async ({ email, password }) => {
+      if (password === 'WrongPassword!') {
+        const err = new Error('Invalid email or password.');
+        err.response = { status: 401, data: { error: { message: 'Invalid email or password. Please verify your credentials.' } } };
+        throw err;
+      }
+      if (email === 'patient.juan@example.com') {
+        return {
+          id: 6,
+          email: 'patient.juan@example.com',
+          role: 'PATIENT',
+          first_name: 'Juan',
+          last_name: 'Dela Cruz',
+          patient: {
+            id: 1,
+            user_id: 6,
+            first_name: 'Juan',
+            last_name: 'Dela Cruz',
+            date_of_birth: '1994-05-18',
+            phone: '+639171234567',
+          },
+        };
+      }
+      if (email === 'dr.santos@toothcare.local') {
+        return {
+          id: 3,
+          email: 'dr.santos@toothcare.local',
+          role: 'DENTIST',
+          first_name: 'Maria',
+          last_name: 'Santos',
+          dentist: {
+            id: 1,
+            user_id: 3,
+            name: 'Dr. Maria Santos, DMD',
+            specialization: 'General & Cosmetic Dentistry',
+          },
+        };
+      }
+      if (email === 'admin@toothcare.local') {
+        return {
+          id: 1,
+          email: 'admin@toothcare.local',
+          role: 'ADMIN',
+          first_name: 'System',
+          last_name: 'Administrator',
+        };
+      }
+      if (email === 'receptionist@toothcare.local') {
+        return {
+          id: 2,
+          email: 'receptionist@toothcare.local',
+          role: 'ADMIN',
+          first_name: 'Staff',
+          last_name: 'Receptionist',
+        };
+      }
+      throw new Error('User not found');
+    });
   });
 
-  it('authenticates Patient demo account and resolves patient profile', async () => {
+  it('authenticates Patient through backend API and resolves patient profile', async () => {
     render(
       <AuthProvider>
         <TestConsumer />
@@ -96,7 +153,7 @@ describe('AuthContext Offline & Demo Verification', () => {
     });
   });
 
-  it('authenticates Dentist demo account and resolves practitioner profile', async () => {
+  it('authenticates Dentist through backend API and resolves practitioner profile', async () => {
     render(
       <AuthProvider>
         <TestConsumer />
@@ -116,7 +173,7 @@ describe('AuthContext Offline & Demo Verification', () => {
     });
   });
 
-  it('authenticates Admin demo account and grants ADMIN role', async () => {
+  it('authenticates Admin through backend API and grants ADMIN role', async () => {
     render(
       <AuthProvider>
         <TestConsumer />
@@ -135,7 +192,7 @@ describe('AuthContext Offline & Demo Verification', () => {
     });
   });
 
-  it('authenticates Staff Receptionist demo account and grants ADMIN role', async () => {
+  it('authenticates Staff Receptionist through backend API and grants ADMIN role', async () => {
     render(
       <AuthProvider>
         <TestConsumer />
@@ -154,7 +211,7 @@ describe('AuthContext Offline & Demo Verification', () => {
     });
   });
 
-  it('rejects incorrect password for demo accounts', async () => {
+  it('rejects incorrect password from backend API', async () => {
     render(
       <AuthProvider>
         <TestConsumer />

@@ -63,8 +63,8 @@ class Config
             'db_host' => $this->env('DB_HOST', 'mysql'),
             'db_port' => (int) $this->env('DB_PORT', '3306'),
             'db_database' => $this->env('DB_DATABASE', $this->env('DB_NAME', 'toothcare_hub')),
-            'db_username' => $this->env('DB_USERNAME', $this->env('DB_USER', 'toothcare_app')),
-            'db_password' => $this->env('DB_PASSWORD', ''),
+            'db_username' => $this->env('DB_USERNAME', $this->env('DB_USER', 'toothcare_user')),
+            'db_password' => $this->env('DB_PASSWORD', 'toothcare_secure_pass'),
             'db_charset' => $this->env('DB_CHARSET', 'utf8mb4'),
             
             // CORS

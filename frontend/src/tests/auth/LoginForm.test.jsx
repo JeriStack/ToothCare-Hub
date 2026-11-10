@@ -1,28 +1,43 @@
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AuthProvider } from '../../features/auth/context/AuthContext';
 import { LoginForm } from '../../features/auth/components/LoginForm';
+import authApi from '../../features/auth/api';
 
 vi.mock('../../features/auth/api', () => {
+  const mockApi = {
+    getMe: vi.fn().mockRejectedValue(new Error('Network error: offline')),
+    login: vi.fn(),
+    logout: vi.fn().mockResolvedValue({}),
+    getCsrfToken: vi.fn().mockRejectedValue(new Error('Network error: offline')),
+  };
   return {
-    default: {
-      getMe: vi.fn().mockRejectedValue(new Error('Network error: offline')),
-      login: vi.fn().mockRejectedValue(new Error('Network error: offline')),
-      logout: vi.fn().mockResolvedValue({}),
-      getCsrfToken: vi.fn().mockRejectedValue(new Error('Network error: offline')),
-    },
-    authApi: {
-      getMe: vi.fn().mockRejectedValue(new Error('Network error: offline')),
-      login: vi.fn().mockRejectedValue(new Error('Network error: offline')),
-      logout: vi.fn().mockResolvedValue({}),
-      getCsrfToken: vi.fn().mockRejectedValue(new Error('Network error: offline')),
-    },
+    default: mockApi,
+    authApi: mockApi,
   };
 });
 
 describe('LoginForm Component', () => {
-  it('renders email, password inputs, submit button, and quick demo buttons', async () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authApi.getMe.mockRejectedValue(new Error('No active session'));
+    authApi.login.mockImplementation(async ({ email, password }) => {
+      if (email === 'patient.juan@example.com' && password === 'Password123!') {
+        return {
+          id: 6,
+          email: 'patient.juan@example.com',
+          role: 'PATIENT',
+          patient: { id: 1, first_name: 'Juan', last_name: 'Dela Cruz' },
+        };
+      }
+      const err = new Error('Invalid email or password.');
+      err.response = { status: 401, data: { error: { message: 'Invalid email or password. Please try again.' } } };
+      throw err;
+    });
+  });
+
+  it('renders email, password inputs, submit button, and navigation options', async () => {
     const { container } = render(
       <AuthProvider>
         <LoginForm />
@@ -38,11 +53,8 @@ describe('LoginForm Component', () => {
       expect(screen.getByRole('button', { name: /^sign in$/i })).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Quick Demo Access:')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^patient$/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^dentist$/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^admin$/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^staff$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /create an account/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /forgot password\?/i })).toBeInTheDocument();
   });
 
   it('validates empty inputs and prevents submission', async () => {
@@ -60,41 +72,6 @@ describe('LoginForm Component', () => {
 
     expect(screen.getByText('Email address is required.')).toBeInTheDocument();
     expect(screen.getByText('Password is required.')).toBeInTheDocument();
-  });
-
-  it('pre-fills credentials when clicking Quick Demo buttons', async () => {
-    const { container } = render(
-      <AuthProvider>
-        <LoginForm />
-      </AuthProvider>
-    );
-
-    const emailInput = container.querySelector('input[name="email"]');
-    const passwordInput = container.querySelector('input[name="password"]');
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /^sign in$/i })).toBeEnabled();
-    });
-
-    // Click Patient
-    fireEvent.click(screen.getByRole('button', { name: /^patient$/i }));
-    expect(emailInput.value).toBe('patient.juan@example.com');
-    expect(passwordInput.value).toBe('Password123!');
-
-    // Click Dentist
-    fireEvent.click(screen.getByRole('button', { name: /^dentist$/i }));
-    expect(emailInput.value).toBe('dr.santos@toothcare.local');
-    expect(passwordInput.value).toBe('Password123!');
-
-    // Click Admin
-    fireEvent.click(screen.getByRole('button', { name: /^admin$/i }));
-    expect(emailInput.value).toBe('admin@toothcare.local');
-    expect(passwordInput.value).toBe('Password123!');
-
-    // Click Staff
-    fireEvent.click(screen.getByRole('button', { name: /^staff$/i }));
-    expect(emailInput.value).toBe('receptionist@toothcare.local');
-    expect(passwordInput.value).toBe('Password123!');
   });
 
   it('toggles password visibility when clicking eye button', async () => {
@@ -119,9 +96,9 @@ describe('LoginForm Component', () => {
     expect(passwordInput).toHaveAttribute('type', 'password');
   });
 
-  it('calls onSuccess callback upon successful demo authentication', async () => {
+  it('calls onSuccess callback upon successful database authentication', async () => {
     const handleSuccess = vi.fn();
-    render(
+    const { container } = render(
       <AuthProvider>
         <LoginForm onSuccess={handleSuccess} />
       </AuthProvider>
@@ -131,8 +108,11 @@ describe('LoginForm Component', () => {
       expect(screen.getByRole('button', { name: /^sign in$/i })).toBeEnabled();
     });
 
-    // Fill with Patient demo account
-    fireEvent.click(screen.getByRole('button', { name: /^patient$/i }));
+    const emailInput = container.querySelector('input[name="email"]');
+    const passwordInput = container.querySelector('input[name="password"]');
+
+    fireEvent.change(emailInput, { target: { value: 'patient.juan@example.com' } });
+    fireEvent.change(passwordInput, { target: { value: 'Password123!' } });
     fireEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
 
     await waitFor(() => {
@@ -142,6 +122,30 @@ describe('LoginForm Component', () => {
           role: 'PATIENT',
         })
       );
+    });
+  });
+
+  it('displays error alert on invalid credentials', async () => {
+    const { container } = render(
+      <AuthProvider>
+        <LoginForm />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /^sign in$/i })).toBeEnabled();
+    });
+
+    const emailInput = container.querySelector('input[name="email"]');
+    const passwordInput = container.querySelector('input[name="password"]');
+
+    fireEvent.change(emailInput, { target: { value: 'patient.juan@example.com' } });
+    fireEvent.change(passwordInput, { target: { value: 'WrongPassword!' } });
+    fireEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(screen.getByText(/invalid email or password/i)).toBeInTheDocument();
     });
   });
 });
