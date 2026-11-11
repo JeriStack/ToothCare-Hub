@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Core\HttpException;
 use App\Core\Request;
 use App\Core\Response;
+use App\Middleware\AuthorizationMiddleware;
 use App\Repositories\DashboardRepository;
 
 /**
@@ -28,14 +29,7 @@ class DashboardController
      */
     public function metrics(Request $request): Response
     {
-        $user = $request->getUser();
-        if ($user === null) {
-            throw HttpException::unauthorized('Authentication is required.', 'AUTHENTICATION_REQUIRED');
-        }
-
-        if (strtoupper((string) $user['role']) !== 'ADMIN') {
-            throw HttpException::forbidden('Administrative access required.', 'FORBIDDEN');
-        }
+        AuthorizationMiddleware::requireUserPermission($request, 'dashboard.view', ['ADMIN']);
 
         $metrics = $this->dashboardRepository->getMetrics();
 

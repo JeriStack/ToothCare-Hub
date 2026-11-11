@@ -3,6 +3,7 @@ import {
   Calendar,
   Clock,
   User,
+  Users,
   Shield,
   Stethoscope,
   Menu,
@@ -15,6 +16,10 @@ import {
   LogOut,
   RefreshCw,
   Bell,
+  Key,
+  Activity,
+  BarChart3,
+  Server,
 } from 'lucide-react';
 import {
   AuthProvider,
@@ -45,6 +50,11 @@ import { NotificationCenter } from '../features/notifications/components/Notific
 import { DentistAppointmentsPage } from '../features/dentists/pages/DentistAppointmentsPage';
 import { DentistAppointmentDetailPage } from '../features/dentists/pages/DentistAppointmentDetailPage';
 import { DentistTreatmentRecordsPage } from '../features/treatment-records/pages/DentistTreatmentRecordsPage';
+import { UserManagementPage } from '../features/users/pages/UserManagementPage';
+import { RolePermissionMatrixPage } from '../features/roles/pages/RolePermissionMatrixPage';
+import { AuditTrailPage } from '../features/audit/pages/AuditTrailPage';
+import { ReportsPage } from '../features/reports/pages/ReportsPage';
+import { SystemHealthPage } from '../features/system/pages/SystemHealthPage';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 
 function getInitialRoute() {
@@ -72,7 +82,22 @@ function getInitialTab() {
   }
   if (path.startsWith('/admin/') || path.startsWith('/receptionist/')) {
     const sub = path.replace(/^\/(admin|receptionist)\//, '').split('/')[0];
-    if (['dashboard', 'triage', 'queue', 'patients', 'services', 'dentists', 'schedules'].includes(sub)) {
+    if (
+      [
+        'dashboard',
+        'triage',
+        'queue',
+        'patients',
+        'services',
+        'dentists',
+        'schedules',
+        'users',
+        'roles',
+        'audit',
+        'reports',
+        'system',
+      ].includes(sub)
+    ) {
       return sub === 'queue' ? 'triage' : sub;
     }
   }
@@ -86,7 +111,7 @@ function getInitialTab() {
 }
 
 function AppContent() {
-  const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, logout, hasPermission } = useAuth();
 
   // Active View / Route
   const [currentRoute, setCurrentRoute] = useState(getInitialRoute);
@@ -609,6 +634,67 @@ function AppContent() {
                     <Clock className="w-4 h-4" />
                     Hours & Schedules
                   </button>
+
+                  {(hasPermission('users.view') ||
+                    hasPermission('roles.manage') ||
+                    hasPermission('audit_logs.view') ||
+                    hasPermission('reports.view') ||
+                    hasPermission('system.health') ||
+                    hasPermission('settings.manage')) && (
+                    <>
+                      <div className="pt-3 pb-1 px-3">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Administration & Security
+                        </span>
+                      </div>
+                      {hasPermission('users.view') && (
+                        <button
+                          onClick={() => handleAdminNav('users')}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'users' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
+                        >
+                          <Users className="w-4 h-4" />
+                          User Accounts
+                        </button>
+                      )}
+                      {hasPermission('roles.manage') && (
+                        <button
+                          onClick={() => handleAdminNav('roles')}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'roles' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
+                        >
+                          <Key className="w-4 h-4" />
+                          DRBAC Matrix
+                        </button>
+                      )}
+                      {hasPermission('audit_logs.view') && (
+                        <button
+                          onClick={() => handleAdminNav('audit')}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'audit' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
+                        >
+                          <Activity className="w-4 h-4" />
+                          Audit Trail
+                        </button>
+                      )}
+                      {hasPermission('reports.view') && (
+                        <button
+                          onClick={() => handleAdminNav('reports')}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'reports' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
+                        >
+                          <BarChart3 className="w-4 h-4" />
+                          Reports & Analytics
+                        </button>
+                      )}
+                      {(hasPermission('system.health') || hasPermission('settings.manage')) && (
+                        <button
+                          onClick={() => handleAdminNav('system')}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'system' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
+                        >
+                          <Server className="w-4 h-4" />
+                          System & Settings
+                        </button>
+                      )}
+                    </>
+                  )}
+
                   <button
                     onClick={() => navigateTo('LANDING', '/')}
                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
@@ -770,6 +856,26 @@ function AppContent() {
               {activeTab === 'schedules' && (
                 <AdminSchedulePage />
               )}
+
+              {activeTab === 'users' && hasPermission('users.view') && (
+                <UserManagementPage />
+              )}
+
+              {activeTab === 'roles' && hasPermission('roles.manage') && (
+                <RolePermissionMatrixPage />
+              )}
+
+              {activeTab === 'audit' && hasPermission('audit_logs.view') && (
+                <AuditTrailPage />
+              )}
+
+              {activeTab === 'reports' && hasPermission('reports.view') && (
+                <ReportsPage />
+              )}
+
+              {activeTab === 'system' && (hasPermission('system.health') || hasPermission('settings.manage')) && (
+                <SystemHealthPage />
+              )}
             </>
           )}
 
@@ -800,6 +906,26 @@ function AppContent() {
 
               {activeTab === 'schedules' && (
                 <AdminSchedulePage />
+              )}
+
+              {activeTab === 'users' && (
+                <UserManagementPage />
+              )}
+
+              {activeTab === 'roles' && (
+                <RolePermissionMatrixPage />
+              )}
+
+              {activeTab === 'audit' && (
+                <AuditTrailPage />
+              )}
+
+              {activeTab === 'reports' && (
+                <ReportsPage />
+              )}
+
+              {activeTab === 'system' && (
+                <SystemHealthPage />
               )}
             </>
           )}

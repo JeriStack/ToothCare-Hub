@@ -3,9 +3,11 @@
 declare(strict_types=1);
 
 use App\Controllers\AppointmentController;
+use App\Controllers\AuditLogController;
 use App\Controllers\AuthController;
 use App\Controllers\AvailabilityController;
 use App\Controllers\ClinicScheduleController;
+use App\Controllers\ClinicSettingsController;
 use App\Controllers\DashboardController;
 use App\Controllers\DentistController;
 use App\Controllers\DentistScheduleController;
@@ -15,8 +17,11 @@ use App\Controllers\MetricsController;
 use App\Controllers\NotificationController;
 use App\Controllers\PatientController;
 use App\Controllers\ReceptionistController;
+use App\Controllers\ReportController;
+use App\Controllers\RolePermissionController;
 use App\Controllers\ServiceController;
 use App\Controllers\TreatmentRecordController;
+use App\Controllers\UserController;
 use App\Core\HttpException;
 use App\Core\Request;
 use App\Core\Response;
@@ -78,72 +83,95 @@ $router->group('/api/v1', function (Router $r): void {
     $adminOnlyAuth = [AuthenticationMiddleware::class, new AuthorizationMiddleware(['ADMIN'])];
     $receptionistAuth = [AuthenticationMiddleware::class, new AuthorizationMiddleware(['RECEPTIONIST', 'ADMIN'])];
 
+    $staffPortalGuard = new AuthorizationMiddleware(['ADMIN', 'RECEPTIONIST', 'DENTIST']);
+    $frontDeskGuard = new AuthorizationMiddleware(['RECEPTIONIST', 'ADMIN']);
+
     // Front Desk / Receptionist Dedicated Workspace Endpoints
-    $r->get('/receptionist/dashboard', [ReceptionistController::class, 'dashboard'], $receptionistAuth);
-    $r->get('/receptionist/schedule/today', [ReceptionistController::class, 'todaySchedule'], $receptionistAuth);
-    $r->post('/receptionist/appointments/{id}/check-in', [ReceptionistController::class, 'checkIn'], $receptionistAuth);
-    $r->patch('/receptionist/appointments/{id}/attendance', [ReceptionistController::class, 'updateAttendance'], $receptionistAuth);
-    $r->get('/receptionist/waiting-list', [ReceptionistController::class, 'waitingList'], $receptionistAuth);
-    $r->post('/receptionist/patients', [ReceptionistController::class, 'registerPatient'], $receptionistAuth);
-    $r->post('/receptionist/appointments', [ReceptionistController::class, 'createAppointment'], $receptionistAuth);
+    $r->get('/receptionist/dashboard', [ReceptionistController::class, 'dashboard'], [AuthenticationMiddleware::class, $frontDeskGuard, AuthorizationMiddleware::hasPermission('appointments.view', ['RECEPTIONIST', 'ADMIN'])]);
+    $r->get('/receptionist/schedule/today', [ReceptionistController::class, 'todaySchedule'], [AuthenticationMiddleware::class, $frontDeskGuard, AuthorizationMiddleware::hasPermission('appointments.view', ['RECEPTIONIST', 'ADMIN'])]);
+    $r->post('/receptionist/appointments/{id}/check-in', [ReceptionistController::class, 'checkIn'], [AuthenticationMiddleware::class, $frontDeskGuard, AuthorizationMiddleware::hasPermission('appointments.manage', ['RECEPTIONIST', 'ADMIN'])]);
+    $r->patch('/receptionist/appointments/{id}/attendance', [ReceptionistController::class, 'updateAttendance'], [AuthenticationMiddleware::class, $frontDeskGuard, AuthorizationMiddleware::hasPermission('appointments.manage', ['RECEPTIONIST', 'ADMIN'])]);
+    $r->get('/receptionist/waiting-list', [ReceptionistController::class, 'waitingList'], [AuthenticationMiddleware::class, $frontDeskGuard, AuthorizationMiddleware::hasPermission('appointments.view', ['RECEPTIONIST', 'ADMIN'])]);
+    $r->post('/receptionist/patients', [ReceptionistController::class, 'registerPatient'], [AuthenticationMiddleware::class, $frontDeskGuard, AuthorizationMiddleware::hasPermission('patients.manage', ['RECEPTIONIST', 'ADMIN'])]);
+    $r->post('/receptionist/appointments', [ReceptionistController::class, 'createAppointment'], [AuthenticationMiddleware::class, $frontDeskGuard, AuthorizationMiddleware::hasPermission('appointments.book', ['RECEPTIONIST', 'ADMIN'])]);
 
     // Admin Dashboard Aggregates
-    $r->get('/admin/dashboard', [DashboardController::class, 'metrics'], $adminOnlyAuth);
+    $r->get('/admin/dashboard', [DashboardController::class, 'metrics'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('dashboard.view', ['ADMIN'])]);
 
-    // Dental Services (Viewing for front desk scheduling; creation/updates restricted to Admin)
-    $r->get('/admin/services', [ServiceController::class, 'index'], $receptionistAuth);
-    $r->get('/admin/services/{id}', [ServiceController::class, 'show'], $receptionistAuth);
-    $r->post('/admin/services', [ServiceController::class, 'create'], $adminOnlyAuth);
-    $r->put('/admin/services/{id}', [ServiceController::class, 'update'], $adminOnlyAuth);
-    $r->patch('/admin/services/{id}', [ServiceController::class, 'update'], $adminOnlyAuth);
-    $r->patch('/admin/services/{id}/status', [ServiceController::class, 'updateStatus'], $adminOnlyAuth);
+    // Dental Services (Viewing for front desk scheduling; creation/updates restricted by DRBAC)
+    $r->get('/admin/services', [ServiceController::class, 'index'], [AuthenticationMiddleware::class, $staffPortalGuard, AuthorizationMiddleware::hasPermission('services.view', ['RECEPTIONIST', 'ADMIN'])]);
+    $r->get('/admin/services/{id}', [ServiceController::class, 'show'], [AuthenticationMiddleware::class, $staffPortalGuard, AuthorizationMiddleware::hasPermission('services.view', ['RECEPTIONIST', 'ADMIN'])]);
+    $r->post('/admin/services', [ServiceController::class, 'create'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('services.manage', ['ADMIN'])]);
+    $r->put('/admin/services/{id}', [ServiceController::class, 'update'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('services.manage', ['ADMIN'])]);
+    $r->patch('/admin/services/{id}', [ServiceController::class, 'update'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('services.manage', ['ADMIN'])]);
+    $r->patch('/admin/services/{id}/status', [ServiceController::class, 'updateStatus'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('services.manage', ['ADMIN'])]);
 
-    // Dentists Roster (Viewing for front desk scheduling; creation/updates restricted to Admin)
-    $r->get('/admin/dentists', [DentistController::class, 'index'], $receptionistAuth);
-    $r->get('/admin/dentists/{id}', [DentistController::class, 'show'], $receptionistAuth);
-    $r->post('/admin/dentists', [DentistController::class, 'create'], $adminOnlyAuth);
-    $r->put('/admin/dentists/{id}', [DentistController::class, 'update'], $adminOnlyAuth);
-    $r->patch('/admin/dentists/{id}', [DentistController::class, 'update'], $adminOnlyAuth);
-    $r->patch('/admin/dentists/{id}/status', [DentistController::class, 'updateStatus'], $adminOnlyAuth);
+    // Dentists Roster (Viewing for front desk scheduling; creation/updates restricted by DRBAC)
+    $r->get('/admin/dentists', [DentistController::class, 'index'], [AuthenticationMiddleware::class, $staffPortalGuard, AuthorizationMiddleware::hasPermission('dentists.view', ['RECEPTIONIST', 'ADMIN'])]);
+    $r->get('/admin/dentists/{id}', [DentistController::class, 'show'], [AuthenticationMiddleware::class, $staffPortalGuard, AuthorizationMiddleware::hasPermission('dentists.view', ['RECEPTIONIST', 'ADMIN'])]);
+    $r->post('/admin/dentists', [DentistController::class, 'create'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('dentists.manage', ['ADMIN'])]);
+    $r->put('/admin/dentists/{id}', [DentistController::class, 'update'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('dentists.manage', ['ADMIN'])]);
+    $r->patch('/admin/dentists/{id}', [DentistController::class, 'update'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('dentists.manage', ['ADMIN'])]);
+    $r->patch('/admin/dentists/{id}/status', [DentistController::class, 'updateStatus'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('dentists.manage', ['ADMIN'])]);
 
     // Admin Clinic Operating Hours & Closures Management (Phase 9)
-    $r->put('/admin/clinic/hours', [ClinicScheduleController::class, 'updateHours'], $adminOnlyAuth);
-    $r->get('/admin/clinic/closures', [ClinicScheduleController::class, 'getClosures'], $receptionistAuth);
-    $r->post('/admin/clinic/closures', [ClinicScheduleController::class, 'storeClosure'], $adminOnlyAuth);
-    $r->delete('/admin/clinic/closures/{id}', [ClinicScheduleController::class, 'destroyClosure'], $adminOnlyAuth);
+    $r->put('/admin/clinic/hours', [ClinicScheduleController::class, 'updateHours'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('settings.manage', ['ADMIN'])]);
+    $r->get('/admin/clinic/closures', [ClinicScheduleController::class, 'getClosures'], [AuthenticationMiddleware::class, $staffPortalGuard, AuthorizationMiddleware::hasPermission('appointments.view', ['RECEPTIONIST', 'ADMIN'])]);
+    $r->post('/admin/clinic/closures', [ClinicScheduleController::class, 'storeClosure'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('settings.manage', ['ADMIN'])]);
+    $r->delete('/admin/clinic/closures/{id}', [ClinicScheduleController::class, 'destroyClosure'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('settings.manage', ['ADMIN'])]);
 
-    // Dentist Schedules & Time-Off Inspection (Front Desk can view; modifications restricted to Admin)
-    $r->get('/admin/dentists/{id}/schedules', [DentistScheduleController::class, 'index'], $receptionistAuth);
-    $r->post('/admin/dentists/{id}/schedules', [DentistScheduleController::class, 'store'], $adminOnlyAuth);
-    $r->put('/admin/dentists/{id}/schedules/{scheduleId}', [DentistScheduleController::class, 'update'], $adminOnlyAuth);
-    $r->delete('/admin/dentists/{id}/schedules/{scheduleId}', [DentistScheduleController::class, 'destroy'], $adminOnlyAuth);
+    // Dentist Schedules & Time-Off Inspection (Front Desk can view; modifications restricted by DRBAC)
+    $r->get('/admin/dentists/{id}/schedules', [DentistScheduleController::class, 'index'], [AuthenticationMiddleware::class, $staffPortalGuard, AuthorizationMiddleware::hasPermission('dentists.view', ['RECEPTIONIST', 'ADMIN'])]);
+    $r->post('/admin/dentists/{id}/schedules', [DentistScheduleController::class, 'store'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('dentists.manage', ['ADMIN'])]);
+    $r->put('/admin/dentists/{id}/schedules/{scheduleId}', [DentistScheduleController::class, 'update'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('dentists.manage', ['ADMIN'])]);
+    $r->delete('/admin/dentists/{id}/schedules/{scheduleId}', [DentistScheduleController::class, 'destroy'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('dentists.manage', ['ADMIN'])]);
 
-    $r->get('/admin/dentists/{id}/time-off', [DentistTimeOffController::class, 'index'], $receptionistAuth);
-    $r->post('/admin/dentists/{id}/time-off', [DentistTimeOffController::class, 'store'], $adminOnlyAuth);
-    $r->delete('/admin/dentists/{id}/time-off/{timeOffId}', [DentistTimeOffController::class, 'destroy'], $adminOnlyAuth);
+    $r->get('/admin/dentists/{id}/time-off', [DentistTimeOffController::class, 'index'], [AuthenticationMiddleware::class, $staffPortalGuard, AuthorizationMiddleware::hasPermission('dentists.view', ['RECEPTIONIST', 'ADMIN'])]);
+    $r->post('/admin/dentists/{id}/time-off', [DentistTimeOffController::class, 'store'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('dentists.manage', ['ADMIN'])]);
+    $r->delete('/admin/dentists/{id}/time-off/{timeOffId}', [DentistTimeOffController::class, 'destroy'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('dentists.manage', ['ADMIN'])]);
 
     // Patients Directory (Front desk & Admin)
-    $r->get('/admin/patients', [PatientController::class, 'index'], $receptionistAuth);
-    $r->get('/admin/patients/{id}', [PatientController::class, 'show'], $receptionistAuth);
-    $r->put('/admin/patients/{id}', [PatientController::class, 'update'], $receptionistAuth);
-    $r->patch('/admin/patients/{id}', [PatientController::class, 'update'], $receptionistAuth);
-    $r->patch('/admin/patients/{id}/status', [PatientController::class, 'updateStatus'], $adminOnlyAuth);
+    $r->get('/admin/patients', [PatientController::class, 'index'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('patients.view', ['ADMIN', 'RECEPTIONIST'])]);
+    $r->get('/admin/patients/{id}', [PatientController::class, 'show'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('patients.view', ['ADMIN', 'RECEPTIONIST'])]);
+    $r->put('/admin/patients/{id}', [PatientController::class, 'update'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('patients.manage', ['ADMIN', 'RECEPTIONIST'])]);
+    $r->patch('/admin/patients/{id}', [PatientController::class, 'update'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('patients.manage', ['ADMIN', 'RECEPTIONIST'])]);
+    $r->patch('/admin/patients/{id}/status', [PatientController::class, 'updateStatus'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('users.manage', ['ADMIN'])]);
 
     // Appointments Lifecycle Review & Triage (Front Desk & Admin)
-    $r->get('/admin/appointments', [AppointmentController::class, 'adminIndex'], $receptionistAuth);
-    $r->get('/admin/appointments/{id}', [AppointmentController::class, 'adminShow'], $receptionistAuth);
-    $r->patch('/admin/appointments/{id}/confirm', [AppointmentController::class, 'confirm'], $receptionistAuth);
-    $r->patch('/admin/appointments/{id}/reject', [AppointmentController::class, 'reject'], $receptionistAuth);
-    $r->patch('/admin/appointments/{id}/complete', [AppointmentController::class, 'complete'], $adminOnlyAuth);
+    $r->get('/admin/appointments', [AppointmentController::class, 'adminIndex'], [AuthenticationMiddleware::class, $staffPortalGuard, AuthorizationMiddleware::hasPermission('appointments.view', ['RECEPTIONIST', 'ADMIN'])]);
+    $r->get('/admin/appointments/{id}', [AppointmentController::class, 'adminShow'], [AuthenticationMiddleware::class, $staffPortalGuard, AuthorizationMiddleware::hasPermission('appointments.view', ['RECEPTIONIST', 'ADMIN'])]);
+    $r->patch('/admin/appointments/{id}/confirm', [AppointmentController::class, 'confirm'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('appointments.manage', ['RECEPTIONIST', 'ADMIN'])]);
+    $r->patch('/admin/appointments/{id}/reject', [AppointmentController::class, 'reject'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('appointments.manage', ['RECEPTIONIST', 'ADMIN'])]);
+    $r->patch('/admin/appointments/{id}/complete', [AppointmentController::class, 'complete'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('appointments.complete', ['ADMIN'])]);
 
-    // Admin Audit Logs (Strictly Administrator)
-    $r->get('/admin/audit-logs', function (Request $req): Response {
-        $user = $req->getUser();
-        return Response::success([
-            'message' => 'Admin audit logs accessed successfully.',
-            'actor' => $user['email'] ?? 'admin',
-        ]);
-    }, $adminOnlyAuth);
+    // User & Staff Account Management (Administrator Only)
+    $r->get('/admin/users', [UserController::class, 'index'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('users.view', ['ADMIN'])]);
+    $r->post('/admin/users', [UserController::class, 'store'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('users.manage', ['ADMIN'])]);
+    $r->get('/admin/users/{id}', [UserController::class, 'show'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('users.view', ['ADMIN'])]);
+    $r->patch('/admin/users/{id}/status', [UserController::class, 'updateStatus'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('users.manage', ['ADMIN'])]);
+    $r->patch('/admin/users/{id}/role', [UserController::class, 'updateRole'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('users.manage', ['ADMIN'])]);
+
+    // Dynamic Role-Based Access Control (DRBAC) Matrix (Administrator Only)
+    $r->get('/admin/roles', [RolePermissionController::class, 'getRoles'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('roles.manage', ['ADMIN'])]);
+    $r->get('/admin/permissions', [RolePermissionController::class, 'getPermissions'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('roles.manage', ['ADMIN'])]);
+    $r->put('/admin/roles/{id}/permissions', [RolePermissionController::class, 'syncRolePermissions'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('roles.manage', ['ADMIN'])]);
+
+    // Forensic Audit Logs & Security Events (Administrator Only)
+    $r->get('/admin/audit-logs', [AuditLogController::class, 'index'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('audit_logs.view', ['ADMIN'])]);
+    $r->get('/admin/audit-logs/export', [AuditLogController::class, 'export'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('audit_logs.export', ['ADMIN'])]);
+    $r->get('/admin/security/events', [AuditLogController::class, 'securityEvents'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('audit_logs.view', ['ADMIN'])]);
+
+    // Clinic Settings Configuration (Administrator Only)
+    $r->get('/admin/clinic/settings', [ClinicSettingsController::class, 'index'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('settings.manage', ['ADMIN'])]);
+    $r->put('/admin/clinic/settings', [ClinicSettingsController::class, 'update'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('settings.manage', ['ADMIN'])]);
+
+    // Reports & Analytics (Administrator Only)
+    $r->get('/admin/reports/appointments', [ReportController::class, 'appointments'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('reports.view', ['ADMIN'])]);
+    $r->get('/admin/reports/revenue', [ReportController::class, 'revenue'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('reports.view', ['ADMIN'])]);
+    $r->get('/admin/reports/dentists', [ReportController::class, 'dentists'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('reports.view', ['ADMIN'])]);
+
+    // System Health Diagnostics (Administrator Only)
+    $r->get('/admin/system/health', [HealthController::class, 'systemHealth'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('system.health', ['ADMIN'])]);
 
     // 7. Patient Appointment Booking & Lifecycle (Phase 10)
     $patientAuth = [AuthenticationMiddleware::class];
@@ -156,20 +184,20 @@ $router->group('/api/v1', function (Router $r): void {
 
     // Dentist Scoped Endpoints (Phase 12 Dentist Dashboard & Assigned Workload)
     $dentistAuth = [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN'])];
-    $r->get('/dentist/dashboard', [AppointmentController::class, 'dentistDashboard'], $dentistAuth);
-    $r->get('/dentist/appointments', [AppointmentController::class, 'dentistIndex'], $dentistAuth);
-    $r->get('/dentist/appointments/{id}', [AppointmentController::class, 'dentistShow'], $dentistAuth);
-    $r->patch('/dentist/appointments/{id}/complete', [AppointmentController::class, 'dentistComplete'], $dentistAuth);
-    $r->post('/dentist/appointments/{id}/complete', [AppointmentController::class, 'dentistComplete'], $dentistAuth);
+    $r->get('/dentist/dashboard', [AppointmentController::class, 'dentistDashboard'], [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN']), AuthorizationMiddleware::hasPermission('appointments.view', ['DENTIST', 'ADMIN'])]);
+    $r->get('/dentist/appointments', [AppointmentController::class, 'dentistIndex'], [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN']), AuthorizationMiddleware::hasPermission('appointments.view', ['DENTIST', 'ADMIN'])]);
+    $r->get('/dentist/appointments/{id}', [AppointmentController::class, 'dentistShow'], [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN']), AuthorizationMiddleware::hasPermission('appointments.view', ['DENTIST', 'ADMIN'])]);
+    $r->patch('/dentist/appointments/{id}/complete', [AppointmentController::class, 'dentistComplete'], [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN']), AuthorizationMiddleware::hasPermission('appointments.complete', ['DENTIST', 'ADMIN'])]);
+    $r->post('/dentist/appointments/{id}/complete', [AppointmentController::class, 'dentistComplete'], [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN']), AuthorizationMiddleware::hasPermission('appointments.complete', ['DENTIST', 'ADMIN'])]);
     $r->post('/dentist/time-off', [DentistTimeOffController::class, 'requestTimeOff'], $dentistAuth);
 
     // Treatment Records Group (Phase 12 Treatment Records & Clinical Documentation)
-    $r->get('/treatment-records', [TreatmentRecordController::class, 'index'], $dentistAuth);
-    $r->post('/treatment-records', [TreatmentRecordController::class, 'create'], $dentistAuth);
-    $r->get('/treatment-records/{id}', [TreatmentRecordController::class, 'show'], $dentistAuth);
-    $r->patch('/treatment-records/{id}', [TreatmentRecordController::class, 'update'], $dentistAuth);
-    $r->put('/treatment-records/{id}', [TreatmentRecordController::class, 'update'], $dentistAuth);
-    $r->get('/appointments/{id}/treatment-record', [TreatmentRecordController::class, 'showByAppointment'], $dentistAuth);
+    $r->get('/treatment-records', [TreatmentRecordController::class, 'index'], [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN']), AuthorizationMiddleware::hasPermission('treatment_records.view', ['DENTIST', 'ADMIN'])]);
+    $r->post('/treatment-records', [TreatmentRecordController::class, 'create'], [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN']), AuthorizationMiddleware::hasPermission('treatment_records.create', ['DENTIST', 'ADMIN'])]);
+    $r->get('/treatment-records/{id}', [TreatmentRecordController::class, 'show'], [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN']), AuthorizationMiddleware::hasPermission('treatment_records.view', ['DENTIST', 'ADMIN'])]);
+    $r->patch('/treatment-records/{id}', [TreatmentRecordController::class, 'update'], [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN']), AuthorizationMiddleware::hasPermission('treatment_records.amend', ['DENTIST', 'ADMIN'])]);
+    $r->put('/treatment-records/{id}', [TreatmentRecordController::class, 'update'], [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN']), AuthorizationMiddleware::hasPermission('treatment_records.amend', ['DENTIST', 'ADMIN'])]);
+    $r->get('/appointments/{id}/treatment-record', [TreatmentRecordController::class, 'showByAppointment'], [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN']), AuthorizationMiddleware::hasPermission('treatment_records.view', ['DENTIST', 'ADMIN'])]);
 
     // 8. Future Phases - Structured Placeholders
     $notImplemented = fn (string $name) => function (Request $req) use ($name) {

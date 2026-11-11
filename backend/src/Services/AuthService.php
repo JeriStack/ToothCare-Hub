@@ -13,6 +13,7 @@ use App\Repositories\AuthTokenRepository;
 use App\Repositories\DentistRepository;
 use App\Repositories\PatientRepository;
 use App\Repositories\RateLimitRepository;
+use App\Repositories\RoleRepository;
 use App\Repositories\UserRepository;
 use App\Validators\AuthValidator;
 
@@ -28,6 +29,7 @@ class AuthService
     private AuthTokenRepository $tokenRepository;
     private AuditLogRepository $auditLogRepository;
     private RateLimitRepository $rateLimitRepository;
+    private RoleRepository $roleRepository;
     private EmailService $emailService;
     private Database $database;
     private Config $config;
@@ -43,7 +45,8 @@ class AuthService
         ?EmailService $emailService = null,
         ?Database $database = null,
         ?Config $config = null,
-        ?Logger $logger = null
+        ?Logger $logger = null,
+        ?RoleRepository $roleRepository = null
     ) {
         $this->database = $database ?? Database::getInstance();
         $this->config = $config ?? Config::getInstance();
@@ -54,6 +57,7 @@ class AuthService
         $this->tokenRepository = $tokenRepository ?? new AuthTokenRepository($this->database);
         $this->auditLogRepository = $auditLogRepository ?? new AuditLogRepository($this->database);
         $this->rateLimitRepository = $rateLimitRepository ?? new RateLimitRepository($this->database);
+        $this->roleRepository = $roleRepository ?? new RoleRepository($this->database);
         $this->emailService = $emailService ?? new EmailService($this->database, $this->config, $this->logger);
     }
 
@@ -296,6 +300,7 @@ class AuthService
             'id' => $userId,
             'email' => (string) $user['email'],
             'role' => $role,
+            'permissions' => $this->resolveUserPermissions($role),
             'is_active' => (bool) $user['is_active'],
             'email_verified' => (bool) $user['email_verified'],
             'patient' => $patient,
@@ -369,11 +374,26 @@ class AuthService
             'id' => (int) $user['id'],
             'email' => (string) $user['email'],
             'role' => $role,
+            'permissions' => $this->resolveUserPermissions($role),
             'is_active' => (bool) $user['is_active'],
             'email_verified' => (bool) $user['email_verified'],
             'patient' => $patient,
             'dentist' => $dentist,
         ];
+    }
+
+    /**
+     * Resolve effective DRBAC permissions assigned to the user's role
+     *
+     * @return list<string>
+     */
+    private function resolveUserPermissions(string $role): array
+    {
+        try {
+            return $this->roleRepository->getPermissionsForRoleSlug(strtolower(trim($role)));
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     /**

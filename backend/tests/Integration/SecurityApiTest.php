@@ -371,6 +371,8 @@ class SecurityApiTest extends TestCase
         $reqAdmin->setUser($adminUser);
         $resAdmin = $this->app->handle($reqAdmin);
         $this->assertSame(200, $resAdmin->getStatusCode());
-        $this->assertSame('Admin audit logs accessed successfully.', $resAdmin->getData()['message'] ?? null);
+        $body = json_decode($resAdmin->getBody(), true);
+        $this->assertIsArray($body['data']);
+        $this->assertArrayHasKey('total', $body['meta']);
     }
 }

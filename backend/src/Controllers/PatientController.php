@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Core\HttpException;
 use App\Core\Request;
 use App\Core\Response;
+use App\Middleware\AuthorizationMiddleware;
 use App\Repositories\AuditLogRepository;
 use App\Repositories\DentistRepository;
 use App\Repositories\PatientRepository;
@@ -43,15 +44,7 @@ class PatientController
      */
     public function index(Request $request): Response
     {
-        $user = $request->getUser();
-        if ($user === null) {
-            throw HttpException::unauthorized('Authentication is required.', 'AUTHENTICATION_REQUIRED');
-        }
-
-        $role = strtoupper((string) $user['role']);
-        if ($role !== 'ADMIN' && $role !== 'RECEPTIONIST') {
-            throw HttpException::forbidden('Administrative or Front Desk access required.', 'FORBIDDEN');
-        }
+        AuthorizationMiddleware::requireUserPermission($request, 'patients.view', ['ADMIN', 'RECEPTIONIST']);
 
         $search = $request->getQuery('search');
         $isActive = $request->getQuery('is_active') ?? $request->getQuery('status');
@@ -152,7 +145,7 @@ class PatientController
             throw HttpException::notFound("Patient record #{$patientId} was not found.");
         }
 
-        $this->assertCanAccessPatient($user, $patient);
+        $this->assertCanAccessPatient($request, $patient);
 
         // Include appointment count for administrative context
         $patient['appointment_count'] = $this->patientRepository->countAppointmentsReferencing($patientId);
@@ -178,7 +171,7 @@ class PatientController
             throw HttpException::notFound("Patient record #{$patientId} was not found.");
         }
 
-        $this->assertCanModifyPatient($user, $patient);
+        $this->assertCanModifyPatient($request, $patient);
 
         $body = $request->getBody();
         // Prevent modification of identity IDs
@@ -210,14 +203,7 @@ class PatientController
      */
     public function updateStatus(Request $request): Response
     {
-        $user = $request->getUser();
-        if ($user === null) {
-            throw HttpException::unauthorized('Authentication is required.', 'AUTHENTICATION_REQUIRED');
-        }
-
-        if (strtoupper((string) $user['role']) !== 'ADMIN') {
-            throw HttpException::forbidden('Administrative access required.', 'FORBIDDEN');
-        }
+        $user = AuthorizationMiddleware::requireUserPermission($request, 'users.manage', ['ADMIN']);
 
         $patientId = (int) $request->getParam('id');
         $patient = $this->patientRepository->findWithUserById($patientId)
@@ -255,11 +241,15 @@ class PatientController
     /**
      * Enforce strict server-side resource ownership for reading patient data
      *
-     * @param array<string, mixed> $user
      * @param array<string, mixed> $patient
      */
-    private function assertCanAccessPatient(array $user, array $patient): void
+    private function assertCanAccessPatient(Request $request, array $patient): void
     {
+        $user = $request->getUser();
+        if ($user === null) {
+            throw HttpException::unauthorized('Authentication is required.', 'AUTHENTICATION_REQUIRED');
+        }
+
         $userRole = strtoupper((string) $user['role']);
         $userId = (int) $user['id'];
         $patientUserId = (int) $patient['user_id'];
@@ -275,46 +265,43 @@ class PatientController
             return;
         }
 
-        // 2. Admin & Receptionist roles: Allowed full operational oversight
-        if ($userRole === 'ADMIN' || $userRole === 'RECEPTIONIST') {
-            return;
-        }
+        // 2. Staff & clinical roles: Governed by DRBAC permission (`patients.view`)
+        AuthorizationMiddleware::requireUserPermission($request, 'patients.view', ['ADMIN', 'RECEPTIONIST', 'DENTIST']);
 
-        // 3. Dentist role: Only allowed if clinical provider relationship exists
         if ($userRole === 'DENTIST') {
             $dentist = $this->dentistRepository->findByUserId($userId);
             if ($dentist === null) {
                 throw HttpException::forbidden('Unauthorized clinical provider.', 'FORBIDDEN');
             }
-            return;
         }
-
-        throw HttpException::forbidden('You do not have permission to access this patient profile.', 'FORBIDDEN');
     }
 
     /**
      * Enforce strict server-side resource ownership for modifying patient data
      *
-     * @param array<string, mixed> $user
      * @param array<string, mixed> $patient
      */
-    private function assertCanModifyPatient(array $user, array $patient): void
+    private function assertCanModifyPatient(Request $request, array $patient): void
     {
+        $user = $request->getUser();
+        if ($user === null) {
+            throw HttpException::unauthorized('Authentication is required.', 'AUTHENTICATION_REQUIRED');
+        }
+
         $userRole = strtoupper((string) $user['role']);
         $userId = (int) $user['id'];
         $patientUserId = (int) $patient['user_id'];
 
-        if ($userRole === 'PATIENT' && $userId === $patientUserId) {
+        if ($userRole === 'PATIENT') {
+            if ($userId !== $patientUserId) {
+                throw HttpException::forbidden(
+                    'You do not have permission to modify this patient profile.',
+                    'FORBIDDEN'
+                );
+            }
             return;
         }
 
-        if ($userRole === 'ADMIN' || $userRole === 'RECEPTIONIST') {
-            return;
-        }
-
-        throw HttpException::forbidden(
-            'You do not have permission to modify this patient profile.',
-            'FORBIDDEN'
-        );
+        AuthorizationMiddleware::requireUserPermission($request, 'patients.manage', ['ADMIN', 'RECEPTIONIST']);
     }
 }
