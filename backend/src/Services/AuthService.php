@@ -189,7 +189,13 @@ class AuthService
         $ipRateKey = "login:ip:{$ip}";
         $emailRateKey = "login:email:" . hash('sha256', $email);
 
-        $ipRate = $this->rateLimitRepository->hit($ipRateKey, $maxAttempts * 2, $windowSeconds);
+        $isDev = $this->config->getString('app_env') === 'development';
+        $isPrivateOrLocalIp = $this->isLocalOrPrivateIp($ip);
+
+        // In local development or private container networks, provide a relaxed IP threshold to prevent shared-subnet lockouts
+        $maxIpAttempts = ($isDev && $isPrivateOrLocalIp) ? 100 : $maxAttempts * 2;
+
+        $ipRate = $this->rateLimitRepository->hit($ipRateKey, $maxIpAttempts, $windowSeconds);
         $emailRate = $this->rateLimitRepository->hit($emailRateKey, $maxAttempts, $windowSeconds);
 
         if (!$ipRate['allowed'] || !$emailRate['allowed']) {
@@ -247,6 +253,7 @@ class AuthService
 
         // Clear rate limit counters on success
         $this->rateLimitRepository->clear($emailRateKey);
+        $this->rateLimitRepository->clear($ipRateKey);
 
         // Establish and configure session
         $this->initializeSession();
@@ -608,6 +615,18 @@ class AuthService
 
             @session_start();
         }
+    }
+
+    /**
+     * Check if client IP belongs to loopback or private RFC1918 / Docker subnets
+     */
+    private function isLocalOrPrivateIp(string $ip): bool
+    {
+        return $ip === '127.0.0.1' ||
+            $ip === '::1' ||
+            str_starts_with($ip, '192.168.') ||
+            str_starts_with($ip, '10.') ||
+            (bool) preg_match('/^172\.(1[6-9]|2[0-9]|3[0-1])\./', $ip);
     }
 }
 
