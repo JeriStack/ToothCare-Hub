@@ -44,6 +44,7 @@ import { NotificationCenter } from '../features/notifications/components/Notific
 import { DentistAppointmentsPage } from '../features/dentists/pages/DentistAppointmentsPage';
 import { DentistAppointmentDetailPage } from '../features/dentists/pages/DentistAppointmentDetailPage';
 import { DentistTreatmentRecordsPage } from '../features/treatment-records/pages/DentistTreatmentRecordsPage';
+import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 
 function getInitialRoute() {
   if (typeof window === 'undefined') return 'LANDING';
@@ -65,6 +66,18 @@ function getInitialTab() {
   if (path.startsWith('/patient/')) {
     const sub = path.replace('/patient/', '').split('/')[0];
     if (['dashboard', 'book', 'services', 'dentists', 'appointments', 'notifications', 'profile'].includes(sub)) {
+      return sub;
+    }
+  }
+  if (path.startsWith('/admin/')) {
+    const sub = path.replace('/admin/', '').split('/')[0];
+    if (['dashboard', 'triage', 'queue', 'patients', 'services', 'dentists', 'schedules'].includes(sub)) {
+      return sub === 'queue' ? 'triage' : sub;
+    }
+  }
+  if (path.startsWith('/dentist/')) {
+    const sub = path.replace('/dentist/', '').split('/')[0];
+    if (['dashboard', 'appointments', 'treatment-records', 'shifts'].includes(sub)) {
       return sub;
     }
   }
@@ -97,6 +110,27 @@ function AppContent() {
     setActiveTab(tab);
     setIsMobileMenuOpen(false);
     const subPath = tab === 'dashboard' ? '/patient' : `/patient/${tab}`;
+    if (window.location.pathname !== subPath) {
+      window.history.pushState({}, '', subPath);
+    }
+  };
+
+  // Admin Sub-Route Navigation with URL History Sync
+  const handleAdminNav = (tab) => {
+    setActiveTab(tab);
+    setIsMobileMenuOpen(false);
+    const subPath = tab === 'dashboard' ? '/admin' : `/admin/${tab}`;
+    if (window.location.pathname !== subPath) {
+      window.history.pushState({}, '', subPath);
+    }
+  };
+
+  // Dentist Sub-Route Navigation with URL History Sync
+  const handleDentistNav = (tab) => {
+    setActiveTab(tab);
+    setSelectedDentistAppointmentId(null);
+    setIsMobileMenuOpen(false);
+    const subPath = tab === 'dashboard' ? '/dentist' : `/dentist/${tab}`;
     if (window.location.pathname !== subPath) {
       window.history.pushState({}, '', subPath);
     }
@@ -182,6 +216,38 @@ function AppContent() {
           <p className="text-xs text-slate-500 font-medium">Verifying authenticated session...</p>
         </div>
       </div>
+    );
+  }
+
+  // Unauthenticated Guard for Protected Portals
+  if (
+    !isLoading &&
+    !isAuthenticated &&
+    (currentRoute === 'PATIENT' || currentRoute === 'ADMIN' || currentRoute === 'DENTIST')
+  ) {
+    return (
+      <LoginPage
+        onSuccess={(loggedUser) => {
+          const role = loggedUser?.role?.toUpperCase();
+          const firstName =
+            loggedUser?.patient?.first_name ||
+            loggedUser?.dentist?.first_name ||
+            loggedUser?.first_name ||
+            'User';
+          showToast(`Welcome back, ${firstName}!`);
+
+          if (role === 'ADMIN') {
+            navigateTo('ADMIN', '/admin');
+          } else if (role === 'DENTIST') {
+            navigateTo('DENTIST', '/dentist');
+          } else {
+            navigateTo('PATIENT', '/patient');
+          }
+        }}
+        onNavigateRegister={() => navigateTo('REGISTER', '/register')}
+        onNavigateForgotPassword={() => navigateTo('FORGOT_PASSWORD', '/forgot-password')}
+        onNavigateHome={() => navigateTo('LANDING', '/')}
+      />
     );
   }
 
@@ -491,42 +557,42 @@ function AppContent() {
               {currentRole === 'ADMIN' && (
                 <>
                   <button
-                    onClick={() => { setActiveTab('dashboard'); setIsMobileMenuOpen(false); }}
+                    onClick={() => handleAdminNav('dashboard')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'dashboard' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
                   >
                     <Calendar className="w-4 h-4" />
                     Overview
                   </button>
                   <button
-                    onClick={() => { setActiveTab('triage'); setIsMobileMenuOpen(false); }}
+                    onClick={() => handleAdminNav('triage')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'triage' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
                   >
                     <Clock className="w-4 h-4" />
                     Review Queue
                   </button>
                   <button
-                    onClick={() => { setActiveTab('patients'); setIsMobileMenuOpen(false); }}
+                    onClick={() => handleAdminNav('patients')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'patients' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
                   >
                     <User className="w-4 h-4" />
                     Patient Registry
                   </button>
                   <button
-                    onClick={() => { setActiveTab('services'); setIsMobileMenuOpen(false); }}
+                    onClick={() => handleAdminNav('services')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'services' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
                   >
                     <Stethoscope className="w-4 h-4" />
                     Services & Fees
                   </button>
                   <button
-                    onClick={() => { setActiveTab('dentists'); setIsMobileMenuOpen(false); }}
+                    onClick={() => handleAdminNav('dentists')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'dentists' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
                   >
                     <Shield className="w-4 h-4" />
                     Dentist Roster
                   </button>
                   <button
-                    onClick={() => { setActiveTab('schedules'); setIsMobileMenuOpen(false); }}
+                    onClick={() => handleAdminNav('schedules')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'schedules' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
                   >
                     <Clock className="w-4 h-4" />
@@ -545,11 +611,7 @@ function AppContent() {
               {currentRole === 'DENTIST' && (
                 <>
                   <button
-                    onClick={() => {
-                      setActiveTab('dashboard');
-                      setSelectedDentistAppointmentId(null);
-                      setIsMobileMenuOpen(false);
-                    }}
+                    onClick={() => handleDentistNav('dashboard')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                       activeTab === 'dashboard' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'
                     }`}
@@ -558,11 +620,7 @@ function AppContent() {
                     Overview
                   </button>
                   <button
-                    onClick={() => {
-                      setActiveTab('appointments');
-                      setSelectedDentistAppointmentId(null);
-                      setIsMobileMenuOpen(false);
-                    }}
+                    onClick={() => handleDentistNav('appointments')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                       activeTab === 'appointments' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'
                     }`}
@@ -571,11 +629,7 @@ function AppContent() {
                     Assigned Appointments
                   </button>
                   <button
-                    onClick={() => {
-                      setActiveTab('treatment-records');
-                      setSelectedDentistAppointmentId(null);
-                      setIsMobileMenuOpen(false);
-                    }}
+                    onClick={() => handleDentistNav('treatment-records')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                       activeTab === 'treatment-records' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'
                     }`}
@@ -584,11 +638,7 @@ function AppContent() {
                     Treatment Records
                   </button>
                   <button
-                    onClick={() => {
-                      setActiveTab('shifts');
-                      setSelectedDentistAppointmentId(null);
-                      setIsMobileMenuOpen(false);
-                    }}
+                    onClick={() => handleDentistNav('shifts')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                       activeTab === 'shifts' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'
                     }`}
@@ -687,7 +737,7 @@ function AppContent() {
           {currentRole === 'ADMIN' && (
             <>
               {activeTab === 'dashboard' && (
-                <AdminDashboard onNavigateTab={(tab) => setActiveTab(tab)} />
+                <AdminDashboard onNavigateTab={(tab) => handleAdminNav(tab)} />
               )}
 
               {activeTab === 'triage' && (
@@ -771,8 +821,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

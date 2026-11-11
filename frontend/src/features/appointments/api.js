@@ -22,6 +22,14 @@ export const appointmentsApi = {
   },
 
   /**
+   * Fetch patient dashboard metrics, next appointment, pending triage requests, and activity.
+   */
+  async getPatientDashboard() {
+    const res = await apiClient.get('/patient/dashboard');
+    return res.data?.data;
+  },
+
+  /**
    * List assigned appointments for the authenticated dentist
    */
   async listDentist(params = {}) {

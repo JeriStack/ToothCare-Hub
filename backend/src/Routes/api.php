@@ -137,6 +137,7 @@ $router->group('/api/v1', function (Router $r): void {
 
     // 7. Patient Appointment Booking & Lifecycle (Phase 10)
     $patientAuth = [AuthenticationMiddleware::class];
+    $r->get('/patient/dashboard', [AppointmentController::class, 'patientDashboard'], $patientAuth);
     $r->post('/appointments', [AppointmentController::class, 'book'], $patientAuth);
     $r->get('/appointments', [AppointmentController::class, 'index'], $patientAuth);
     $r->get('/appointments/{id}', [AppointmentController::class, 'show'], $patientAuth);
