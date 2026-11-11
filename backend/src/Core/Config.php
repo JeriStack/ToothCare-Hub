@@ -68,7 +68,7 @@ class Config
             'db_charset' => $this->env('DB_CHARSET', 'utf8mb4'),
             
             // CORS
-            'cors_allowed_origins' => $this->parseList($this->env('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:3000')),
+            'cors_allowed_origins' => $this->parseList($this->env('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:8080,http://127.0.0.1:5173,http://127.0.0.1:8080,http://localhost:3000,http://127.0.0.1:3000')),
             'cors_max_age' => (int) $this->env('CORS_MAX_AGE', '86400'),
             
             // Session and Cookie

@@ -215,7 +215,15 @@ class AppointmentController
 
         $result = $this->appointmentService->listAdminAppointments($queryParams, $page, $perPage);
 
-        return Response::success($result);
+        return Response::paginated(
+            $result['items'] ?? [],
+            [
+                'total' => $result['total'] ?? 0,
+                'page' => $result['page'] ?? $page,
+                'per_page' => $result['per_page'] ?? $perPage,
+                'last_page' => $result['total_pages'] ?? 1,
+            ]
+        );
     }
 
     /**

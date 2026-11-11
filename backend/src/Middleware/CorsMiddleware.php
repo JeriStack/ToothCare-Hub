@@ -24,12 +24,34 @@ class CorsMiddleware implements MiddlewareInterface
     public function handle(Request $request, callable $next): Response
     {
         $origin = $request->getHeader('origin');
-        $allowedOrigins = $this->config->getArray('cors_allowed_origins', ['http://localhost:5173']);
+        $allowedOrigins = $this->config->getArray('cors_allowed_origins', [
+            'http://localhost:5173',
+            'http://localhost:8080',
+            'http://127.0.0.1:5173',
+            'http://127.0.0.1:8080',
+            'http://localhost:3000',
+            'http://127.0.0.1:3000',
+        ]);
         $maxAge = (string) $this->config->getInt('cors_max_age', 86400);
 
         $isAllowed = false;
-        if ($origin !== null && in_array(rtrim($origin, '/'), array_map(fn ($o) => rtrim($o, '/'), $allowedOrigins), true)) {
-            $isAllowed = true;
+        if ($origin !== null) {
+            $trimmedOrigin = rtrim($origin, '/');
+            $allowedList = array_map(fn ($o) => rtrim($o, '/'), $allowedOrigins);
+            if (in_array($trimmedOrigin, $allowedList, true)) {
+                $isAllowed = true;
+            } elseif ($this->config->getString('app_env') === 'development') {
+                $host = parse_url($origin, PHP_URL_HOST);
+                if ($host && (
+                    $host === 'localhost' ||
+                    $host === '127.0.0.1' ||
+                    str_starts_with($host, '192.168.') ||
+                    str_starts_with($host, '10.') ||
+                    preg_match('/^172\.(1[6-9]|2[0-9]|3[0-1])\./', $host)
+                )) {
+                    $isAllowed = true;
+                }
+            }
         }
 
         // Handle OPTIONS preflight request
