@@ -7,3 +7,4 @@
 /storage/cache/*
 !/storage/cache/.gitkeep
 .phpunit.result.cache
+.phpunit.cache/

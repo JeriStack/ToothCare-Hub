@@ -1,0 +1,2637 @@
+openapi: 3.0.3
+info:
+  title: ToothCare Hub REST API
+  description: |
+    Native PHP REST API for ToothCare Hub Dental Appointment and Clinic Management System.
+    Provides session-based authentication with HttpOnly cookies, CSRF protection, and unified JSON response envelopes.
+  version: 1.0.0
+  contact:
+    name: ToothCare Hub Engineering Team
+    email: dev@toothcarehub.local
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local Docker Compose API Gateway
+  - url: http://localhost/api/v1
+    description: Production / Localhost Port 80 Proxy
+
+paths:
+  /health:
+    get:
+      summary: Health and Liveness Check
+      description: Returns service status, environment, and optional dependency readiness.
+      operationId: getHealth
+      tags:
+        - System
+      parameters:
+        - name: check
+          in: query
+          required: false
+          description: Set to 'ready' to verify database connectivity.
+          schema:
+            type: string
+            enum: [ready]
+      responses:
+        '200':
+          description: Service is healthy and operational.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required:
+                          - status
+                          - service
+                          - environment
+                          - timestamp
+                        properties:
+                          status:
+                            type: string
+                            example: ok
+                          service:
+                            type: string
+                            example: toothcare-backend
+                          environment:
+                            type: string
+                            example: development
+                          timestamp:
+                            type: string
+                            format: date-time
+                            example: '2026-11-05T19:20:00+08:00'
+                          database:
+                            type: string
+                            example: connected
+        '503':
+          description: Dependency check failed (e.g. database unreachable).
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /auth/csrf-token:
+    get:
+      summary: Retrieve CSRF Token
+      description: Retrieves or generates an active CSRF token for state-changing operations.
+      operationId: getCsrfToken
+      tags:
+        - Authentication
+      responses:
+        '200':
+          description: CSRF token successfully retrieved.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required:
+                          - csrf_token
+                        properties:
+                          csrf_token:
+                            type: string
+                            example: 6a3f910b8e91c784...
+
+  /auth/register:
+    post:
+      summary: Register Patient Account
+      description: Registers a new patient user account with server-enforced role assignment and dispatches email verification.
+      operationId: registerPatient
+      tags:
+        - Authentication
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - first_name
+                - last_name
+                - email
+                - password
+                - phone
+                - date_of_birth
+              properties:
+                first_name:
+                  type: string
+                  example: Maria
+                last_name:
+                  type: string
+                  example: Santos
+                email:
+                  type: string
+                  format: email
+                  example: maria.santos@example.com
+                password:
+                  type: string
+                  format: password
+                  minLength: 12
+                  example: StrongP@ssw0rd123!
+                phone:
+                  type: string
+                  example: '+639171234567'
+                date_of_birth:
+                  type: string
+                  format: date
+                  example: '1995-05-15'
+                gender:
+                  type: string
+                  enum: [MALE, FEMALE, OTHER, PREFER_NOT_TO_SAY]
+                  example: FEMALE
+                address:
+                  type: string
+                  example: '123 Rizal Ave, Manila'
+                emergency_contact_name:
+                  type: string
+                  example: 'Juan Santos'
+                emergency_contact_phone:
+                  type: string
+                  example: '+639179876543'
+                medical_alerts:
+                  type: string
+                  example: 'Penicillin allergy'
+      responses:
+        '201':
+          description: Patient account created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '409':
+          description: Email address already registered.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: Validation error in submitted fields.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /auth/login:
+    post:
+      summary: User Login
+      description: Authenticates user credentials, regenerates session ID, and establishes HttpOnly session cookie.
+      operationId: loginUser
+      tags:
+        - Authentication
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: patient@example.com
+                password:
+                  type: string
+                  format: password
+                  example: SecurePassword123!
+      responses:
+        '200':
+          description: Successfully authenticated.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: toothcare_session=abc123xyz; Path=/; HttpOnly; SameSite=Lax
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '401':
+          description: Invalid email or password.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: Account is disabled or inactive.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: Missing or malformed credentials.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /auth/logout:
+    post:
+      summary: User Logout
+      description: Destroys current session and expires session cookie.
+      operationId: logoutUser
+      tags:
+        - Authentication
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      responses:
+        '200':
+          description: Successfully logged out.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/me:
+    get:
+      summary: Current Authenticated User Context
+      description: Returns profile, role, and identity metadata for the currently authenticated session.
+      operationId: getCurrentUser
+      tags:
+        - Authentication
+      security:
+        - CookieAuth: []
+      responses:
+        '200':
+          description: Authenticated user context.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/verify-email:
+    post:
+      summary: Verify Email Address
+      description: Consumes single-use verification token to mark patient account verified.
+      operationId: verifyEmail
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+              properties:
+                token:
+                  type: string
+                  example: 'a1b2c3d4e5f60718293a4b5c6d7e8f90'
+      responses:
+        '200':
+          description: Email address verified successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '422':
+          description: Verification token is invalid, expired, or already used.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /auth/resend-verification:
+    post:
+      summary: Resend Verification Email
+      description: Sends a new verification token to unverified account (anti-enumeration protected).
+      operationId: resendVerification
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: patient@example.com
+      responses:
+        '200':
+          description: Generic confirmation response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '422':
+          description: Invalid email format.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /auth/forgot-password:
+    post:
+      summary: Request Password Reset
+      description: Initiates password reset link without disclosing account existence.
+      operationId: forgotPassword
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: patient@example.com
+      responses:
+        '200':
+          description: Generic confirmation response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /auth/reset-password:
+    post:
+      summary: Reset Password Completion
+      description: Sets new password using single-use reset token and terminates older sessions.
+      operationId: resetPassword
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+                - password
+              properties:
+                token:
+                  type: string
+                  example: 'b9a8c7d6e5f4123456789abcdef01234'
+                password:
+                  type: string
+                  format: password
+                  minLength: 12
+                  example: 'BrandNewP@ssw0rd999!'
+      responses:
+        '200':
+          description: Password reset successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '422':
+          description: Token is invalid, expired, or password does not meet complexity standards.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /patients/{id}:
+    get:
+      summary: Get Patient Profile
+      description: Retrieves patient demographics and medical alerts. Enforces strict resource ownership (Patients can only view own record, Dentists only assigned patients, Admins full oversight).
+      operationId: getPatientById
+      tags:
+        - Patients
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Target patient profile ID.
+          schema:
+            type: integer
+            example: 101
+      responses:
+        '200':
+          description: Patient profile details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      summary: Update Patient Profile
+      description: Updates editable patient fields. Enforces strict resource ownership (Patient themselves or Admin).
+      operationId: updatePatientProfile
+      tags:
+        - Patients
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Target patient profile ID.
+          schema:
+            type: integer
+            example: 101
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                phone:
+                  type: string
+                date_of_birth:
+                  type: string
+                  format: date
+                address:
+                  type: string
+                emergency_contact_name:
+                  type: string
+                emergency_contact_phone:
+                  type: string
+                medical_alerts:
+                  type: string
+      responses:
+        '200':
+          description: Updated patient profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+
+  /appointments:
+    get:
+      summary: List Patient Appointments
+      description: Lists consultation appointments for the authenticated patient, ordered by scheduled date descending.
+      operationId: listPatientAppointments
+      tags:
+        - Appointments
+      security:
+        - CookieAuth: []
+      responses:
+        '200':
+          description: List of patient appointments.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Appointment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      summary: Book Dental Appointment
+      description: |
+        Books a new dental appointment for the authenticated patient.
+        Executes within a MySQL InnoDB transaction with dentist row-locking (SELECT ... FOR UPDATE).
+        Server recalculates slot availability using AvailabilityService to guarantee zero double-booking.
+      operationId: bookAppointment
+      tags:
+        - Appointments
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - dentist_id
+                - service_id
+                - start_at
+              properties:
+                dentist_id:
+                  type: integer
+                  example: 1
+                service_id:
+                  type: integer
+                  example: 1
+                start_at:
+                  type: string
+                  format: date-time
+                  example: '2026-11-10 09:00:00'
+                chief_complaint:
+                  type: string
+                  maxLength: 500
+                  example: 'Routine dental prophylaxis and checkup.'
+      responses:
+        '201':
+          description: Appointment requested and placed in PENDING triage queue.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Appointment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Concurrency slot conflict or double-booking detected.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /appointments/{id}:
+    get:
+      summary: Get Patient Appointment Details
+      description: Retrieves complete appointment details including immutable status transition history. Access restricted to owning patient or staff.
+      operationId: getPatientAppointment
+      tags:
+        - Appointments
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Appointment details with status history timeline.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AppointmentWithHistory'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /appointments/{id}/cancel:
+    post:
+      summary: Cancel Appointment
+      description: Cancels a PENDING or CONFIRMED appointment. Releases the booked interval back into clinic availability.
+      operationId: cancelAppointment
+      tags:
+        - Appointments
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  maxLength: 255
+                  example: 'Family emergency schedule conflict.'
+      responses:
+        '200':
+          description: Appointment cancelled successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Invalid lifecycle status transition.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /appointments/{id}/reschedule:
+    post:
+      summary: Reschedule Appointment
+      description: |
+        Executes Option A atomic rescheduling: cancels original appointment with reason and creates
+        a new linked appointment referencing `rescheduled_from_id` within a single MySQL transaction.
+      operationId: rescheduleAppointment
+      tags:
+        - Appointments
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - new_start_at
+              properties:
+                new_start_at:
+                  type: string
+                  format: date-time
+                  example: '2026-11-12 14:00:00'
+                reason:
+                  type: string
+                  maxLength: 255
+                  example: 'Need afternoon consultation slot.'
+      responses:
+        '201':
+          description: Appointment successfully rescheduled. Returns new appointment record.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Appointment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Target slot is no longer available.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /services:
+    get:
+      summary: Public Dental Services Catalog
+      description: Returns active procedures available for public discovery and appointment scheduling.
+      operationId: getPublicServices
+      tags:
+        - Services
+      responses:
+        '200':
+          description: Active dental services list.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Service'
+
+  /dentists:
+    get:
+      summary: Public Dentists Directory
+      description: Returns active licensed dental practitioners for patient provider selection.
+      operationId: getPublicDentists
+      tags:
+        - Dentists
+      responses:
+        '200':
+          description: Active dentists list.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Dentist'
+
+  /admin/dashboard:
+    get:
+      summary: Administrative Executive Dashboard
+      description: Returns real MySQL aggregate counts for patients, dentists, services, and appointment status metrics.
+      operationId: getAdminDashboard
+      tags:
+        - Admin Dashboard
+      security:
+        - CookieAuth: []
+      responses:
+        '200':
+          description: Aggregated operational metrics.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DashboardMetrics'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/services:
+    get:
+      summary: List Services (Admin)
+      description: Paginated service catalog with search, category filtering, and allowlisted sorting.
+      operationId: getAdminServices
+      tags:
+        - Admin Services
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: is_active
+          in: query
+          schema:
+            type: integer
+            enum: [0, 1]
+        - name: sort_by
+          in: query
+          schema:
+            type: string
+            enum: [id, name, price, duration_minutes, category, is_active, created_at]
+        - name: sort_dir
+          in: query
+          schema:
+            type: string
+            enum: [ASC, DESC]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Paginated service list.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Service'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      summary: Create Dental Service
+      description: Adds a new procedure to the clinic catalog.
+      operationId: createAdminService
+      tags:
+        - Admin Services
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - price
+                - duration_minutes
+              properties:
+                name:
+                  type: string
+                  example: Root Canal Therapy (Molar)
+                category:
+                  type: string
+                  example: Endodontics
+                description:
+                  type: string
+                  example: Complete pulpectomy and root canal obturation.
+                price:
+                  type: number
+                  format: float
+                  example: 8500.00
+                duration_minutes:
+                  type: integer
+                  enum: [15, 30, 45, 60, 90, 120]
+                  example: 90
+                is_active:
+                  type: integer
+                  enum: [0, 1]
+                  default: 1
+      responses:
+        '201':
+          description: Service created successfully.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Service'
+        '409':
+          description: Service name already exists.
+        '422':
+          description: Validation failure (e.g. negative price, invalid duration).
+
+  /admin/services/{id}:
+    get:
+      summary: Get Service Details
+      operationId: getAdminServiceById
+      tags:
+        - Admin Services
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Service details retrieved.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Service'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Update Dental Service
+      operationId: updateAdminService
+      tags:
+        - Admin Services
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                category:
+                  type: string
+                description:
+                  type: string
+                price:
+                  type: number
+                duration_minutes:
+                  type: integer
+                  enum: [15, 30, 45, 60, 90, 120]
+      responses:
+        '200':
+          description: Service updated successfully.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Service'
+
+  /admin/services/{id}/status:
+    patch:
+      summary: Toggle Service Status
+      description: Soft activate or deactivate procedure, preserving clinical history.
+      operationId: toggleAdminServiceStatus
+      tags:
+        - Admin Services
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - is_active
+              properties:
+                is_active:
+                  type: integer
+                  enum: [0, 1]
+      responses:
+        '200':
+          description: Service status updated.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Service'
+
+  /admin/dentists:
+    get:
+      summary: List Dentists (Admin)
+      description: Paginated practitioner roster with search and status filtering.
+      operationId: getAdminDentists
+      tags:
+        - Admin Dentists
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: specialization
+          in: query
+          schema:
+            type: string
+        - name: is_active
+          in: query
+          schema:
+            type: integer
+            enum: [0, 1]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Paginated dentists list.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Dentist'
+    post:
+      summary: Register Licensed Dentist
+      description: Atomically creates DENTIST user account and clinical profile.
+      operationId: createAdminDentist
+      tags:
+        - Admin Dentists
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - first_name
+                - last_name
+                - email
+                - password
+                - license_number
+                - specialization
+                - phone
+              properties:
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                license_number:
+                  type: string
+                specialization:
+                  type: string
+                phone:
+                  type: string
+                default_operatory_chair:
+                  type: string
+                bio:
+                  type: string
+                is_active:
+                  type: integer
+                  enum: [0, 1]
+                  default: 1
+      responses:
+        '201':
+          description: Dentist registered successfully.
+        '409':
+          description: Email or license number already exists.
+
+  /admin/dentists/{id}:
+    get:
+      summary: Get Dentist Profile
+      operationId: getAdminDentistById
+      tags:
+        - Admin Dentists
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Dentist details retrieved.
+    put:
+      summary: Update Dentist Profile
+      operationId: updateAdminDentist
+      tags:
+        - Admin Dentists
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                specialization:
+                  type: string
+                phone:
+                  type: string
+                default_operatory_chair:
+                  type: string
+                bio:
+                  type: string
+      responses:
+        '200':
+          description: Dentist profile updated.
+
+  /admin/dentists/{id}/status:
+    patch:
+      summary: Toggle Dentist Practice Status
+      description: Synchronizes dentists.is_active and users.is_active to govern login access.
+      operationId: toggleAdminDentistStatus
+      tags:
+        - Admin Dentists
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - is_active
+              properties:
+                is_active:
+                  type: integer
+                  enum: [0, 1]
+      responses:
+        '200':
+          description: Dentist practice status updated.
+
+  /admin/patients:
+    get:
+      summary: List Patients (Admin Registry)
+      description: Paginated patient directory with search, gender filtering, and allowlisted sorting.
+      operationId: getAdminPatients
+      tags:
+        - Admin Patients
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: gender
+          in: query
+          schema:
+            type: string
+            enum: [MALE, FEMALE, OTHER, PREFER_NOT_TO_SAY]
+        - name: is_active
+          in: query
+          schema:
+            type: integer
+            enum: [0, 1]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 15
+      responses:
+        '200':
+          description: Paginated patient registry.
+
+  /admin/patients/{id}:
+    get:
+      summary: Get Patient Profile (Admin)
+      operationId: getAdminPatientById
+      tags:
+        - Admin Patients
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Detailed patient profile with user account metadata.
+    put:
+      summary: Update Patient Profile (Admin)
+      operationId: updateAdminPatient
+      tags:
+        - Admin Patients
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                date_of_birth:
+                  type: string
+                  format: date
+                phone:
+                  type: string
+                gender:
+                  type: string
+                address:
+                  type: string
+                emergency_contact_name:
+                  type: string
+                emergency_contact_phone:
+                  type: string
+                medical_alerts:
+                  type: string
+      responses:
+        '200':
+          description: Patient profile updated.
+
+  /admin/patients/{id}/status:
+    patch:
+      summary: Toggle Patient Account Status
+      description: Activates or disables patient user account while preserving all clinical appointment history.
+      operationId: toggleAdminPatientStatus
+      tags:
+        - Admin Patients
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - is_active
+              properties:
+                is_active:
+                  type: integer
+                  enum: [0, 1]
+      responses:
+        '200':
+          description: Patient account status updated.
+
+  /admin/appointments:
+    get:
+      summary: List Admin Appointments with Filters
+      description: Paginated multi-filter query for administrative appointment review and triage.
+      operationId: listAdminAppointments
+      tags:
+        - Appointments Admin
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, CONFIRMED, CANCELLED, REJECTED, COMPLETED]
+        - name: dentist_id
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: date_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 15
+      responses:
+        '200':
+          description: Paginated appointments list with metadata.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Appointment'
+                      meta:
+                        $ref: '#/components/schemas/PaginationMeta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/appointments/{id}:
+    get:
+      summary: Admin Get Appointment Details
+      description: Administrative view of full appointment record including complete transition history.
+      operationId: getAdminAppointment
+      tags:
+        - Appointments Admin
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Full appointment record.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AppointmentWithHistory'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/appointments/{id}/confirm:
+    patch:
+      summary: Confirm Pending Appointment
+      description: Approves a PENDING appointment, re-validating slot availability and locking chair time.
+      operationId: confirmAppointment
+      tags:
+        - Appointments Admin
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Appointment confirmed.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Appointment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Dentist slot conflict detected during confirmation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /admin/appointments/{id}/reject:
+    patch:
+      summary: Reject Pending Appointment
+      description: Declines a PENDING appointment with mandatory recorded reason.
+      operationId: rejectAppointment
+      tags:
+        - Appointments Admin
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - reason
+              properties:
+                reason:
+                  type: string
+                  maxLength: 255
+                  example: 'Practitioner emergency surgery reassignment.'
+      responses:
+        '200':
+          description: Appointment rejected.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Appointment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /admin/appointments/{id}/complete:
+    patch:
+      summary: Mark Appointment Completed
+      description: Advances a CONFIRMED appointment to COMPLETED status upon conclusion of clinical visit.
+      operationId: completeAppointment
+      tags:
+        - Appointments Admin
+      security:
+        - CookieAuth: []
+        - CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Appointment marked completed.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Appointment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /availability:
+    get:
+      summary: Compute Available Appointment Slots
+      description: |
+        Centralized availability engine query. Computes real-time bookable intervals
+        based on practitioner shifts, facility hours, service durations, buffers,
+        approved practitioner leaves, facility closures, and confirmed bookings.
+      operationId: getAvailability
+      tags:
+        - Availability
+      parameters:
+        - name: dentist_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            example: 1
+        - name: service_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            example: 1
+        - name: date
+          in: query
+          required: true
+          description: Target start date in YYYY-MM-DD format (Asia/Manila).
+          schema:
+            type: string
+            format: date
+            example: "2026-11-10"
+        - name: end_date
+          in: query
+          required: false
+          description: Optional end date for range queries (up to 14 days maximum).
+          schema:
+            type: string
+            format: date
+            example: "2026-11-10"
+      responses:
+        '200':
+          description: Calculated available appointment slots.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AvailabilityResult'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /clinic/hours:
+    get:
+      summary: Retrieve Clinic Operating Hours
+      description: Returns the facility operating schedule across all 7 days of the week.
+      operationId: getClinicHours
+      tags:
+        - Clinic Schedule
+      responses:
+        '200':
+          description: List of operating hours per day of week.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ClinicOperatingHour'
+
+  /admin/clinic/hours:
+    put:
+      summary: Update Clinic Operating Hours
+      description: Configures facility opening and closing boundaries for one or all days of the week.
+      operationId: updateClinicHours
+      tags:
+        - Clinic Schedule
+      security:
+        - CookieAuth: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                day_of_week:
+                  type: integer
+                  minimum: 1
+                  maximum: 7
+                opening_time:
+                  type: string
+                  example: "08:00:00"
+                closing_time:
+                  type: string
+                  example: "17:00:00"
+                is_closed:
+                  type: integer
+                  enum: [0, 1]
+      responses:
+        '200':
+          description: Operating hours updated successfully.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /clinic/closures:
+    get:
+      summary: List Scheduled Clinic Closures
+      description: Returns facility-wide holiday, maintenance, and emergency closure intervals.
+      operationId: getClinicClosures
+      tags:
+        - Clinic Schedule
+      parameters:
+        - name: start_date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: List of scheduled clinic closures.
+
+  /admin/clinic/closures:
+    post:
+      summary: Schedule Clinic Facility Closure
+      description: Creates a clinic closure interval that blocks all dentist slots during that window.
+      operationId: createClinicClosure
+      tags:
+        - Clinic Schedule
+      security:
+        - CookieAuth: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - start_at
+                - end_at
+              properties:
+                title:
+                  type: string
+                start_at:
+                  type: string
+                  format: date-time
+                end_at:
+                  type: string
+                  format: date-time
+                closure_type:
+                  type: string
+                  enum: [HOLIDAY, MAINTENANCE, EMERGENCY, SPECIAL_CLOSURE]
+                notes:
+                  type: string
+                  nullable: true
+      responses:
+        '201':
+          description: Clinic closure registered successfully.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /admin/clinic/closures/{id}:
+    delete:
+      summary: Remove Scheduled Clinic Closure
+      description: Removes an existing facility closure.
+      operationId: deleteClinicClosure
+      tags:
+        - Clinic Schedule
+      security:
+        - CookieAuth: []
+          CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Clinic closure deleted successfully.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /dentists/{id}/schedules:
+    get:
+      summary: Get Weekly Shifts for Dentist
+      description: Lists weekly recurring working shifts and chair assignments for a dentist.
+      operationId: getDentistSchedules
+      tags:
+        - Dentist Schedules
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Recurring shift schedules for the dentist.
+
+  /admin/dentists/{id}/schedules:
+    post:
+      summary: Create Recurring Shift for Dentist
+      description: Adds a recurring weekly shift with validation against clinic hours and other shifts.
+      operationId: createDentistSchedule
+      tags:
+        - Dentist Schedules
+      security:
+        - CookieAuth: []
+          CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - day_of_week
+                - start_time
+                - end_time
+              properties:
+                day_of_week:
+                  type: integer
+                  minimum: 1
+                  maximum: 7
+                start_time:
+                  type: string
+                  example: "08:00:00"
+                end_time:
+                  type: string
+                  example: "12:00:00"
+                operatory_chair:
+                  type: string
+                  example: "Chair 1"
+                is_active:
+                  type: integer
+                  enum: [0, 1]
+      responses:
+        '201':
+          description: Shift schedule created successfully.
+        '409':
+          description: Shift overlaps with another shift on the same day.
+        '422':
+          description: Shift exceeds clinic operating hours or has invalid times.
+
+  /admin/dentists/{id}/schedules/{scheduleId}:
+    put:
+      summary: Update Recurring Shift for Dentist
+      description: Modifies an existing recurring shift.
+      operationId: updateDentistSchedule
+      tags:
+        - Dentist Schedules
+      security:
+        - CookieAuth: []
+          CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: scheduleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - day_of_week
+                - start_time
+                - end_time
+              properties:
+                day_of_week:
+                  type: integer
+                start_time:
+                  type: string
+                end_time:
+                  type: string
+                operatory_chair:
+                  type: string
+                is_active:
+                  type: integer
+      responses:
+        '200':
+          description: Shift updated successfully.
+    delete:
+      summary: Delete Recurring Shift
+      description: Removes a weekly shift for a dentist.
+      operationId: deleteDentistSchedule
+      tags:
+        - Dentist Schedules
+      security:
+        - CookieAuth: []
+          CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: scheduleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Shift deleted successfully.
+
+  /dentists/{id}/time-off:
+    get:
+      summary: Get Approved Leaves for Dentist
+      description: Retrieves scheduled leaves for a dentist. Reasons are masked for non-admin viewers.
+      operationId: getDentistTimeOff
+      tags:
+        - Dentist Time Off
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of time-off intervals.
+
+  /admin/dentists/{id}/time-off:
+    post:
+      summary: Schedule Practitioner Time-Off
+      description: Records an approved leave or vacation for a dentist.
+      operationId: createDentistTimeOff
+      tags:
+        - Dentist Time Off
+      security:
+        - CookieAuth: []
+          CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - start_at
+                - end_at
+                - reason
+              properties:
+                start_at:
+                  type: string
+                  format: date-time
+                end_at:
+                  type: string
+                  format: date-time
+                reason:
+                  type: string
+      responses:
+        '201':
+          description: Leave scheduled successfully.
+        '409':
+          description: Leave overlaps with an existing time-off record.
+
+  /admin/dentists/{id}/time-off/{timeOffId}:
+    delete:
+      summary: Remove Practitioner Time-Off
+      description: Deletes an approved leave record.
+      operationId: deleteDentistTimeOff
+      tags:
+        - Dentist Time Off
+      security:
+        - CookieAuth: []
+          CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: timeOffId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Leave record deleted successfully.
+
+components:
+  securitySchemes:
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: toothcare_session
+      description: Server-side PHP session cookie with HttpOnly and SameSite=Lax flags.
+    CsrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: Anti-CSRF token validated for unsafe HTTP methods (POST, PUT, PATCH, DELETE).
+
+  headers:
+    X-Request-ID:
+      description: Unique correlation request ID attached to every request and response.
+      schema:
+        type: string
+        example: 3c26210f-6fb6-4556-9e90-c2d96abcf76a
+
+  schemas:
+    SuccessEnvelope:
+      type: object
+      required:
+        - data
+        - meta
+        - error
+      properties:
+        data:
+          type: object
+          nullable: true
+          description: Primary response payload data.
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+        error:
+          type: object
+          nullable: true
+          default: null
+          example: null
+
+    ErrorEnvelope:
+      type: object
+      required:
+        - data
+        - meta
+        - error
+      properties:
+        data:
+          type: object
+          nullable: true
+          default: null
+          example: null
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+
+    ResponseMeta:
+      type: object
+      required:
+        - request_id
+      properties:
+        request_id:
+          type: string
+          example: 3c26210f-6fb6-4556-9e90-c2d96abcf76a
+        pagination:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    PaginationMeta:
+      type: object
+      required:
+        - current_page
+        - per_page
+        - total_items
+        - total_pages
+      properties:
+        current_page:
+          type: integer
+          example: 1
+        per_page:
+          type: integer
+          example: 20
+        total_items:
+          type: integer
+          example: 54
+        total_pages:
+          type: integer
+          example: 3
+
+    ErrorDetail:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: VALIDATION_ERROR
+          enum:
+            - VALIDATION_ERROR
+            - UNAUTHENTICATED
+            - AUTHENTICATION_REQUIRED
+            - INVALID_CREDENTIALS
+            - ACCOUNT_DISABLED
+            - EMAIL_ALREADY_EXISTS
+            - FORBIDDEN
+            - CSRF_TOKEN_INVALID
+            - NOT_FOUND
+            - METHOD_NOT_ALLOWED
+            - CONFLICT
+            - PAYLOAD_TOO_LARGE
+            - UNSUPPORTED_MEDIA_TYPE
+            - RATE_LIMIT_EXCEEDED
+            - INTERNAL_SERVER_ERROR
+            - SERVICE_UNAVAILABLE
+            - NOT_IMPLEMENTED
+        message:
+          type: string
+          example: 'The submitted data is invalid.'
+        details:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          example:
+            email:
+              - 'A valid email address is required.'
+
+    Service:
+      type: object
+      required:
+        - id
+        - name
+        - price
+        - duration_minutes
+        - is_active
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Comprehensive Oral Prophylaxis
+        category:
+          type: string
+          example: General
+        description:
+          type: string
+          nullable: true
+          example: Scaling, stain removal, and polishing.
+        price:
+          type: number
+          example: 1500.00
+        duration_minutes:
+          type: integer
+          example: 45
+        is_active:
+          type: integer
+          enum: [0, 1]
+          example: 1
+
+    Dentist:
+      type: object
+      required:
+        - id
+        - user_id
+        - first_name
+        - last_name
+        - license_number
+        - specialization
+        - is_active
+      properties:
+        id:
+          type: integer
+          example: 2
+        user_id:
+          type: integer
+          example: 10
+        first_name:
+          type: string
+          example: Maria
+        last_name:
+          type: string
+          example: Santos
+        specialization:
+          type: string
+          example: Orthodontics
+        license_number:
+          type: string
+          example: PRC-DEN-004321
+        phone:
+          type: string
+          example: +639171234567
+        default_operatory_chair:
+          type: string
+          example: Chair 1
+        bio:
+          type: string
+          nullable: true
+        is_active:
+          type: integer
+          enum: [0, 1]
+          example: 1
+
+    Patient:
+      type: object
+      required:
+        - id
+        - user_id
+        - first_name
+        - last_name
+        - date_of_birth
+        - phone
+      properties:
+        id:
+          type: integer
+          example: 5
+        user_id:
+          type: integer
+          example: 12
+        first_name:
+          type: string
+          example: Juan
+        last_name:
+          type: string
+          example: Dela Cruz
+        date_of_birth:
+          type: string
+          format: date
+          example: 1990-08-20
+        phone:
+          type: string
+          example: +639178889999
+        gender:
+          type: string
+          example: MALE
+        address:
+          type: string
+          nullable: true
+        medical_alerts:
+          type: string
+          nullable: true
+          example: Penicillin allergy
+
+    DashboardMetrics:
+      type: object
+      required:
+        - counts
+        - generated_at
+      properties:
+        counts:
+          type: object
+          properties:
+            patients:
+              type: object
+              properties:
+                total:
+                  type: integer
+                active:
+                  type: integer
+                inactive:
+                  type: integer
+            dentists:
+              type: object
+              properties:
+                total:
+                  type: integer
+                active:
+                  type: integer
+                inactive:
+                  type: integer
+            services:
+              type: object
+              properties:
+                total:
+                  type: integer
+                active:
+                  type: integer
+                inactive:
+                  type: integer
+            appointments:
+              type: object
+              properties:
+                total:
+                  type: integer
+                pending:
+                  type: integer
+                confirmed:
+                  type: integer
+                completed:
+                  type: integer
+                cancelled:
+                  type: integer
+                today:
+                  type: integer
+        generated_at:
+          type: string
+          format: date-time
+
+    ClinicOperatingHour:
+      type: object
+      properties:
+        id:
+          type: integer
+        day_of_week:
+          type: integer
+          example: 1
+        opening_time:
+          type: string
+          example: "08:00:00"
+        closing_time:
+          type: string
+          example: "17:00:00"
+        is_closed:
+          type: integer
+          example: 0
+
+    ClinicClosure:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        start_at:
+          type: string
+          format: date-time
+        end_at:
+          type: string
+          format: date-time
+        closure_type:
+          type: string
+          enum: [HOLIDAY, MAINTENANCE, EMERGENCY, SPECIAL_CLOSURE]
+        notes:
+          type: string
+          nullable: true
+
+    DentistSchedule:
+      type: object
+      properties:
+        id:
+          type: integer
+        dentist_id:
+          type: integer
+        day_of_week:
+          type: integer
+        start_time:
+          type: string
+        end_time:
+          type: string
+        operatory_chair:
+          type: string
+        is_active:
+          type: integer
+
+    DentistTimeOff:
+      type: object
+      properties:
+        id:
+          type: integer
+        dentist_id:
+          type: integer
+        start_at:
+          type: string
+        end_at:
+          type: string
+        reason:
+          type: string
+
+    AvailabilityResult:
+      type: object
+      properties:
+        dentist:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            specialization:
+              type: string
+        service:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            duration_minutes:
+              type: integer
+            price:
+              type: number
+            buffer_minutes:
+              type: integer
+        timezone:
+          type: string
+          example: "Asia/Manila"
+        availability:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+              day_of_week:
+                type: integer
+              is_clinic_open:
+                type: boolean
+              slots:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    start_at:
+                      type: string
+                      format: date-time
+                    end_at:
+                      type: string
+                      format: date-time
+                    blocking_end_at:
+                      type: string
+                      format: date-time
+                    duration_minutes:
+                      type: integer
+                    buffer_minutes:
+                      type: integer
+                    operatory_chair:
+                      type: string
+                    available:
+                      type: boolean
+
+    Appointment:
+      type: object
+      properties:
+        id:
+          type: integer
+        patient_id:
+          type: integer
+        dentist_id:
+          type: integer
+        service_id:
+          type: integer
+        start_at:
+          type: string
+          format: date-time
+        end_at:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [PENDING, CONFIRMED, CANCELLED, REJECTED, COMPLETED]
+        price_snapshot:
+          type: number
+          format: float
+        duration_snapshot:
+          type: integer
+        chief_complaint:
+          type: string
+          nullable: true
+        cancellation_reason:
+          type: string
+          nullable: true
+        rescheduled_from_id:
+          type: integer
+          nullable: true
+        service_name:
+          type: string
+        dentist_first_name:
+          type: string
+        dentist_last_name:
+          type: string
+        dentist_specialization:
+          type: string
+        dentist_room_number:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AppointmentWithHistory:
+      allOf:
+        - $ref: '#/components/schemas/Appointment'
+        - type: object
+          properties:
+            status_history:
+              type: array
+              items:
+                $ref: '#/components/schemas/AppointmentStatusHistory'
+
+    AppointmentStatusHistory:
+      type: object
+      properties:
+        id:
+          type: integer
+        appointment_id:
+          type: integer
+        from_status:
+          type: string
+          nullable: true
+        to_status:
+          type: string
+        changed_by_user_id:
+          type: integer
+          nullable: true
+        reason:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: Malformed payload, invalid syntax, or missing mandatory fields.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/X-Request-ID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+    Unauthorized:
+      description: Authentication required or invalid session.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/X-Request-ID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+    Forbidden:
+      description: Access denied or insufficient role permissions.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/X-Request-ID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+    NotFound:
+      description: Resource or route not found.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/X-Request-ID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+    Conflict:
+      description: Scheduling conflict, duplicate shift, or overlapping booking.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/X-Request-ID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+    UnprocessableEntity:
+      description: Input validation failure or constraint violation.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/X-Request-ID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+    RateLimited:
+      description: Too many requests. Rate limit quota exceeded.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/X-Request-ID'
+        Retry-After:
+          description: Recommended wait time in seconds before retrying.
+          schema:
+            type: integer
+            example: 60
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+    NotImplemented:
+      description: Endpoint planned for implementation in subsequent project phases.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/X-Request-ID'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+

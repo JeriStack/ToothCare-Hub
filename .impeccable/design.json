@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-03T06:07:54+08:00",
+  "title": "Design System: ToothCare Hub",
+  "extensions": {
+    "colorMeta": {
+      "navy": {
+        "role": "neutral",
+        "displayName": "Clinical Navy",
+        "canonical": "#12304A",
+        "tonalRamp": ["#030C16", "#0F273C", "#274560", "#456481", "#6686A5", "#88A9C9", "#AECDEB", "#E6F0F9"]
+      },
+      "navy-deep": {
+        "role": "neutral",
+        "displayName": "Night Navy",
+        "canonical": "#0B1D2D",
+        "tonalRamp": ["#050C13", "#182734", "#314456", "#4F6477", "#708599", "#92A8BD", "#B7CCE0", "#E9EFF6"]
+      },
+      "teal": {
+        "role": "primary",
+        "displayName": "Clinic Teal",
+        "canonical": "#0D9488",
+        "tonalRamp": ["#00110E", "#00312A", "#005249", "#007469", "#13968A", "#49BAAD", "#7CDED1", "#DAF5F1"]
+      },
+      "teal-deep": {
+        "role": "primary",
+        "displayName": "Deep Teal",
+        "canonical": "#0F766E",
+        "tonalRamp": ["#00100E", "#002F2A", "#005049", "#017169", "#39938A", "#5FB7AD", "#8CDAD1", "#DEF4F1"]
+      },
+      "teal-soft": {
+        "role": "neutral",
+        "displayName": "Soft Teal",
+        "canonical": "#CCFBF1",
+        "tonalRamp": ["#010E0C", "#082C26", "#204B43", "#406B63", "#618C84", "#83B0A7", "#AAD3CB", "#E5F2EF"]
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Cool Canvas",
+        "canonical": "#F5F8FA",
+        "tonalRamp": ["#0A0B0C", "#232526", "#404244", "#5F6263", "#808384", "#A3A5A7", "#C7C9CB", "#EEEEEF"]
+      },
+      "body-slate": {
+        "role": "neutral",
+        "displayName": "Slate Body",
+        "canonical": "#334155",
+        "tonalRamp": ["#070B13", "#1B2635", "#354357", "#536278", "#74849A", "#96A6BE", "#BBCAE1", "#EAEFF6"]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page-level headings and prominent dashboard summaries."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Card and section headings."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default browser body size."
+      },
+      "body-compact": {
+        "displayName": "Compact Body",
+        "purpose": "Dense dashboard and form copy."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Field labels and compact metadata."
+      },
+      "button": {
+        "displayName": "Button",
+        "purpose": "Action labels."
+      }
+    },
+    "shadows": [
+      {
+        "name": "surface",
+        "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+        "purpose": "Subtle separation for default cards."
+      },
+      {
+        "name": "header",
+        "value": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+        "purpose": "Sticky application header."
+      },
+      {
+        "name": "dialog",
+        "value": "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+        "purpose": "Elevated modal surfaces."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "High-priority action in clinic teal.",
+      "html": "<button class=\"ds-button-primary\">Continue</button>",
+      "css": ".ds-button-primary { background: #0D9488; color: #FFFFFF; border: 0; border-radius: 8px; padding: 10px 24px; font: 600 14px/1.25 Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; cursor: pointer; transition: background-color 150ms ease; } .ds-button-primary:hover { background: #0F766E; } .ds-button-primary:focus-visible { outline: 2px solid #0D9488; outline-offset: 2px; } .ds-button-primary:active { background: #0F766E; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Lower-priority action with a quiet border.",
+      "html": "<button class=\"ds-button-secondary\">Back</button>",
+      "css": ".ds-button-secondary { background: #FFFFFF; color: #475569; border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px 16px; font: 400 14px/1.5 Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; cursor: pointer; transition: background-color 150ms ease; } .ds-button-secondary:hover { background: #F8FAFC; } .ds-button-secondary:focus-visible { outline: 2px solid #0D9488; outline-offset: 2px; }"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "Labeled field with a visible teal focus state.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Appointment date</span><input class=\"ds-input\" type=\"text\" placeholder=\"Choose a date\"></label>",
+      "css": ".ds-field { display: grid; gap: 4px; color: #334155; font: 600 12px/1.5 Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; } .ds-input { width: 100%; box-sizing: border-box; background: #FFFFFF; color: #334155; border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px 12px; font: 400 14px/1.5 Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; } .ds-input:focus-visible { border-color: #0D9488; outline: 2px solid #CCFBF1; outline-offset: 1px; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card-default",
+      "description": "White content surface on the cool canvas.",
+      "html": "<section class=\"ds-card\"><h2>Upcoming appointment</h2><p>Appointment details</p></section>",
+      "css": ".ds-card { background: #FFFFFF; color: #334155; border: 1px solid #E2E8F0; border-radius: 16px; padding: 24px; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); font: 400 14px/1.5 Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; } .ds-card h2 { margin: 0 0 8px; color: #12304A; font-size: 18px; font-weight: 700; } .ds-card p { margin: 0; }"
+    },
+    {
+      "name": "Active Navigation Item",
+      "kind": "nav",
+      "refersTo": "navigation-active",
+      "description": "Selected destination with a quiet teal state.",
+      "html": "<a class=\"ds-nav-item\" href=\"#appointments\">My Appointments</a>",
+      "css": ".ds-nav-item { display: flex; align-items: center; gap: 12px; background: #CCFBF1; color: #0F766E; border-radius: 8px; padding: 10px 12px; font: 500 14px/1.5 Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; text-decoration: none; transition: background-color 150ms ease; } .ds-nav-item:hover { background: #B5F5EA; } .ds-nav-item:focus-visible { outline: 2px solid #0D9488; outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Calm Clinical Precision",
+    "overview": "ToothCare Hub should feel like a capable clinic team: calm, clear, and dependable. Its existing deep-navy structure, restrained teal actions, cool light canvas, and Inter typography already establish a coherent healthcare identity. Preserve and formalize that visual language rather than replacing it with a new brand.\n\nThe interface is an operational tool, not a medical-marketing campaign. Make the next action and the appointment facts easy to find. Patient booking should communicate progress and selection clearly; admin and dentist views should prioritize the work each role needs to scan. Reuse shared patterns without flattening those different priorities.\n\nThis design record describes the existing React/Vite/Tailwind JSX prototype and the approved direction for future frontend work. TypeScript and shadcn/ui are goals in the project brief, not libraries currently evidenced in the frontend package or source.",
+    "keyCharacteristics": [
+      "Deep navy provides stable structure; teal marks action and selection.",
+      "Cool, light surfaces keep forms and schedules legible.",
+      "Inter and compact, consistent type hierarchy support frequent scanning.",
+      "Shared patterns adapt to patient, admin, and dentist tasks.",
+      "Accessibility and responsive behavior are design requirements, not a claim of conformance."
+    ],
+    "rules": [
+      {
+        "name": "The Navy-for-Structure Rule",
+        "body": "Keep navy on navigation, headers, and high-priority headings; do not make every card or action a navy block.",
+        "section": "colors"
+      },
+      {
+        "name": "The Teal-for-Action Rule",
+        "body": "Reserve the strongest teal treatment for primary actions, progress, and selected states. Do not use the action color as a substitute for status meaning.",
+        "section": "colors"
+      }
+    ],
+    "dos": [
+      "Do use the existing navy, teal, cool-canvas, and Inter identity as the baseline for new frontend screens.",
+      "Do reserve teal for primary actions, progress, and selected states.",
+      "Do give each role's dashboard a task-specific information hierarchy while sharing component behavior.",
+      "Do use semantic HTML, labels, keyboard access, visible focus, readable contrast, and responsive layouts.",
+      "Do pair status color with text and keep sensitive health details out of decorative or unnecessary UI surfaces."
+    ],
+    "donts": [
+      "Don't replace the established palette or typography without an explicit redesign decision.",
+      "Don't imply WCAG conformance until the rendered interface has been tested.",
+      "Don't present TypeScript or shadcn/ui as already installed or implemented.",
+      "Don't use color alone for appointment status or form errors.",
+      "Don't change backend behavior, database structure, API contracts, or appointment workflows as part of a visual-system task."
+    ]
+  }
+}

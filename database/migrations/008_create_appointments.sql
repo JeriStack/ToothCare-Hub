@@ -1,0 +1,38 @@
+-- Migration 008: Create appointments table
+-- Core scheduling entity with duration/price snapshots, interval constraints, and atomic rescheduling links.
+
+CREATE TABLE IF NOT EXISTS appointments (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    patient_id BIGINT UNSIGNED NOT NULL,
+    dentist_id BIGINT UNSIGNED NOT NULL,
+    service_id BIGINT UNSIGNED NOT NULL,
+    start_at DATETIME NOT NULL,
+    end_at DATETIME NOT NULL,
+    duration_snapshot INT UNSIGNED NOT NULL,
+    price_snapshot DECIMAL(10,2) NOT NULL,
+    status ENUM('PENDING', 'CONFIRMED', 'REJECTED', 'CANCELLED', 'COMPLETED') NOT NULL DEFAULT 'PENDING',
+    chief_complaint TEXT NULL,
+    operatory_chair VARCHAR(50) NOT NULL DEFAULT 'Chair 1',
+    rescheduled_from_id BIGINT UNSIGNED NULL,
+    cancellation_reason VARCHAR(255) NULL,
+    cancelled_by_user_id BIGINT UNSIGNED NULL,
+    cancelled_at DATETIME NULL,
+    reviewed_by_user_id BIGINT UNSIGNED NULL,
+    reviewed_at DATETIME NULL,
+    completed_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_appointments_patient FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_appointments_dentist FOREIGN KEY (dentist_id) REFERENCES dentists(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_appointments_service FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_appointments_rescheduled_from FOREIGN KEY (rescheduled_from_id) REFERENCES appointments(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_appointments_cancelled_by FOREIGN KEY (cancelled_by_user_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_appointments_reviewed_by FOREIGN KEY (reviewed_by_user_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT chk_appointments_interval CHECK (start_at < end_at),
+    CONSTRAINT chk_appointments_price CHECK (price_snapshot >= 0.00),
+    INDEX idx_appointments_dentist_start (dentist_id, start_at),
+    INDEX idx_appointments_patient_start (patient_id, start_at),
+    INDEX idx_appointments_status_start (status, start_at),
+    INDEX idx_appointments_overlap (dentist_id, status, start_at, end_at),
+    INDEX idx_appointments_rescheduled_from (rescheduled_from_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

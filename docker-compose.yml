@@ -1,4 +1,0 @@
-# ToothCare Hub - Compatibility Alias for compose.yaml (Docker Compose v2)
-# Recommended modern command: docker compose up -d
-include:
-  - path: compose.yaml
