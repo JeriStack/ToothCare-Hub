@@ -372,7 +372,7 @@ class ReceptionistService
                 // Create user account
                 $tempPassword = bin2hex(random_bytes(6)) . 'A1!';
                 $passwordHash = password_hash($tempPassword, PASSWORD_DEFAULT);
-                $userId = $this->userRepo->create($email, $passwordHash, 'PATIENT', 1, 1);
+                $userId = $this->userRepo->create($email, $passwordHash, 'PATIENT', 1, 1, $firstName, $lastName);
             }
 
             // Create patient profile

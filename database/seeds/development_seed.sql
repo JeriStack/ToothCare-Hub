@@ -11,21 +11,21 @@
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- 1. Seed Users (Admin, Receptionist, Dentists, Patients)
-INSERT INTO users (id, email, password_hash, role, is_active, email_verified, email_verified_at, created_at)
+INSERT INTO users (id, email, first_name, last_name, password_hash, role, is_active, email_verified, email_verified_at, created_at)
 VALUES
     -- Administrative Staff
-    (1, 'admin@toothcare.local', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'ADMIN', 1, 1, '2026-10-01 08:00:00', '2026-10-01 08:00:00'),
-    (2, 'receptionist@toothcare.local', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'ADMIN', 1, 1, '2026-10-01 08:00:00', '2026-10-01 08:00:00'),
+    (1, 'admin@toothcare.local', 'Marco', 'Villanueva', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'ADMIN', 1, 1, '2026-10-01 08:00:00', '2026-10-01 08:00:00'),
+    (2, 'receptionist@toothcare.local', 'Clarisse', 'Mendoza', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'ADMIN', 1, 1, '2026-10-01 08:00:00', '2026-10-01 08:00:00'),
     -- Licensed Dentists
-    (3, 'dr.santos@toothcare.local', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'DENTIST', 1, 1, '2026-10-01 08:00:00', '2026-10-01 08:00:00'),
-    (4, 'dr.reyes@toothcare.local', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'DENTIST', 1, 1, '2026-10-01 08:00:00', '2026-10-01 08:00:00'),
-    (5, 'dr.lim@toothcare.local', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'DENTIST', 1, 1, '2026-10-01 08:00:00', '2026-10-01 08:00:00'),
+    (3, 'dr.santos@toothcare.local', 'Maria', 'Santos', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'DENTIST', 1, 1, '2026-10-01 08:00:00', '2026-10-01 08:00:00'),
+    (4, 'dr.reyes@toothcare.local', 'Roberto', 'Reyes', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'DENTIST', 1, 1, '2026-10-01 08:00:00', '2026-10-01 08:00:00'),
+    (5, 'dr.lim@toothcare.local', 'Carmela', 'Lim', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'DENTIST', 1, 1, '2026-10-01 08:00:00', '2026-10-01 08:00:00'),
     -- Patients
-    (6, 'patient.juan@example.com', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'PATIENT', 1, 1, '2026-10-01 08:00:00', '2026-10-01 08:00:00'),
-    (7, 'patient.maria@example.com', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'PATIENT', 1, 1, '2026-10-01 08:00:00', '2026-10-01 08:00:00'),
-    (8, 'patient.elena@example.com', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'PATIENT', 1, 1, '2026-10-01 08:00:00', '2026-10-01 08:00:00'),
-    (9, 'patient.roberto@example.com', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'PATIENT', 1, 1, '2026-10-01 08:00:00', '2026-10-01 08:00:00')
-ON DUPLICATE KEY UPDATE updated_at = NOW();
+    (6, 'patient.juan@example.com', 'Juan', 'Dela Cruz', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'PATIENT', 1, 1, '2026-10-01 08:00:00', '2026-10-01 08:00:00'),
+    (7, 'patient.maria@example.com', 'Maria', 'Garcia', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'PATIENT', 1, 1, '2026-10-01 08:00:00', '2026-10-01 08:00:00'),
+    (8, 'patient.elena@example.com', 'Elena', 'Gomez', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'PATIENT', 1, 1, '2026-10-01 08:00:00', '2026-10-01 08:00:00'),
+    (9, 'patient.roberto@example.com', 'Roberto', 'Tan', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'PATIENT', 1, 1, '2026-10-01 08:00:00', '2026-10-01 08:00:00')
+ON DUPLICATE KEY UPDATE first_name = VALUES(first_name), last_name = VALUES(last_name), updated_at = NOW();
 
 -- 2. Seed Dentists Profiles
 INSERT INTO dentists (id, user_id, first_name, last_name, specialization, license_number, phone, default_operatory_chair, bio, is_active, created_at)

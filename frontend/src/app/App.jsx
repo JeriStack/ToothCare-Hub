@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Calendar,
   Clock,
@@ -14,6 +14,7 @@ import {
   ArrowLeft,
   Sparkles,
   LogOut,
+  ChevronDown,
   RefreshCw,
   Bell,
   Key,
@@ -110,8 +111,57 @@ function getInitialTab() {
   return 'dashboard';
 }
 
+const ROLE_DISPLAY_TITLES = {
+  ADMIN: 'Administrator',
+  RECEPTIONIST: 'Front Desk Specialist',
+  DENTIST: 'Attending Dentist',
+  PATIENT: 'Patient',
+};
+
+export function resolveUserIdentity(user, currentRole) {
+  const roleLabel = ROLE_DISPLAY_TITLES[currentRole] || 'Patient';
+  const dentist = user?.dentist;
+  const patient = user?.patient;
+
+  let firstName = '';
+  let lastName = '';
+  let displayName = '';
+
+  if (dentist && (dentist.first_name || dentist.last_name)) {
+    firstName = (dentist.first_name || '').trim();
+    lastName = (dentist.last_name || '').trim();
+    displayName = `Dr. ${`${firstName} ${lastName}`.trim()}`;
+  } else if (patient && (patient.first_name || patient.last_name)) {
+    firstName = (patient.first_name || '').trim();
+    lastName = (patient.last_name || '').trim();
+    displayName = `${firstName} ${lastName}`.trim();
+  } else if (user?.first_name || user?.last_name) {
+    firstName = (user.first_name || '').trim();
+    lastName = (user.last_name || '').trim();
+    displayName = `${firstName} ${lastName}`.trim();
+  } else if (user?.display_name && !String(user.display_name).includes('@')) {
+    displayName = String(user.display_name).trim();
+  } else {
+    displayName = roleLabel;
+  }
+
+  let initials = 'U';
+  if (firstName || lastName) {
+    initials = `${firstName[0] || ''}${lastName[0] || ''}`.toUpperCase() || 'U';
+  } else {
+    const words = displayName.replace(/^Dr\.\s+/i, '').trim().split(/\s+/).filter(Boolean);
+    if (words.length >= 2) {
+      initials = `${words[0][0]}${words[words.length - 1][0]}`.toUpperCase();
+    } else if (words.length === 1) {
+      initials = words[0].slice(0, 2).toUpperCase();
+    }
+  }
+
+  return { displayName, initials, roleLabel };
+}
+
 function AppContent() {
-  const { user, isAuthenticated, isLoading, logout, hasPermission } = useAuth();
+  const { user, isAuthenticated, isLoading, logout, hasPermission, refreshUser } = useAuth();
 
   // Active View / Route
   const [currentRoute, setCurrentRoute] = useState(getInitialRoute);
@@ -121,9 +171,12 @@ function AppContent() {
   
   // UI Panels
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const [bookingPrefill, setBookingPrefill] = useState(null);
   const [selectedDentistAppointmentId, setSelectedDentistAppointmentId] = useState(null);
+  const userMenuRef = useRef(null);
+  const userMenuTriggerRef = useRef(null);
 
   // Trigger Toast helper
   const showToast = (msg) => {
@@ -135,6 +188,7 @@ function AppContent() {
   const handlePatientNav = (tab) => {
     setActiveTab(tab);
     setIsMobileMenuOpen(false);
+    setIsUserMenuOpen(false);
     const subPath = tab === 'dashboard' ? '/patient' : `/patient/${tab}`;
     if (window.location.pathname !== subPath) {
       window.history.pushState({}, '', subPath);
@@ -145,6 +199,7 @@ function AppContent() {
   const handleAdminNav = (tab) => {
     setActiveTab(tab);
     setIsMobileMenuOpen(false);
+    setIsUserMenuOpen(false);
     const subPath = tab === 'dashboard' ? '/admin' : `/admin/${tab}`;
     if (window.location.pathname !== subPath) {
       window.history.pushState({}, '', subPath);
@@ -156,6 +211,7 @@ function AppContent() {
     setActiveTab(tab);
     setSelectedDentistAppointmentId(null);
     setIsMobileMenuOpen(false);
+    setIsUserMenuOpen(false);
     const subPath = tab === 'dashboard' ? '/dentist' : `/dentist/${tab}`;
     if (window.location.pathname !== subPath) {
       window.history.pushState({}, '', subPath);
@@ -170,14 +226,41 @@ function AppContent() {
       window.history.pushState({}, '', path);
     }
     setIsMobileMenuOpen(false);
+    setIsUserMenuOpen(false);
   };
 
   // Sign out handler
   const handleSignOut = async () => {
+    setIsUserMenuOpen(false);
     await logout();
     showToast('You have been signed out successfully.');
     navigateTo('LANDING', '/');
   };
+
+  // Close user account menu on outside click or Escape key
+  useEffect(() => {
+    if (!isUserMenuOpen) return undefined;
+
+    const handleClickOutside = (event) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsUserMenuOpen(false);
+        userMenuTriggerRef.current?.focus();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isUserMenuOpen]);
 
   // Popstate & Global Auth Event Listeners
   useEffect(() => {
@@ -395,29 +478,12 @@ function AppContent() {
   // 3. Authenticated Role Definition
   const currentRole = user?.role?.toUpperCase() || currentRoute;
 
-  // Resolve user display info
-  const userInitials = user
-    ? `${(
-        user.patient?.first_name?.[0] ||
-        user.dentist?.first_name?.[0] ||
-        user.first_name?.[0] ||
-        user.email?.[0] ||
-        'U'
-      ).toUpperCase()}${(
-        user.patient?.last_name?.[0] ||
-        user.dentist?.last_name?.[0] ||
-        user.last_name?.[0] ||
-        ''
-      ).toUpperCase()}`
-    : 'U';
-
-  const userDisplayName = user?.patient
-    ? `${user.patient.first_name} ${user.patient.last_name}`
-    : user?.dentist
-    ? `Dr. ${user.dentist.first_name} ${user.dentist.last_name}`
-    : user?.first_name
-    ? `${user.first_name} ${user.last_name || ''}`.trim()
-    : user?.email || 'Authenticated User';
+  // Resolve user display info (always real user name, never raw email)
+  const {
+    displayName: userDisplayName,
+    initials: userInitials,
+    roleLabel: userRoleLabel,
+  } = resolveUserIdentity(user, currentRole);
 
   const roleBadgeLabel =
     currentRole === 'PATIENT'
@@ -484,44 +550,107 @@ function AppContent() {
               />
             )}
 
-            {/* User Profile Info */}
-            <div
-              className={`flex items-center gap-2.5 pl-2 border-l border-white/10 ${
-                currentRole === 'PATIENT' ? 'cursor-pointer hover:opacity-90 transition-opacity' : ''
-              }`}
-              onClick={currentRole === 'PATIENT' ? () => handlePatientNav('profile') : undefined}
-              title={currentRole === 'PATIENT' ? 'View & Edit My Profile' : undefined}
-            >
-              <div className="w-8 h-8 rounded-full bg-[#0D9488]/30 border border-[#0D9488] text-teal-200 flex items-center justify-center font-semibold text-xs">
-                {userInitials}
-              </div>
-              <div className="hidden md:block text-left">
-                <p className="text-xs font-semibold leading-tight text-white">
-                  {userDisplayName}
-                </p>
-                <p className="text-[10px] text-teal-200/70">
-                  {currentRole === 'ADMIN'
-                    ? 'Administrator'
-                    : currentRole === 'RECEPTIONIST'
-                    ? 'Front Desk Specialist'
-                    : currentRole === 'DENTIST'
-                    ? 'Attending Dentist'
-                    : 'Patient'}
-                </p>
-              </div>
-
+            {/* User Profile Account Dropdown */}
+            <div className="relative pl-2 border-l border-white/10" ref={userMenuRef}>
               <button
+                ref={userMenuTriggerRef}
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleSignOut();
-                }}
-                title="Sign out of account"
-                className="ml-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-200 hover:text-white bg-white/10 hover:bg-white/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                onClick={() => setIsUserMenuOpen((prev) => !prev)}
+                aria-expanded={isUserMenuOpen}
+                aria-controls="user-account-menu"
+                aria-label={`${userDisplayName} account menu`}
+                className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 cursor-pointer"
               >
-                <LogOut className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Sign Out</span>
+                <div className="w-8 h-8 rounded-full bg-[#0D9488]/30 border border-[#14B8A6] text-teal-200 flex items-center justify-center font-semibold text-xs shrink-0">
+                  {userInitials}
+                </div>
+                <div className="hidden md:block text-left">
+                  <p className="text-xs font-semibold leading-tight text-white">
+                    {userDisplayName}
+                  </p>
+                  <p className="text-[10px] text-teal-200/80">
+                    {userRoleLabel}
+                  </p>
+                </div>
+                <ChevronDown
+                  className={`w-4 h-4 text-teal-200/80 transition-transform duration-150 ${
+                    isUserMenuOpen ? 'rotate-180' : ''
+                  }`}
+                />
               </button>
+
+              {isUserMenuOpen && (
+                <div
+                  id="user-account-menu"
+                  className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-2xl bg-white shadow-2xl border border-slate-200/90 z-50 overflow-hidden text-slate-800 animate-in fade-in zoom-in-95 duration-150"
+                >
+                  <div className="px-4 py-3 bg-slate-50/90 border-b border-slate-100">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-full bg-[#CCFBF1] border border-teal-200 text-[#0F766E] flex items-center justify-center font-bold text-xs shrink-0">
+                        {userInitials}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-[#12304A] truncate">
+                          {userDisplayName}
+                        </p>
+                        <p className="text-[11px] font-medium text-[#0F766E] truncate">
+                          {userRoleLabel}
+                        </p>
+                      </div>
+                    </div>
+                    {user?.email && (
+                      <p className="mt-2 text-[11px] text-slate-500 truncate">
+                        {user.email}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="p-1.5 space-y-0.5">
+                    {currentRole === 'PATIENT' ? (
+                      <button
+                        type="button"
+                        onClick={() => handlePatientNav('profile')}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#12304A] transition-colors text-left"
+                      >
+                        <User className="w-4 h-4 text-[#0D9488]" />
+                        <span>My Profile</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          setActiveTab('dashboard');
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#12304A] transition-colors text-left"
+                      >
+                        <Calendar className="w-4 h-4 text-[#0D9488]" />
+                        <span>Portal Overview</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => navigateTo('LANDING', '/')}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#12304A] transition-colors text-left"
+                    >
+                      <ArrowLeft className="w-4 h-4 text-slate-400" />
+                      <span>Back to Website</span>
+                    </button>
+
+                    <div className="my-1 border-t border-slate-100" />
+
+                    <button
+                      type="button"
+                      onClick={handleSignOut}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors text-left"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -830,7 +959,10 @@ function AppContent() {
 
               {activeTab === 'profile' && (
                 <PatientProfilePage
-                  onProfileUpdated={() => showToast('Your clinical profile has been updated.')}
+                  onProfileUpdated={() => {
+                    refreshUser?.();
+                    showToast('Your clinical profile has been updated.');
+                  }}
                 />
               )}
             </>

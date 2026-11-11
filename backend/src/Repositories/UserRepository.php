@@ -51,15 +51,21 @@ class UserRepository
         string $passwordHash,
         string $role = 'PATIENT',
         int $isActive = 1,
-        int $emailVerified = 0
+        int $emailVerified = 0,
+        ?string $firstName = null,
+        ?string $lastName = null
     ): int {
         $pdo = $this->database->getConnection();
         $stmt = $pdo->prepare('
-            INSERT INTO users (email, password_hash, role, is_active, email_verified, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, NOW(), NOW())
+            INSERT INTO users (email, first_name, last_name, password_hash, role, is_active, email_verified, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
         ');
+        $cleanFirst = $firstName !== null && trim($firstName) !== '' ? trim($firstName) : null;
+        $cleanLast = $lastName !== null && trim($lastName) !== '' ? trim($lastName) : null;
         $stmt->execute([
             strtolower(trim($email)),
+            $cleanFirst,
+            $cleanLast,
             $passwordHash,
             strtoupper($role),
             $isActive,
@@ -67,6 +73,22 @@ class UserRepository
         ]);
 
         return (int) $pdo->lastInsertId();
+    }
+
+    public function updateName(int $userId, ?string $firstName, ?string $lastName): bool
+    {
+        $pdo = $this->database->getConnection();
+        $stmt = $pdo->prepare('
+            UPDATE users
+            SET first_name = ?, last_name = ?, updated_at = NOW()
+            WHERE id = ?
+        ');
+
+        return $stmt->execute([
+            $firstName !== null && trim($firstName) !== '' ? trim($firstName) : null,
+            $lastName !== null && trim($lastName) !== '' ? trim($lastName) : null,
+            $userId,
+        ]);
     }
 
     public function updatePassword(int $userId, string $passwordHash): bool
@@ -147,7 +169,9 @@ class UserRepository
 
         if (!empty($filters['search'])) {
             $search = '%' . trim((string) $filters['search']) . '%';
-            $where[] = '(u.email LIKE ? OR d.first_name LIKE ? OR d.last_name LIKE ? OR p.first_name LIKE ? OR p.last_name LIKE ?)';
+            $where[] = '(u.email LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ? OR d.first_name LIKE ? OR d.last_name LIKE ? OR p.first_name LIKE ? OR p.last_name LIKE ?)';
+            $params[] = $search;
+            $params[] = $search;
             $params[] = $search;
             $params[] = $search;
             $params[] = $search;
@@ -195,7 +219,7 @@ class UserRepository
 
         $selectSql = "
             SELECT 
-                u.id, u.email, u.role, u.is_active, u.email_verified, u.created_at, u.updated_at,
+                u.id, u.email, u.first_name AS user_first_name, u.last_name AS user_last_name, u.role, u.is_active, u.email_verified, u.created_at, u.updated_at,
                 d.id AS dentist_id, d.first_name AS dentist_first_name, d.last_name AS dentist_last_name, d.specialization,
                 p.id AS patient_id, p.first_name AS patient_first_name, p.last_name AS patient_last_name, p.phone AS patient_phone
             FROM users u
@@ -212,18 +236,31 @@ class UserRepository
 
         // Normalize display name
         $data = array_map(function ($row) {
+            $firstName = null;
+            $lastName = null;
             $displayName = null;
             if (!empty($row['dentist_first_name'])) {
-                $displayName = 'Dr. ' . trim($row['dentist_first_name'] . ' ' . $row['dentist_last_name']);
+                $firstName = (string) $row['dentist_first_name'];
+                $lastName = (string) ($row['dentist_last_name'] ?? '');
+                $displayName = 'Dr. ' . trim($firstName . ' ' . $lastName);
             } elseif (!empty($row['patient_first_name'])) {
-                $displayName = trim($row['patient_first_name'] . ' ' . $row['patient_last_name']);
+                $firstName = (string) $row['patient_first_name'];
+                $lastName = (string) ($row['patient_last_name'] ?? '');
+                $displayName = trim($firstName . ' ' . $lastName);
+            } elseif (!empty($row['user_first_name']) || !empty($row['user_last_name'])) {
+                $firstName = (string) ($row['user_first_name'] ?? '');
+                $lastName = (string) ($row['user_last_name'] ?? '');
+                $displayName = trim($firstName . ' ' . $lastName);
             } else {
-                $displayName = explode('@', (string) $row['email'])[0];
+                $local = explode('@', (string) $row['email'])[0];
+                $displayName = ucwords(trim(str_replace(['.', '_', '-'], ' ', $local)));
             }
 
             return [
                 'id' => (int) $row['id'],
                 'email' => (string) $row['email'],
+                'first_name' => $firstName,
+                'last_name' => $lastName,
                 'role' => (string) $row['role'],
                 'display_name' => $displayName,
                 'is_active' => (int) $row['is_active'] === 1,
@@ -286,8 +323,22 @@ class UserRepository
 
         unset($user['password_hash']);
 
+        $firstName = $dentist['first_name'] ?? $patient['first_name'] ?? $user['first_name'] ?? null;
+        $lastName = $dentist['last_name'] ?? $patient['last_name'] ?? $user['last_name'] ?? null;
+        if ($dentist !== null && !empty($dentist['first_name'])) {
+            $displayName = 'Dr. ' . trim(($dentist['first_name'] ?? '') . ' ' . ($dentist['last_name'] ?? ''));
+        } elseif (trim((string) $firstName . ' ' . (string) $lastName) !== '') {
+            $displayName = trim((string) $firstName . ' ' . (string) $lastName);
+        } else {
+            $local = explode('@', (string) $user['email'])[0];
+            $displayName = ucwords(trim(str_replace(['.', '_', '-'], ' ', $local)));
+        }
+
         return [
             ...$user,
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'display_name' => $displayName,
             'is_active' => (int) $user['is_active'] === 1,
             'email_verified' => (int) $user['email_verified'] === 1,
             'dentist' => $dentist,

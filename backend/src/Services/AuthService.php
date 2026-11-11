@@ -106,7 +106,9 @@ class AuthService
                 $passwordHash,
                 'PATIENT',
                 1, // is_active
-                0  // email_verified
+                0, // email_verified
+                $validated['first_name'],
+                $validated['last_name']
             );
 
             $patientData = [
@@ -296,16 +298,7 @@ class AuthService
             ['email' => $email, 'role' => $role]
         );
 
-        return [
-            'id' => $userId,
-            'email' => (string) $user['email'],
-            'role' => $role,
-            'permissions' => $this->resolveUserPermissions($role),
-            'is_active' => (bool) $user['is_active'],
-            'email_verified' => (bool) $user['email_verified'],
-            'patient' => $patient,
-            'dentist' => $dentist,
-        ];
+        return $this->formatAuthUserPayload($user, $patient, $dentist);
     }
 
     /**
@@ -370,9 +363,38 @@ class AuthService
             $dentist = $this->dentistRepository->findByUserId($userId);
         }
 
+        return $this->formatAuthUserPayload($user, $patient, $dentist);
+    }
+
+    /**
+     * Format authenticated user payload with resolved real display name
+     *
+     * @param array<string, mixed> $user
+     * @param array<string, mixed>|null $patient
+     * @param array<string, mixed>|null $dentist
+     * @return array<string, mixed>
+     */
+    private function formatAuthUserPayload(array $user, ?array $patient, ?array $dentist): array
+    {
+        $role = (string) $user['role'];
+        $firstName = trim((string) ($patient['first_name'] ?? $dentist['first_name'] ?? $user['first_name'] ?? ''));
+        $lastName = trim((string) ($patient['last_name'] ?? $dentist['last_name'] ?? $user['last_name'] ?? ''));
+
+        if ($dentist !== null && !empty($dentist['first_name'])) {
+            $displayName = 'Dr. ' . trim(($dentist['first_name'] ?? '') . ' ' . ($dentist['last_name'] ?? ''));
+        } elseif ($firstName !== '' || $lastName !== '') {
+            $displayName = trim($firstName . ' ' . $lastName);
+        } else {
+            $local = explode('@', (string) $user['email'])[0];
+            $displayName = ucwords(trim(str_replace(['.', '_', '-'], ' ', $local)));
+        }
+
         return [
             'id' => (int) $user['id'],
             'email' => (string) $user['email'],
+            'first_name' => $firstName !== '' ? $firstName : null,
+            'last_name' => $lastName !== '' ? $lastName : null,
+            'display_name' => $displayName,
             'role' => $role,
             'permissions' => $this->resolveUserPermissions($role),
             'is_active' => (bool) $user['is_active'],

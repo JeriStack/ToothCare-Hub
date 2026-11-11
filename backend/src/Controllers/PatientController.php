@@ -112,6 +112,15 @@ class PatientController
         $validated = PatientValidator::validate($body, true);
         $this->patientRepository->update($patientId, $validated);
 
+        $fresh = $this->patientRepository->findWithUserById($patientId) ?? $this->patientRepository->findById($patientId);
+        if (isset($validated['first_name']) || isset($validated['last_name'])) {
+            $this->userRepository->updateName(
+                $userId,
+                $fresh['first_name'] ?? $validated['first_name'] ?? null,
+                $fresh['last_name'] ?? $validated['last_name'] ?? null
+            );
+        }
+
         $this->auditLogRepository->record(
             'PATIENT_SELF_PROFILE_UPDATED',
             'patients',
@@ -122,7 +131,6 @@ class PatientController
             ['updated_fields' => array_keys($validated)]
         );
 
-        $fresh = $this->patientRepository->findWithUserById($patientId) ?? $this->patientRepository->findById($patientId);
         return Response::success($fresh);
     }
 
@@ -181,6 +189,17 @@ class PatientController
 
         $this->patientRepository->update($patientId, $validated);
 
+        $freshPatient = $this->patientRepository->findWithUserById($patientId)
+            ?? $this->patientRepository->findById($patientId);
+
+        if ((isset($validated['first_name']) || isset($validated['last_name'])) && !empty($patient['user_id'])) {
+            $this->userRepository->updateName(
+                (int) $patient['user_id'],
+                $freshPatient['first_name'] ?? $validated['first_name'] ?? null,
+                $freshPatient['last_name'] ?? $validated['last_name'] ?? null
+            );
+        }
+
         $this->auditLogRepository->record(
             'PATIENT_PROFILE_UPDATED',
             'patients',
@@ -190,9 +209,6 @@ class PatientController
             $request->getHeader('user-agent'),
             ['updated_fields' => array_keys($validated)]
         );
-
-        $freshPatient = $this->patientRepository->findWithUserById($patientId)
-            ?? $this->patientRepository->findById($patientId);
 
         return Response::success($freshPatient);
     }

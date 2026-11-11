@@ -34,6 +34,8 @@ class TestDb
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 email TEXT NOT NULL UNIQUE,
+                first_name TEXT NULL,
+                last_name TEXT NULL,
                 password_hash TEXT NOT NULL,
                 role TEXT NOT NULL DEFAULT "PATIENT",
                 is_active INTEGER NOT NULL DEFAULT 1,

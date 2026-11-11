@@ -8,13 +8,15 @@
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- 1. Insert Canonical Users
-INSERT INTO users (id, email, password_hash, role, is_active, email_verified, email_verified_at, created_at)
+INSERT INTO users (id, email, first_name, last_name, password_hash, role, is_active, email_verified, email_verified_at, created_at)
 VALUES
-    (10, 'admin@toothcare.com', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'ADMIN', 1, 1, NOW(), NOW()),
-    (11, 'receptionist@toothcare.com', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'RECEPTIONIST', 1, 1, NOW(), NOW()),
-    (12, 'dentist@toothcare.com', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'DENTIST', 1, 1, NOW(), NOW()),
-    (13, 'patient@toothcare.com', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'PATIENT', 1, 1, NOW(), NOW())
+    (10, 'admin@toothcare.com', 'Marco', 'Villanueva', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'ADMIN', 1, 1, NOW(), NOW()),
+    (11, 'receptionist@toothcare.com', 'Clarisse', 'Mendoza', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'RECEPTIONIST', 1, 1, NOW(), NOW()),
+    (12, 'dentist@toothcare.com', 'Maria', 'Santos', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'DENTIST', 1, 1, NOW(), NOW()),
+    (13, 'patient@toothcare.com', 'Juan', 'Dela Cruz', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'PATIENT', 1, 1, NOW(), NOW())
 ON DUPLICATE KEY UPDATE 
+    first_name = VALUES(first_name),
+    last_name = VALUES(last_name),
     password_hash = VALUES(password_hash),
     role = VALUES(role),
     is_active = 1,

@@ -119,4 +119,24 @@ describe('ReceptionistDashboard Component', () => {
       expect(screen.getByText('Confirm Check-In')).toBeInTheDocument();
     });
   });
+
+  it('greets receptionist by full name instead of email prefix when available', async () => {
+    receptionistApi.getDashboard.mockResolvedValue(mockSummary);
+
+    render(
+      <ReceptionistDashboard
+        user={{
+          email: 'receptionist@toothcare.com',
+          role: 'RECEPTIONIST',
+          first_name: 'Clarisse',
+          last_name: 'Mendoza',
+        }}
+        onNavigateTab={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Welcome back, Clarisse Mendoza')).toBeInTheDocument();
+    });
+  });
 });
