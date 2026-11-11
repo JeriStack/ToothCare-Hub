@@ -262,6 +262,16 @@ class ReceptionistOperationsApiTest extends TestCase
         $this->assertSame('WalkIn', $body['data']['first_name']);
     }
 
+    public function testReceptionistCanViewPatientRegistry(): void
+    {
+        $request = $this->createAuthenticatedRequest('GET', '/api/v1/admin/patients');
+        $response = $this->app->handle($request);
+        $this->assertSame(200, $response->getStatusCode());
+
+        $body = json_decode($response->getBody(), true);
+        $this->assertNotEmpty($body['data']);
+    }
+
     public function testReceptionistIsForbiddenFromModifyingServicePrices(): void
     {
         $request = $this->createAuthenticatedRequest(

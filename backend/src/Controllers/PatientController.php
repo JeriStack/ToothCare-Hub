@@ -48,8 +48,9 @@ class PatientController
             throw HttpException::unauthorized('Authentication is required.', 'AUTHENTICATION_REQUIRED');
         }
 
-        if (strtoupper((string) $user['role']) !== 'ADMIN') {
-            throw HttpException::forbidden('Administrative access required.', 'FORBIDDEN');
+        $role = strtoupper((string) $user['role']);
+        if ($role !== 'ADMIN' && $role !== 'RECEPTIONIST') {
+            throw HttpException::forbidden('Administrative or Front Desk access required.', 'FORBIDDEN');
         }
 
         $search = $request->getQuery('search');
@@ -274,8 +275,8 @@ class PatientController
             return;
         }
 
-        // 2. Admin role: Allowed full operational oversight
-        if ($userRole === 'ADMIN') {
+        // 2. Admin & Receptionist roles: Allowed full operational oversight
+        if ($userRole === 'ADMIN' || $userRole === 'RECEPTIONIST') {
             return;
         }
 
@@ -307,7 +308,7 @@ class PatientController
             return;
         }
 
-        if ($userRole === 'ADMIN') {
+        if ($userRole === 'ADMIN' || $userRole === 'RECEPTIONIST') {
             return;
         }
 
