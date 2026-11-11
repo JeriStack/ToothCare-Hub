@@ -442,24 +442,32 @@ function AppContent() {
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
-              <div className="w-10 h-10 flex items-center justify-center shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveTab('dashboard')}
+              className="flex items-center gap-2.5 group text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 rounded-lg"
+            >
+              <div className="w-10 h-10 group-hover:scale-105 transition-transform flex items-center justify-center shrink-0">
                 <img
                   src="/images/logo-icon.png"
                   alt="ToothCare Hub Logo"
                   className="w-full h-full object-contain"
                 />
               </div>
-              <div>
-                <h1 className="font-bold text-base leading-tight tracking-tight text-white flex items-center gap-2">
-                  Tooth<span className="text-[#0D9488]">Care</span> Hub
+              <div className="flex flex-col text-left">
+                <h1 className="flex items-center gap-2 leading-tight">
+                  <span className="font-bold text-xl tracking-tight text-white">
+                    Tooth<span className="text-[#14B8A6]">Care</span> Hub
+                  </span>
                   <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-[#CCFBF1] text-[#0F766E] hidden sm:inline-block">
                     {roleBadgeLabel}
                   </span>
                 </h1>
-                <p className="text-[11px] text-teal-200/80 hidden sm:block">Healthier Smiles. Brighter Futures.</p>
+                <span className="hidden sm:block text-[10px] tracking-wide text-teal-400 font-medium">
+                  Healthier Smiles. Brighter Futures.
+                </span>
               </div>
-            </div>
+            </button>
           </div>
 
           <div className="flex items-center gap-3">
