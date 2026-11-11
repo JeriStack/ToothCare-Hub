@@ -102,9 +102,10 @@ describe('Portal Header Identity & Account Dropdown', () => {
 
     render(<App />);
 
-    // Real name shown in topbar; email NOT used as display name; Sign Out NOT visible before opening dropdown
+    // Real name shown in topbar; email NOT used as display name; redundant portal badge & standalone Sign Out removed
     expect(screen.getByText('Marco Villanueva')).toBeInTheDocument();
     expect(screen.queryByText('admin@toothcare.com')).not.toBeInTheDocument();
+    expect(screen.queryByText('Admin Portal')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Sign Out/i })).not.toBeInTheDocument();
 
     const trigger = screen.getByRole('button', { name: 'Marco Villanueva account menu' });

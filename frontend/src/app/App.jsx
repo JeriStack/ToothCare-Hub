@@ -485,15 +485,6 @@ function AppContent() {
     roleLabel: userRoleLabel,
   } = resolveUserIdentity(user, currentRole);
 
-  const roleBadgeLabel =
-    currentRole === 'PATIENT'
-      ? 'Patient Portal'
-      : currentRole === 'ADMIN'
-      ? 'Admin Portal'
-      : currentRole === 'RECEPTIONIST'
-      ? 'Front Desk Portal'
-      : 'Dentist Portal';
-
   return (
     <div className="min-h-screen bg-[#F5F8FA] text-[#334155] flex flex-col font-sans selection:bg-[#CCFBF1] selection:text-[#0F766E]">
       
@@ -521,13 +512,8 @@ function AppContent() {
                 />
               </div>
               <div className="flex flex-col text-left">
-                <h1 className="flex items-center gap-2 leading-tight">
-                  <span className="font-bold text-xl tracking-tight text-white">
-                    Tooth<span className="text-[#14B8A6]">Care</span> Hub
-                  </span>
-                  <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-[#CCFBF1] text-[#0F766E] hidden sm:inline-block">
-                    {roleBadgeLabel}
-                  </span>
+                <h1 className="font-bold text-xl tracking-tight leading-tight text-white">
+                  Tooth<span className="text-[#14B8A6]">Care</span> Hub
                 </h1>
                 <span className="hidden sm:block text-[10px] tracking-wide text-teal-400 font-medium">
                   Healthier Smiles. Brighter Futures.
