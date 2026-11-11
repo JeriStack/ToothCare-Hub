@@ -94,10 +94,16 @@ export function AdminAppointmentsPage() {
     appointmentsApi
       .listAdmin(params)
       .then((res) => {
-        setAppointments(res.data || []);
-        if (res.meta) setMeta(res.meta);
+        const list = Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res?.data?.items)
+          ? res.data.items
+          : [];
+        setAppointments(list);
+        if (res?.meta) setMeta(res.meta);
       })
       .catch((err) => {
+        setAppointments([]);
         setError(err.response?.data?.error?.message || err.message || 'Failed to load appointments.');
       })
       .finally(() => {
@@ -401,7 +407,7 @@ export function AdminAppointmentsPage() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <TableSkeleton.Rows count={6} columns={7} />
-              ) : appointments.length === 0 ? (
+              ) : (!Array.isArray(appointments) || appointments.length === 0) ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-500">
                     No appointments matched the current filter criteria.
@@ -409,8 +415,8 @@ export function AdminAppointmentsPage() {
                 </tr>
               ) : (
                 appointments.map((appt) => {
-                  const sInfo = STATUS_STYLES[appt.status] || STATUS_STYLES.PENDING;
-                  const SIcon = sInfo.icon;
+                  const sInfo = STATUS_STYLES[appt?.status] || STATUS_STYLES.PENDING;
+                  const SIcon = sInfo?.icon || AlertCircle;
                   return (
                     <tr key={appt.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-3 px-4 font-mono font-bold text-slate-800">

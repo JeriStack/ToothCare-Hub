@@ -109,6 +109,14 @@ export const schedulesApi = {
   },
 
   /**
+   * Request self-service time-off / leave for the authenticated dentist
+   */
+  async requestTimeOff(payload) {
+    const res = await apiClient.post('/dentist/time-off', payload);
+    return res.data?.data;
+  },
+
+  /**
    * Delete a scheduled time-off record
    */
   async deleteDentistTimeOff(dentistId, timeOffId) {

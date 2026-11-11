@@ -22,6 +22,14 @@ export const appointmentsApi = {
   },
 
   /**
+   * Fetch patient dashboard metrics, next appointment, pending triage requests, and activity.
+   */
+  async getPatientDashboard() {
+    const res = await apiClient.get('/patient/dashboard');
+    return res.data?.data;
+  },
+
+  /**
    * List assigned appointments for the authenticated dentist
    */
   async listDentist(params = {}) {
@@ -82,9 +90,17 @@ export const appointmentsApi = {
    */
   async listAdmin(params = {}) {
     const res = await apiClient.get('/admin/appointments', { params });
+    const rawData = res.data?.data;
+    const items = Array.isArray(rawData) ? rawData : (Array.isArray(rawData?.items) ? rawData.items : []);
+    const meta = res.data?.meta || rawData?.meta || {
+      total: items.length,
+      page: 1,
+      per_page: 15,
+      last_page: 1,
+    };
     return {
-      data: res.data?.data || [],
-      meta: res.data?.meta || { total: 0, page: 1, per_page: 15, last_page: 1 },
+      data: items,
+      meta,
     };
   },
 

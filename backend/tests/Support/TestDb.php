@@ -224,6 +224,108 @@ class TestDb
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
+            CREATE TABLE IF NOT EXISTS appointment_attendances (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                appointment_id INTEGER NOT NULL UNIQUE,
+                status TEXT NOT NULL DEFAULT "NOT_ARRIVED",
+                checked_in_at TEXT NULL,
+                checked_in_by_user_id INTEGER NULL,
+                consultation_started_at TEXT NULL,
+                consultation_ended_at TEXT NULL,
+                notes TEXT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS roles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                slug TEXT NOT NULL UNIQUE,
+                description TEXT NULL,
+                is_system INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS permissions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                slug TEXT NOT NULL UNIQUE,
+                module TEXT NOT NULL,
+                description TEXT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS user_roles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                role_id INTEGER NOT NULL,
+                assigned_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS role_permissions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                role_id INTEGER NOT NULL,
+                permission_id INTEGER NOT NULL,
+                granted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(role_id, permission_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS clinic_settings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                setting_key TEXT NOT NULL UNIQUE,
+                setting_value TEXT NOT NULL,
+                description TEXT NULL,
+                value_type TEXT NOT NULL DEFAULT "string",
+                is_public INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            INSERT INTO roles (id, name, slug, description, is_system) VALUES
+            (1, "Administrator", "admin", "Full clinic system management", 1),
+            (2, "Dentist", "dentist", "Clinical practitioner", 1),
+            (3, "Patient", "patient", "Clinic patient", 1),
+            (4, "Receptionist", "receptionist", "Front desk staff", 1);
+
+            INSERT INTO permissions (id, name, slug, module, description) VALUES
+            (1, "View Users", "users.view", "users", "View user listings"),
+            (2, "Manage Users", "users.manage", "users", "Create/update users"),
+            (3, "View Patients", "patients.view", "patients", "View patient directory"),
+            (4, "Manage Patients", "patients.manage", "patients", "Edit patient profiles"),
+            (5, "View Dentists", "dentists.view", "dentists", "View dentist roster"),
+            (6, "Manage Dentists", "dentists.manage", "dentists", "Edit dentist profiles"),
+            (7, "View Services", "services.view", "services", "Browse service catalog"),
+            (8, "Manage Services", "services.manage", "services", "Manage dental services"),
+            (9, "View Appointments", "appointments.view", "appointments", "View appointment schedules"),
+            (10, "Book Appointments", "appointments.book", "appointments", "Request appointments"),
+            (11, "Manage Appointments", "appointments.manage", "appointments", "Confirm/reschedule/cancel"),
+            (12, "Complete Appointments", "appointments.complete", "appointments", "Complete appointments"),
+            (13, "View Treatment Records", "treatment_records.view", "clinical", "Read treatment records"),
+            (14, "Create Treatment Records", "treatment_records.create", "clinical", "Document treatments"),
+            (15, "Amend Treatment Records", "treatment_records.amend", "clinical", "Amend treatment records"),
+            (16, "View Audit Logs", "audit_logs.view", "security", "Inspect forensic audit logs"),
+            (17, "Manage Clinic Settings", "settings.manage", "settings", "Configure preferences"),
+            (18, "View Admin Dashboard", "dashboard.view", "dashboard", "View clinic executive dashboard"),
+            (19, "Manage Roles & Permissions", "roles.manage", "security", "Configure DRBAC permissions"),
+            (20, "Export Audit Logs", "audit_logs.export", "security", "Export audit logs CSV"),
+            (21, "View Reports & Analytics", "reports.view", "reports", "Access reports"),
+            (22, "View System Health", "system.health", "system", "Inspect system health");
+
+            INSERT INTO role_permissions (role_id, permission_id) VALUES
+            (1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6), (1, 7), (1, 8), (1, 9), (1, 10),
+            (1, 11), (1, 12), (1, 13), (1, 14), (1, 15), (1, 16), (1, 17), (1, 18), (1, 19), (1, 20), (1, 21), (1, 22),
+            (2, 3), (2, 5), (2, 7), (2, 9), (2, 11), (2, 12), (2, 13), (2, 14), (2, 15),
+            (3, 5), (3, 7), (3, 9), (3, 10), (3, 13),
+            (4, 3), (4, 4), (4, 5), (4, 7), (4, 9), (4, 10), (4, 11);
+
+            INSERT INTO clinic_settings (setting_key, setting_value, description, value_type, is_public) VALUES
+            ("clinic_name", "ToothCare Hub", "Clinic display name", "string", 1),
+            ("clinic_phone", "+63 912 345 6789", "Clinic telephone", "string", 1),
+            ("booking_advance_days_max", "60", "Max advance days", "integer", 1),
+            ("cancellation_cutoff_hours", "24", "Cancellation cutoff", "integer", 1);
+
             CREATE TABLE IF NOT EXISTS email_outbox (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NULL,

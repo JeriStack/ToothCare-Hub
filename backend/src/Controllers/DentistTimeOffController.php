@@ -150,4 +150,55 @@ class DentistTimeOffController
 
         return Response::success(null);
     }
+
+    /**
+     * POST /api/v1/dentist/time-off
+     * Self-service leave request submitted by authenticated dentist.
+     * Leaves record with approved_by_user_id = null awaiting admin authorization.
+     */
+    public function requestTimeOff(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required.');
+        }
+
+        $dentist = $this->dentistRepo->findByUserId((int) $user['id']);
+        if (!$dentist) {
+            throw HttpException::forbidden('Authenticated user does not have a dentist profile.');
+        }
+
+        $dentistId = (int) $dentist['id'];
+        $validated = ScheduleValidator::validateTimeOff($request->getBody());
+        $validated['dentist_id'] = $dentistId;
+
+        // Check for overlapping leaves for this practitioner
+        $overlapping = $this->timeOffRepo->findOverlapping($dentistId, $validated['start_at'], $validated['end_at']);
+        if (!empty($overlapping)) {
+            throw HttpException::conflict('Requested time-off interval overlaps with an existing leave period.');
+        }
+
+        // Self-service requests must NOT be auto-approved by the dentist
+        $validated['approved_by_user_id'] = null;
+
+        $id = $this->timeOffRepo->create($validated);
+        $record = $this->timeOffRepo->findById($id);
+
+        $this->auditLogRepo->record(
+            'DENTIST_TIME_OFF_REQUESTED',
+            'dentist_time_off',
+            $id,
+            (int) $user['id'],
+            $request->getClientIp(),
+            $request->getHeader('user-agent'),
+            [
+                'dentist_id' => $dentistId,
+                'start_at' => $validated['start_at'],
+                'end_at' => $validated['end_at'],
+                'reason' => $validated['reason'],
+            ]
+        );
+
+        return Response::created($record);
+    }
 }

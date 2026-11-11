@@ -165,11 +165,23 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const hasPermission = useCallback(
+    (slug) => {
+      if (!user || !slug) return false;
+      if (Array.isArray(user.permissions)) {
+        return user.permissions.includes(slug);
+      }
+      return String(user.role || '').toUpperCase() === 'ADMIN';
+    },
+    [user]
+  );
+
   const value = {
     user,
     isAuthenticated: Boolean(user),
     isLoading,
     error,
+    hasPermission,
     login,
     register,
     logout,

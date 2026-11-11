@@ -3,6 +3,7 @@ import {
   Calendar,
   Clock,
   User,
+  Users,
   Shield,
   Stethoscope,
   Menu,
@@ -15,6 +16,10 @@ import {
   LogOut,
   RefreshCw,
   Bell,
+  Key,
+  Activity,
+  BarChart3,
+  Server,
 } from 'lucide-react';
 import {
   AuthProvider,
@@ -27,6 +32,7 @@ import {
 } from '../features/auth';
 import { PatientDashboard } from '../features/dashboard/PatientDashboard';
 import { AdminDashboard } from '../features/dashboard/AdminDashboard';
+import { ReceptionistDashboard } from '../features/dashboard/ReceptionistDashboard';
 import { DentistDashboard } from '../features/dashboard/DentistDashboard';
 import { ServicesPage } from '../features/services/pages/ServicesPage';
 import { DentistListPage } from '../features/dentists/pages/DentistListPage';
@@ -44,6 +50,12 @@ import { NotificationCenter } from '../features/notifications/components/Notific
 import { DentistAppointmentsPage } from '../features/dentists/pages/DentistAppointmentsPage';
 import { DentistAppointmentDetailPage } from '../features/dentists/pages/DentistAppointmentDetailPage';
 import { DentistTreatmentRecordsPage } from '../features/treatment-records/pages/DentistTreatmentRecordsPage';
+import { UserManagementPage } from '../features/users/pages/UserManagementPage';
+import { RolePermissionMatrixPage } from '../features/roles/pages/RolePermissionMatrixPage';
+import { AuditTrailPage } from '../features/audit/pages/AuditTrailPage';
+import { ReportsPage } from '../features/reports/pages/ReportsPage';
+import { SystemHealthPage } from '../features/system/pages/SystemHealthPage';
+import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 
 function getInitialRoute() {
   if (typeof window === 'undefined') return 'LANDING';
@@ -54,7 +66,7 @@ function getInitialRoute() {
   if (path === '/reset-password' || path === '/reset') return 'RESET_PASSWORD';
   if (path === '/verify-email' || path === '/verify') return 'VERIFY_EMAIL';
   if (path.startsWith('/patient')) return 'PATIENT';
-  if (path.startsWith('/admin')) return 'ADMIN';
+  if (path.startsWith('/admin') || path.startsWith('/receptionist')) return 'ADMIN';
   if (path.startsWith('/dentist')) return 'DENTIST';
   return 'LANDING';
 }
@@ -68,11 +80,38 @@ function getInitialTab() {
       return sub;
     }
   }
+  if (path.startsWith('/admin/') || path.startsWith('/receptionist/')) {
+    const sub = path.replace(/^\/(admin|receptionist)\//, '').split('/')[0];
+    if (
+      [
+        'dashboard',
+        'triage',
+        'queue',
+        'patients',
+        'services',
+        'dentists',
+        'schedules',
+        'users',
+        'roles',
+        'audit',
+        'reports',
+        'system',
+      ].includes(sub)
+    ) {
+      return sub === 'queue' ? 'triage' : sub;
+    }
+  }
+  if (path.startsWith('/dentist/')) {
+    const sub = path.replace('/dentist/', '').split('/')[0];
+    if (['dashboard', 'appointments', 'treatment-records', 'shifts'].includes(sub)) {
+      return sub;
+    }
+  }
   return 'dashboard';
 }
 
 function AppContent() {
-  const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, logout, hasPermission } = useAuth();
 
   // Active View / Route
   const [currentRoute, setCurrentRoute] = useState(getInitialRoute);
@@ -97,6 +136,27 @@ function AppContent() {
     setActiveTab(tab);
     setIsMobileMenuOpen(false);
     const subPath = tab === 'dashboard' ? '/patient' : `/patient/${tab}`;
+    if (window.location.pathname !== subPath) {
+      window.history.pushState({}, '', subPath);
+    }
+  };
+
+  // Admin Sub-Route Navigation with URL History Sync
+  const handleAdminNav = (tab) => {
+    setActiveTab(tab);
+    setIsMobileMenuOpen(false);
+    const subPath = tab === 'dashboard' ? '/admin' : `/admin/${tab}`;
+    if (window.location.pathname !== subPath) {
+      window.history.pushState({}, '', subPath);
+    }
+  };
+
+  // Dentist Sub-Route Navigation with URL History Sync
+  const handleDentistNav = (tab) => {
+    setActiveTab(tab);
+    setSelectedDentistAppointmentId(null);
+    setIsMobileMenuOpen(false);
+    const subPath = tab === 'dashboard' ? '/dentist' : `/dentist/${tab}`;
     if (window.location.pathname !== subPath) {
       window.history.pushState({}, '', subPath);
     }
@@ -154,16 +214,22 @@ function AppContent() {
       }
 
       const role = user?.role?.toUpperCase();
+      const isAdminOrReceptionist = role === 'ADMIN' || role === 'RECEPTIONIST';
+
       if (currentRoute === 'PATIENT' && role !== 'PATIENT') {
-        const dest = role === 'ADMIN' ? '/admin' : '/dentist';
+        const dest = isAdminOrReceptionist ? '/admin' : '/dentist';
         navigateTo(role, dest);
-        showToast(`Redirected to your authorized ${role === 'ADMIN' ? 'administrator' : 'dentist'} portal.`);
-      } else if (currentRoute === 'ADMIN' && role !== 'ADMIN') {
+        showToast(
+          `Redirected to your authorized ${
+            role === 'ADMIN' ? 'administrator' : role === 'RECEPTIONIST' ? 'front desk' : 'dentist'
+          } portal.`
+        );
+      } else if (currentRoute === 'ADMIN' && !isAdminOrReceptionist) {
         const dest = role === 'DENTIST' ? '/dentist' : '/patient';
         navigateTo(role, dest);
-        showToast('Access restricted: Administrative authorization required.');
+        showToast('Access restricted: Administrative or Front Desk authorization required.');
       } else if (currentRoute === 'DENTIST' && role !== 'DENTIST') {
-        const dest = role === 'ADMIN' ? '/admin' : '/patient';
+        const dest = isAdminOrReceptionist ? '/admin' : '/patient';
         navigateTo(role, dest);
         showToast('Access restricted: Dentist clinical authorization required.');
       }
@@ -182,6 +248,38 @@ function AppContent() {
           <p className="text-xs text-slate-500 font-medium">Verifying authenticated session...</p>
         </div>
       </div>
+    );
+  }
+
+  // Unauthenticated Guard for Protected Portals
+  if (
+    !isLoading &&
+    !isAuthenticated &&
+    (currentRoute === 'PATIENT' || currentRoute === 'ADMIN' || currentRoute === 'DENTIST')
+  ) {
+    return (
+      <LoginPage
+        onSuccess={(loggedUser) => {
+          const role = loggedUser?.role?.toUpperCase();
+          const firstName =
+            loggedUser?.patient?.first_name ||
+            loggedUser?.dentist?.first_name ||
+            loggedUser?.first_name ||
+            'User';
+          showToast(`Welcome back, ${firstName}!`);
+
+          if (role === 'ADMIN') {
+            navigateTo('ADMIN', '/admin');
+          } else if (role === 'DENTIST') {
+            navigateTo('DENTIST', '/dentist');
+          } else {
+            navigateTo('PATIENT', '/patient');
+          }
+        }}
+        onNavigateRegister={() => navigateTo('REGISTER', '/register')}
+        onNavigateForgotPassword={() => navigateTo('FORGOT_PASSWORD', '/forgot-password')}
+        onNavigateHome={() => navigateTo('LANDING', '/')}
+      />
     );
   }
 
@@ -326,6 +424,8 @@ function AppContent() {
       ? 'Patient Portal'
       : currentRole === 'ADMIN'
       ? 'Admin Portal'
+      : currentRole === 'RECEPTIONIST'
+      ? 'Front Desk Portal'
       : 'Dentist Portal';
 
   return (
@@ -342,31 +442,45 @@ function AppContent() {
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
-              <div className="w-10 h-10 flex items-center justify-center shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveTab('dashboard')}
+              className="flex items-center gap-2.5 group text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 rounded-lg"
+            >
+              <div className="w-10 h-10 group-hover:scale-105 transition-transform flex items-center justify-center shrink-0">
                 <img
                   src="/images/logo-icon.png"
                   alt="ToothCare Hub Logo"
                   className="w-full h-full object-contain"
                 />
               </div>
-              <div>
-                <h1 className="font-bold text-base leading-tight tracking-tight text-white flex items-center gap-2">
-                  Tooth<span className="text-[#0D9488]">Care</span> Hub
+              <div className="flex flex-col text-left">
+                <h1 className="flex items-center gap-2 leading-tight">
+                  <span className="font-bold text-xl tracking-tight text-white">
+                    Tooth<span className="text-[#14B8A6]">Care</span> Hub
+                  </span>
                   <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-[#CCFBF1] text-[#0F766E] hidden sm:inline-block">
                     {roleBadgeLabel}
                   </span>
                 </h1>
-                <p className="text-[11px] text-teal-200/80 hidden sm:block">Healthier Smiles. Brighter Futures.</p>
+                <span className="hidden sm:block text-[10px] tracking-wide text-teal-400 font-medium">
+                  Healthier Smiles. Brighter Futures.
+                </span>
               </div>
-            </div>
+            </button>
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Patient In-App Notifications Dropdown */}
-            {currentRole === 'PATIENT' && (
+            {/* In-App Notifications Dropdown */}
+            {(currentRole === 'PATIENT' || currentRole === 'DENTIST') && (
               <NotificationCenter
-                onNavigateAll={() => handlePatientNav('notifications')}
+                onNavigateAll={() => {
+                  if (currentRole === 'PATIENT') {
+                    handlePatientNav('notifications');
+                  } else {
+                    setActiveTab('appointments');
+                  }
+                }}
               />
             )}
 
@@ -388,6 +502,8 @@ function AppContent() {
                 <p className="text-[10px] text-teal-200/70">
                   {currentRole === 'ADMIN'
                     ? 'Administrator'
+                    : currentRole === 'RECEPTIONIST'
+                    ? 'Front Desk Specialist'
                     : currentRole === 'DENTIST'
                     ? 'Attending Dentist'
                     : 'Patient'}
@@ -482,50 +598,111 @@ function AppContent() {
                 </>
               )}
 
-              {currentRole === 'ADMIN' && (
+              {(currentRole === 'ADMIN' || currentRole === 'RECEPTIONIST') && (
                 <>
                   <button
-                    onClick={() => { setActiveTab('dashboard'); setIsMobileMenuOpen(false); }}
+                    onClick={() => handleAdminNav('dashboard')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'dashboard' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
                   >
                     <Calendar className="w-4 h-4" />
                     Overview
                   </button>
                   <button
-                    onClick={() => { setActiveTab('triage'); setIsMobileMenuOpen(false); }}
+                    onClick={() => handleAdminNav('triage')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'triage' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
                   >
                     <Clock className="w-4 h-4" />
                     Review Queue
                   </button>
                   <button
-                    onClick={() => { setActiveTab('patients'); setIsMobileMenuOpen(false); }}
+                    onClick={() => handleAdminNav('patients')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'patients' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
                   >
                     <User className="w-4 h-4" />
                     Patient Registry
                   </button>
                   <button
-                    onClick={() => { setActiveTab('services'); setIsMobileMenuOpen(false); }}
+                    onClick={() => handleAdminNav('services')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'services' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
                   >
                     <Stethoscope className="w-4 h-4" />
                     Services & Fees
                   </button>
                   <button
-                    onClick={() => { setActiveTab('dentists'); setIsMobileMenuOpen(false); }}
+                    onClick={() => handleAdminNav('dentists')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'dentists' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
                   >
                     <Shield className="w-4 h-4" />
                     Dentist Roster
                   </button>
                   <button
-                    onClick={() => { setActiveTab('schedules'); setIsMobileMenuOpen(false); }}
+                    onClick={() => handleAdminNav('schedules')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'schedules' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
                   >
                     <Clock className="w-4 h-4" />
                     Hours & Schedules
                   </button>
+
+                  {(hasPermission('users.view') ||
+                    hasPermission('roles.manage') ||
+                    hasPermission('audit_logs.view') ||
+                    hasPermission('reports.view') ||
+                    hasPermission('system.health') ||
+                    hasPermission('settings.manage')) && (
+                    <>
+                      <div className="pt-3 pb-1 px-3">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Administration & Security
+                        </span>
+                      </div>
+                      {hasPermission('users.view') && (
+                        <button
+                          onClick={() => handleAdminNav('users')}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'users' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
+                        >
+                          <Users className="w-4 h-4" />
+                          User Accounts
+                        </button>
+                      )}
+                      {hasPermission('roles.manage') && (
+                        <button
+                          onClick={() => handleAdminNav('roles')}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'roles' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
+                        >
+                          <Key className="w-4 h-4" />
+                          DRBAC Matrix
+                        </button>
+                      )}
+                      {hasPermission('audit_logs.view') && (
+                        <button
+                          onClick={() => handleAdminNav('audit')}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'audit' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
+                        >
+                          <Activity className="w-4 h-4" />
+                          Audit Trail
+                        </button>
+                      )}
+                      {hasPermission('reports.view') && (
+                        <button
+                          onClick={() => handleAdminNav('reports')}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'reports' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
+                        >
+                          <BarChart3 className="w-4 h-4" />
+                          Reports & Analytics
+                        </button>
+                      )}
+                      {(hasPermission('system.health') || hasPermission('settings.manage')) && (
+                        <button
+                          onClick={() => handleAdminNav('system')}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'system' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
+                        >
+                          <Server className="w-4 h-4" />
+                          System & Settings
+                        </button>
+                      )}
+                    </>
+                  )}
+
                   <button
                     onClick={() => navigateTo('LANDING', '/')}
                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
@@ -539,11 +716,7 @@ function AppContent() {
               {currentRole === 'DENTIST' && (
                 <>
                   <button
-                    onClick={() => {
-                      setActiveTab('dashboard');
-                      setSelectedDentistAppointmentId(null);
-                      setIsMobileMenuOpen(false);
-                    }}
+                    onClick={() => handleDentistNav('dashboard')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                       activeTab === 'dashboard' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'
                     }`}
@@ -552,11 +725,7 @@ function AppContent() {
                     Overview
                   </button>
                   <button
-                    onClick={() => {
-                      setActiveTab('appointments');
-                      setSelectedDentistAppointmentId(null);
-                      setIsMobileMenuOpen(false);
-                    }}
+                    onClick={() => handleDentistNav('appointments')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                       activeTab === 'appointments' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'
                     }`}
@@ -565,11 +734,7 @@ function AppContent() {
                     Assigned Appointments
                   </button>
                   <button
-                    onClick={() => {
-                      setActiveTab('treatment-records');
-                      setSelectedDentistAppointmentId(null);
-                      setIsMobileMenuOpen(false);
-                    }}
+                    onClick={() => handleDentistNav('treatment-records')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                       activeTab === 'treatment-records' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'
                     }`}
@@ -578,11 +743,7 @@ function AppContent() {
                     Treatment Records
                   </button>
                   <button
-                    onClick={() => {
-                      setActiveTab('shifts');
-                      setSelectedDentistAppointmentId(null);
-                      setIsMobileMenuOpen(false);
-                    }}
+                    onClick={() => handleDentistNav('shifts')}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                       activeTab === 'shifts' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'
                     }`}
@@ -676,12 +837,12 @@ function AppContent() {
           )}
 
           {/* ======================================================== */}
-          {/* B. ADMIN / RECEPTIONIST VIEWS */}
+          {/* B. RECEPTIONIST FRONT DESK OPERATIONS VIEWS */}
           {/* ======================================================== */}
-          {currentRole === 'ADMIN' && (
+          {currentRole === 'RECEPTIONIST' && (
             <>
               {activeTab === 'dashboard' && (
-                <AdminDashboard onNavigateTab={(tab) => setActiveTab(tab)} />
+                <ReceptionistDashboard user={user} onNavigateTab={(tab) => handleAdminNav(tab)} />
               )}
 
               {activeTab === 'triage' && (
@@ -702,6 +863,77 @@ function AppContent() {
 
               {activeTab === 'schedules' && (
                 <AdminSchedulePage />
+              )}
+
+              {activeTab === 'users' && hasPermission('users.view') && (
+                <UserManagementPage />
+              )}
+
+              {activeTab === 'roles' && hasPermission('roles.manage') && (
+                <RolePermissionMatrixPage />
+              )}
+
+              {activeTab === 'audit' && hasPermission('audit_logs.view') && (
+                <AuditTrailPage />
+              )}
+
+              {activeTab === 'reports' && hasPermission('reports.view') && (
+                <ReportsPage />
+              )}
+
+              {activeTab === 'system' && (hasPermission('system.health') || hasPermission('settings.manage')) && (
+                <SystemHealthPage />
+              )}
+            </>
+          )}
+
+          {/* ======================================================== */}
+          {/* C. ADMIN VIEWS */}
+          {/* ======================================================== */}
+          {currentRole === 'ADMIN' && (
+            <>
+              {activeTab === 'dashboard' && (
+                <AdminDashboard onNavigateTab={(tab) => handleAdminNav(tab)} />
+              )}
+
+              {activeTab === 'triage' && (
+                <AdminAppointmentsPage />
+              )}
+
+              {activeTab === 'patients' && (
+                <PatientListPage />
+              )}
+
+              {activeTab === 'services' && (
+                <ServicesPage />
+              )}
+
+              {activeTab === 'dentists' && (
+                <DentistListPage />
+              )}
+
+              {activeTab === 'schedules' && (
+                <AdminSchedulePage />
+              )}
+
+              {activeTab === 'users' && (
+                <UserManagementPage />
+              )}
+
+              {activeTab === 'roles' && (
+                <RolePermissionMatrixPage />
+              )}
+
+              {activeTab === 'audit' && (
+                <AuditTrailPage />
+              )}
+
+              {activeTab === 'reports' && (
+                <ReportsPage />
+              )}
+
+              {activeTab === 'system' && (
+                <SystemHealthPage />
               )}
             </>
           )}
@@ -765,8 +997,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

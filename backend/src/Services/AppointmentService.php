@@ -1204,19 +1204,29 @@ class AppointmentService
      */
     public function getDentistDashboardSummary(int $userId): array
     {
+        $now = new DateTimeImmutable('now', $this->timezone);
+        $clinicTime = $now->format('c');
+
         $dentist = $this->dentistRepo->findByUserId($userId);
         if (!$dentist) {
             return [
+                'clinic_time' => $clinicTime,
                 'today_count' => 0,
                 'upcoming_count' => 0,
                 'pending_count' => 0,
                 'completed_count' => 0,
                 'today_appointments' => [],
+                'next_appointment' => null,
+                'activity_summary' => [
+                    'completed_this_week' => 0,
+                    'upcoming_this_week' => 0,
+                    'pending_documentation_count' => 0,
+                    'cancelled_this_week' => 0,
+                ],
             ];
         }
 
         $dentistId = (int) $dentist['id'];
-        $now = new DateTimeImmutable('now', $this->timezone);
         $todayStart = $now->format('Y-m-d 00:00:00');
         $todayEnd = $now->format('Y-m-d 23:59:59');
 
@@ -1227,18 +1237,65 @@ class AppointmentService
         $pendingCount = 0;
         $completedCount = 0;
 
+        $weekStart = $now->modify('monday this week')->format('Y-m-d 00:00:00');
+        $weekEnd = $now->modify('sunday this week')->format('Y-m-d 23:59:59');
+
+        $completedThisWeek = 0;
+        $upcomingThisWeek = 0;
+        $cancelledThisWeek = 0;
+
+        $futureAppts = [];
+        $nowStr = $now->format('Y-m-d H:i:s');
+
         foreach ($all as $a) {
             $status = strtoupper((string) $a['status']);
+            $startAt = (string) $a['start_at'];
+            $endAt = (string) ($a['end_at'] ?? $startAt);
+
             if ($status === 'CONFIRMED') {
-                if ($a['start_at'] >= $now->format('Y-m-d H:i:s')) {
+                if ($startAt >= $nowStr) {
                     $upcomingCount++;
+                    if ($startAt <= $weekEnd) {
+                        $upcomingThisWeek++;
+                    }
                 }
             } elseif ($status === 'PENDING') {
                 $pendingCount++;
             } elseif ($status === 'COMPLETED') {
                 $completedCount++;
+                if ($startAt >= $weekStart && $startAt <= $weekEnd) {
+                    $completedThisWeek++;
+                }
+            } elseif ($status === 'CANCELLED') {
+                if ($startAt >= $weekStart && $startAt <= $weekEnd) {
+                    $cancelledThisWeek++;
+                }
+            }
+
+            // Eligible upcoming appointment candidate for next patient
+            if (in_array($status, ['CONFIRMED', 'PENDING'], true) && ($endAt >= $nowStr || $startAt >= $nowStr)) {
+                $futureAppts[] = $a;
             }
         }
+
+        // Sort upcoming appointments chronologically
+        usort($futureAppts, static function (array $a, array $b): int {
+            return strcmp((string) $a['start_at'], (string) $b['start_at']);
+        });
+
+        $nextAppointment = $futureAppts[0] ?? null;
+
+        // Calculate pending clinical documentation (completed visits missing treatment records)
+        $pendingDocStmt = $this->database->getConnection()->prepare('
+            SELECT COUNT(*)
+            FROM appointments a
+            LEFT JOIN treatment_records tr ON tr.appointment_id = a.id
+            WHERE a.dentist_id = ?
+              AND a.status = "COMPLETED"
+              AND tr.id IS NULL
+        ');
+        $pendingDocStmt->execute([$dentistId]);
+        $pendingDocCount = (int) $pendingDocStmt->fetchColumn();
 
         return [
             'dentist' => [
@@ -1249,11 +1306,148 @@ class AppointmentService
                 'license_number' => $dentist['license_number'],
                 'chair' => $dentist['default_operatory_chair'],
             ],
+            'clinic_time' => $clinicTime,
             'today_count' => count($todayAppts),
             'upcoming_count' => $upcomingCount,
             'pending_count' => $pendingCount,
             'completed_count' => $completedCount,
             'today_appointments' => $todayAppts,
+            'next_appointment' => $nextAppointment,
+            'activity_summary' => [
+                'completed_this_week' => $completedThisWeek,
+                'upcoming_this_week' => $upcomingThisWeek,
+                'pending_documentation_count' => $pendingDocCount,
+                'cancelled_this_week' => $cancelledThisWeek,
+            ],
+        ];
+    }
+
+    /**
+     * Get real-time summary statistics, next visit, pending requests, and recent activity for patient dashboard.
+     *
+     * @param int $userId
+     * @return array<string, mixed>
+     */
+    public function getPatientDashboardSummary(int $userId): array
+    {
+        $now = new DateTimeImmutable('now', $this->timezone);
+        $clinicTime = $now->format('c');
+        $nowStr = $now->format('Y-m-d H:i:s');
+
+        $patient = $this->patientRepo->findByUserId($userId);
+        if (!$patient) {
+            return [
+                'patient' => null,
+                'clinic_time' => $clinicTime,
+                'upcoming_count' => 0,
+                'pending_count' => 0,
+                'completed_count' => 0,
+                'cancelled_count' => 0,
+                'next_appointment' => null,
+                'additional_upcoming' => [],
+                'pending_requests' => [],
+                'recent_activity' => [],
+            ];
+        }
+
+        $patientId = (int) $patient['id'];
+        $pdo = $this->database->getConnection();
+
+        // 1. Aggregated statistics
+        $statsStmt = $pdo->prepare('
+            SELECT
+                SUM(CASE WHEN status = "CONFIRMED" AND start_at >= :now1 THEN 1 ELSE 0 END) AS upcoming_count,
+                SUM(CASE WHEN status = "PENDING" THEN 1 ELSE 0 END) AS pending_count,
+                SUM(CASE WHEN status = "COMPLETED" THEN 1 ELSE 0 END) AS completed_count,
+                SUM(CASE WHEN status = "CANCELLED" THEN 1 ELSE 0 END) AS cancelled_count
+            FROM appointments
+            WHERE patient_id = :patient_id
+        ');
+        $statsStmt->execute([
+            ':now1' => $nowStr,
+            ':patient_id' => $patientId,
+        ]);
+        $stats = $statsStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        // 2. Upcoming confirmed appointments (ordered chronologically)
+        $upcomingStmt = $pdo->prepare('
+            SELECT a.*,
+                   d.first_name AS dentist_first_name, d.last_name AS dentist_last_name, d.specialization AS dentist_specialization,
+                   d.default_operatory_chair AS dentist_chair,
+                   s.name AS service_name, s.duration_minutes AS service_duration, s.price AS service_price
+            FROM appointments a
+            JOIN dentists d ON a.dentist_id = d.id
+            JOIN services s ON a.service_id = s.id
+            WHERE a.patient_id = :patient_id
+              AND a.status = "CONFIRMED"
+              AND (a.end_at >= :now1 OR a.start_at >= :now2)
+            ORDER BY a.start_at ASC
+            LIMIT 4
+        ');
+        $upcomingStmt->execute([
+            ':patient_id' => $patientId,
+            ':now1' => $nowStr,
+            ':now2' => $nowStr,
+        ]);
+        $upcomingList = $upcomingStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $nextAppointment = $upcomingList[0] ?? null;
+        $additionalUpcoming = array_slice($upcomingList, 1);
+
+        // 3. Pending requests with triage metadata
+        $pendingStmt = $pdo->prepare('
+            SELECT a.*,
+                   d.first_name AS dentist_first_name, d.last_name AS dentist_last_name, d.specialization AS dentist_specialization,
+                   s.name AS service_name, s.duration_minutes AS service_duration
+            FROM appointments a
+            LEFT JOIN dentists d ON a.dentist_id = d.id
+            JOIN services s ON a.service_id = s.id
+            WHERE a.patient_id = :patient_id
+              AND a.status = "PENDING"
+            ORDER BY a.created_at DESC
+            LIMIT 5
+        ');
+        $pendingStmt->execute([':patient_id' => $patientId]);
+        $pendingRequests = $pendingStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // 4. Recent appointment activity from status history
+        $activityStmt = $pdo->prepare('
+            SELECT h.id, h.appointment_id, h.old_status, h.new_status, h.reason, h.created_at,
+                   s.name AS service_name,
+                   d.first_name AS dentist_first_name, d.last_name AS dentist_last_name
+            FROM appointment_status_history h
+            JOIN appointments a ON h.appointment_id = a.id
+            JOIN services s ON a.service_id = s.id
+            JOIN dentists d ON a.dentist_id = d.id
+            WHERE a.patient_id = :patient_id
+            ORDER BY h.created_at DESC
+            LIMIT 6
+        ');
+        $activityStmt->execute([':patient_id' => $patientId]);
+        $recentActivity = $activityStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return [
+            'patient' => [
+                'id' => $patientId,
+                'first_name' => $patient['first_name'],
+                'last_name' => $patient['last_name'],
+                'phone' => $patient['phone'],
+                'date_of_birth' => $patient['date_of_birth'],
+                'gender' => $patient['gender'],
+                'address' => $patient['address'],
+                'emergency_contact_name' => $patient['emergency_contact_name'],
+                'emergency_contact_phone' => $patient['emergency_contact_phone'],
+                'medical_alerts' => $patient['medical_alerts'],
+            ],
+            'clinic_time' => $clinicTime,
+            'upcoming_count' => (int) ($stats['upcoming_count'] ?? 0),
+            'pending_count' => (int) ($stats['pending_count'] ?? 0),
+            'completed_count' => (int) ($stats['completed_count'] ?? 0),
+            'cancelled_count' => (int) ($stats['cancelled_count'] ?? 0),
+            'next_appointment' => $nextAppointment,
+            'additional_upcoming' => $additionalUpcoming,
+            'pending_requests' => $pendingRequests,
+            'recent_activity' => $recentActivity,
         ];
     }
 }

@@ -40,6 +40,22 @@ class AppointmentController
     }
 
     /**
+     * GET /api/v1/patient/dashboard
+     * Retrieve real-time dashboard summary metrics, next visit, pending requests, and activity for patient portal.
+     */
+    public function patientDashboard(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required to view your patient dashboard.');
+        }
+
+        $result = $this->appointmentService->getPatientDashboardSummary((int) $user['id']);
+
+        return Response::success($result);
+    }
+
+    /**
      * GET /api/v1/appointments
      * List appointments for the authenticated patient.
      */
@@ -215,7 +231,15 @@ class AppointmentController
 
         $result = $this->appointmentService->listAdminAppointments($queryParams, $page, $perPage);
 
-        return Response::success($result);
+        return Response::paginated(
+            $result['items'] ?? [],
+            [
+                'total' => $result['total'] ?? 0,
+                'page' => $result['page'] ?? $page,
+                'per_page' => $result['per_page'] ?? $perPage,
+                'last_page' => $result['total_pages'] ?? 1,
+            ]
+        );
     }
 
     /**

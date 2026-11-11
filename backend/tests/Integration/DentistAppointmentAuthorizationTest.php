@@ -249,6 +249,12 @@ class DentistAppointmentAuthorizationTest extends TestCase
         // Dentist A has 1 confirmed and 1 pending appointment
         $this->assertSame(1, $data['data']['upcoming_count']);
         $this->assertSame(1, $data['data']['pending_count']);
+        $this->assertArrayHasKey('clinic_time', $data['data']);
+        $this->assertArrayHasKey('next_appointment', $data['data']);
+        $this->assertArrayHasKey('activity_summary', $data['data']);
+        $this->assertNotNull($data['data']['next_appointment']);
+        $this->assertSame($this->aptAId, (int) $data['data']['next_appointment']['id']);
+        $this->assertSame(0, $data['data']['activity_summary']['pending_documentation_count']);
     }
 
     public function testDentistAppointmentsListingOnlyReturnsAssigned(): void
