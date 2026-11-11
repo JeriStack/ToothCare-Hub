@@ -14,6 +14,7 @@ use App\Controllers\HealthController;
 use App\Controllers\MetricsController;
 use App\Controllers\NotificationController;
 use App\Controllers\PatientController;
+use App\Controllers\ReceptionistController;
 use App\Controllers\ServiceController;
 use App\Controllers\TreatmentRecordController;
 use App\Core\HttpException;
@@ -73,67 +74,76 @@ $router->group('/api/v1', function (Router $r): void {
     $r->get('/dentists/{id}/schedules', [DentistScheduleController::class, 'index']);
     $r->get('/dentists/{id}/time-off', [DentistTimeOffController::class, 'index']);
 
-    // 6. Administrative Modules (Phase 8 & 9 Master CRUD)
-    $adminAuth = [AuthenticationMiddleware::class, new AuthorizationMiddleware(['ADMIN'])];
+    // 6. Front Desk & Administrative Modules
+    $adminOnlyAuth = [AuthenticationMiddleware::class, new AuthorizationMiddleware(['ADMIN'])];
+    $receptionistAuth = [AuthenticationMiddleware::class, new AuthorizationMiddleware(['RECEPTIONIST', 'ADMIN'])];
+
+    // Front Desk / Receptionist Dedicated Workspace Endpoints
+    $r->get('/receptionist/dashboard', [ReceptionistController::class, 'dashboard'], $receptionistAuth);
+    $r->get('/receptionist/schedule/today', [ReceptionistController::class, 'todaySchedule'], $receptionistAuth);
+    $r->post('/receptionist/appointments/{id}/check-in', [ReceptionistController::class, 'checkIn'], $receptionistAuth);
+    $r->patch('/receptionist/appointments/{id}/attendance', [ReceptionistController::class, 'updateAttendance'], $receptionistAuth);
+    $r->get('/receptionist/waiting-list', [ReceptionistController::class, 'waitingList'], $receptionistAuth);
+    $r->post('/receptionist/patients', [ReceptionistController::class, 'registerPatient'], $receptionistAuth);
+    $r->post('/receptionist/appointments', [ReceptionistController::class, 'createAppointment'], $receptionistAuth);
 
     // Admin Dashboard Aggregates
-    $r->get('/admin/dashboard', [DashboardController::class, 'metrics'], $adminAuth);
+    $r->get('/admin/dashboard', [DashboardController::class, 'metrics'], $adminOnlyAuth);
 
-    // Admin Dental Services CRUD
-    $r->get('/admin/services', [ServiceController::class, 'index'], $adminAuth);
-    $r->post('/admin/services', [ServiceController::class, 'create'], $adminAuth);
-    $r->get('/admin/services/{id}', [ServiceController::class, 'show'], $adminAuth);
-    $r->put('/admin/services/{id}', [ServiceController::class, 'update'], $adminAuth);
-    $r->patch('/admin/services/{id}', [ServiceController::class, 'update'], $adminAuth);
-    $r->patch('/admin/services/{id}/status', [ServiceController::class, 'updateStatus'], $adminAuth);
+    // Dental Services (Viewing for front desk scheduling; creation/updates restricted to Admin)
+    $r->get('/admin/services', [ServiceController::class, 'index'], $receptionistAuth);
+    $r->get('/admin/services/{id}', [ServiceController::class, 'show'], $receptionistAuth);
+    $r->post('/admin/services', [ServiceController::class, 'create'], $adminOnlyAuth);
+    $r->put('/admin/services/{id}', [ServiceController::class, 'update'], $adminOnlyAuth);
+    $r->patch('/admin/services/{id}', [ServiceController::class, 'update'], $adminOnlyAuth);
+    $r->patch('/admin/services/{id}/status', [ServiceController::class, 'updateStatus'], $adminOnlyAuth);
 
-    // Admin Dentists CRUD
-    $r->get('/admin/dentists', [DentistController::class, 'index'], $adminAuth);
-    $r->post('/admin/dentists', [DentistController::class, 'create'], $adminAuth);
-    $r->get('/admin/dentists/{id}', [DentistController::class, 'show'], $adminAuth);
-    $r->put('/admin/dentists/{id}', [DentistController::class, 'update'], $adminAuth);
-    $r->patch('/admin/dentists/{id}', [DentistController::class, 'update'], $adminAuth);
-    $r->patch('/admin/dentists/{id}/status', [DentistController::class, 'updateStatus'], $adminAuth);
+    // Dentists Roster (Viewing for front desk scheduling; creation/updates restricted to Admin)
+    $r->get('/admin/dentists', [DentistController::class, 'index'], $receptionistAuth);
+    $r->get('/admin/dentists/{id}', [DentistController::class, 'show'], $receptionistAuth);
+    $r->post('/admin/dentists', [DentistController::class, 'create'], $adminOnlyAuth);
+    $r->put('/admin/dentists/{id}', [DentistController::class, 'update'], $adminOnlyAuth);
+    $r->patch('/admin/dentists/{id}', [DentistController::class, 'update'], $adminOnlyAuth);
+    $r->patch('/admin/dentists/{id}/status', [DentistController::class, 'updateStatus'], $adminOnlyAuth);
 
     // Admin Clinic Operating Hours & Closures Management (Phase 9)
-    $r->put('/admin/clinic/hours', [ClinicScheduleController::class, 'updateHours'], $adminAuth);
-    $r->get('/admin/clinic/closures', [ClinicScheduleController::class, 'getClosures'], $adminAuth);
-    $r->post('/admin/clinic/closures', [ClinicScheduleController::class, 'storeClosure'], $adminAuth);
-    $r->delete('/admin/clinic/closures/{id}', [ClinicScheduleController::class, 'destroyClosure'], $adminAuth);
+    $r->put('/admin/clinic/hours', [ClinicScheduleController::class, 'updateHours'], $adminOnlyAuth);
+    $r->get('/admin/clinic/closures', [ClinicScheduleController::class, 'getClosures'], $receptionistAuth);
+    $r->post('/admin/clinic/closures', [ClinicScheduleController::class, 'storeClosure'], $adminOnlyAuth);
+    $r->delete('/admin/clinic/closures/{id}', [ClinicScheduleController::class, 'destroyClosure'], $adminOnlyAuth);
 
-    // Admin Dentist Schedules Management (Phase 9)
-    $r->get('/admin/dentists/{id}/schedules', [DentistScheduleController::class, 'index'], $adminAuth);
-    $r->post('/admin/dentists/{id}/schedules', [DentistScheduleController::class, 'store'], $adminAuth);
-    $r->put('/admin/dentists/{id}/schedules/{scheduleId}', [DentistScheduleController::class, 'update'], $adminAuth);
-    $r->delete('/admin/dentists/{id}/schedules/{scheduleId}', [DentistScheduleController::class, 'destroy'], $adminAuth);
+    // Dentist Schedules & Time-Off Inspection (Front Desk can view; modifications restricted to Admin)
+    $r->get('/admin/dentists/{id}/schedules', [DentistScheduleController::class, 'index'], $receptionistAuth);
+    $r->post('/admin/dentists/{id}/schedules', [DentistScheduleController::class, 'store'], $adminOnlyAuth);
+    $r->put('/admin/dentists/{id}/schedules/{scheduleId}', [DentistScheduleController::class, 'update'], $adminOnlyAuth);
+    $r->delete('/admin/dentists/{id}/schedules/{scheduleId}', [DentistScheduleController::class, 'destroy'], $adminOnlyAuth);
 
-    // Admin Dentist Time-Off Management (Phase 9)
-    $r->get('/admin/dentists/{id}/time-off', [DentistTimeOffController::class, 'index'], $adminAuth);
-    $r->post('/admin/dentists/{id}/time-off', [DentistTimeOffController::class, 'store'], $adminAuth);
-    $r->delete('/admin/dentists/{id}/time-off/{timeOffId}', [DentistTimeOffController::class, 'destroy'], $adminAuth);
+    $r->get('/admin/dentists/{id}/time-off', [DentistTimeOffController::class, 'index'], $receptionistAuth);
+    $r->post('/admin/dentists/{id}/time-off', [DentistTimeOffController::class, 'store'], $adminOnlyAuth);
+    $r->delete('/admin/dentists/{id}/time-off/{timeOffId}', [DentistTimeOffController::class, 'destroy'], $adminOnlyAuth);
 
-    // Admin Patients Management
-    $r->get('/admin/patients', [PatientController::class, 'index'], $adminAuth);
-    $r->get('/admin/patients/{id}', [PatientController::class, 'show'], $adminAuth);
-    $r->put('/admin/patients/{id}', [PatientController::class, 'update'], $adminAuth);
-    $r->patch('/admin/patients/{id}', [PatientController::class, 'update'], $adminAuth);
-    $r->patch('/admin/patients/{id}/status', [PatientController::class, 'updateStatus'], $adminAuth);
+    // Patients Directory (Front desk & Admin)
+    $r->get('/admin/patients', [PatientController::class, 'index'], $receptionistAuth);
+    $r->get('/admin/patients/{id}', [PatientController::class, 'show'], $receptionistAuth);
+    $r->put('/admin/patients/{id}', [PatientController::class, 'update'], $receptionistAuth);
+    $r->patch('/admin/patients/{id}', [PatientController::class, 'update'], $receptionistAuth);
+    $r->patch('/admin/patients/{id}/status', [PatientController::class, 'updateStatus'], $adminOnlyAuth);
 
-    // Admin Appointments Lifecycle Review (Phase 10)
-    $r->get('/admin/appointments', [AppointmentController::class, 'adminIndex'], $adminAuth);
-    $r->get('/admin/appointments/{id}', [AppointmentController::class, 'adminShow'], $adminAuth);
-    $r->patch('/admin/appointments/{id}/confirm', [AppointmentController::class, 'confirm'], $adminAuth);
-    $r->patch('/admin/appointments/{id}/reject', [AppointmentController::class, 'reject'], $adminAuth);
-    $r->patch('/admin/appointments/{id}/complete', [AppointmentController::class, 'complete'], $adminAuth);
+    // Appointments Lifecycle Review & Triage (Front Desk & Admin)
+    $r->get('/admin/appointments', [AppointmentController::class, 'adminIndex'], $receptionistAuth);
+    $r->get('/admin/appointments/{id}', [AppointmentController::class, 'adminShow'], $receptionistAuth);
+    $r->patch('/admin/appointments/{id}/confirm', [AppointmentController::class, 'confirm'], $receptionistAuth);
+    $r->patch('/admin/appointments/{id}/reject', [AppointmentController::class, 'reject'], $receptionistAuth);
+    $r->patch('/admin/appointments/{id}/complete', [AppointmentController::class, 'complete'], $adminOnlyAuth);
 
-    // Admin Audit Logs
+    // Admin Audit Logs (Strictly Administrator)
     $r->get('/admin/audit-logs', function (Request $req): Response {
         $user = $req->getUser();
         return Response::success([
             'message' => 'Admin audit logs accessed successfully.',
             'actor' => $user['email'] ?? 'admin',
         ]);
-    }, $adminAuth);
+    }, $adminOnlyAuth);
 
     // 7. Patient Appointment Booking & Lifecycle (Phase 10)
     $patientAuth = [AuthenticationMiddleware::class];

@@ -11,7 +11,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 INSERT INTO users (id, email, password_hash, role, is_active, email_verified, email_verified_at, created_at)
 VALUES
     (10, 'admin@toothcare.com', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'ADMIN', 1, 1, NOW(), NOW()),
-    (11, 'receptionist@toothcare.com', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'ADMIN', 1, 1, NOW(), NOW()),
+    (11, 'receptionist@toothcare.com', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'RECEPTIONIST', 1, 1, NOW(), NOW()),
     (12, 'dentist@toothcare.com', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'DENTIST', 1, 1, NOW(), NOW()),
     (13, 'patient@toothcare.com', '$argon2id$v=19$m=65536,t=4,p=1$dk5Db1RlYWJqVEtmZEJYTA$f0yOFk2YpzgkhmdL+sQ0AWQsW2J9gSS3O2frrh7VJgI', 'PATIENT', 1, 1, NOW(), NOW())
 ON DUPLICATE KEY UPDATE 

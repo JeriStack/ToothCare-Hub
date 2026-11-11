@@ -27,6 +27,7 @@ import {
 } from '../features/auth';
 import { PatientDashboard } from '../features/dashboard/PatientDashboard';
 import { AdminDashboard } from '../features/dashboard/AdminDashboard';
+import { ReceptionistDashboard } from '../features/dashboard/ReceptionistDashboard';
 import { DentistDashboard } from '../features/dashboard/DentistDashboard';
 import { ServicesPage } from '../features/services/pages/ServicesPage';
 import { DentistListPage } from '../features/dentists/pages/DentistListPage';
@@ -55,7 +56,7 @@ function getInitialRoute() {
   if (path === '/reset-password' || path === '/reset') return 'RESET_PASSWORD';
   if (path === '/verify-email' || path === '/verify') return 'VERIFY_EMAIL';
   if (path.startsWith('/patient')) return 'PATIENT';
-  if (path.startsWith('/admin')) return 'ADMIN';
+  if (path.startsWith('/admin') || path.startsWith('/receptionist')) return 'ADMIN';
   if (path.startsWith('/dentist')) return 'DENTIST';
   return 'LANDING';
 }
@@ -69,8 +70,8 @@ function getInitialTab() {
       return sub;
     }
   }
-  if (path.startsWith('/admin/')) {
-    const sub = path.replace('/admin/', '').split('/')[0];
+  if (path.startsWith('/admin/') || path.startsWith('/receptionist/')) {
+    const sub = path.replace(/^\/(admin|receptionist)\//, '').split('/')[0];
     if (['dashboard', 'triage', 'queue', 'patients', 'services', 'dentists', 'schedules'].includes(sub)) {
       return sub === 'queue' ? 'triage' : sub;
     }
@@ -188,16 +189,22 @@ function AppContent() {
       }
 
       const role = user?.role?.toUpperCase();
+      const isAdminOrReceptionist = role === 'ADMIN' || role === 'RECEPTIONIST';
+
       if (currentRoute === 'PATIENT' && role !== 'PATIENT') {
-        const dest = role === 'ADMIN' ? '/admin' : '/dentist';
+        const dest = isAdminOrReceptionist ? '/admin' : '/dentist';
         navigateTo(role, dest);
-        showToast(`Redirected to your authorized ${role === 'ADMIN' ? 'administrator' : 'dentist'} portal.`);
-      } else if (currentRoute === 'ADMIN' && role !== 'ADMIN') {
+        showToast(
+          `Redirected to your authorized ${
+            role === 'ADMIN' ? 'administrator' : role === 'RECEPTIONIST' ? 'front desk' : 'dentist'
+          } portal.`
+        );
+      } else if (currentRoute === 'ADMIN' && !isAdminOrReceptionist) {
         const dest = role === 'DENTIST' ? '/dentist' : '/patient';
         navigateTo(role, dest);
-        showToast('Access restricted: Administrative authorization required.');
+        showToast('Access restricted: Administrative or Front Desk authorization required.');
       } else if (currentRoute === 'DENTIST' && role !== 'DENTIST') {
-        const dest = role === 'ADMIN' ? '/admin' : '/patient';
+        const dest = isAdminOrReceptionist ? '/admin' : '/patient';
         navigateTo(role, dest);
         showToast('Access restricted: Dentist clinical authorization required.');
       }
@@ -392,6 +399,8 @@ function AppContent() {
       ? 'Patient Portal'
       : currentRole === 'ADMIN'
       ? 'Admin Portal'
+      : currentRole === 'RECEPTIONIST'
+      ? 'Front Desk Portal'
       : 'Dentist Portal';
 
   return (
@@ -460,6 +469,8 @@ function AppContent() {
                 <p className="text-[10px] text-teal-200/70">
                   {currentRole === 'ADMIN'
                     ? 'Administrator'
+                    : currentRole === 'RECEPTIONIST'
+                    ? 'Front Desk Specialist'
                     : currentRole === 'DENTIST'
                     ? 'Attending Dentist'
                     : 'Patient'}
@@ -554,7 +565,7 @@ function AppContent() {
                 </>
               )}
 
-              {currentRole === 'ADMIN' && (
+              {(currentRole === 'ADMIN' || currentRole === 'RECEPTIONIST') && (
                 <>
                   <button
                     onClick={() => handleAdminNav('dashboard')}
@@ -732,7 +743,38 @@ function AppContent() {
           )}
 
           {/* ======================================================== */}
-          {/* B. ADMIN / RECEPTIONIST VIEWS */}
+          {/* B. RECEPTIONIST FRONT DESK OPERATIONS VIEWS */}
+          {/* ======================================================== */}
+          {currentRole === 'RECEPTIONIST' && (
+            <>
+              {activeTab === 'dashboard' && (
+                <ReceptionistDashboard user={user} onNavigateTab={(tab) => handleAdminNav(tab)} />
+              )}
+
+              {activeTab === 'triage' && (
+                <AdminAppointmentsPage />
+              )}
+
+              {activeTab === 'patients' && (
+                <PatientListPage />
+              )}
+
+              {activeTab === 'services' && (
+                <ServicesPage />
+              )}
+
+              {activeTab === 'dentists' && (
+                <DentistListPage />
+              )}
+
+              {activeTab === 'schedules' && (
+                <AdminSchedulePage />
+              )}
+            </>
+          )}
+
+          {/* ======================================================== */}
+          {/* C. ADMIN VIEWS */}
           {/* ======================================================== */}
           {currentRole === 'ADMIN' && (
             <>
