@@ -150,6 +150,7 @@ $router->group('/api/v1', function (Router $r): void {
     $r->get('/dentist/appointments/{id}', [AppointmentController::class, 'dentistShow'], $dentistAuth);
     $r->patch('/dentist/appointments/{id}/complete', [AppointmentController::class, 'dentistComplete'], $dentistAuth);
     $r->post('/dentist/appointments/{id}/complete', [AppointmentController::class, 'dentistComplete'], $dentistAuth);
+    $r->post('/dentist/time-off', [DentistTimeOffController::class, 'requestTimeOff'], $dentistAuth);
 
     // Treatment Records Group (Phase 12 Treatment Records & Clinical Documentation)
     $r->get('/treatment-records', [TreatmentRecordController::class, 'index'], $dentistAuth);

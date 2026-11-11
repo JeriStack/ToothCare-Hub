@@ -74,4 +74,18 @@ INSERT INTO user_roles (user_id, role_id)
 SELECT 13, id FROM roles WHERE slug = 'patient'
 ON DUPLICATE KEY UPDATE user_id = user_id;
 
+-- 7. Seed Sample Clinical Appointments for Dentist 4 (Maria Santos) & Patient 5 (Juan Dela Cruz)
+INSERT INTO appointments (id, patient_id, dentist_id, service_id, start_at, end_at, duration_snapshot, price_snapshot, status, chief_complaint, operatory_chair, created_at)
+VALUES
+    (501, 5, 4, 1, DATE_ADD(DATE(NOW()), INTERVAL '14:00:00' HOUR_SECOND), DATE_ADD(DATE(NOW()), INTERVAL '14:45:00' HOUR_SECOND), 45, 1200.00, 'CONFIRMED', 'Routine oral prophylaxis and teeth cleaning', 'Operatory Chair 1', NOW()),
+    (502, 5, 4, 2, DATE_ADD(DATE(NOW()), INTERVAL '09:30:00' HOUR_SECOND), DATE_ADD(DATE(NOW()), INTERVAL '10:30:00' HOUR_SECOND), 60, 2500.00, 'COMPLETED', 'Posterior molar filling restoration', 'Operatory Chair 1', NOW()),
+    (503, 5, 4, 1, DATE_ADD(DATE_ADD(DATE(NOW()), INTERVAL 1 DAY), INTERVAL '11:00:00' HOUR_SECOND), DATE_ADD(DATE_ADD(DATE(NOW()), INTERVAL 1 DAY), INTERVAL '11:45:00' HOUR_SECOND), 45, 1200.00, 'PENDING', 'Follow-up sensitivity check', 'Operatory Chair 1', NOW())
+ON DUPLICATE KEY UPDATE status = VALUES(status);
+
+-- 8. Seed Sample Time-Off for Dentist 4
+INSERT INTO dentist_time_off (id, dentist_id, start_at, end_at, reason, approved_by_user_id, created_at)
+VALUES
+    (101, 4, DATE_ADD(DATE(NOW()), INTERVAL 14 DAY), DATE_ADD(DATE(NOW()), INTERVAL 16 DAY), 'Annual Dental Convention (CME Continuing Education)', 10, NOW())
+ON DUPLICATE KEY UPDATE reason = VALUES(reason);
+
 SET FOREIGN_KEY_CHECKS = 1;

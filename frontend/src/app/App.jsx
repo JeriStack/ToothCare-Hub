@@ -363,10 +363,16 @@ function AppContent() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Patient In-App Notifications Dropdown */}
-            {currentRole === 'PATIENT' && (
+            {/* In-App Notifications Dropdown */}
+            {(currentRole === 'PATIENT' || currentRole === 'DENTIST') && (
               <NotificationCenter
-                onNavigateAll={() => handlePatientNav('notifications')}
+                onNavigateAll={() => {
+                  if (currentRole === 'PATIENT') {
+                    handlePatientNav('notifications');
+                  } else {
+                    setActiveTab('appointments');
+                  }
+                }}
               />
             )}
 

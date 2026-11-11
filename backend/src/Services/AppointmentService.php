@@ -1204,19 +1204,29 @@ class AppointmentService
      */
     public function getDentistDashboardSummary(int $userId): array
     {
+        $now = new DateTimeImmutable('now', $this->timezone);
+        $clinicTime = $now->format('c');
+
         $dentist = $this->dentistRepo->findByUserId($userId);
         if (!$dentist) {
             return [
+                'clinic_time' => $clinicTime,
                 'today_count' => 0,
                 'upcoming_count' => 0,
                 'pending_count' => 0,
                 'completed_count' => 0,
                 'today_appointments' => [],
+                'next_appointment' => null,
+                'activity_summary' => [
+                    'completed_this_week' => 0,
+                    'upcoming_this_week' => 0,
+                    'pending_documentation_count' => 0,
+                    'cancelled_this_week' => 0,
+                ],
             ];
         }
 
         $dentistId = (int) $dentist['id'];
-        $now = new DateTimeImmutable('now', $this->timezone);
         $todayStart = $now->format('Y-m-d 00:00:00');
         $todayEnd = $now->format('Y-m-d 23:59:59');
 
@@ -1227,18 +1237,65 @@ class AppointmentService
         $pendingCount = 0;
         $completedCount = 0;
 
+        $weekStart = $now->modify('monday this week')->format('Y-m-d 00:00:00');
+        $weekEnd = $now->modify('sunday this week')->format('Y-m-d 23:59:59');
+
+        $completedThisWeek = 0;
+        $upcomingThisWeek = 0;
+        $cancelledThisWeek = 0;
+
+        $futureAppts = [];
+        $nowStr = $now->format('Y-m-d H:i:s');
+
         foreach ($all as $a) {
             $status = strtoupper((string) $a['status']);
+            $startAt = (string) $a['start_at'];
+            $endAt = (string) ($a['end_at'] ?? $startAt);
+
             if ($status === 'CONFIRMED') {
-                if ($a['start_at'] >= $now->format('Y-m-d H:i:s')) {
+                if ($startAt >= $nowStr) {
                     $upcomingCount++;
+                    if ($startAt <= $weekEnd) {
+                        $upcomingThisWeek++;
+                    }
                 }
             } elseif ($status === 'PENDING') {
                 $pendingCount++;
             } elseif ($status === 'COMPLETED') {
                 $completedCount++;
+                if ($startAt >= $weekStart && $startAt <= $weekEnd) {
+                    $completedThisWeek++;
+                }
+            } elseif ($status === 'CANCELLED') {
+                if ($startAt >= $weekStart && $startAt <= $weekEnd) {
+                    $cancelledThisWeek++;
+                }
+            }
+
+            // Eligible upcoming appointment candidate for next patient
+            if (in_array($status, ['CONFIRMED', 'PENDING'], true) && ($endAt >= $nowStr || $startAt >= $nowStr)) {
+                $futureAppts[] = $a;
             }
         }
+
+        // Sort upcoming appointments chronologically
+        usort($futureAppts, static function (array $a, array $b): int {
+            return strcmp((string) $a['start_at'], (string) $b['start_at']);
+        });
+
+        $nextAppointment = $futureAppts[0] ?? null;
+
+        // Calculate pending clinical documentation (completed visits missing treatment records)
+        $pendingDocStmt = $this->database->getConnection()->prepare('
+            SELECT COUNT(*)
+            FROM appointments a
+            LEFT JOIN treatment_records tr ON tr.appointment_id = a.id
+            WHERE a.dentist_id = ?
+              AND a.status = "COMPLETED"
+              AND tr.id IS NULL
+        ');
+        $pendingDocStmt->execute([$dentistId]);
+        $pendingDocCount = (int) $pendingDocStmt->fetchColumn();
 
         return [
             'dentist' => [
@@ -1249,11 +1306,19 @@ class AppointmentService
                 'license_number' => $dentist['license_number'],
                 'chair' => $dentist['default_operatory_chair'],
             ],
+            'clinic_time' => $clinicTime,
             'today_count' => count($todayAppts),
             'upcoming_count' => $upcomingCount,
             'pending_count' => $pendingCount,
             'completed_count' => $completedCount,
             'today_appointments' => $todayAppts,
+            'next_appointment' => $nextAppointment,
+            'activity_summary' => [
+                'completed_this_week' => $completedThisWeek,
+                'upcoming_this_week' => $upcomingThisWeek,
+                'pending_documentation_count' => $pendingDocCount,
+                'cancelled_this_week' => $cancelledThisWeek,
+            ],
         ];
     }
 }
