@@ -132,7 +132,10 @@ export function AdminDashboard({ onNavigateTab }) {
       {/* Executive Header with Asia/Manila Time */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-gradient-to-r from-[#12304A] to-[#1e496e] text-white p-6 rounded-2xl shadow-sm">
         <div>
-          <div className="flex items-center gap-2 mb-1">
+          <h1 className="text-2xl font-bold tracking-tight text-white">
+            Clinic Executive Dashboard
+          </h1>
+          <div className="flex items-center gap-2 mt-2 mb-1.5 flex-wrap">
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-teal-500/20 text-teal-300 border border-teal-400/30">
               Admin Control Center
             </span>
@@ -140,10 +143,7 @@ export function AdminDashboard({ onNavigateTab }) {
               Asia/Manila (UTC+8): <strong className="text-teal-200">{currentTime}</strong>
             </span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">
-            Clinic Executive Dashboard
-          </h1>
-          <p className="text-sm text-slate-300 mt-1">
+          <p className="text-sm text-slate-300">
             Real-time practice analytics, dynamic role authorization, security events, and clinical workload intelligence.
           </p>
         </div>
