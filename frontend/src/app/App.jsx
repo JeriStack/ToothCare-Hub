@@ -10,8 +10,6 @@ import {
   X,
   Plus,
   FileText,
-  Phone,
-  ArrowLeft,
   Sparkles,
   LogOut,
   ChevronDown,
@@ -584,11 +582,6 @@ function AppContent() {
                         </p>
                       </div>
                     </div>
-                    {user?.email && (
-                      <p className="mt-2 text-[11px] text-slate-500 truncate">
-                        {user.email}
-                      </p>
-                    )}
                   </div>
 
                   <div className="p-1.5 space-y-0.5">
@@ -614,15 +607,6 @@ function AppContent() {
                         <span>Portal Overview</span>
                       </button>
                     )}
-
-                    <button
-                      type="button"
-                      onClick={() => navigateTo('LANDING', '/')}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#12304A] transition-colors text-left"
-                    >
-                      <ArrowLeft className="w-4 h-4 text-slate-400" />
-                      <span>Back to Website</span>
-                    </button>
 
                     <div className="my-1 border-t border-slate-100" />
 
@@ -702,13 +686,6 @@ function AppContent() {
                   >
                     <Shield className="w-4 h-4" />
                     My Profile
-                  </button>
-                  <button
-                    onClick={() => navigateTo('LANDING', '/')}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    Back to Website
                   </button>
                 </>
               )}
@@ -818,13 +795,6 @@ function AppContent() {
                     </>
                   )}
 
-                  <button
-                    onClick={() => navigateTo('LANDING', '/')}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    Back to Website
-                  </button>
                 </>
               )}
 
@@ -866,25 +836,9 @@ function AppContent() {
                     <Clock className="w-4 h-4" />
                     My Shifts & Leaves
                   </button>
-                  <button
-                    onClick={() => navigateTo('LANDING', '/')}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    Back to Website
-                  </button>
                 </>
               )}
             </nav>
-
-            <div className="mt-6 pt-4 border-t border-slate-100 text-xs text-slate-500">
-              <div className="flex items-center gap-2 text-slate-700 font-semibold mb-1">
-                <Phone className="w-3.5 h-3.5 text-[#0D9488]" />
-                Call the clinic
-              </div>
-              <p>(02) 8123-4567</p>
-              <p className="text-[11px] text-slate-400 mt-0.5">Mon - Sat: 9:00 AM - 5:00 PM</p>
-            </div>
           </div>
         </aside>
 

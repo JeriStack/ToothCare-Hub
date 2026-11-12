@@ -102,19 +102,24 @@ describe('Portal Header Identity & Account Dropdown', () => {
 
     render(<App />);
 
-    // Real name shown in topbar; email NOT used as display name; redundant portal badge & standalone Sign Out removed
+    // Real name shown in topbar; email NOT used as display name; redundant portal badge, clinic footer & standalone Sign Out removed
     expect(screen.getByText('Marco Villanueva')).toBeInTheDocument();
     expect(screen.queryByText('admin@toothcare.com')).not.toBeInTheDocument();
     expect(screen.queryByText('Admin Portal')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Back to Website/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Call the clinic/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('(02) 8123-4567')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Mon - Sat: 9:00 AM - 5:00 PM/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Sign Out/i })).not.toBeInTheDocument();
 
     const trigger = screen.getByRole('button', { name: 'Marco Villanueva account menu' });
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
 
-    // Open dropdown
+    // Open dropdown — email and Back to Website must remain hidden
     fireEvent.click(trigger);
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByText('admin@toothcare.com')).toBeInTheDocument();
+    expect(screen.queryByText('admin@toothcare.com')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Back to Website/i })).not.toBeInTheDocument();
     const signOutBtn = screen.getByRole('button', { name: /Sign Out/i });
     expect(signOutBtn).toBeInTheDocument();
 
@@ -130,5 +135,40 @@ describe('Portal Header Identity & Account Dropdown', () => {
     await waitFor(() => {
       expect(logoutMock).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('hides patient email, Back to Website, and Call the clinic footer across the patient portal', () => {
+    window.history.pushState({}, '', '/patient');
+    mockUseAuth.mockReturnValue({
+      user: {
+        id: 22,
+        email: 'patient@toothcare.com',
+        first_name: 'Juan',
+        last_name: 'Dela Cruz',
+        role: 'PATIENT',
+        permissions: [],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      logout: logoutMock,
+      hasPermission: () => false,
+      refreshUser: vi.fn(),
+    });
+
+    render(<App />);
+
+    expect(screen.getByText('Juan Dela Cruz')).toBeInTheDocument();
+    expect(screen.queryByText('patient@toothcare.com')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Back to Website/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Call the clinic/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('(02) 8123-4567')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Mon - Sat: 9:00 AM - 5:00 PM/i)).not.toBeInTheDocument();
+
+    const trigger = screen.getByRole('button', { name: 'Juan Dela Cruz account menu' });
+    fireEvent.click(trigger);
+
+    expect(screen.queryByText('patient@toothcare.com')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Back to Website/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Sign Out/i })).toBeInTheDocument();
   });
 });
