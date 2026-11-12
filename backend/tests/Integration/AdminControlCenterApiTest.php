@@ -433,4 +433,34 @@ class AdminControlCenterApiTest extends TestCase
         $this->assertContains('ROLE_PERMISSIONS_UPDATED', $secActions);
         $this->assertContains('USER_ROLE_UPDATED', $secActions);
     }
+
+    public function testStaffAccountsStoreAndExposeFullNamesInAuthAndDirectory(): void
+    {
+        $resCreateRec = $this->app->handle($this->createAuthRequest('POST', '/api/v1/admin/users', $this->adminUser, [
+            'email' => 'clarisse.mendoza@toothcare.local',
+            'password' => 'StrongPass123!',
+            'role' => 'RECEPTIONIST',
+            'first_name' => 'Clarisse',
+            'last_name' => 'Mendoza',
+        ]));
+
+        $this->assertSame(201, $resCreateRec->getStatusCode());
+        $createdRec = json_decode($resCreateRec->getBody(), true)['data'];
+        $this->assertSame('Clarisse', $createdRec['first_name']);
+        $this->assertSame('Mendoza', $createdRec['last_name']);
+        $this->assertSame('Clarisse Mendoza', $createdRec['display_name']);
+
+        // AuthService::login and AuthService::getCurrentUser expose resolved display_name rather than raw email
+        $authService = new \App\Services\AuthService();
+        $loginPayload = $authService->login([
+            'email' => 'clarisse.mendoza@toothcare.local',
+            'password' => 'StrongPass123!',
+        ]);
+        $this->assertSame('Clarisse', $loginPayload['first_name']);
+        $this->assertSame('Mendoza', $loginPayload['last_name']);
+        $this->assertSame('Clarisse Mendoza', $loginPayload['display_name']);
+
+        $mePayload = $authService->getCurrentUser((int) $createdRec['id']);
+        $this->assertSame('Clarisse Mendoza', $mePayload['display_name']);
+    }
 }

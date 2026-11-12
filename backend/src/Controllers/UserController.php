@@ -97,7 +97,9 @@ class UserController
             $passwordHash,
             $validated['role'],
             1, // is_active
-            1  // email_verified
+            1, // email_verified
+            $validated['first_name'],
+            $validated['last_name']
         );
 
         // Assign to user_roles table if enabled

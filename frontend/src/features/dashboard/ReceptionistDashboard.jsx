@@ -196,6 +196,13 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
     return matchesSearch && matchesFilter;
   });
 
+  const receptionistName =
+    user?.first_name
+      ? `${user.first_name} ${user.last_name || ''}`.trim()
+      : user?.display_name && !String(user.display_name).includes('@')
+      ? user.display_name
+      : 'Front Desk Specialist';
+
   return (
     <div className="space-y-8 pb-12">
       {/* Toast Notification */}
@@ -221,7 +228,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-              Welcome back, {user?.email ? user.email.split('@')[0] : 'Reception Desk'}
+              Welcome back, {receptionistName}
             </h1>
             <p className="text-slate-300 text-sm flex items-center gap-2">
               <Clock className="w-4 h-4 text-teal-400" />

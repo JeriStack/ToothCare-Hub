@@ -148,7 +148,9 @@ class DentistController
                 $passwordHash,
                 'DENTIST',
                 $validated['is_active'],
-                1 // Verified upon administrative onboarding
+                1, // Verified upon administrative onboarding
+                $validated['first_name'],
+                $validated['last_name']
             );
 
             $dentistData = [
@@ -227,6 +229,14 @@ class DentistController
 
         $this->dentistRepository->update($id, $validated);
         $updatedDentist = $this->dentistRepository->findById($id);
+
+        if (isset($validated['first_name']) || isset($validated['last_name'])) {
+            $this->userRepository->updateName(
+                (int) $dentist['user_id'],
+                $updatedDentist['first_name'] ?? $validated['first_name'] ?? null,
+                $updatedDentist['last_name'] ?? $validated['last_name'] ?? null
+            );
+        }
 
         $adminUser = $request->getUser();
         $this->auditLogRepository->record(
