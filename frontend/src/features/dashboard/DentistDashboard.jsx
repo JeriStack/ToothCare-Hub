@@ -780,18 +780,6 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
 
               <button
                 type="button"
-                onClick={() => onNavigateTab && onNavigateTab('shifts')}
-                className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-teal-200 hover:bg-teal-50/40 text-left text-xs font-semibold text-slate-800 transition-all group"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Clock className="w-4 h-4 text-teal-600" />
-                  <span>My Shifts & Leaves</span>
-                </div>
-                <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-              </button>
-
-              <button
-                type="button"
                 onClick={() => setIsLeaveModalOpen(true)}
                 className="w-full flex items-center justify-between p-3 rounded-xl border border-teal-100 bg-teal-50/50 hover:bg-teal-50 text-left text-xs font-bold text-teal-900 transition-all group"
               >

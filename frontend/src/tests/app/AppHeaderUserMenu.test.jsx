@@ -294,4 +294,34 @@ describe('Portal Header Identity & Account Dropdown', () => {
     expect(trigger.querySelector('img')).toBeNull();
     expect(trigger).toHaveTextContent('JD');
   });
+
+  it('omits redundant My Shifts & Leaves item from dentist sidebar navigation', () => {
+    window.history.pushState({}, '', '/dentist/shifts');
+    mockUseAuth.mockReturnValue({
+      user: {
+        id: 30,
+        email: 'dentist@toothcare.com',
+        role: 'DENTIST',
+        dentist: {
+          id: 5,
+          first_name: 'Maria',
+          last_name: 'Santos',
+        },
+        permissions: [],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      logout: logoutMock,
+      hasPermission: () => false,
+      refreshUser: vi.fn(),
+    });
+
+    render(<App />);
+
+    expect(screen.getByRole('button', { name: 'Overview' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Assigned Appointments' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Treatment Records' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /My Shifts & Leaves/i })).toBeNull();
+    expect(screen.getByText('DentistDashboardMock')).toBeInTheDocument();
+  });
 });

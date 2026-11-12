@@ -104,7 +104,7 @@ function getInitialTab() {
   }
   if (path.startsWith('/dentist/')) {
     const sub = path.replace('/dentist/', '').split('/')[0];
-    if (['dashboard', 'appointments', 'treatment-records', 'shifts'].includes(sub)) {
+    if (['dashboard', 'appointments', 'treatment-records'].includes(sub)) {
       return sub;
     }
   }
@@ -270,7 +270,6 @@ function getSidebarSections(currentRole, hasPermission, { onPatientNav, onAdminN
           { key: 'dashboard', label: 'Overview', icon: Clock, onSelect: () => onDentistNav('dashboard') },
           { key: 'appointments', label: 'Assigned Appointments', icon: Calendar, onSelect: () => onDentistNav('appointments') },
           { key: 'treatment-records', label: 'Treatment Records', icon: FileText, onSelect: () => onDentistNav('treatment-records') },
-          { key: 'shifts', label: 'My Shifts & Leaves', icon: Clock, onSelect: () => onDentistNav('shifts') },
         ],
       },
     ];
@@ -1062,7 +1061,7 @@ function AppContent() {
           {/* ======================================================== */}
           {currentRole === 'DENTIST' && (
             <>
-              {(activeTab === 'dashboard' || activeTab === 'shifts') && (
+              {activeTab === 'dashboard' && (
                 <DentistDashboard
                   dentistId={user?.dentist?.id || user?.id || 1}
                   onNavigateTab={(tab) => {
