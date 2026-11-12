@@ -188,6 +188,8 @@ $router->group('/api/v1', function (Router $r): void {
 
     // Dentist Scoped Endpoints (Phase 12 Dentist Dashboard & Assigned Workload)
     $dentistAuth = [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN'])];
+    $r->get('/dentist/profile', [DentistController::class, 'me'], $dentistAuth);
+    $r->patch('/dentist/profile', [DentistController::class, 'updateMe'], $dentistAuth);
     $r->get('/dentist/dashboard', [AppointmentController::class, 'dentistDashboard'], [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN']), AuthorizationMiddleware::hasPermission('appointments.view', ['DENTIST', 'ADMIN'])]);
     $r->get('/dentist/appointments', [AppointmentController::class, 'dentistIndex'], [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN']), AuthorizationMiddleware::hasPermission('appointments.view', ['DENTIST', 'ADMIN'])]);
     $r->get('/dentist/appointments/{id}', [AppointmentController::class, 'dentistShow'], [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN']), AuthorizationMiddleware::hasPermission('appointments.view', ['DENTIST', 'ADMIN'])]);

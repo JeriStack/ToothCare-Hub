@@ -141,7 +141,7 @@ class DentistRepository
             return false;
         }
 
-        $fields[] = 'updated_at = NOW()';
+        $fields[] = 'updated_at = CURRENT_TIMESTAMP';
         $params[] = $id;
 
         $setClause = implode(', ', $fields);

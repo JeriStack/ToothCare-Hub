@@ -55,6 +55,22 @@ export const dentistsApi = {
   },
 
   /**
+   * Fetch authenticated dentist's own clinical profile
+   */
+  async getMyProfile() {
+    const res = await apiClient.get('/dentist/profile');
+    return res.data?.data;
+  },
+
+  /**
+   * Update authenticated dentist's own clinical profile
+   */
+  async updateMyProfile(payload) {
+    const res = await apiClient.patch('/dentist/profile', payload);
+    return res.data?.data;
+  },
+
+  /**
    * Toggle dentist active practice status (synchronizes user login state)
    */
   async toggleDentistStatus(id, isActive) {

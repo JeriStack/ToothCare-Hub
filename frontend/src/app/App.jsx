@@ -50,6 +50,7 @@ import { PatientNotificationsPage } from '../features/notifications/pages/Patien
 import { NotificationCenter } from '../features/notifications/components/NotificationCenter';
 import { DentistAppointmentsPage } from '../features/dentists/pages/DentistAppointmentsPage';
 import { DentistAppointmentDetailPage } from '../features/dentists/pages/DentistAppointmentDetailPage';
+import { DentistProfilePage } from '../features/dentists/pages/DentistProfilePage';
 import { DentistTreatmentRecordsPage } from '../features/treatment-records/pages/DentistTreatmentRecordsPage';
 import { UserManagementPage } from '../features/users/pages/UserManagementPage';
 import { RolePermissionMatrixPage } from '../features/roles/pages/RolePermissionMatrixPage';
@@ -104,7 +105,7 @@ function getInitialTab() {
   }
   if (path.startsWith('/dentist/')) {
     const sub = path.replace('/dentist/', '').split('/')[0];
-    if (['dashboard', 'appointments', 'treatment-records'].includes(sub)) {
+    if (['dashboard', 'appointments', 'treatment-records', 'profile'].includes(sub)) {
       return sub;
     }
   }
@@ -114,7 +115,7 @@ function getInitialTab() {
 const ROLE_DISPLAY_TITLES = {
   ADMIN: 'Administrator',
   RECEPTIONIST: 'Front Desk Specialist',
-  DENTIST: 'Attending Dentist',
+  DENTIST: 'Dentist',
   PATIENT: 'Patient',
 };
 
@@ -270,6 +271,7 @@ function getSidebarSections(currentRole, hasPermission, { onPatientNav, onAdminN
           { key: 'dashboard', label: 'Overview', icon: Clock, onSelect: () => onDentistNav('dashboard') },
           { key: 'appointments', label: 'Assigned Appointments', icon: Calendar, onSelect: () => onDentistNav('appointments') },
           { key: 'treatment-records', label: 'Treatment Records', icon: FileText, onSelect: () => onDentistNav('treatment-records') },
+          { key: 'profile', label: 'My Profile', icon: Shield, onSelect: () => onDentistNav('profile') },
         ],
       },
     ];
@@ -750,10 +752,14 @@ function AppContent() {
                   </div>
 
                   <div className="p-1.5 space-y-0.5">
-                    {currentRole === 'PATIENT' ? (
+                    {currentRole === 'PATIENT' || currentRole === 'DENTIST' ? (
                       <button
                         type="button"
-                        onClick={() => handlePatientNav('profile')}
+                        onClick={() =>
+                          currentRole === 'PATIENT'
+                            ? handlePatientNav('profile')
+                            : handleDentistNav('profile')
+                        }
                         className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#12304A] transition-colors text-left"
                       >
                         <User className="w-4 h-4 text-[#0D9488]" />
@@ -1090,6 +1096,15 @@ function AppContent() {
 
               {activeTab === 'treatment-records' && (
                 <DentistTreatmentRecordsPage />
+              )}
+
+              {activeTab === 'profile' && (
+                <DentistProfilePage
+                  onProfileUpdated={(message) => {
+                    refreshUser?.();
+                    showToast(message || 'Your practitioner profile has been updated.');
+                  }}
+                />
               )}
             </>
           )}

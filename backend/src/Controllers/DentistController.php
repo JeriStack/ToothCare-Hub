@@ -110,6 +110,75 @@ class DentistController
     }
 
     /**
+     * GET /api/v1/dentist/profile
+     * Retrieve authenticated dentist's own clinical profile.
+     */
+    public function me(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required.', 'AUTHENTICATION_REQUIRED');
+        }
+
+        $dentist = $this->dentistRepository->findByUserId((int) $user['id']);
+        if ($dentist === null) {
+            throw HttpException::notFound('Dentist profile not found for this account.');
+        }
+
+        $dentist['appointment_count'] = $this->dentistRepository->countAppointmentsReferencing((int) $dentist['id']);
+
+        return Response::success($dentist);
+    }
+
+    /**
+     * PATCH /api/v1/dentist/profile
+     * Update authenticated dentist's own profile (excluding admin-managed license & status).
+     */
+    public function updateMe(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required.', 'AUTHENTICATION_REQUIRED');
+        }
+
+        $userId = (int) $user['id'];
+        $dentist = $this->dentistRepository->findByUserId($userId);
+        if ($dentist === null) {
+            throw HttpException::notFound('Dentist profile not found for this account.');
+        }
+
+        $dentistId = (int) $dentist['id'];
+        $body = $request->getBody();
+        unset($body['id'], $body['user_id'], $body['created_at'], $body['is_active'], $body['license_number']);
+
+        $validated = DentistValidator::validateUpdate($body);
+        $this->dentistRepository->update($dentistId, $validated);
+
+        $fresh = $this->dentistRepository->findById($dentistId) ?? $dentist;
+        if (isset($validated['first_name']) || isset($validated['last_name'])) {
+            $this->userRepository->updateName(
+                $userId,
+                $fresh['first_name'] ?? $validated['first_name'] ?? null,
+                $fresh['last_name'] ?? $validated['last_name'] ?? null
+            );
+        }
+
+        $fresh['appointment_count'] = $this->dentistRepository->countAppointmentsReferencing($dentistId);
+
+        $this->auditLogRepository->record(
+            'DENTIST_SELF_PROFILE_UPDATED',
+            'dentists',
+            $dentistId,
+            $userId,
+            $request->getClientIp(),
+            $request->getHeader('user-agent'),
+            ['updated_fields' => array_keys($validated)]
+        );
+
+        return Response::success($fresh);
+    }
+
+    /**
      * POST /api/v1/admin/dentists
      * Create dentist user account and profile atomically
      */

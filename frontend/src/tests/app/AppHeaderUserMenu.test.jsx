@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import App, { resolveUserIdentity } from '../../app/App';
 
 const mockUseAuth = vi.fn();
@@ -29,6 +29,9 @@ vi.mock('../../features/dashboard/PatientDashboard', () => ({
 }));
 vi.mock('../../features/notifications/components/NotificationCenter', () => ({
   NotificationCenter: () => <div>NotificationCenterMock</div>,
+}));
+vi.mock('../../features/dentists/pages/DentistProfilePage', () => ({
+  DentistProfilePage: () => <div>DentistProfilePageMock</div>,
 }));
 
 describe('Portal Header Identity & Account Dropdown', () => {
@@ -76,7 +79,7 @@ describe('Portal Header Identity & Account Dropdown', () => {
     ).toEqual({
       displayName: 'Dr. Maria Santos',
       initials: 'MS',
-      roleLabel: 'Attending Dentist',
+      roleLabel: 'Dentist',
       avatarUrl: null,
     });
 
@@ -321,7 +324,21 @@ describe('Portal Header Identity & Account Dropdown', () => {
     expect(screen.getByRole('button', { name: 'Overview' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Assigned Appointments' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Treatment Records' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'My Profile' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /My Shifts & Leaves/i })).toBeNull();
     expect(screen.getByText('DentistDashboardMock')).toBeInTheDocument();
+
+    const accountMenuTrigger = screen.getByRole('button', { name: /Dr\. Maria Santos account menu/i });
+    expect(accountMenuTrigger).toHaveTextContent('Dentist');
+    expect(accountMenuTrigger).not.toHaveTextContent('Attending Dentist');
+
+    fireEvent.click(accountMenuTrigger);
+    const accountMenu = document.getElementById('user-account-menu');
+    expect(accountMenu).not.toBeNull();
+    expect(within(accountMenu).queryByText('Portal Overview')).toBeNull();
+
+    const profileMenuItem = within(accountMenu).getByRole('button', { name: /My Profile/i });
+    fireEvent.click(profileMenuItem);
+    expect(screen.getByText('DentistProfilePageMock')).toBeInTheDocument();
   });
 });
