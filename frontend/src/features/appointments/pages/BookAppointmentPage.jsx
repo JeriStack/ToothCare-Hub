@@ -174,7 +174,7 @@ export function BookAppointmentPage({
 
   if (loadingCatalogs) {
     return (
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="w-full space-y-6">
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-slate-100">
             <div>
@@ -202,7 +202,7 @@ export function BookAppointmentPage({
 
   if (catalogError) {
     return (
-      <div className="max-w-4xl mx-auto bg-white rounded-2xl border border-rose-200 p-8 shadow-sm">
+      <div className="w-full bg-white rounded-2xl border border-rose-200 p-8 shadow-sm">
         <div className="flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
           <div>
@@ -222,7 +222,7 @@ export function BookAppointmentPage({
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="w-full space-y-6">
       {/* Header & Stepper */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-slate-100">
@@ -297,7 +297,7 @@ export function BookAppointmentPage({
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-2">
+          <div className="portal-grid-3 pt-2">
             {services.map((srv) => {
               const isSelected = selectedService?.id === srv.id;
               return (
@@ -363,7 +363,7 @@ export function BookAppointmentPage({
             <span className="text-xs text-slate-500">Service: <strong>{selectedService?.name}</strong></span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-2">
+          <div className="portal-grid-3 pt-2">
             {dentists.map((dnt) => {
               const isSelected = selectedDentist?.id === dnt.id;
               return (

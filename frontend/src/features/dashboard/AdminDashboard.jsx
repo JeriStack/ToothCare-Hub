@@ -147,7 +147,7 @@ export function AdminDashboard({ onNavigateTab }) {
             Real-time practice analytics, dynamic role authorization, security events, and clinical workload intelligence.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {metrics?.generated_at && (
             <span className="text-xs text-slate-300 font-mono hidden md:inline">
               Updated: {new Date(metrics.generated_at).toLocaleTimeString()}
@@ -167,7 +167,7 @@ export function AdminDashboard({ onNavigateTab }) {
       {/* System Health & Security Alerts Banner */}
       {(systemAlerts.pending_triage > 0 || systemAlerts.recent_security_events > 0 || systemAlerts.active_rate_limits > 0) && (
         <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="p-2 bg-amber-100 text-amber-800 rounded-xl">
               <AlertTriangle className="w-5 h-5" />
             </div>
@@ -202,7 +202,7 @@ export function AdminDashboard({ onNavigateTab }) {
       )}
 
       {/* Quick Administrative Action Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+      <div className="portal-grid-6">
         <button
           onClick={() => onNavigateTab?.('users')}
           className="flex flex-col items-center justify-center p-3.5 bg-white border border-slate-200 rounded-xl hover:border-teal-400 hover:shadow-xs transition-all text-center group"
@@ -271,7 +271,7 @@ export function AdminDashboard({ onNavigateTab }) {
       </div>
 
       {/* Core Aggregate Metric Cards (11 Executive Metrics) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="portal-grid-4">
         {/* Metric 1 & 2: Patients (Total & Active) */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs relative overflow-hidden group hover:border-teal-300 transition-all">
           <div className="flex items-center justify-between mb-3">
@@ -412,7 +412,7 @@ export function AdminDashboard({ onNavigateTab }) {
           </h3>
           <span className="text-xs text-slate-400">Real-time status metrics</span>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+        <div className="portal-grid-5">
           <div className="p-4 rounded-xl bg-teal-700 text-white text-center shadow-xs">
             <span className="text-xs font-medium text-teal-100 block mb-1">Today's Appointments</span>
             <span className="text-2xl font-extrabold">{counts.appointments.today}</span>
@@ -437,7 +437,7 @@ export function AdminDashboard({ onNavigateTab }) {
       </div>
 
       {/* Operational Overview: Today's Clinical Schedule & Review Queue */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="portal-split-2">
         {/* Today's Schedule */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col">
           <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
@@ -546,7 +546,7 @@ export function AdminDashboard({ onNavigateTab }) {
       </div>
 
       {/* Recent Streams & Activity Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="portal-split-3">
         {/* Recently Registered Patients */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col">
           <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">

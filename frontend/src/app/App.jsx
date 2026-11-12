@@ -10,6 +10,8 @@ import {
   X,
   Plus,
   FileText,
+  PanelLeftClose,
+  PanelLeftOpen,
   Sparkles,
   LogOut,
   ChevronDown,
@@ -158,6 +160,123 @@ export function resolveUserIdentity(user, currentRole) {
   return { displayName, initials, roleLabel };
 }
 
+const SIDEBAR_COLLAPSED_STORAGE_KEY = 'toothcare_sidebar_collapsed';
+
+function readSidebarCollapsedPref() {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function persistSidebarCollapsedPref(collapsed) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(collapsed));
+  } catch {
+    // Ignore storage errors in restricted browsing contexts
+  }
+}
+
+/** Build role-scoped sidebar navigation sections and items. */
+function getSidebarSections(currentRole, hasPermission, { onPatientNav, onAdminNav, onDentistNav }) {
+  if (currentRole === 'PATIENT') {
+    return [
+      {
+        id: 'patient-primary',
+        heading: null,
+        items: [
+          { key: 'dashboard', label: 'Dashboard', icon: Calendar, onSelect: () => onPatientNav('dashboard') },
+          { key: 'book', label: 'Book Appointment', icon: Plus, onSelect: () => onPatientNav('book') },
+          { key: 'services', label: 'Services', icon: Sparkles, onSelect: () => onPatientNav('services') },
+          { key: 'dentists', label: 'Dentists', icon: Stethoscope, onSelect: () => onPatientNav('dentists') },
+          { key: 'appointments', label: 'My Appointments', icon: FileText, onSelect: () => onPatientNav('appointments') },
+          { key: 'notifications', label: 'Notifications', icon: Bell, onSelect: () => onPatientNav('notifications') },
+          { key: 'profile', label: 'My Profile', icon: Shield, onSelect: () => onPatientNav('profile') },
+        ],
+      },
+    ];
+  }
+
+  if (currentRole === 'ADMIN' || currentRole === 'RECEPTIONIST') {
+    const adminSecurityItems = [
+      hasPermission('users.view') && {
+        key: 'users',
+        label: 'User Accounts',
+        icon: Users,
+        onSelect: () => onAdminNav('users'),
+      },
+      hasPermission('roles.manage') && {
+        key: 'roles',
+        label: 'DRBAC Matrix',
+        icon: Key,
+        onSelect: () => onAdminNav('roles'),
+      },
+      hasPermission('audit_logs.view') && {
+        key: 'audit',
+        label: 'Audit Trail',
+        icon: Activity,
+        onSelect: () => onAdminNav('audit'),
+      },
+      hasPermission('reports.view') && {
+        key: 'reports',
+        label: 'Reports & Analytics',
+        icon: BarChart3,
+        onSelect: () => onAdminNav('reports'),
+      },
+      (hasPermission('system.health') || hasPermission('settings.manage')) && {
+        key: 'system',
+        label: 'System & Settings',
+        icon: Server,
+        onSelect: () => onAdminNav('system'),
+      },
+    ].filter(Boolean);
+
+    return [
+      {
+        id: 'admin-primary',
+        heading: null,
+        items: [
+          { key: 'dashboard', label: 'Overview', icon: Calendar, onSelect: () => onAdminNav('dashboard') },
+          { key: 'triage', label: 'Review Queue', icon: Clock, onSelect: () => onAdminNav('triage') },
+          { key: 'patients', label: 'Patient Registry', icon: User, onSelect: () => onAdminNav('patients') },
+          { key: 'services', label: 'Services & Fees', icon: Stethoscope, onSelect: () => onAdminNav('services') },
+          { key: 'dentists', label: 'Dentist Roster', icon: Shield, onSelect: () => onAdminNav('dentists') },
+          { key: 'schedules', label: 'Hours & Schedules', icon: Clock, onSelect: () => onAdminNav('schedules') },
+        ],
+      },
+      ...(adminSecurityItems.length > 0
+        ? [
+            {
+              id: 'admin-security',
+              heading: 'Administration & Security',
+              items: adminSecurityItems,
+            },
+          ]
+        : []),
+    ];
+  }
+
+  if (currentRole === 'DENTIST') {
+    return [
+      {
+        id: 'dentist-primary',
+        heading: null,
+        items: [
+          { key: 'dashboard', label: 'Overview', icon: Clock, onSelect: () => onDentistNav('dashboard') },
+          { key: 'appointments', label: 'Assigned Appointments', icon: Calendar, onSelect: () => onDentistNav('appointments') },
+          { key: 'treatment-records', label: 'Treatment Records', icon: FileText, onSelect: () => onDentistNav('treatment-records') },
+          { key: 'shifts', label: 'My Shifts & Leaves', icon: Clock, onSelect: () => onDentistNav('shifts') },
+        ],
+      },
+    ];
+  }
+
+  return [];
+}
+
 function AppContent() {
   const { user, isAuthenticated, isLoading, logout, hasPermission, refreshUser } = useAuth();
 
@@ -169,7 +288,16 @@ function AppContent() {
   
   // UI Panels
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(readSidebarCollapsedPref);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+
+  const toggleSidebarCollapsed = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      persistSidebarCollapsedPref(next);
+      return next;
+    });
+  };
   const [toastMessage, setToastMessage] = useState(null);
   const [bookingPrefill, setBookingPrefill] = useState(null);
   const [selectedDentistAppointmentId, setSelectedDentistAppointmentId] = useState(null);
@@ -483,19 +611,34 @@ function AppContent() {
     roleLabel: userRoleLabel,
   } = resolveUserIdentity(user, currentRole);
 
+  const sidebarSections = getSidebarSections(currentRole, hasPermission, {
+    onPatientNav: handlePatientNav,
+    onAdminNav: handleAdminNav,
+    onDentistNav: handleDentistNav,
+  });
+
   return (
-    <div className="min-h-screen bg-[#F5F8FA] text-[#334155] flex flex-col font-sans selection:bg-[#CCFBF1] selection:text-[#0F766E]">
+    <div className="min-h-dvh bg-[#F5F8FA] text-[#334155] flex flex-col font-sans overflow-x-clip selection:bg-[#CCFBF1] selection:text-[#0F766E]">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[#12304A] focus:text-white focus:text-xs focus:font-semibold focus:shadow-lg"
+      >
+        Skip to main content
+      </a>
       
       {/* MAIN APPLICATION TOPBAR */}
       <header className="bg-[#12304A] text-white sticky top-0 z-40 shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="w-full px-3 sm:px-5 lg:px-6 xl:px-8 h-16 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
+              type="button"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden p-1.5 text-slate-300 hover:text-white rounded hover:bg-white/10"
-              aria-label="Toggle Navigation"
+              aria-expanded={isMobileMenuOpen}
+              aria-controls="portal-sidebar"
+              className="lg:hidden min-h-10 min-w-10 inline-flex items-center justify-center p-1.5 text-slate-300 hover:text-white rounded-lg hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400"
+              aria-label="Navigation menu"
             >
-              <Menu className="w-5 h-5" />
+              {isMobileMenuOpen ? <X className="w-5 h-5" aria-hidden="true" /> : <Menu className="w-5 h-5" aria-hidden="true" />}
             </button>
             <button
               type="button"
@@ -566,7 +709,7 @@ function AppContent() {
               {isUserMenuOpen && (
                 <div
                   id="user-account-menu"
-                  className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-2xl bg-white shadow-2xl border border-slate-200/90 z-50 overflow-hidden text-slate-800 animate-in fade-in zoom-in-95 duration-150"
+                  className="absolute right-0 mt-2 w-64 max-w-[calc(100dvw-2rem)] rounded-2xl bg-white shadow-2xl border border-slate-200/90 z-50 overflow-hidden text-slate-800 animate-in fade-in zoom-in-95 duration-150"
                 >
                   <div className="px-4 py-3 bg-slate-50/90 border-b border-slate-100">
                     <div className="flex items-center gap-2.5">
@@ -627,223 +770,104 @@ function AppContent() {
       </header>
 
       {/* APP BODY CONTAINER */}
-      <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 flex flex-col lg:flex-row gap-6">
+      <div className="flex-1 w-full px-3 sm:px-5 lg:px-6 xl:px-8 py-4 sm:py-6 flex flex-col lg:flex-row gap-4 lg:gap-6">
         
         {/* Navigation Sidebar */}
-        <aside className={`lg:w-60 shrink-0 ${isMobileMenuOpen ? 'block' : 'hidden lg:block'}`}>
-          <div className="bg-white rounded-xl border border-slate-200/80 p-3 shadow-sm sticky top-22">
-            <div className="text-[11px] font-semibold uppercase text-slate-400 px-3 py-2 tracking-wider">
-              Navigation
+        <aside
+          id="portal-sidebar"
+          data-collapsed={isSidebarCollapsed ? 'true' : 'false'}
+          className={`shrink-0 transition-[width] duration-200 ease-out motion-reduce:transition-none ${
+            isSidebarCollapsed ? 'w-full lg:w-[4.5rem]' : 'w-full lg:w-60'
+          } ${isMobileMenuOpen ? 'block' : 'hidden lg:block'}`}
+        >
+          <div
+            className={`bg-white rounded-xl border border-slate-200/80 shadow-sm lg:sticky lg:top-20 ${
+              isSidebarCollapsed ? 'p-3 lg:p-2' : 'p-3'
+            }`}
+          >
+            <div
+              className={`flex items-center ${
+                isSidebarCollapsed
+                  ? 'justify-between lg:justify-center pb-2 mb-1.5 lg:border-b lg:border-slate-100'
+                  : 'justify-between pl-3 pr-1 py-1 mb-1'
+              }`}
+            >
+              <span
+                className={`text-[11px] font-semibold uppercase text-slate-400 tracking-wider ${
+                  isSidebarCollapsed ? 'lg:hidden' : ''
+                }`}
+              >
+                Navigation
+              </span>
+              <button
+                type="button"
+                onClick={toggleSidebarCollapsed}
+                aria-expanded={!isSidebarCollapsed}
+                aria-controls="portal-sidebar-nav"
+                aria-label="Toggle sidebar"
+                title={isSidebarCollapsed ? 'Expand sidebar' : 'Minimize sidebar'}
+                className="hidden lg:inline-flex items-center justify-center min-h-9 min-w-9 rounded-lg text-slate-400 hover:text-[#12304A] hover:bg-slate-100 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+              >
+                {isSidebarCollapsed ? (
+                  <PanelLeftOpen className="w-4 h-4" aria-hidden="true" />
+                ) : (
+                  <PanelLeftClose className="w-4 h-4" aria-hidden="true" />
+                )}
+              </button>
             </div>
-            <nav className="space-y-1">
-              {currentRole === 'PATIENT' && (
-                <>
-                  <button
-                    onClick={() => handlePatientNav('dashboard')}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'dashboard' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
-                  >
-                    <Calendar className="w-4 h-4" />
-                    Dashboard
-                  </button>
-                  <button
-                    onClick={() => handlePatientNav('book')}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'book' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
-                  >
-                    <Plus className="w-4 h-4" />
-                    Book Appointment
-                  </button>
-                  <button
-                    onClick={() => handlePatientNav('services')}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'services' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    Services
-                  </button>
-                  <button
-                    onClick={() => handlePatientNav('dentists')}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'dentists' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
-                  >
-                    <Stethoscope className="w-4 h-4" />
-                    Dentists
-                  </button>
-                  <button
-                    onClick={() => handlePatientNav('appointments')}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'appointments' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
-                  >
-                    <FileText className="w-4 h-4" />
-                    My Appointments
-                  </button>
-                  <button
-                    onClick={() => handlePatientNav('notifications')}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'notifications' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
-                  >
-                    <Bell className="w-4 h-4" />
-                    Notifications
-                  </button>
-                  <button
-                    onClick={() => handlePatientNav('profile')}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'profile' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
-                  >
-                    <Shield className="w-4 h-4" />
-                    My Profile
-                  </button>
-                </>
-              )}
-
-              {(currentRole === 'ADMIN' || currentRole === 'RECEPTIONIST') && (
-                <>
-                  <button
-                    onClick={() => handleAdminNav('dashboard')}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'dashboard' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
-                  >
-                    <Calendar className="w-4 h-4" />
-                    Overview
-                  </button>
-                  <button
-                    onClick={() => handleAdminNav('triage')}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'triage' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
-                  >
-                    <Clock className="w-4 h-4" />
-                    Review Queue
-                  </button>
-                  <button
-                    onClick={() => handleAdminNav('patients')}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'patients' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
-                  >
-                    <User className="w-4 h-4" />
-                    Patient Registry
-                  </button>
-                  <button
-                    onClick={() => handleAdminNav('services')}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'services' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
-                  >
-                    <Stethoscope className="w-4 h-4" />
-                    Services & Fees
-                  </button>
-                  <button
-                    onClick={() => handleAdminNav('dentists')}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'dentists' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
-                  >
-                    <Shield className="w-4 h-4" />
-                    Dentist Roster
-                  </button>
-                  <button
-                    onClick={() => handleAdminNav('schedules')}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'schedules' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
-                  >
-                    <Clock className="w-4 h-4" />
-                    Hours & Schedules
-                  </button>
-
-                  {(hasPermission('users.view') ||
-                    hasPermission('roles.manage') ||
-                    hasPermission('audit_logs.view') ||
-                    hasPermission('reports.view') ||
-                    hasPermission('system.health') ||
-                    hasPermission('settings.manage')) && (
+            <nav id="portal-sidebar-nav" aria-label="Portal" className="space-y-1">
+              {sidebarSections.map((section) => (
+                <React.Fragment key={section.id}>
+                  {section.heading && (
                     <>
-                      <div className="pt-3 pb-1 px-3">
+                      <div
+                        className={`pt-3 pb-1 px-3 ${isSidebarCollapsed ? 'lg:hidden' : ''}`}
+                      >
                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                          Administration & Security
+                          {section.heading}
                         </span>
                       </div>
-                      {hasPermission('users.view') && (
-                        <button
-                          onClick={() => handleAdminNav('users')}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'users' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
-                        >
-                          <Users className="w-4 h-4" />
-                          User Accounts
-                        </button>
-                      )}
-                      {hasPermission('roles.manage') && (
-                        <button
-                          onClick={() => handleAdminNav('roles')}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'roles' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
-                        >
-                          <Key className="w-4 h-4" />
-                          DRBAC Matrix
-                        </button>
-                      )}
-                      {hasPermission('audit_logs.view') && (
-                        <button
-                          onClick={() => handleAdminNav('audit')}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'audit' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
-                        >
-                          <Activity className="w-4 h-4" />
-                          Audit Trail
-                        </button>
-                      )}
-                      {hasPermission('reports.view') && (
-                        <button
-                          onClick={() => handleAdminNav('reports')}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'reports' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
-                        >
-                          <BarChart3 className="w-4 h-4" />
-                          Reports & Analytics
-                        </button>
-                      )}
-                      {(hasPermission('system.health') || hasPermission('settings.manage')) && (
-                        <button
-                          onClick={() => handleAdminNav('system')}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'system' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'}`}
-                        >
-                          <Server className="w-4 h-4" />
-                          System & Settings
-                        </button>
+                      {isSidebarCollapsed && (
+                        <div className="hidden lg:block my-2 border-t border-slate-100" aria-hidden="true" />
                       )}
                     </>
                   )}
-
-                </>
-              )}
-
-              {currentRole === 'DENTIST' && (
-                <>
-                  <button
-                    onClick={() => handleDentistNav('dashboard')}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                      activeTab === 'dashboard' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Clock className="w-4 h-4" />
-                    Overview
-                  </button>
-                  <button
-                    onClick={() => handleDentistNav('appointments')}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                      activeTab === 'appointments' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Calendar className="w-4 h-4" />
-                    Assigned Appointments
-                  </button>
-                  <button
-                    onClick={() => handleDentistNav('treatment-records')}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                      activeTab === 'treatment-records' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    <FileText className="w-4 h-4" />
-                    Treatment Records
-                  </button>
-                  <button
-                    onClick={() => handleDentistNav('shifts')}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                      activeTab === 'shifts' ? 'bg-[#CCFBF1] text-[#0F766E]' : 'text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Clock className="w-4 h-4" />
-                    My Shifts & Leaves
-                  </button>
-                </>
-              )}
+                  {section.items.map(({ key, label, icon: Icon, onSelect }) => {
+                    const isActive = activeTab === key;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={onSelect}
+                        title={isSidebarCollapsed ? label : undefined}
+                        aria-current={isActive ? 'page' : undefined}
+                        className={`w-full min-h-10 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                          isSidebarCollapsed ? 'lg:justify-center lg:px-2' : ''
+                        } ${
+                          isActive
+                            ? 'bg-[#CCFBF1] text-[#0F766E]'
+                            : 'text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
+                        <span
+                          className={
+                            isSidebarCollapsed ? 'lg:sr-only whitespace-nowrap' : 'truncate'
+                          }
+                        >
+                          {label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
             </nav>
           </div>
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 min-w-0">
+        <main id="main-content" tabIndex={-1} className="portal-main-shell flex-1 min-w-0 w-full focus:outline-none">
           
           {/* ======================================================== */}
           {/* A. PATIENT PORTAL VIEWS */}

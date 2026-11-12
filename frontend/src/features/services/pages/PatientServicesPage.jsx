@@ -129,7 +129,7 @@ export function PatientServicesPage({ onBookService }) {
 
       {/* Grid */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="portal-grid-3">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} className="h-48 bg-white rounded-2xl border border-slate-200/80 p-5 space-y-3 animate-pulse">
               <div className="h-5 bg-slate-200 rounded w-3/4" />
@@ -156,7 +156,7 @@ export function PatientServicesPage({ onBookService }) {
           <p className="text-xs text-slate-400 mt-0.5">Try adjusting your search query or selecting another category.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="portal-grid-3">
           {filteredServices.map((svc) => (
             <div
               key={svc.id}

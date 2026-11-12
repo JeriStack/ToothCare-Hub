@@ -270,7 +270,7 @@ export function PatientDashboard({
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           <button
             type="button"
             onClick={() => fetchDashboardData(true)}
@@ -339,7 +339,7 @@ export function PatientDashboard({
       ) : (
         <>
           {/* 2. Dashboard Statistics Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="portal-grid-3">
             <div
               onClick={() => setActiveListTab('upcoming')}
               role="button"
@@ -553,62 +553,62 @@ export function PatientDashboard({
           )}
 
           {/* 4. Quick Discovery Navigation Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="portal-grid-3">
             <button
               type="button"
               onClick={onNavigateToServices}
-              className="p-4 rounded-xl bg-white border border-slate-200/80 hover:border-[#0D9488]/40 hover:shadow-xs transition-all text-left flex items-center justify-between group"
+              className="p-4 rounded-xl bg-white border border-slate-200/80 hover:border-[#0D9488]/40 hover:shadow-xs transition-all text-left flex items-center justify-between gap-2 group"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-teal-50 text-[#0D9488] flex items-center justify-center group-hover:scale-110 transition-transform">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-lg bg-teal-50 text-[#0D9488] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                   <Sparkles className="w-4 h-4" />
                 </div>
-                <div>
-                  <h4 className="text-xs font-bold text-[#12304A] group-hover:text-[#0D9488] transition-colors">
+                <div className="min-w-0">
+                  <h4 className="text-xs font-bold text-[#12304A] group-hover:text-[#0D9488] transition-colors truncate">
                     Explore Services
                   </h4>
-                  <p className="text-[11px] text-slate-400">Procedures, pricing & duration</p>
+                  <p className="text-[11px] text-slate-400 truncate">Procedures, pricing & duration</p>
                 </div>
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#0D9488] transition-colors" />
+              <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#0D9488] shrink-0 transition-colors" />
             </button>
 
             <button
               type="button"
               onClick={onNavigateToDentists}
-              className="p-4 rounded-xl bg-white border border-slate-200/80 hover:border-[#0D9488]/40 hover:shadow-xs transition-all text-left flex items-center justify-between group"
+              className="p-4 rounded-xl bg-white border border-slate-200/80 hover:border-[#0D9488]/40 hover:shadow-xs transition-all text-left flex items-center justify-between gap-2 group"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-teal-50 text-[#0D9488] flex items-center justify-center group-hover:scale-110 transition-transform">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-lg bg-teal-50 text-[#0D9488] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                   <User className="w-4 h-4" />
                 </div>
-                <div>
-                  <h4 className="text-xs font-bold text-[#12304A] group-hover:text-[#0D9488] transition-colors">
+                <div className="min-w-0">
+                  <h4 className="text-xs font-bold text-[#12304A] group-hover:text-[#0D9488] transition-colors truncate">
                     Our Dentists
                   </h4>
-                  <p className="text-[11px] text-slate-400">Credentials, specialties & chairs</p>
+                  <p className="text-[11px] text-slate-400 truncate">Credentials, specialties & chairs</p>
                 </div>
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#0D9488] transition-colors" />
+              <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#0D9488] shrink-0 transition-colors" />
             </button>
 
             <button
               type="button"
               onClick={onNavigateToProfile}
-              className="p-4 rounded-xl bg-white border border-slate-200/80 hover:border-[#0D9488]/40 hover:shadow-xs transition-all text-left flex items-center justify-between group"
+              className="p-4 rounded-xl bg-white border border-slate-200/80 hover:border-[#0D9488]/40 hover:shadow-xs transition-all text-left flex items-center justify-between gap-2 group"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-teal-50 text-[#0D9488] flex items-center justify-center group-hover:scale-110 transition-transform">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-lg bg-teal-50 text-[#0D9488] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
-                <div>
-                  <h4 className="text-xs font-bold text-[#12304A] group-hover:text-[#0D9488] transition-colors">
+                <div className="min-w-0">
+                  <h4 className="text-xs font-bold text-[#12304A] group-hover:text-[#0D9488] transition-colors truncate">
                     My Medical Profile
                   </h4>
-                  <p className="text-[11px] text-slate-400">Allergies & contact information</p>
+                  <p className="text-[11px] text-slate-400 truncate">Allergies & contact information</p>
                 </div>
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#0D9488] transition-colors" />
+              <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#0D9488] shrink-0 transition-colors" />
             </button>
           </div>
 
@@ -802,7 +802,7 @@ export function PatientDashboard({
                         <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
                           Request Lifecycle Progress
                         </p>
-                        <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center text-xs">
                           {/* Step 1 */}
                           <div className="flex flex-col items-center gap-1 text-teal-700 font-semibold">
                             <div className="w-6 h-6 rounded-full bg-teal-100 text-teal-800 flex items-center justify-center text-xs font-bold">

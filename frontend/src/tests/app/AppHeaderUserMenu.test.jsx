@@ -36,6 +36,7 @@ describe('Portal Header Identity & Account Dropdown', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
     window.history.pushState({}, '', '/admin');
   });
 
@@ -170,5 +171,64 @@ describe('Portal Header Identity & Account Dropdown', () => {
     expect(screen.queryByText('patient@toothcare.com')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Back to Website/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Sign Out/i })).toBeInTheDocument();
+  });
+
+  it('uses fluid dashboard shell width and toggles persistent sidebar minimize state', () => {
+    window.history.pushState({}, '', '/patient');
+    mockUseAuth.mockReturnValue({
+      user: {
+        id: 22,
+        email: 'patient@toothcare.com',
+        first_name: 'Juan',
+        last_name: 'Dela Cruz',
+        role: 'PATIENT',
+        permissions: [],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      logout: logoutMock,
+      hasPermission: () => false,
+      refreshUser: vi.fn(),
+    });
+
+    const { container, unmount } = render(<App />);
+
+    // Full-width responsive shell instead of fixed max-w-7xl container
+    expect(container.querySelector('.max-w-7xl')).toBeNull();
+    const main = screen.getByRole('main');
+    expect(main).toHaveClass('portal-main-shell', 'flex-1', 'min-w-0', 'w-full');
+
+    const sidebar = container.querySelector('#portal-sidebar');
+    expect(sidebar).toHaveAttribute('data-collapsed', 'false');
+
+    const toggleBtn = screen.getByRole('button', { name: 'Toggle sidebar' });
+    expect(toggleBtn).toHaveAttribute('aria-expanded', 'true');
+    expect(toggleBtn).toHaveAttribute('aria-controls', 'portal-sidebar-nav');
+
+    // Minimize sidebar
+    fireEvent.click(toggleBtn);
+    expect(sidebar).toHaveAttribute('data-collapsed', 'true');
+    expect(toggleBtn).toHaveAttribute('aria-expanded', 'false');
+    expect(window.localStorage.getItem('toothcare_sidebar_collapsed')).toBe('true');
+
+    // Labels remain accessible to assistive tech even when minimized
+    expect(screen.getByRole('button', { name: 'Services' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page');
+
+    // Mobile drawer button exposes aria-expanded state
+    const mobileToggle = screen.getByRole('button', { name: 'Navigation menu' });
+    expect(mobileToggle).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(mobileToggle);
+    expect(mobileToggle).toHaveAttribute('aria-expanded', 'true');
+
+    // Persists across remount and expands back
+    unmount();
+    const remounted = render(<App />);
+    expect(remounted.container.querySelector('#portal-sidebar')).toHaveAttribute('data-collapsed', 'true');
+    const expandBtn = screen.getByRole('button', { name: 'Toggle sidebar' });
+    expect(expandBtn).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(expandBtn);
+    expect(remounted.container.querySelector('#portal-sidebar')).toHaveAttribute('data-collapsed', 'false');
+    expect(window.localStorage.getItem('toothcare_sidebar_collapsed')).toBe('false');
   });
 });

@@ -287,7 +287,7 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
       )}
 
       {/* 2. 4 Live Metric Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="portal-grid-4">
         {/* Today's Appointments */}
         <div
           onClick={() => onNavigateTab && onNavigateTab('appointments')}
@@ -509,7 +509,7 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
           <span className="text-[11px] text-slate-400 font-medium">This Week (Mon - Sun)</span>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="portal-grid-4">
           <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-100">
             <span className="text-[11px] font-medium text-slate-500">Completed This Week</span>
             <div className="mt-1 text-xl font-extrabold text-[#12304A]">
@@ -584,9 +584,9 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
       </div>
 
       {/* 5. Today's Appointment Queue & Clinical Sidebar (Grid 2:1) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="portal-split-2-1">
         {/* Today's Queue (2 Cols) */}
-        <div data-testid="appointment-queue" className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-4">
+        <div data-testid="appointment-queue" className="min-w-0 bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-teal-600" />
@@ -747,7 +747,7 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
         </div>
 
         {/* Clinical Sidebar: Shortcuts & Approved Leaves (1 Col) */}
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           {/* Quick Navigation Panel */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -879,7 +879,7 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2.5">
+        <div className="portal-grid-7">
           {DAYS_OF_WEEK.map((day) => {
             const dayShifts = shifts.filter((s) => s.day_of_week === day.id);
             return (

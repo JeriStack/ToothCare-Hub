@@ -155,7 +155,7 @@ export function PatientDentistsPage({ onBookDentist }) {
 
       {/* Loading Skeleton */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="portal-grid-3 gap-6">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div
               key={i}
@@ -200,7 +200,7 @@ export function PatientDentistsPage({ onBookDentist }) {
         </div>
       ) : (
         /* Dentist Cards Grid */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="portal-grid-3 gap-6">
           {filteredDentists.map((dentist) => {
             const initials = `${dentist.first_name?.[0] || 'D'}${dentist.last_name?.[0] || 'S'}`.toUpperCase();
             return (
