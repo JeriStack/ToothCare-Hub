@@ -131,4 +131,53 @@ describe('PatientDashboard Component', () => {
     fireEvent.click(bookBtns[0]);
     expect(onBookMock).toHaveBeenCalledTimes(1);
   });
+
+  it('uses native stat filter buttons, surfaces pending request shortcut, and navigates discovery cards', async () => {
+    appointmentsApi.list.mockResolvedValueOnce([
+      {
+        id: 201,
+        appointment_number: 'APT-202611-0201',
+        service_name: 'Dental Consultation',
+        status: 'PENDING',
+        start_at: '2026-11-15 09:00:00',
+        date: '2026-11-15',
+      },
+    ]);
+
+    const onServices = vi.fn();
+    const onDentists = vi.fn();
+    const onProfile = vi.fn();
+
+    render(
+      <PatientDashboard
+        user={mockUser}
+        onNavigateToBook={vi.fn()}
+        onNavigateToAppointments={vi.fn()}
+        onNavigateToServices={onServices}
+        onNavigateToDentists={onDentists}
+        onNavigateToProfile={onProfile}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/1 pending request awaiting review/i)).toBeDefined();
+    });
+
+    const upcomingCard = screen.getByRole('button', { name: /Upcoming Visits: 0 confirmed scheduled/i });
+    const pendingCard = screen.getByRole('button', { name: /Pending Requests: 1 awaiting triage/i });
+    expect(upcomingCard.getAttribute('aria-pressed')).toBe('true');
+    expect(pendingCard.getAttribute('aria-pressed')).toBe('false');
+
+    fireEvent.click(screen.getByRole('button', { name: /View Pending/i }));
+    expect(pendingCard.getAttribute('aria-pressed')).toBe('true');
+    expect(upcomingCard.getAttribute('aria-pressed')).toBe('false');
+
+    fireEvent.click(screen.getByRole('button', { name: /Explore Services/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Our Dentists/i }));
+    fireEvent.click(screen.getByRole('button', { name: /My Medical Profile/i }));
+
+    expect(onServices).toHaveBeenCalledTimes(1);
+    expect(onDentists).toHaveBeenCalledTimes(1);
+    expect(onProfile).toHaveBeenCalledTimes(1);
+  });
 });

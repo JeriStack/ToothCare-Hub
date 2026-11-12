@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Calendar,
   Clock,
@@ -119,6 +119,19 @@ export function PatientDashboard({
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [activeListTab, setActiveListTab] = useState('upcoming');
+  const appointmentsSectionRef = useRef(null);
+
+  const focusScheduleTab = (tab) => {
+    setActiveListTab(tab);
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    appointmentsSectionRef.current?.scrollIntoView?.({
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      block: 'nearest',
+    });
+  };
 
   // Live Manila clock timestamp (updates date and time without midnight staleness)
   const [clinicNow, setClinicNow] = useState(() => new Date());
@@ -388,116 +401,124 @@ export function PatientDashboard({
         <>
           {/* 2. Dashboard Statistics Cards */}
           <div className="portal-grid-3">
-            <div
-              onClick={() => setActiveListTab('upcoming')}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setActiveListTab('upcoming')}
-              aria-label={`Upcoming Visits: ${metrics.upcomingCount} confirmed scheduled`}
-              className={`p-5 rounded-2xl border transition-all cursor-pointer ${
-                activeListTab === 'upcoming'
-                  ? 'bg-teal-50/70 border-[#0D9488] shadow-xs'
-                  : 'bg-white border-slate-200/80 hover:border-slate-300'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Upcoming Visits
-                </span>
-                <div className="w-8 h-8 rounded-xl bg-teal-100/70 text-[#0F766E] flex items-center justify-center">
-                  <CheckCircle2 className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-[#12304A]">
-                  {metrics.upcomingCount}
-                </span>
-                <span className="text-xs text-slate-500">Confirmed scheduled</span>
-              </div>
-            </div>
+            {[
+              {
+                key: 'upcoming',
+                label: 'Upcoming Visits',
+                count: metrics.upcomingCount,
+                subtitle: 'Confirmed scheduled',
+                Icon: CheckCircle2,
+                activeClass: 'bg-teal-50/80 border-[#0D9488] ring-1 ring-[#0D9488]/20 shadow-sm',
+                iconClass: 'bg-teal-100/80 text-[#0F766E] border-teal-200/80',
+                activeTagClass: 'bg-teal-100 text-[#0F766E]',
+              },
+              {
+                key: 'pending',
+                label: 'Pending Requests',
+                count: metrics.pendingCount,
+                subtitle: 'Awaiting triage',
+                Icon: Clock,
+                activeClass: 'bg-amber-50/80 border-amber-500 ring-1 ring-amber-500/20 shadow-sm',
+                iconClass: 'bg-amber-100 text-amber-800 border-amber-200/80',
+                activeTagClass: 'bg-amber-100 text-amber-800',
+              },
+              {
+                key: 'completed',
+                label: 'Completed Treatments',
+                count: metrics.completedCount,
+                subtitle: 'Past dental visits',
+                Icon: Award,
+                activeClass: 'bg-sky-50/80 border-sky-500 ring-1 ring-sky-500/20 shadow-sm',
+                iconClass: 'bg-sky-100 text-sky-800 border-sky-200/80',
+                activeTagClass: 'bg-sky-100 text-sky-800',
+              },
+            ].map(({ key, label, count, subtitle, Icon, activeClass, iconClass, activeTagClass }) => {
+              const isSelected = activeListTab === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setActiveListTab(key)}
+                  aria-pressed={isSelected}
+                  aria-label={`${label}: ${count} ${subtitle.toLowerCase()}`}
+                  className={`w-full text-left p-5 rounded-2xl border transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] flex flex-col justify-between gap-3.5 ${
+                    isSelected
+                      ? activeClass
+                      : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2 w-full">
+                    <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                      {label}
+                    </span>
+                    <div
+                      className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${iconClass}`}
+                    >
+                      <Icon className="w-4 h-4" aria-hidden="true" />
+                    </div>
+                  </div>
 
-            <div
-              onClick={() => setActiveListTab('pending')}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setActiveListTab('pending')}
-              aria-label={`Pending Requests: ${metrics.pendingCount} awaiting triage`}
-              className={`p-5 rounded-2xl border transition-all cursor-pointer ${
-                activeListTab === 'pending'
-                  ? 'bg-amber-50/70 border-amber-400 shadow-xs'
-                  : 'bg-white border-slate-200/80 hover:border-slate-300'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Pending Requests
-                </span>
-                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
-                  <Clock className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-[#12304A]">
-                  {metrics.pendingCount}
-                </span>
-                <span className="text-xs text-slate-500">Awaiting triage</span>
-              </div>
-            </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-bold tracking-tight tabular-nums text-[#12304A]">
+                      {count}
+                    </span>
+                    <span className="text-xs text-slate-600">{subtitle}</span>
+                  </div>
 
-            <div
-              onClick={() => setActiveListTab('completed')}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setActiveListTab('completed')}
-              aria-label={`Completed Treatments: ${metrics.completedCount} past dental visits`}
-              className={`p-5 rounded-2xl border transition-all cursor-pointer ${
-                activeListTab === 'completed'
-                  ? 'bg-sky-50/70 border-sky-400 shadow-xs'
-                  : 'bg-white border-slate-200/80 hover:border-slate-300'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Completed Treatments
-                </span>
-                <div className="w-8 h-8 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center">
-                  <Award className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-[#12304A]">
-                  {metrics.completedCount}
-                </span>
-                <span className="text-xs text-slate-500">Past dental visits</span>
-              </div>
-            </div>
+                  <div className="pt-2.5 border-t border-slate-200/70 flex items-center justify-between text-[11px] w-full">
+                    {isSelected ? (
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-semibold ${activeTagClass}`}
+                      >
+                        <CheckCircle2 className="w-3 h-3 shrink-0" aria-hidden="true" />
+                        <span>Active filter</span>
+                      </span>
+                    ) : (
+                      <span className="text-slate-500 font-medium">View in schedule</span>
+                    )}
+                    <ChevronRight
+                      className={`w-3.5 h-3.5 transition-transform ${
+                        isSelected ? 'text-[#12304A] translate-x-0.5' : 'text-slate-400'
+                      }`}
+                      aria-hidden="true"
+                    />
+                  </div>
+                </button>
+              );
+            })}
           </div>
 
           {/* 3. Next Confirmed Visit Hero Card */}
           {nextVisit ? (
             <div className="bg-gradient-to-r from-[#12304A] to-[#1E4D6B] rounded-2xl p-5 sm:p-6 text-white shadow-md relative overflow-hidden">
-              <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-teal-500/10 rounded-l-full pointer-events-none" />
+              <div
+                aria-hidden="true"
+                className="absolute right-0 top-0 bottom-0 w-1/3 bg-teal-500/10 rounded-l-full pointer-events-none"
+              />
 
               <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
-                <div className="space-y-3">
+                <div className="space-y-3 min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-teal-400/20 text-teal-300 border border-teal-400/30 flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-teal-400/20 text-teal-200 border border-teal-400/30 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
                       Next Confirmed Visit
                     </span>
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/10 text-slate-200 border border-white/20">
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/10 text-slate-100 border border-white/20">
                       Confirmed #{nextVisit.appointment_number || nextVisit.id}
                     </span>
                   </div>
 
                   <div className="flex items-start gap-4">
                     {/* Dentist Avatar Initials */}
-                    <div className="w-12 h-12 rounded-2xl bg-teal-500/30 border border-teal-300/40 flex items-center justify-center text-teal-100 font-bold text-lg shrink-0 shadow-inner">
+                    <div
+                      aria-hidden="true"
+                      className="w-12 h-12 rounded-2xl bg-teal-500/30 border border-teal-300/40 flex items-center justify-center text-teal-100 font-bold text-lg shrink-0 shadow-inner"
+                    >
                       {(nextVisit.dentist_first_name?.[0] || 'D') + (nextVisit.dentist_last_name?.[0] || '')}
                     </div>
 
-                    <div className="space-y-1">
-                      <h3 className="text-lg sm:text-xl font-bold text-white">
+                    <div className="space-y-1 min-w-0">
+                      <h3 className="text-lg sm:text-xl font-bold text-white text-balance">
                         {nextVisit.service_name || 'Dental Consultation'}
                       </h3>
 
@@ -512,16 +533,16 @@ export function PatientDashboard({
                         )}
                       </p>
 
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300 pt-1">
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-200 pt-1">
                         <span className="flex items-center gap-1 text-teal-300 font-medium">
-                          <Clock className="w-3.5 h-3.5" />
+                          <Clock className="w-3.5 h-3.5" aria-hidden="true" />
                           {formatManilaDate(nextVisit.start_at || nextVisit.date)}
                         </span>
-                        <span>•</span>
+                        <span aria-hidden="true">•</span>
                         <span>{nextVisit.service_duration || nextVisit.duration_snapshot || 45} mins</span>
-                        <span>•</span>
-                        <span className="flex items-center gap-1 text-slate-300">
-                          <MapPin className="w-3 h-3 text-teal-400" />
+                        <span aria-hidden="true">•</span>
+                        <span className="flex items-center gap-1 text-slate-200">
+                          <MapPin className="w-3 h-3 text-teal-300" aria-hidden="true" />
                           {nextVisit.operatory_chair || 'Operatory Chair 1'} • Makati Clinic
                         </span>
                       </div>
@@ -534,10 +555,10 @@ export function PatientDashboard({
                   <button
                     type="button"
                     onClick={() => setDetailModalAppt(nextVisit)}
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs bg-teal-400 text-slate-900 hover:bg-teal-300 active:scale-95 transition-all shadow-sm"
+                    className="inline-flex items-center justify-center gap-2 min-h-10 px-4 py-2.5 rounded-xl font-bold text-xs bg-teal-400 text-slate-900 hover:bg-teal-300 active:scale-95 transition-all shadow-sm cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
                   >
                     <span>View Details</span>
-                    <ChevronRight className="w-4 h-4" />
+                    <ChevronRight className="w-4 h-4" aria-hidden="true" />
                   </button>
 
                   <button
@@ -547,9 +568,9 @@ export function PatientDashboard({
                       setCancelReason('Schedule conflict');
                       setCancelError(null);
                     }}
-                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white/10 hover:bg-rose-500/20 hover:text-rose-200 text-slate-300 border border-white/10 transition-colors"
+                    className="inline-flex items-center justify-center gap-1.5 min-h-10 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-white/10 hover:bg-rose-500/20 hover:text-rose-100 text-slate-200 border border-white/15 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X className="w-3.5 h-3.5" aria-hidden="true" />
                     <span>Cancel Visit</span>
                   </button>
                 </div>
@@ -557,111 +578,135 @@ export function PatientDashboard({
 
               {/* Additional upcoming appointments compact preview if multiple exist */}
               {additionalUpcoming.length > 0 && (
-                <div className="mt-4 pt-3 border-t border-white/10 flex flex-wrap items-center gap-3 text-xs text-slate-300">
+                <div className="mt-4 pt-3 border-t border-white/15 flex flex-wrap items-center gap-2.5 text-xs text-slate-200">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-teal-300">
                     Other Upcoming:
                   </span>
                   {additionalUpcoming.map((item) => (
-                    <div
+                    <button
                       key={item.id}
+                      type="button"
                       onClick={() => setDetailModalAppt(item)}
-                      className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer flex items-center gap-2 transition-colors"
+                      className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 border border-white/15 cursor-pointer flex items-center gap-2 transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-300"
                     >
                       <span className="font-medium text-white">{item.service_name}</span>
-                      <span className="text-slate-400">• {formatManilaDate(item.start_at || item.date)}</span>
-                    </div>
+                      <span className="text-slate-300">• {formatManilaDate(item.start_at || item.date)}</span>
+                    </button>
                   ))}
                 </div>
               )}
             </div>
           ) : (
-            <div className="bg-gradient-to-r from-teal-50/70 to-slate-50 rounded-2xl border border-teal-100 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-start gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-[#0D9488]/10 text-[#0D9488] flex items-center justify-center shrink-0 mt-0.5">
-                  <Stethoscope className="w-5 h-5" />
+            <div className="relative overflow-hidden bg-gradient-to-r from-white via-teal-50/45 to-emerald-50/60 rounded-2xl border border-teal-200/80 p-5 sm:p-6 shadow-sm">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="flex items-start gap-4 min-w-0">
+                  <div className="w-11 h-11 rounded-2xl bg-teal-50 border border-teal-200/80 text-[#0F766E] flex items-center justify-center shrink-0">
+                    <Stethoscope className="w-5 h-5" aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-sm sm:text-base font-bold text-[#12304A]">
+                        No upcoming confirmed appointments
+                      </h3>
+                      {metrics.pendingCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => focusScheduleTab('pending')}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-100 hover:bg-amber-200/80 border border-amber-200 text-amber-900 text-[11px] font-semibold transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-600"
+                        >
+                          <Clock className="w-3 h-3 shrink-0" aria-hidden="true" />
+                          <span>
+                            {metrics.pendingCount} pending {metrics.pendingCount === 1 ? 'request' : 'requests'} awaiting review
+                          </span>
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-xs sm:text-sm text-slate-600 leading-relaxed text-pretty">
+                      Check available dates and book your next consultation in minutes.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-[#12304A]">
-                    No upcoming confirmed appointments
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5 max-w-md">
-                    Keep your smile healthy and radiant. Check available dates and book your next consultation in minutes.
-                  </p>
+
+                <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                  {metrics.pendingCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => focusScheduleTab('pending')}
+                      className="inline-flex items-center justify-center gap-1.5 min-h-10 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 text-xs font-semibold transition-colors shadow-sm cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                    >
+                      <span>View Pending</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={onNavigateToBook}
+                    className="inline-flex items-center justify-center gap-1.5 min-h-10 px-5 py-2.5 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] active:scale-[0.98] text-white text-xs font-bold transition-all shadow-sm hover:shadow cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2"
+                  >
+                    <span>Book now</span>
+                    <ArrowRight className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                  </button>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={onNavigateToBook}
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] text-white text-xs font-semibold transition-colors shrink-0 shadow-xs"
-              >
-                <span>Book now</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
             </div>
           )}
 
           {/* 4. Quick Discovery Navigation Cards */}
           <div className="portal-grid-3">
-            <button
-              type="button"
-              onClick={onNavigateToServices}
-              className="p-4 rounded-xl bg-white border border-slate-200/80 hover:border-[#0D9488]/40 hover:shadow-xs transition-all text-left flex items-center justify-between gap-2 group"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-lg bg-teal-50 text-[#0D9488] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                  <Sparkles className="w-4 h-4" />
+            {[
+              {
+                key: 'services',
+                title: 'Explore Services',
+                description: 'Procedures, pricing & duration',
+                Icon: Sparkles,
+                onClick: onNavigateToServices,
+              },
+              {
+                key: 'dentists',
+                title: 'Our Dentists',
+                description: 'Credentials, specialties & chairs',
+                Icon: User,
+                onClick: onNavigateToDentists,
+              },
+              {
+                key: 'profile',
+                title: 'My Medical Profile',
+                description: 'Allergies & contact information',
+                Icon: ShieldCheck,
+                onClick: onNavigateToProfile,
+              },
+            ].map(({ key, title, description, Icon, onClick }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={onClick}
+                className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 hover:border-[#0D9488]/60 hover:bg-teal-50/20 hover:shadow-md transition-all text-left flex items-center justify-between gap-3 group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-100 text-[#0F766E] flex items-center justify-center shrink-0 group-hover:bg-[#0D9488] group-hover:text-white group-hover:border-[#0D9488] transition-colors">
+                    <Icon className="w-4 h-4" aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-bold text-[#12304A] group-hover:text-[#0F766E] transition-colors leading-snug">
+                      {title}
+                    </h3>
+                    <p className="text-xs text-slate-600 mt-0.5 leading-snug">{description}</p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <h4 className="text-xs font-bold text-[#12304A] group-hover:text-[#0D9488] transition-colors truncate">
-                    Explore Services
-                  </h4>
-                  <p className="text-[11px] text-slate-400 truncate">Procedures, pricing & duration</p>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#0D9488] shrink-0 transition-colors" />
-            </button>
-
-            <button
-              type="button"
-              onClick={onNavigateToDentists}
-              className="p-4 rounded-xl bg-white border border-slate-200/80 hover:border-[#0D9488]/40 hover:shadow-xs transition-all text-left flex items-center justify-between gap-2 group"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-lg bg-teal-50 text-[#0D9488] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                  <User className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <h4 className="text-xs font-bold text-[#12304A] group-hover:text-[#0D9488] transition-colors truncate">
-                    Our Dentists
-                  </h4>
-                  <p className="text-[11px] text-slate-400 truncate">Credentials, specialties & chairs</p>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#0D9488] shrink-0 transition-colors" />
-            </button>
-
-            <button
-              type="button"
-              onClick={onNavigateToProfile}
-              className="p-4 rounded-xl bg-white border border-slate-200/80 hover:border-[#0D9488]/40 hover:shadow-xs transition-all text-left flex items-center justify-between gap-2 group"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-lg bg-teal-50 text-[#0D9488] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                  <ShieldCheck className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <h4 className="text-xs font-bold text-[#12304A] group-hover:text-[#0D9488] transition-colors truncate">
-                    My Medical Profile
-                  </h4>
-                  <p className="text-[11px] text-slate-400 truncate">Allergies & contact information</p>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#0D9488] shrink-0 transition-colors" />
-            </button>
+                <span className="w-7 h-7 rounded-full bg-slate-50 group-hover:bg-teal-50 flex items-center justify-center shrink-0 transition-colors">
+                  <ChevronRight
+                    className="w-4 h-4 text-slate-400 group-hover:text-[#0F766E] group-hover:translate-x-0.5 transition-all"
+                    aria-hidden="true"
+                  />
+                </span>
+              </button>
+            ))}
           </div>
 
           {/* 5. Appointments Multi-Tab Panel & Queue */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+          <div
+            ref={appointmentsSectionRef}
+            className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden"
+          >
             <div className="px-5 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
                 <button
