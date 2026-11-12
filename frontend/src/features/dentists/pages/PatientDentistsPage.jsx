@@ -210,8 +210,16 @@ export function PatientDentistsPage({ onBookDentist }) {
               >
                 <div>
                   <div className="flex items-start gap-3.5 mb-3">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-500 to-[#0F766E] text-white flex items-center justify-center font-bold text-base shadow-sm shrink-0">
-                      {initials}
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-500 to-[#0F766E] text-white flex items-center justify-center font-bold text-base shadow-sm shrink-0 overflow-hidden">
+                      {dentist.avatar_url ? (
+                        <img
+                          src={dentist.avatar_url}
+                          alt={`Dr. ${dentist.first_name} ${dentist.last_name}`}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        initials
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <h3 className="font-bold text-base text-[#12304A] group-hover:text-[#0D9488] transition-colors truncate">
@@ -288,8 +296,16 @@ export function PatientDentistsPage({ onBookDentist }) {
             </button>
 
             <div className="flex items-start gap-4 mb-5">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500 to-[#0F766E] text-white flex items-center justify-center font-bold text-lg shadow-sm shrink-0">
-                {`${detailDentist.first_name?.[0] || 'D'}${detailDentist.last_name?.[0] || 'S'}`.toUpperCase()}
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500 to-[#0F766E] text-white flex items-center justify-center font-bold text-lg shadow-sm shrink-0 overflow-hidden">
+                {detailDentist.avatar_url ? (
+                  <img
+                    src={detailDentist.avatar_url}
+                    alt={`Dr. ${detailDentist.first_name} ${detailDentist.last_name}`}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  `${detailDentist.first_name?.[0] || 'D'}${detailDentist.last_name?.[0] || 'S'}`.toUpperCase()
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-800 border border-teal-200 mb-1">

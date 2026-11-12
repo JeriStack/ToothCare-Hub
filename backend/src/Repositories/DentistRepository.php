@@ -39,6 +39,7 @@ class DentistRepository
             SELECT 
                 d.id, d.user_id, d.first_name, d.last_name, d.specialization,
                 d.license_number, d.phone, d.default_operatory_chair, d.bio,
+                d.avatar_path, d.avatar_mime, d.avatar_updated_at,
                 d.is_active, d.created_at, d.updated_at,
                 u.email, u.role, u.email_verified, u.is_active AS user_active
             FROM dentists d
@@ -49,7 +50,7 @@ class DentistRepository
         $stmt->execute([$id]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return $row ?: null;
+        return $row ? $this->hydrateAvatarFields($row) : null;
     }
 
     /**
@@ -62,6 +63,7 @@ class DentistRepository
             SELECT 
                 d.id, d.user_id, d.first_name, d.last_name, d.specialization,
                 d.license_number, d.phone, d.default_operatory_chair, d.bio,
+                d.avatar_path, d.avatar_mime, d.avatar_updated_at,
                 d.is_active, d.created_at, d.updated_at,
                 u.email, u.role, u.email_verified, u.is_active AS user_active
             FROM dentists d
@@ -72,7 +74,7 @@ class DentistRepository
         $stmt->execute([$userId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return $row ?: null;
+        return $row ? $this->hydrateAvatarFields($row) : null;
     }
 
     /**
@@ -170,6 +172,65 @@ class DentistRepository
         return true;
     }
 
+    public function updateAvatar(int $dentistId, string $filename, string $mime): bool
+    {
+        $pdo = $this->database->getConnection();
+        $stmt = $pdo->prepare('
+            UPDATE dentists
+            SET avatar_path = ?,
+                avatar_mime = ?,
+                avatar_updated_at = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ');
+
+        return $stmt->execute([$filename, $mime, $dentistId]);
+    }
+
+    public function clearAvatar(int $dentistId): bool
+    {
+        $pdo = $this->database->getConnection();
+        $stmt = $pdo->prepare('
+            UPDATE dentists
+            SET avatar_path = NULL,
+                avatar_mime = NULL,
+                avatar_updated_at = NULL,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ');
+
+        return $stmt->execute([$dentistId]);
+    }
+
+    /**
+     * Append computed avatar_url when an avatar file is registered on the dentist row.
+     *
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    public function hydrateAvatarFields(array $row): array
+    {
+        $hasAvatar = !empty($row['avatar_path']) && isset($row['id']);
+        $versionSource = (string) ($row['avatar_updated_at'] ?? $row['avatar_path'] ?? '');
+        $row['avatar_url'] = $hasAvatar
+            ? '/api/v1/dentists/' . (int) $row['id'] . '/avatar?v=' . rawurlencode($versionSource)
+            : null;
+
+        return $row;
+    }
+
+    /**
+     * Strip internal server storage fields before serializing a dentist payload to API clients.
+     *
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    public function stripInternalFields(array $row): array
+    {
+        unset($row['avatar_path'], $row['avatar_mime']);
+        return $row;
+    }
+
     public function countAppointmentsReferencing(int $dentistId): int
     {
         try {
@@ -248,6 +309,7 @@ class DentistRepository
             SELECT 
                 d.id, d.user_id, d.first_name, d.last_name, d.specialization,
                 d.license_number, d.phone, d.default_operatory_chair, d.bio,
+                d.avatar_path, d.avatar_mime, d.avatar_updated_at,
                 d.is_active, d.created_at, d.updated_at,
                 u.email, u.email_verified, u.is_active AS user_active
             FROM dentists d
@@ -259,7 +321,10 @@ class DentistRepository
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
-        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $items = array_map(
+            fn (array $row): array => $this->stripInternalFields($this->hydrateAvatarFields($row)),
+            $stmt->fetchAll(PDO::FETCH_ASSOC)
+        );
 
         $totalPages = $totalItems > 0 ? (int) ceil($totalItems / $perPage) : 1;
 
@@ -286,6 +351,7 @@ class DentistRepository
             SELECT 
                 d.id, d.user_id, d.first_name, d.last_name, d.specialization,
                 d.license_number, d.phone, d.default_operatory_chair, d.bio,
+                d.avatar_path, d.avatar_mime, d.avatar_updated_at,
                 d.is_active, d.created_at, d.updated_at,
                 u.email
             FROM dentists d
@@ -294,6 +360,9 @@ class DentistRepository
             ORDER BY d.last_name ASC, d.first_name ASC
         ');
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_map(
+            fn (array $row): array => $this->stripInternalFields($this->hydrateAvatarFields($row)),
+            $stmt->fetchAll(PDO::FETCH_ASSOC)
+        );
     }
 }

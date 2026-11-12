@@ -11,6 +11,7 @@ use App\Core\Response;
 use App\Repositories\AuditLogRepository;
 use App\Repositories\DentistRepository;
 use App\Repositories\UserRepository;
+use App\Services\AvatarStorageService;
 use App\Validators\DentistValidator;
 
 /**
@@ -23,17 +24,21 @@ class DentistController
     private UserRepository $userRepository;
     private AuditLogRepository $auditLogRepository;
     private Database $database;
+    private AvatarStorageService $avatarStorageService;
 
     public function __construct(
         ?DentistRepository $dentistRepository = null,
         ?UserRepository $userRepository = null,
         ?AuditLogRepository $auditLogRepository = null,
-        ?Database $database = null
+        ?Database $database = null,
+        ?string $avatarStorageDir = null,
+        ?AvatarStorageService $avatarStorageService = null
     ) {
         $this->database = $database ?? Database::getInstance();
         $this->dentistRepository = $dentistRepository ?? new DentistRepository($this->database);
         $this->userRepository = $userRepository ?? new UserRepository($this->database);
         $this->auditLogRepository = $auditLogRepository ?? new AuditLogRepository($this->database);
+        $this->avatarStorageService = $avatarStorageService ?? new AvatarStorageService($avatarStorageDir);
     }
 
     /**
@@ -90,6 +95,7 @@ class DentistController
             'default_operatory_chair' => $dentist['default_operatory_chair'],
             'bio' => $dentist['bio'],
             'phone' => $dentist['phone'],
+            'avatar_url' => $dentist['avatar_url'] ?? null,
             'is_active' => (int) $dentist['is_active'],
         ]);
     }
@@ -106,7 +112,7 @@ class DentistController
             throw HttpException::notFound("Dentist profile #{$id} was not found.");
         }
 
-        return Response::success($dentist);
+        return Response::success($this->dentistRepository->stripInternalFields($dentist));
     }
 
     /**
@@ -127,7 +133,151 @@ class DentistController
 
         $dentist['appointment_count'] = $this->dentistRepository->countAppointmentsReferencing((int) $dentist['id']);
 
-        return Response::success($dentist);
+        return Response::success($this->dentistRepository->stripInternalFields($dentist));
+    }
+
+    /**
+     * POST /api/v1/dentist/profile/avatar
+     * Upload or replace the authenticated dentist's profile picture (JPEG, PNG, WebP up to 2 MB).
+     */
+    public function uploadMyAvatar(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required.', 'AUTHENTICATION_REQUIRED');
+        }
+
+        $userId = (int) $user['id'];
+        $dentist = $this->dentistRepository->findByUserId($userId);
+        if ($dentist === null) {
+            throw HttpException::notFound('Dentist profile not found for this account.');
+        }
+
+        $stored = $this->avatarStorageService->storeUploadedImage($request->getFile('avatar'));
+        $filename = $stored['filename'];
+        $detectedMime = $stored['mime'];
+        $actualSize = $stored['size_bytes'];
+
+        $dentistId = (int) $dentist['id'];
+        $oldFilename = !empty($dentist['avatar_path']) ? basename((string) $dentist['avatar_path']) : null;
+
+        try {
+            $this->dentistRepository->updateAvatar($dentistId, $filename, $detectedMime);
+        } catch (\Throwable $e) {
+            $this->avatarStorageService->deleteFile($filename);
+            throw $e;
+        }
+
+        if ($oldFilename !== null && $oldFilename !== '' && $oldFilename !== $filename) {
+            $this->avatarStorageService->deleteFile($oldFilename);
+        }
+
+        $fresh = $this->dentistRepository->findById($dentistId) ?? $dentist;
+        $fresh['appointment_count'] = $this->dentistRepository->countAppointmentsReferencing($dentistId);
+
+        $this->auditLogRepository->record(
+            'DENTIST_AVATAR_UPDATED',
+            'dentists',
+            $dentistId,
+            $userId,
+            $request->getClientIp(),
+            $request->getHeader('user-agent'),
+            ['mime' => $detectedMime, 'size_bytes' => $actualSize]
+        );
+
+        return Response::success($this->dentistRepository->stripInternalFields($fresh));
+    }
+
+    /**
+     * DELETE /api/v1/dentist/profile/avatar
+     * Remove the authenticated dentist's profile picture.
+     */
+    public function deleteMyAvatar(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required.', 'AUTHENTICATION_REQUIRED');
+        }
+
+        $userId = (int) $user['id'];
+        $dentist = $this->dentistRepository->findByUserId($userId);
+        if ($dentist === null) {
+            throw HttpException::notFound('Dentist profile not found for this account.');
+        }
+
+        $dentistId = (int) $dentist['id'];
+        $oldFilename = !empty($dentist['avatar_path']) ? basename((string) $dentist['avatar_path']) : null;
+
+        $this->dentistRepository->clearAvatar($dentistId);
+        if ($oldFilename !== null && $oldFilename !== '') {
+            $this->avatarStorageService->deleteFile($oldFilename);
+        }
+
+        $fresh = $this->dentistRepository->findById($dentistId) ?? $dentist;
+        $fresh['appointment_count'] = $this->dentistRepository->countAppointmentsReferencing($dentistId);
+
+        $this->auditLogRepository->record(
+            'DENTIST_AVATAR_REMOVED',
+            'dentists',
+            $dentistId,
+            $userId,
+            $request->getClientIp(),
+            $request->getHeader('user-agent')
+        );
+
+        return Response::success($this->dentistRepository->stripInternalFields($fresh));
+    }
+
+    /**
+     * GET /api/v1/dentist/profile/avatar
+     * Serve authenticated dentist's own profile photo securely.
+     */
+    public function serveMyAvatar(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required.', 'AUTHENTICATION_REQUIRED');
+        }
+
+        $dentist = $this->dentistRepository->findByUserId((int) $user['id']);
+        if ($dentist === null) {
+            throw HttpException::notFound('Dentist profile not found for this account.');
+        }
+
+        return $this->avatarStorageService->buildImageResponse(
+            $dentist['avatar_path'] ?? null,
+            $dentist['avatar_mime'] ?? null
+        );
+    }
+
+    /**
+     * GET /api/v1/dentists/{id}/avatar
+     * Serve active dentist profile photo publicly, or restrict inactive portraits to owner/staff.
+     */
+    public function serveAvatar(Request $request): Response
+    {
+        $id = (int) $request->getParam('id');
+        $dentist = $this->dentistRepository->findById($id);
+        if ($dentist === null) {
+            throw HttpException::notFound("Dentist profile #{$id} was not found.");
+        }
+
+        $isActive = !empty($dentist['is_active']);
+        if (!$isActive) {
+            $user = $request->getUser();
+            $role = strtoupper((string) ($user['role'] ?? ''));
+            $isOwner = $user !== null && (int) ($user['id'] ?? 0) === (int) ($dentist['user_id'] ?? 0);
+            $isStaff = in_array($role, ['ADMIN', 'RECEPTIONIST'], true);
+            if (!$isOwner && !$isStaff) {
+                throw HttpException::notFound("Dentist profile #{$id} was not found or is currently unavailable.");
+            }
+        }
+
+        return $this->avatarStorageService->buildImageResponse(
+            $dentist['avatar_path'] ?? null,
+            $dentist['avatar_mime'] ?? null,
+            $isActive ? 'public, max-age=3600' : 'private, max-age=3600'
+        );
     }
 
     /**
@@ -175,7 +325,7 @@ class DentistController
             ['updated_fields' => array_keys($validated)]
         );
 
-        return Response::success($fresh);
+        return Response::success($this->dentistRepository->stripInternalFields($fresh));
     }
 
     /**
@@ -255,7 +405,7 @@ class DentistController
 
             $this->database->commit();
 
-            return Response::created($dentist);
+            return Response::created($dentist !== null ? $this->dentistRepository->stripInternalFields($dentist) : null);
         } catch (\Throwable $e) {
             $this->database->rollBack();
             if ($e instanceof HttpException) {
@@ -318,7 +468,7 @@ class DentistController
             ['updated_fields' => array_keys($validated)]
         );
 
-        return Response::success($updatedDentist);
+        return Response::success($updatedDentist !== null ? $this->dentistRepository->stripInternalFields($updatedDentist) : null);
     }
 
     /**
@@ -356,6 +506,6 @@ class DentistController
             ]
         );
 
-        return Response::success($updatedDentist);
+        return Response::success($updatedDentist !== null ? $this->dentistRepository->stripInternalFields($updatedDentist) : null);
     }
 }

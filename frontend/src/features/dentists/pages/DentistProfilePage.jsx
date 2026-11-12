@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../auth/context/AuthContext';
 import { dentistsApi } from '../api';
+import { ProfilePhotoUploader } from '../../../components/ui/ProfilePhotoUploader';
 
 const EMPTY_FORM = {
   first_name: '',
@@ -114,6 +115,22 @@ export function DentistProfilePage({ onProfileUpdated }) {
     `${(formData.first_name || profile?.first_name || 'D')[0] || ''}${
       (formData.last_name || profile?.last_name || '')[0] || ''
     }`.toUpperCase() || 'DR';
+
+  const serverAvatarUrl = profile?.avatar_url || user?.dentist?.avatar_url || null;
+
+  const handleAvatarChangeSuccess = async (message, updated) => {
+    setProfile((prev) =>
+      updated
+        ? updated
+        : prev
+        ? { ...prev, avatar_url: message.includes('removed') ? null : prev.avatar_url }
+        : prev
+    );
+    await refreshUser?.();
+    if (onProfileUpdated) {
+      onProfileUpdated(message);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -259,21 +276,16 @@ export function DentistProfilePage({ onProfileUpdated }) {
             <div className="h-20 bg-gradient-to-r from-[#12304A] via-[#134E4A] to-[#0D9488]" />
 
             <div className="px-5 pb-6 -mt-11">
-              <div className="flex flex-col items-center text-center">
-                <div className="w-24 h-24 rounded-2xl border-4 border-white shadow-md bg-[#CCFBF1] text-[#0F766E] flex items-center justify-center font-bold text-2xl">
-                  <span aria-hidden="true">{initials}</span>
-                </div>
-
-                <h2 className="mt-3 text-base font-bold text-[#12304A] leading-tight">
-                  {fullName}
-                </h2>
-                <p className="text-xs font-medium text-[#0F766E] mt-0.5">
-                  {formData.specialization || profile?.specialization || 'Dentist'}
-                </p>
-                <p className="text-xs text-slate-600 mt-0.5 truncate max-w-full">
-                  {profile?.email || user?.email || ''}
-                </p>
-              </div>
+              <ProfilePhotoUploader
+                fullName={fullName}
+                initials={initials}
+                serverAvatarUrl={serverAvatarUrl}
+                badgeText={formData.specialization || profile?.specialization || 'Dentist'}
+                subtitle={profile?.email || user?.email || ''}
+                onUploadFile={(file) => dentistsApi.uploadMyAvatar(file)}
+                onRemoveFile={() => dentistsApi.deleteMyAvatar()}
+                onSuccess={handleAvatarChangeSuccess}
+              />
 
               <div className="mt-5 pt-4 border-t border-slate-100 space-y-3">
                 <div className="flex items-center justify-between text-xs">

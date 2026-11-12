@@ -71,6 +71,24 @@ export const dentistsApi = {
   },
 
   /**
+   * Upload or replace authenticated dentist's profile picture
+   */
+  async uploadMyAvatar(file) {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    const res = await apiClient.post('/dentist/profile/avatar', formData);
+    return res.data?.data;
+  },
+
+  /**
+   * Remove authenticated dentist's profile picture
+   */
+  async deleteMyAvatar() {
+    const res = await apiClient.delete('/dentist/profile/avatar');
+    return res.data?.data;
+  },
+
+  /**
    * Toggle dentist active practice status (synchronizes user login state)
    */
   async toggleDentistStatus(id, isActive) {

@@ -125,6 +125,9 @@ class AppointmentConcurrencyTest extends TestCase
                 phone TEXT NOT NULL,
                 default_operatory_chair TEXT NOT NULL DEFAULT "Chair 1",
                 bio TEXT NULL,
+                avatar_path TEXT NULL,
+                avatar_mime TEXT NULL,
+                avatar_updated_at TEXT NULL,
                 is_active INTEGER NOT NULL DEFAULT 1,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP

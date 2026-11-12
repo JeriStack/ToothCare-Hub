@@ -72,7 +72,11 @@ describe('Portal Header Identity & Account Dropdown', () => {
       resolveUserIdentity(
         {
           email: 'dentist@toothcare.com',
-          dentist: { first_name: 'Maria', last_name: 'Santos' },
+          dentist: {
+            first_name: 'Maria',
+            last_name: 'Santos',
+            avatar_url: '/api/v1/dentists/5/avatar?v=99',
+          },
         },
         'DENTIST'
       )
@@ -80,7 +84,7 @@ describe('Portal Header Identity & Account Dropdown', () => {
       displayName: 'Dr. Maria Santos',
       initials: 'MS',
       roleLabel: 'Dentist',
-      avatarUrl: null,
+      avatarUrl: '/api/v1/dentists/5/avatar?v=99',
     });
 
     expect(resolveUserIdentity({ email: 'legacy.user@gmail.com' }, 'ADMIN')).toEqual({

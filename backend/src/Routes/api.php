@@ -64,6 +64,7 @@ $router->group('/api/v1', function (Router $r): void {
     $r->get('/services', [ServiceController::class, 'listPublic']);
     $r->get('/dentists', [DentistController::class, 'listPublic']);
     $r->get('/dentists/{id}', [DentistController::class, 'showPublic']);
+    $r->get('/dentists/{id}/avatar', [DentistController::class, 'serveAvatar']);
 
     // 4. Patients Self-Management Group (Phase 7 & 11 ownership checks)
     $r->get('/patients/me', [PatientController::class, 'me'], [AuthenticationMiddleware::class]);
@@ -190,6 +191,9 @@ $router->group('/api/v1', function (Router $r): void {
     $dentistAuth = [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN'])];
     $r->get('/dentist/profile', [DentistController::class, 'me'], $dentistAuth);
     $r->patch('/dentist/profile', [DentistController::class, 'updateMe'], $dentistAuth);
+    $r->get('/dentist/profile/avatar', [DentistController::class, 'serveMyAvatar'], $dentistAuth);
+    $r->post('/dentist/profile/avatar', [DentistController::class, 'uploadMyAvatar'], $dentistAuth);
+    $r->delete('/dentist/profile/avatar', [DentistController::class, 'deleteMyAvatar'], $dentistAuth);
     $r->get('/dentist/dashboard', [AppointmentController::class, 'dentistDashboard'], [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN']), AuthorizationMiddleware::hasPermission('appointments.view', ['DENTIST', 'ADMIN'])]);
     $r->get('/dentist/appointments', [AppointmentController::class, 'dentistIndex'], [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN']), AuthorizationMiddleware::hasPermission('appointments.view', ['DENTIST', 'ADMIN'])]);
     $r->get('/dentist/appointments/{id}', [AppointmentController::class, 'dentistShow'], [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN']), AuthorizationMiddleware::hasPermission('appointments.view', ['DENTIST', 'ADMIN'])]);

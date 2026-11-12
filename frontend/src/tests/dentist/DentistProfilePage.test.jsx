@@ -15,6 +15,8 @@ const { mockDentistsApi, mockRefreshUser } = vi.hoisted(() => {
     mockDentistsApi: {
       getMyProfile: vi.fn(),
       updateMyProfile: vi.fn(),
+      uploadMyAvatar: vi.fn(),
+      deleteMyAvatar: vi.fn(),
     },
     mockRefreshUser: vi.fn().mockResolvedValue(null),
   };
@@ -53,6 +55,7 @@ describe('DentistProfilePage Component', () => {
     bio: 'Focused on restorative and preventive care.',
     is_active: 1,
     appointment_count: 14,
+    avatar_url: null,
   };
 
   beforeEach(() => {
@@ -62,6 +65,14 @@ describe('DentistProfilePage Component', () => {
       ...mockDentistProfile,
       phone: '+639179990000',
       specialization: 'Cosmetic Dentistry',
+    });
+    mockDentistsApi.uploadMyAvatar.mockResolvedValue({
+      ...mockDentistProfile,
+      avatar_url: '/api/v1/dentists/5/avatar?v=123',
+    });
+    mockDentistsApi.deleteMyAvatar.mockResolvedValue({
+      ...mockDentistProfile,
+      avatar_url: null,
     });
   });
 
@@ -110,5 +121,59 @@ describe('DentistProfilePage Component', () => {
     fireEvent.click(screen.getByRole('button', { name: /Discard Changes/i }));
     expect(screen.getByDisplayValue('General Dentistry')).toBeDefined();
     expect(screen.queryByText(/Unsaved changes/i)).toBeNull();
+  });
+
+  it('validates unsupported file types and oversize images before upload', async () => {
+    render(<DentistProfilePage onProfileUpdated={vi.fn()} />);
+    await screen.findByDisplayValue('Maria');
+
+    const fileInput = document.getElementById('profile-avatar-input');
+    expect(fileInput).toBeTruthy();
+
+    const badFile = new File(['<svg></svg>'], 'avatar.svg', { type: 'image/svg+xml' });
+    fireEvent.change(fileInput, { target: { files: [badFile] } });
+
+    expect(await screen.findByText(/Please choose a JPG, PNG, or WebP image file\./i)).toBeDefined();
+    expect(mockDentistsApi.uploadMyAvatar).not.toHaveBeenCalled();
+
+    const oversizedFile = new File([new Uint8Array(2 * 1024 * 1024 + 10)], 'large.png', {
+      type: 'image/png',
+    });
+    fireEvent.change(fileInput, { target: { files: [oversizedFile] } });
+
+    expect(await screen.findByText(/Profile photo must be 2 MB or smaller\./i)).toBeDefined();
+    expect(mockDentistsApi.uploadMyAvatar).not.toHaveBeenCalled();
+  });
+
+  it('uploads and removes a dentist profile picture and refreshes auth user state', async () => {
+    const onProfileUpdatedMock = vi.fn();
+    render(<DentistProfilePage onProfileUpdated={onProfileUpdatedMock} />);
+    await screen.findByDisplayValue('Maria');
+
+    expect(screen.getByRole('button', { name: /Upload Photo/i })).toBeDefined();
+
+    const fileInput = document.getElementById('profile-avatar-input');
+    const validPng = new File([new Uint8Array([137, 80, 78, 71])], 'doctor.png', {
+      type: 'image/png',
+    });
+
+    fireEvent.change(fileInput, { target: { files: [validPng] } });
+
+    await waitFor(() => {
+      expect(mockDentistsApi.uploadMyAvatar).toHaveBeenCalledWith(validPng);
+      expect(mockRefreshUser).toHaveBeenCalled();
+      expect(onProfileUpdatedMock).toHaveBeenCalledWith('Profile photo updated.');
+    });
+
+    expect(await screen.findByAltText('Dr. Maria Santos profile photo')).toBeDefined();
+    const removeBtn = await screen.findByRole('button', { name: /Remove/i });
+    fireEvent.click(removeBtn);
+
+    await waitFor(() => {
+      expect(mockDentistsApi.deleteMyAvatar).toHaveBeenCalledTimes(1);
+      expect(onProfileUpdatedMock).toHaveBeenCalledWith('Profile photo removed.');
+    });
+
+    expect(screen.queryByAltText('Dr. Maria Santos profile photo')).toBeNull();
   });
 });

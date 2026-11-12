@@ -158,7 +158,7 @@ export function resolveUserIdentity(user, currentRole) {
     }
   }
 
-  const avatarUrl = patient?.avatar_url || null;
+  const avatarUrl = patient?.avatar_url || dentist?.avatar_url || null;
 
   return { displayName, initials, roleLabel, avatarUrl };
 }

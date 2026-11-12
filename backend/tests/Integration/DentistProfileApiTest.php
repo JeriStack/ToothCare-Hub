@@ -113,5 +113,125 @@ class DentistProfileApiTest extends TestCase
 
         $patientRes = $this->app->handle($this->makeJsonRequest('GET', '/api/v1/dentist/profile', null, $this->patientUser));
         $this->assertSame(403, $patientRes->getStatusCode());
+
+        $patientUploadRes = $this->app->handle($this->makeJsonRequest('POST', '/api/v1/dentist/profile/avatar', null, $this->patientUser));
+        $this->assertSame(403, $patientUploadRes->getStatusCode());
+    }
+
+    public function testDentistAvatarUploadServeAndDeleteSecurity(): void
+    {
+        $dentistId = $this->dentistId;
+        $pngBytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=');
+        $this->assertNotFalse($pngBytes);
+
+        $tmpPng = tempnam(sys_get_temp_dir(), 'tch_dentist_avatar_');
+        $this->assertNotFalse($tmpPng);
+        file_put_contents($tmpPng, $pngBytes);
+
+        $tmpSvg = tempnam(sys_get_temp_dir(), 'tch_dentist_bad_');
+        $this->assertNotFalse($tmpSvg);
+        file_put_contents($tmpSvg, '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');
+
+        $tmpLarge = tempnam(sys_get_temp_dir(), 'tch_dentist_big_');
+        $this->assertNotFalse($tmpLarge);
+        file_put_contents($tmpLarge, str_repeat('A', 2 * 1024 * 1024 + 64));
+
+        try {
+            // 1. Reject SVG disguised with .png extension
+            $badMimeReq = Request::create(
+                'POST',
+                '/api/v1/dentist/profile/avatar',
+                ['content-type' => 'multipart/form-data; boundary=test'],
+                '',
+                [],
+                null,
+                [
+                    'avatar' => [
+                        'name' => 'malicious.png',
+                        'type' => 'image/png',
+                        'tmp_name' => $tmpSvg,
+                        'error' => UPLOAD_ERR_OK,
+                        'size' => filesize($tmpSvg),
+                    ],
+                ]
+            );
+            $badMimeReq->setUser($this->dentistUser);
+            $badMimeRes = $this->app->handle($badMimeReq);
+            $this->assertSame(422, $badMimeRes->getStatusCode());
+
+            // 2. Reject file larger than 2 MB
+            $oversizeReq = Request::create(
+                'POST',
+                '/api/v1/dentist/profile/avatar',
+                ['content-type' => 'multipart/form-data; boundary=test'],
+                '',
+                [],
+                null,
+                [
+                    'avatar' => [
+                        'name' => 'huge.png',
+                        'type' => 'image/png',
+                        'tmp_name' => $tmpLarge,
+                        'error' => UPLOAD_ERR_OK,
+                        'size' => filesize($tmpLarge),
+                    ],
+                ]
+            );
+            $oversizeReq->setUser($this->dentistUser);
+            $oversizeRes = $this->app->handle($oversizeReq);
+            $this->assertSame(422, $oversizeRes->getStatusCode());
+
+            // 3. Upload valid PNG avatar
+            $uploadReq = Request::create(
+                'POST',
+                '/api/v1/dentist/profile/avatar',
+                ['content-type' => 'multipart/form-data; boundary=test'],
+                '',
+                [],
+                null,
+                [
+                    'avatar' => [
+                        'name' => 'portrait.png',
+                        'type' => 'image/png',
+                        'tmp_name' => $tmpPng,
+                        'error' => UPLOAD_ERR_OK,
+                        'size' => strlen($pngBytes),
+                    ],
+                ]
+            );
+            $uploadReq->setUser($this->dentistUser);
+            $uploadRes = $this->app->handle($uploadReq);
+            $this->assertSame(200, $uploadRes->getStatusCode());
+            $uploadPayload = json_decode($uploadRes->getBody(), true);
+            $this->assertStringStartsWith("/api/v1/dentists/{$dentistId}/avatar?v=", (string) ($uploadPayload['data']['avatar_url'] ?? ''));
+            $this->assertArrayNotHasKey('avatar_path', $uploadPayload['data']);
+            $this->assertArrayNotHasKey('avatar_mime', $uploadPayload['data']);
+
+            // 4. Dentist can fetch own avatar bytes cleanly
+            $serveMeRes = $this->app->handle($this->makeJsonRequest('GET', '/api/v1/dentist/profile/avatar', null, $this->dentistUser));
+            $this->assertSame(200, $serveMeRes->getStatusCode());
+            $headers = $serveMeRes->getHeaders();
+            $this->assertSame('image/png', $headers['Content-Type'] ?? null);
+            $this->assertSame('nosniff', $headers['X-Content-Type-Options'] ?? null);
+            $this->assertSame($pngBytes, $serveMeRes->getBody());
+
+            // 5. Active dentist public avatar endpoint serves image bytes cleanly
+            $servePublicRes = $this->app->handle($this->makeJsonRequest('GET', "/api/v1/dentists/{$dentistId}/avatar"));
+            $this->assertSame(200, $servePublicRes->getStatusCode());
+            $this->assertSame($pngBytes, $servePublicRes->getBody());
+
+            // 6. Dentist removes avatar and stored file is cleaned up
+            $deleteRes = $this->app->handle($this->makeJsonRequest('DELETE', '/api/v1/dentist/profile/avatar', null, $this->dentistUser));
+            $this->assertSame(200, $deleteRes->getStatusCode());
+            $deletePayload = json_decode($deleteRes->getBody(), true);
+            $this->assertNull($deletePayload['data']['avatar_url']);
+
+            $afterDeleteRes = $this->app->handle($this->makeJsonRequest('GET', '/api/v1/dentist/profile/avatar', null, $this->dentistUser));
+            $this->assertSame(404, $afterDeleteRes->getStatusCode());
+        } finally {
+            @unlink($tmpPng);
+            @unlink($tmpSvg);
+            @unlink($tmpLarge);
+        }
     }
 }

@@ -392,6 +392,9 @@ class AuthService
         $publicPatient = $patient !== null
             ? $this->patientRepository->stripInternalFields($patient)
             : null;
+        $publicDentist = $dentist !== null
+            ? $this->dentistRepository->stripInternalFields($dentist)
+            : null;
 
         return [
             'id' => (int) $user['id'],
@@ -404,7 +407,7 @@ class AuthService
             'is_active' => (bool) $user['is_active'],
             'email_verified' => (bool) $user['email_verified'],
             'patient' => $publicPatient,
-            'dentist' => $dentist,
+            'dentist' => $publicDentist,
         ];
     }
 
