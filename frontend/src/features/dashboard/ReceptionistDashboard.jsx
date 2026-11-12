@@ -274,7 +274,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
       )}
 
       {/* 7 Operational KPI Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 sm:gap-4">
+      <div className="portal-grid-7">
         {/* 1. Today's Total */}
         <div className="bg-white rounded-xl p-4 border border-slate-200/80 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-500">
@@ -367,9 +367,9 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
       </div>
 
       {/* Main Grid: Waiting List & Today's Schedule */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="portal-split-1-2">
         {/* Left Column: Live Waiting Room Queue (1 Col) */}
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
             <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <div className="flex items-center gap-2.5">
@@ -479,7 +479,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
         </div>
 
         {/* Right Column: Today's Front Desk Schedule (2 Cols) */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="min-w-0 space-y-6">
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
             {/* Header with Search and Filter */}
             <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-slate-50/50">
