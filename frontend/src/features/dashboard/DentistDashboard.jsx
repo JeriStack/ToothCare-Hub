@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Calendar,
   Clock,
@@ -34,6 +34,36 @@ const DAYS_OF_WEEK = [
   { id: 6, name: 'Saturday' },
   { id: 7, name: 'Sunday' },
 ];
+
+const LEAVE_REASON_PRESETS = [
+  'Annual Dental Conference (CME)',
+  'Annual Vacation Leave',
+  'Medical / Sick Leave',
+  'Personal Time Off',
+];
+
+function computeLeaveDurationSummary(startAt, endAt) {
+  if (!startAt || !endAt) return null;
+  const startMs = new Date(startAt).getTime();
+  const endMs = new Date(endAt).getTime();
+  if (Number.isNaN(startMs) || Number.isNaN(endMs)) return null;
+  const diffMs = endMs - startMs;
+  if (diffMs <= 0) {
+    return {
+      valid: false,
+      label: 'End date and time must be strictly after the start date and time.',
+    };
+  }
+  const totalMinutes = Math.round(diffMs / 60000);
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+  const minutes = totalMinutes % 60;
+  const parts = [];
+  if (days > 0) parts.push(`${days} ${days === 1 ? 'day' : 'days'}`);
+  if (hours > 0) parts.push(`${hours} ${hours === 1 ? 'hour' : 'hours'}`);
+  if (minutes > 0 && days === 0) parts.push(`${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`);
+  return { valid: true, label: parts.join(', ') || 'Less than 1 minute' };
+}
 
 function formatManilaDateTime(date = new Date()) {
   try {
@@ -108,6 +138,36 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
   const [leaveSubmitting, setLeaveSubmitting] = useState(false);
   const [leaveError, setLeaveError] = useState(null);
   const [leaveSuccess, setLeaveSuccess] = useState(null);
+  const leaveDialogRef = useRef(null);
+
+  const closeLeaveModal = () => {
+    if (leaveSubmitting) return;
+    setIsLeaveModalOpen(false);
+    setLeaveError(null);
+    setLeaveSuccess(null);
+  };
+
+  useEffect(() => {
+    const dialog = leaveDialogRef.current;
+    if (!dialog) return;
+
+    if (isLeaveModalOpen) {
+      if (typeof dialog.showModal === 'function') {
+        if (!dialog.open) dialog.showModal();
+      } else {
+        dialog.setAttribute('open', '');
+      }
+    } else if (typeof dialog.close === 'function') {
+      if (dialog.open) dialog.close();
+    } else {
+      dialog.removeAttribute('open');
+    }
+  }, [isLeaveModalOpen]);
+
+  const leaveDurationSummary = useMemo(
+    () => computeLeaveDurationSummary(leaveForm.start_at, leaveForm.end_at),
+    [leaveForm.start_at, leaveForm.end_at]
+  );
 
   // Update live clock every second
   useEffect(() => {
@@ -900,108 +960,214 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
 
       {/* 7. Leave / Time-Off Request Modal */}
       {isLeaveModalOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
+        <dialog
+          ref={leaveDialogRef}
           aria-labelledby="leave-modal-title"
-          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onCancel={(e) => {
+            if (leaveSubmitting) {
+              e.preventDefault();
+              return;
+            }
+            e.preventDefault();
+            closeLeaveModal();
+          }}
+          className="p-0 m-auto bg-white rounded-2xl max-w-[540px] w-[calc(100%-2rem)] shadow-2xl border border-slate-200 overflow-hidden"
         >
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Coffee className="w-4 h-4 text-teal-600" />
-                <h3 id="leave-modal-title" className="text-sm font-bold text-[#12304A]">
-                  Request Leave / Time Off
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsLeaveModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
-                aria-label="Close dialog"
-              >
-                <X className="w-4 h-4" />
-              </button>
+          <div className="px-6 py-4 bg-gradient-to-r from-[#F8FAFC] to-white border-b border-slate-100 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="w-9 h-9 rounded-xl bg-[#F0FDFA] border border-[#CCFBF1] text-[#0D9488] flex items-center justify-center shrink-0">
+                <Coffee className="w-4 h-4" />
+              </span>
+              <h3 id="leave-modal-title" className="text-base font-bold text-[#12304A] tracking-tight">
+                Request Leave / Time Off
+              </h3>
             </div>
+            <button
+              type="button"
+              onClick={closeLeaveModal}
+              disabled={leaveSubmitting}
+              aria-label="Close dialog"
+              className="w-9 h-9 rounded-xl text-slate-500 hover:text-[#12304A] hover:bg-slate-100 flex items-center justify-center transition-colors shrink-0 disabled:opacity-50 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
 
-            <form onSubmit={handleLeaveSubmit} className="p-5 space-y-4">
-              <p className="text-xs text-slate-500">
+          <form onSubmit={handleLeaveSubmit} className="p-6 space-y-5">
+            <div className="rounded-xl bg-slate-50 border border-slate-200/80 px-4 py-3 flex items-start gap-2.5">
+              <Shield className="w-4 h-4 text-[#0D9488] shrink-0 mt-0.5" />
+              <p className="text-xs leading-relaxed text-slate-600 text-justify">
                 Submit your practitioner leave request. In compliance with clinic protocol, all leave
                 requests require administrative approval before scheduling blocks are finalized.
               </p>
+            </div>
 
-              {leaveError && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 shrink-0" />
-                  <span>{leaveError}</span>
-                </div>
-              )}
+            {leaveError && (
+              <div
+                role="alert"
+                className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-start gap-2"
+              >
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{leaveError}</span>
+              </div>
+            )}
 
-              {leaveSuccess && (
-                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0" />
-                  <span>{leaveSuccess}</span>
-                </div>
-              )}
+            {leaveSuccess && (
+              <div
+                role="status"
+                className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium flex items-start gap-2"
+              >
+                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" />
+                <span>{leaveSuccess}</span>
+              </div>
+            )}
 
+            <div className="space-y-2.5">
+              <label htmlFor="leave-reason" className="block text-xs font-semibold text-slate-700">
+                Reason / Leave Category
+              </label>
+              <input
+                id="leave-reason"
+                type="text"
+                autoFocus
+                required
+                placeholder="e.g. CME Convention, Annual Vacation, Medical Leave"
+                value={leaveForm.reason}
+                onChange={(e) => {
+                  setLeaveForm({ ...leaveForm, reason: e.target.value });
+                  if (leaveError) setLeaveError(null);
+                }}
+                className="w-full px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-300 hover:border-slate-400 text-sm text-[#12304A] bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/25 focus:border-[#0D9488] transition-colors"
+              />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" aria-label="Quick leave categories">
+                {LEAVE_REASON_PRESETS.map((preset) => {
+                  const isSelected = leaveForm.reason === preset;
+                  return (
+                    <button
+                      key={preset}
+                      type="button"
+                      aria-pressed={isSelected}
+                      onClick={() => {
+                        setLeaveForm((prev) => ({ ...prev, reason: preset }));
+                        if (leaveError) setLeaveError(null);
+                      }}
+                      className={`w-full px-3 py-2 rounded-xl border text-left text-xs font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                        isSelected
+                          ? 'bg-[#F0FDFA] border-[#0D9488] text-[#0F766E] shadow-xs'
+                          : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50/70 hover:text-[#12304A]'
+                      }`}
+                    >
+                      <span className="truncate">{preset}</span>
+                      <span
+                        aria-hidden="true"
+                        className={`w-2 h-2 rounded-full shrink-0 ${
+                          isSelected ? 'bg-[#0D9488]' : 'bg-slate-200'
+                        }`}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label htmlFor="leave-reason" className="text-xs font-semibold text-slate-700">Reason / Leave Category</label>
+                <label htmlFor="leave-start" className="block text-xs font-semibold text-slate-700">
+                  Start Date &amp; Time
+                </label>
                 <input
-                  id="leave-reason"
-                  type="text"
+                  id="leave-start"
+                  type="datetime-local"
                   required
-                  placeholder="e.g. CME Convention, Annual Vacation, Medical Leave"
-                  value={leaveForm.reason}
-                  onChange={(e) => setLeaveForm({ ...leaveForm, reason: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                  value={leaveForm.start_at}
+                  onChange={(e) => {
+                    setLeaveForm({ ...leaveForm, start_at: e.target.value });
+                    if (leaveError) setLeaveError(null);
+                  }}
+                  className="w-full px-3.5 py-2.5 min-h-[44px] rounded-xl border border-slate-300 hover:border-slate-400 text-sm text-[#12304A] bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/25 focus:border-[#0D9488] transition-colors"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label htmlFor="leave-start" className="text-xs font-semibold text-slate-700">Start Date & Time</label>
-                  <input
-                    id="leave-start"
-                    type="datetime-local"
-                    required
-                    value={leaveForm.start_at}
-                    onChange={(e) => setLeaveForm({ ...leaveForm, start_at: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label htmlFor="leave-end" className="text-xs font-semibold text-slate-700">End Date & Time</label>
-                  <input
-                    id="leave-end"
-                    type="datetime-local"
-                    required
-                    value={leaveForm.end_at}
-                    onChange={(e) => setLeaveForm({ ...leaveForm, end_at: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <label htmlFor="leave-end" className="block text-xs font-semibold text-slate-700">
+                  End Date &amp; Time
+                </label>
+                <input
+                  id="leave-end"
+                  type="datetime-local"
+                  required
+                  min={leaveForm.start_at || undefined}
+                  value={leaveForm.end_at}
+                  onChange={(e) => {
+                    setLeaveForm({ ...leaveForm, end_at: e.target.value });
+                    if (leaveError) setLeaveError(null);
+                  }}
+                  aria-invalid={leaveDurationSummary ? !leaveDurationSummary.valid : false}
+                  className={`w-full px-3.5 py-2.5 min-h-[44px] rounded-xl border text-sm text-[#12304A] bg-white focus:outline-none focus-visible:ring-2 transition-colors ${
+                    leaveDurationSummary && !leaveDurationSummary.valid
+                      ? 'border-rose-400 focus-visible:ring-rose-200 focus:border-rose-500'
+                      : 'border-slate-300 hover:border-slate-400 focus-visible:ring-teal-500/25 focus:border-[#0D9488]'
+                  }`}
+                />
               </div>
+            </div>
 
-              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+            {leaveDurationSummary && (
+              <div
+                className={`px-3.5 py-2.5 rounded-xl border text-xs flex items-center gap-2 ${
+                  leaveDurationSummary.valid
+                    ? 'bg-[#F0FDFA] border-[#CCFBF1] text-[#0F766E] font-medium'
+                    : 'bg-rose-50 border-rose-200 text-rose-700 font-medium'
+                }`}
+              >
+                {leaveDurationSummary.valid ? (
+                  <>
+                    <Clock className="w-4 h-4 shrink-0" />
+                    <span>
+                      Requested Duration: <strong>{leaveDurationSummary.label}</strong>
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    <span>{leaveDurationSummary.label}</span>
+                  </>
+                )}
+              </div>
+            )}
+
+            <div className="pt-4 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-slate-100">
+              <span className="text-[11px] font-medium text-slate-600">
+                Clinic Timezone: Asia/Manila
+              </span>
+              <div className="flex items-center justify-end gap-2.5">
                 <button
                   type="button"
-                  onClick={() => setIsLeaveModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                  onClick={closeLeaveModal}
+                  disabled={leaveSubmitting}
+                  className="px-4 py-2 min-h-[40px] rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={leaveSubmitting}
-                  className="px-4 py-2 rounded-xl text-xs font-bold bg-[#0D9488] hover:bg-[#0F766E] text-white transition-colors disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-1.5 px-5 py-2 min-h-[40px] rounded-xl text-xs font-bold bg-[#0D9488] hover:bg-[#0F766E] text-white shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
                 >
-                  {leaveSubmitting ? 'Submitting...' : 'Submit Request'}
+                  {leaveSubmitting ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    'Submit Request'
+                  )}
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
+            </div>
+          </form>
+        </dialog>
       )}
     </div>
   );
