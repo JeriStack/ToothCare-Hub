@@ -308,4 +308,124 @@ class PatientPortalSecurityTest extends TestCase
         $res2 = $this->app->handle($req2);
         $this->assertSame(422, $res2->getStatusCode());
     }
+
+    public function testPatientAvatarUploadServeAndDeleteSecurity(): void
+    {
+        $patientAId = (int) $this->patientA['id'];
+        $pngBytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=');
+        $this->assertNotFalse($pngBytes);
+
+        $tmpPng = tempnam(sys_get_temp_dir(), 'tch_avatar_');
+        $this->assertNotFalse($tmpPng);
+        file_put_contents($tmpPng, $pngBytes);
+
+        $tmpSvg = tempnam(sys_get_temp_dir(), 'tch_bad_');
+        $this->assertNotFalse($tmpSvg);
+        file_put_contents($tmpSvg, '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');
+
+        $tmpLarge = tempnam(sys_get_temp_dir(), 'tch_big_');
+        $this->assertNotFalse($tmpLarge);
+        file_put_contents($tmpLarge, str_repeat('A', 2 * 1024 * 1024 + 64));
+
+        try {
+            // 1. Reject SVG / non-raster file disguised with .png extension
+            $badMimeReq = Request::create(
+                'POST',
+                '/api/v1/patients/me/avatar',
+                ['content-type' => 'multipart/form-data; boundary=test'],
+                '',
+                [],
+                null,
+                [
+                    'avatar' => [
+                        'name' => 'malicious.png',
+                        'type' => 'image/png',
+                        'tmp_name' => $tmpSvg,
+                        'error' => UPLOAD_ERR_OK,
+                        'size' => filesize($tmpSvg),
+                    ],
+                ]
+            );
+            $badMimeReq->setUser($this->patientUserA);
+            $badMimeRes = $this->app->handle($badMimeReq);
+            $this->assertSame(422, $badMimeRes->getStatusCode());
+
+            // 2. Reject file larger than 2 MB
+            $oversizeReq = Request::create(
+                'POST',
+                '/api/v1/patients/me/avatar',
+                ['content-type' => 'multipart/form-data; boundary=test'],
+                '',
+                [],
+                null,
+                [
+                    'avatar' => [
+                        'name' => 'huge.png',
+                        'type' => 'image/png',
+                        'tmp_name' => $tmpLarge,
+                        'error' => UPLOAD_ERR_OK,
+                        'size' => filesize($tmpLarge),
+                    ],
+                ]
+            );
+            $oversizeReq->setUser($this->patientUserA);
+            $oversizeRes = $this->app->handle($oversizeReq);
+            $this->assertSame(422, $oversizeRes->getStatusCode());
+
+            // 3. Upload valid PNG avatar
+            $uploadReq = Request::create(
+                'POST',
+                '/api/v1/patients/me/avatar',
+                ['content-type' => 'multipart/form-data; boundary=test'],
+                '',
+                [],
+                null,
+                [
+                    'avatar' => [
+                        'name' => 'portrait.png',
+                        'type' => 'image/png',
+                        'tmp_name' => $tmpPng,
+                        'error' => UPLOAD_ERR_OK,
+                        'size' => strlen($pngBytes),
+                    ],
+                ]
+            );
+            $uploadReq->setUser($this->patientUserA);
+            $uploadRes = $this->app->handle($uploadReq);
+            $this->assertSame(200, $uploadRes->getStatusCode());
+            $uploadPayload = json_decode($uploadRes->getBody(), true);
+            $this->assertStringStartsWith("/api/v1/patients/{$patientAId}/avatar?v=", (string) ($uploadPayload['data']['avatar_url'] ?? ''));
+            $this->assertArrayNotHasKey('avatar_path', $uploadPayload['data']);
+            $this->assertArrayNotHasKey('avatar_mime', $uploadPayload['data']);
+
+            // 4. Patient A can fetch own avatar bytes cleanly with security headers
+            $serveReq = $this->makeJsonRequest('GET', '/api/v1/patients/me/avatar', null, $this->patientUserA);
+            $serveRes = $this->app->handle($serveReq);
+            $this->assertSame(200, $serveRes->getStatusCode());
+            $headers = $serveRes->getHeaders();
+            $this->assertSame('image/png', $headers['Content-Type'] ?? null);
+            $this->assertSame('nosniff', $headers['X-Content-Type-Options'] ?? null);
+            $this->assertSame($pngBytes, $serveRes->getBody());
+
+            // 5. Patient B cannot access Patient A's avatar (IDOR)
+            $idorReq = $this->makeJsonRequest('GET', "/api/v1/patients/{$patientAId}/avatar", null, $this->patientUserB);
+            $idorRes = $this->app->handle($idorReq);
+            $this->assertSame(403, $idorRes->getStatusCode());
+
+            // 6. Patient A removes avatar and stored file is cleaned up
+            $deleteReq = $this->makeJsonRequest('DELETE', '/api/v1/patients/me/avatar', null, $this->patientUserA);
+            $deleteRes = $this->app->handle($deleteReq);
+            $this->assertSame(200, $deleteRes->getStatusCode());
+            $deletePayload = json_decode($deleteRes->getBody(), true);
+            $this->assertNull($deletePayload['data']['avatar_url']);
+
+            $afterDeleteReq = $this->makeJsonRequest('GET', '/api/v1/patients/me/avatar', null, $this->patientUserA);
+            $afterDeleteRes = $this->app->handle($afterDeleteReq);
+            $this->assertSame(404, $afterDeleteRes->getStatusCode());
+        } finally {
+            @unlink($tmpPng);
+            @unlink($tmpSvg);
+            @unlink($tmpLarge);
+        }
+    }
 }

@@ -50,6 +50,7 @@ describe('Portal Header Identity & Account Dropdown', () => {
       displayName: 'Marco Villanueva',
       initials: 'MV',
       roleLabel: 'Administrator',
+      avatarUrl: null,
     });
 
     expect(
@@ -61,6 +62,7 @@ describe('Portal Header Identity & Account Dropdown', () => {
       displayName: 'Clarisse Mendoza',
       initials: 'CM',
       roleLabel: 'Front Desk Specialist',
+      avatarUrl: null,
     });
 
     expect(
@@ -75,12 +77,33 @@ describe('Portal Header Identity & Account Dropdown', () => {
       displayName: 'Dr. Maria Santos',
       initials: 'MS',
       roleLabel: 'Attending Dentist',
+      avatarUrl: null,
     });
 
     expect(resolveUserIdentity({ email: 'legacy.user@gmail.com' }, 'ADMIN')).toEqual({
       displayName: 'Administrator',
       initials: 'AD',
       roleLabel: 'Administrator',
+      avatarUrl: null,
+    });
+
+    expect(
+      resolveUserIdentity(
+        {
+          email: 'patient@toothcare.com',
+          patient: {
+            first_name: 'Juan',
+            last_name: 'Dela Cruz',
+            avatar_url: '/api/v1/patients/1/avatar?v=1',
+          },
+        },
+        'PATIENT'
+      )
+    ).toEqual({
+      displayName: 'Juan Dela Cruz',
+      initials: 'JD',
+      roleLabel: 'Patient',
+      avatarUrl: '/api/v1/patients/1/avatar?v=1',
     });
   });
 
@@ -230,5 +253,45 @@ describe('Portal Header Identity & Account Dropdown', () => {
     fireEvent.click(expandBtn);
     expect(remounted.container.querySelector('#portal-sidebar')).toHaveAttribute('data-collapsed', 'false');
     expect(window.localStorage.getItem('toothcare_sidebar_collapsed')).toBe('false');
+  });
+
+  it('renders patient profile picture in header and dropdown when avatar_url is set and falls back on error', () => {
+    window.history.pushState({}, '', '/patient');
+    mockUseAuth.mockReturnValue({
+      user: {
+        id: 23,
+        email: 'patient@toothcare.com',
+        role: 'PATIENT',
+        patient: {
+          id: 9,
+          first_name: 'Juan',
+          last_name: 'Dela Cruz',
+          avatar_url: '/api/v1/patients/9/avatar?v=42',
+        },
+        permissions: [],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      logout: logoutMock,
+      hasPermission: () => false,
+      refreshUser: vi.fn(),
+    });
+
+    render(<App />);
+
+    const trigger = screen.getByRole('button', { name: 'Juan Dela Cruz account menu' });
+    const headerImg = trigger.querySelector('img');
+    expect(headerImg).not.toBeNull();
+    expect(headerImg).toHaveAttribute('src', '/api/v1/patients/9/avatar?v=42');
+
+    fireEvent.click(trigger);
+    const menuImgs = document.getElementById('user-account-menu')?.querySelectorAll('img');
+    expect(menuImgs?.length).toBe(1);
+    expect(menuImgs?.[0]).toHaveAttribute('src', '/api/v1/patients/9/avatar?v=42');
+
+    // Graceful fallback to initials if image fails to load
+    fireEvent.error(headerImg);
+    expect(trigger.querySelector('img')).toBeNull();
+    expect(trigger).toHaveTextContent('JD');
   });
 });

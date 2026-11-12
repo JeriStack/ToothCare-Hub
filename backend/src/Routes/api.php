@@ -68,6 +68,10 @@ $router->group('/api/v1', function (Router $r): void {
     // 4. Patients Self-Management Group (Phase 7 & 11 ownership checks)
     $r->get('/patients/me', [PatientController::class, 'me'], [AuthenticationMiddleware::class]);
     $r->patch('/patients/me', [PatientController::class, 'updateMe'], [AuthenticationMiddleware::class]);
+    $r->get('/patients/me/avatar', [PatientController::class, 'serveMyAvatar'], [AuthenticationMiddleware::class]);
+    $r->post('/patients/me/avatar', [PatientController::class, 'uploadMyAvatar'], [AuthenticationMiddleware::class]);
+    $r->delete('/patients/me/avatar', [PatientController::class, 'deleteMyAvatar'], [AuthenticationMiddleware::class]);
+    $r->get('/patients/{id}/avatar', [PatientController::class, 'serveAvatar'], [AuthenticationMiddleware::class]);
     $r->get('/patients/{id}', [PatientController::class, 'show'], [AuthenticationMiddleware::class]);
     $r->patch('/patients/{id}', [PatientController::class, 'update'], [AuthenticationMiddleware::class]);
 

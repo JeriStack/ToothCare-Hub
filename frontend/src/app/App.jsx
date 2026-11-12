@@ -157,7 +157,9 @@ export function resolveUserIdentity(user, currentRole) {
     }
   }
 
-  return { displayName, initials, roleLabel };
+  const avatarUrl = patient?.avatar_url || null;
+
+  return { displayName, initials, roleLabel, avatarUrl };
 }
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'toothcare_sidebar_collapsed';
@@ -288,6 +290,7 @@ function AppContent() {
   
   // UI Panels
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [failedAvatarUrl, setFailedAvatarUrl] = useState(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(readSidebarCollapsedPref);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
@@ -609,7 +612,9 @@ function AppContent() {
     displayName: userDisplayName,
     initials: userInitials,
     roleLabel: userRoleLabel,
+    avatarUrl: userAvatarUrl,
   } = resolveUserIdentity(user, currentRole);
+  const showUserAvatar = Boolean(userAvatarUrl && failedAvatarUrl !== userAvatarUrl);
 
   const sidebarSections = getSidebarSections(currentRole, hasPermission, {
     onPatientNav: handlePatientNav,
@@ -688,8 +693,17 @@ function AppContent() {
                 aria-label={`${userDisplayName} account menu`}
                 className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 cursor-pointer"
               >
-                <div className="w-8 h-8 rounded-full bg-[#0D9488]/30 border border-[#14B8A6] text-teal-200 flex items-center justify-center font-semibold text-xs shrink-0">
-                  {userInitials}
+                <div className="w-8 h-8 rounded-full bg-[#0D9488]/30 border border-[#14B8A6] text-teal-200 flex items-center justify-center font-semibold text-xs shrink-0 overflow-hidden">
+                  {showUserAvatar ? (
+                    <img
+                      src={userAvatarUrl}
+                      alt=""
+                      onError={() => setFailedAvatarUrl(userAvatarUrl)}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    userInitials
+                  )}
                 </div>
                 <div className="hidden md:block text-left">
                   <p className="text-xs font-semibold leading-tight text-white">
@@ -713,8 +727,17 @@ function AppContent() {
                 >
                   <div className="px-4 py-3 bg-slate-50/90 border-b border-slate-100">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-full bg-[#CCFBF1] border border-teal-200 text-[#0F766E] flex items-center justify-center font-bold text-xs shrink-0">
-                        {userInitials}
+                      <div className="w-9 h-9 rounded-full bg-[#CCFBF1] border border-teal-200 text-[#0F766E] flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden">
+                        {showUserAvatar ? (
+                          <img
+                            src={userAvatarUrl}
+                            alt=""
+                            onError={() => setFailedAvatarUrl(userAvatarUrl)}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          userInitials
+                        )}
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-[#12304A] truncate">
@@ -923,9 +946,9 @@ function AppContent() {
 
               {activeTab === 'profile' && (
                 <PatientProfilePage
-                  onProfileUpdated={() => {
+                  onProfileUpdated={(message) => {
                     refreshUser?.();
-                    showToast('Your clinical profile has been updated.');
+                    showToast(message || 'Your clinical profile has been updated.');
                   }}
                 />
               )}

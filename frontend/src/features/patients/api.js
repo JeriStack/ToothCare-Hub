@@ -23,6 +23,24 @@ export const patientsApi = {
   },
 
   /**
+   * Upload or replace authenticated patient's profile picture
+   */
+  async uploadMyAvatar(file) {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    const res = await apiClient.post('/patients/me/avatar', formData);
+    return res.data?.data;
+  },
+
+  /**
+   * Remove authenticated patient's profile picture
+   */
+  async deleteMyAvatar() {
+    const res = await apiClient.delete('/patients/me/avatar');
+    return res.data?.data;
+  },
+
+  /**
    * Fetch paginated patient registry for administration
    */
   async getAdminPatients(params = {}) {

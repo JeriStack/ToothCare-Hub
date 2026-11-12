@@ -389,6 +389,10 @@ class AuthService
             $displayName = ucwords(trim(str_replace(['.', '_', '-'], ' ', $local)));
         }
 
+        $publicPatient = $patient !== null
+            ? $this->patientRepository->stripInternalFields($patient)
+            : null;
+
         return [
             'id' => (int) $user['id'],
             'email' => (string) $user['email'],
@@ -399,7 +403,7 @@ class AuthService
             'permissions' => $this->resolveUserPermissions($role),
             'is_active' => (bool) $user['is_active'],
             'email_verified' => (bool) $user['email_verified'],
-            'patient' => $patient,
+            'patient' => $publicPatient,
             'dentist' => $dentist,
         ];
     }

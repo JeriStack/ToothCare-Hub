@@ -43,7 +43,7 @@ class PatientRepository
         $stmt->execute([$userId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return $row ?: null;
+        return $row ? $this->hydrateAvatarFields($row) : null;
     }
 
     /**
@@ -56,7 +56,7 @@ class PatientRepository
         $stmt->execute([$id]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return $row ?: null;
+        return $row ? $this->hydrateAvatarFields($row) : null;
     }
 
     /**
@@ -83,7 +83,7 @@ class PatientRepository
         $stmt->execute([$id]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return $row ?: null;
+        return $row ? $this->hydrateAvatarFields($row) : null;
     }
 
     /**
@@ -146,11 +146,74 @@ class PatientRepository
             return false;
         }
 
-        $fields[] = 'updated_at = NOW()';
+        $fields[] = 'updated_at = CURRENT_TIMESTAMP';
         $setClause = implode(', ', $fields);
 
         $stmt = $pdo->prepare("UPDATE patients SET {$setClause} WHERE id = :id");
         return $stmt->execute($params);
+    }
+
+    public function updateAvatar(int $patientId, string $filename, string $mime): bool
+    {
+        $pdo = $this->database->getConnection();
+        $stmt = $pdo->prepare('
+            UPDATE patients
+            SET avatar_path = :avatar_path,
+                avatar_mime = :avatar_mime,
+                avatar_updated_at = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = :id
+        ');
+
+        return $stmt->execute([
+            ':avatar_path' => $filename,
+            ':avatar_mime' => $mime,
+            ':id' => $patientId,
+        ]);
+    }
+
+    public function clearAvatar(int $patientId): bool
+    {
+        $pdo = $this->database->getConnection();
+        $stmt = $pdo->prepare('
+            UPDATE patients
+            SET avatar_path = NULL,
+                avatar_mime = NULL,
+                avatar_updated_at = NULL,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = :id
+        ');
+
+        return $stmt->execute([':id' => $patientId]);
+    }
+
+    /**
+     * Append computed avatar_url when an avatar file is registered on the patient row.
+     *
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    public function hydrateAvatarFields(array $row): array
+    {
+        $hasAvatar = !empty($row['avatar_path']) && isset($row['id']);
+        $versionSource = (string) ($row['avatar_updated_at'] ?? $row['avatar_path'] ?? '');
+        $row['avatar_url'] = $hasAvatar
+            ? '/api/v1/patients/' . (int) $row['id'] . '/avatar?v=' . rawurlencode($versionSource)
+            : null;
+
+        return $row;
+    }
+
+    /**
+     * Strip internal server storage fields before serializing a patient payload to API clients.
+     *
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    public function stripInternalFields(array $row): array
+    {
+        unset($row['avatar_path'], $row['avatar_mime']);
+        return $row;
     }
 
     /**

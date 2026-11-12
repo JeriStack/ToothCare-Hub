@@ -34,12 +34,17 @@ class Request
      * @var array<string, mixed>
      */
     private array $attributes = [];
+    /**
+     * @var array<string, mixed>
+     */
+    private array $files = [];
 
     /**
      * @param array<string, string> $headers
      * @param array<string, mixed> $queryParams
      * @param array<string, mixed> $body
      * @param array<string, string> $routeParams
+     * @param array<string, mixed> $files
      */
     public function __construct(
         string $method,
@@ -49,7 +54,8 @@ class Request
         array $body = [],
         string $rawBody = '',
         array $routeParams = [],
-        string $requestId = ''
+        string $requestId = '',
+        array $files = []
     ) {
         $this->method = strtoupper($method);
         $this->path = self::normalizePath($path);
@@ -63,6 +69,7 @@ class Request
         $this->rawBody = $rawBody;
         $this->routeParams = $routeParams;
         $this->requestId = $requestId;
+        $this->files = $files;
     }
 
     public static function createFromGlobals(?Config $config = null): self
@@ -97,6 +104,7 @@ class Request
 
         $contentType = $headers['content-type'] ?? '';
         $body = [];
+        $files = $_FILES;
 
         if ($rawBody !== '') {
             $isJson = str_contains(strtolower($contentType), 'application/json');
@@ -114,14 +122,17 @@ class Request
                 }
                 $body = $decoded;
             }
+        } elseif (!empty($_POST) && str_contains(strtolower($contentType), 'multipart/form-data')) {
+            $body = $_POST;
         }
 
-        return new self($method, $path, $headers, $queryParams, $body, $rawBody);
+        return new self($method, $path, $headers, $queryParams, $body, $rawBody, [], '', $files);
     }
 
     /**
      * @param array<string, string> $headers
      * @param array<string, mixed> $queryParams
+     * @param array<string, mixed> $files
      */
     public static function create(
         string $method,
@@ -129,7 +140,8 @@ class Request
         array $headers = [],
         string $rawBody = '',
         array $queryParams = [],
-        ?Config $config = null
+        ?Config $config = null,
+        array $files = []
     ): self {
         $cfg = $config ?? Config::getInstance();
         $maxBodyBytes = $cfg->getInt('request_body_max_bytes', 1048576);
@@ -176,7 +188,10 @@ class Request
             $normalizedHeaders,
             $queryParams,
             $body,
-            $rawBody
+            $rawBody,
+            [],
+            '',
+            $files
         );
     }
 
@@ -260,6 +275,23 @@ class Request
     public function input(string $key, mixed $default = null): mixed
     {
         return $this->body[$key] ?? $default;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getFiles(): array
+    {
+        return $this->files;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getFile(string $key): ?array
+    {
+        $file = $this->files[$key] ?? null;
+        return is_array($file) ? $file : null;
     }
 
     /**

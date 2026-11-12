@@ -57,6 +57,9 @@ class TestDb
                 emergency_contact_name TEXT NULL,
                 emergency_contact_phone TEXT NULL,
                 medical_alerts TEXT NULL,
+                avatar_path TEXT NULL,
+                avatar_mime TEXT NULL,
+                avatar_updated_at TEXT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
