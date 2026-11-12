@@ -135,7 +135,7 @@ export function AdminDashboard({ onNavigateTab }) {
           <h1 className="text-2xl font-bold tracking-tight text-white">
             Clinic Executive Dashboard
           </h1>
-          <div className="flex items-center gap-2 mt-2 mb-1.5 flex-wrap">
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-teal-500/20 text-teal-300 border border-teal-400/30">
               Admin Control Center
             </span>
@@ -143,9 +143,6 @@ export function AdminDashboard({ onNavigateTab }) {
               Asia/Manila (UTC+8): <strong className="text-teal-200">{currentTime}</strong>
             </span>
           </div>
-          <p className="text-sm text-slate-300">
-            Real-time practice analytics, dynamic role authorization, security events, and clinical workload intelligence.
-          </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {metrics?.generated_at && (
