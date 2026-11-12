@@ -61,22 +61,47 @@ function formatManilaDate(dateStr) {
   }
 }
 
-// Live real-time Manila clock formatter
-function formatLiveManilaDateTime(date = new Date()) {
+// Formats the full Manila clinic calendar date once in the header
+function formatManilaCalendarDate(date = new Date()) {
+  try {
+    return new Intl.DateTimeFormat('en-PH', {
+      timeZone: 'Asia/Manila',
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    }).format(date);
+  } catch {
+    return date.toDateString();
+  }
+}
+
+// Machine-readable ISO calendar date in Asia/Manila for semantic <time>
+function formatManilaIsoDate(date = new Date()) {
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Manila',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(date);
+  } catch {
+    return undefined;
+  }
+}
+
+// Live real-time Manila clock formatter (time-only to avoid duplicating the date)
+function formatLiveManilaTime(date = new Date()) {
   try {
     return new Intl.DateTimeFormat('en-US', {
       timeZone: 'Asia/Manila',
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
       hour12: true,
     }).format(date);
   } catch {
-    return date.toLocaleString();
+    return date.toLocaleTimeString();
   }
 }
 
@@ -95,8 +120,8 @@ export function PatientDashboard({
   const [error, setError] = useState(null);
   const [activeListTab, setActiveListTab] = useState('upcoming');
 
-  // Live Manila Clock
-  const [liveClock, setLiveClock] = useState(() => formatLiveManilaDateTime());
+  // Live Manila clock timestamp (updates date and time without midnight staleness)
+  const [clinicNow, setClinicNow] = useState(() => new Date());
 
   // Cancellation Modal State
   const [cancelModalAppt, setCancelModalAppt] = useState(null);
@@ -114,7 +139,7 @@ export function PatientDashboard({
   // Update live clock every second
   useEffect(() => {
     const timer = setInterval(() => {
-      setLiveClock(formatLiveManilaDateTime());
+      setClinicNow(new Date());
     }, 1000);
     return () => clearInterval(timer);
   }, []);
@@ -157,34 +182,28 @@ export function PatientDashboard({
     ? dashboardData.patient.first_name
     : 'Patient';
 
-  // Current clinic date banner string
-  const currentManilaDateStr = useMemo(() => {
-    return new Intl.DateTimeFormat('en-PH', {
-      timeZone: 'Asia/Manila',
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    }).format(new Date());
-  }, []);
-
-  const now = new Date();
+  // Current clinic date & time strings formatted in Asia/Manila
+  const manilaIsoDate = formatManilaIsoDate(clinicNow);
+  const currentManilaDateStr = formatManilaCalendarDate(clinicNow);
+  const liveTimeStr = formatLiveManilaTime(clinicNow);
+  const currentMinuteBucket = Math.floor(clinicNow.getTime() / 60000);
 
   // Compute live filtered lists
   const upcomingConfirmedList = useMemo(() => {
+    const nowMs = currentMinuteBucket * 60000;
     // If backend dashboard provides next_appointment and additional_upcoming, prefer real records
     return appointments
       .filter((a) => {
         if (a.status !== 'CONFIRMED') return false;
         const d = new Date((a.start_at || a.date || '').replace(' ', 'T'));
-        return isNaN(d.getTime()) || d >= now;
+        return isNaN(d.getTime()) || d.getTime() >= nowMs;
       })
       .sort((a, b) => {
         const da = new Date((a.start_at || a.date || '').replace(' ', 'T')).getTime() || 0;
         const db = new Date((b.start_at || b.date || '').replace(' ', 'T')).getTime() || 0;
         return da - db;
       });
-  }, [appointments, now]);
+  }, [appointments, currentMinuteBucket]);
 
   const pendingList = useMemo(() => {
     return appointments
@@ -253,43 +272,72 @@ export function PatientDashboard({
   return (
     <div className="space-y-6">
       {/* 1. Header Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs">
-        <div>
-          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[#0D9488] mb-1">
-            <Calendar className="w-3.5 h-3.5 shrink-0" />
-            <span>{currentManilaDateStr} • Clinic Time (Asia/Manila)</span>
-            <span className="hidden md:inline px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-mono text-[11px]">
-              {liveClock}
-            </span>
+      <div className="relative overflow-hidden bg-gradient-to-br from-white via-white to-teal-50/45 rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-sm">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-12 -top-12 w-56 h-56 rounded-full bg-teal-500/[0.05] blur-2xl"
+        />
+
+        <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          <div className="min-w-0 space-y-2">
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[#12304A] text-balance">
+              Welcome back, {patientName}!
+            </h2>
+
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="inline-flex items-center gap-1.5 font-semibold text-[#0F766E]">
+                <Calendar className="w-3.5 h-3.5 shrink-0 text-[#0D9488]" aria-hidden="true" />
+                <time dateTime={manilaIsoDate}>{currentManilaDateStr}</time>
+              </span>
+
+              <span className="text-slate-300 hidden sm:inline" aria-hidden="true">
+                |
+              </span>
+
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100/90 border border-slate-200/80 text-slate-600 text-[11px]">
+                <Clock className="w-3 h-3 shrink-0 text-[#0F766E]" aria-hidden="true" />
+                <time
+                  dateTime={clinicNow.toISOString()}
+                  className="font-mono tabular-nums font-semibold text-[#12304A]"
+                >
+                  {liveTimeStr}
+                </time>
+                <span className="text-slate-400" aria-hidden="true">
+                  •
+                </span>
+                <span>Clinic Time (Asia/Manila)</span>
+              </span>
+            </div>
+
+            <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed text-pretty">
+              Track your appointments, discover clinical services, and manage your oral health profile.
+            </p>
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-[#12304A]">
-            Welcome back, {patientName}!
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-xl">
-            Track your appointments, discover clinical services, and manage your oral health profile.
-          </p>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          <button
-            type="button"
-            onClick={() => fetchDashboardData(true)}
-            disabled={refreshing}
-            title="Refresh appointments"
-            className="p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
-            aria-label="Refresh appointments"
-          >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-teal-600' : ''}`} />
-          </button>
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => fetchDashboardData(true)}
+              disabled={refreshing}
+              className="inline-flex items-center justify-center gap-2 min-h-10 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300 hover:text-[#12304A] active:scale-[0.98] text-xs font-semibold transition-all shadow-sm disabled:opacity-60 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+            >
+              <RefreshCw
+                className={`w-4 h-4 text-slate-500 shrink-0 ${refreshing ? 'animate-spin text-[#0D9488]' : ''}`}
+                aria-hidden="true"
+              />
+              <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+              <span className="sr-only"> appointments</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={onNavigateToBook}
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] text-white text-xs font-bold transition-all shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Book an Appointment</span>
-          </button>
+            <button
+              type="button"
+              onClick={onNavigateToBook}
+              className="inline-flex items-center justify-center gap-2 min-h-10 px-5 py-2.5 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] active:scale-[0.98] text-white text-xs font-bold transition-all shadow-sm hover:shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2 cursor-pointer"
+            >
+              <Plus className="w-4 h-4 shrink-0" aria-hidden="true" />
+              <span>Book an Appointment</span>
+            </button>
+          </div>
         </div>
       </div>
 

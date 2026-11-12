@@ -27,10 +27,10 @@ describe('PatientDashboard Component', () => {
     vi.clearAllMocks();
   });
 
-  it('renders welcome section with patient name and Asia/Manila clinic time', async () => {
-    appointmentsApi.list.mockResolvedValueOnce([]);
+  it('renders welcome section with patient name, non-duplicated clinic date/time, and refresh action', async () => {
+    appointmentsApi.list.mockResolvedValue([]);
 
-    render(
+    const { container } = render(
       <PatientDashboard
         user={mockUser}
         onNavigateToBook={vi.fn()}
@@ -41,6 +41,23 @@ describe('PatientDashboard Component', () => {
     await waitFor(() => {
       expect(screen.getByText(/Welcome back, Juan!/i)).toBeDefined();
       expect(screen.getByText(/Clinic Time \(Asia\/Manila\)/i)).toBeDefined();
+    });
+
+    const headingEl = screen.getByRole('heading', { name: /Welcome back, Juan!/i });
+    const clinicTimeEl = screen.getByText(/Clinic Time \(Asia\/Manila\)/i);
+    const subtitleEl = screen.getByText(/Track your appointments, discover clinical services/i);
+    expect(headingEl.compareDocumentPosition(clinicTimeEl) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(clinicTimeEl.compareDocumentPosition(subtitleEl) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    const timeNodes = container.querySelectorAll('time');
+    expect(timeNodes.length).toBe(2);
+    expect(timeNodes[1].textContent).toMatch(/^\d{2}:\d{2}:\d{2}\s?(AM|PM)$/i);
+
+    const refreshBtn = screen.getByRole('button', { name: /Refresh appointments/i });
+    fireEvent.click(refreshBtn);
+
+    await waitFor(() => {
+      expect(appointmentsApi.list).toHaveBeenCalledTimes(2);
     });
   });
 
