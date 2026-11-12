@@ -12,6 +12,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { reportsApi } from '../api';
+import { ReportSkeleton } from '../../../components/skeletons';
 
 export function ReportsPage() {
   const [dateRange, setDateRange] = useState('30'); // '7' | '30' | '90'
@@ -55,6 +56,10 @@ export function ReportsPage() {
   useEffect(() => {
     fetchReports();
   }, [fetchReports]);
+
+  if (loading && !apptData) {
+    return <ReportSkeleton />;
+  }
 
   return (
     <div className="space-y-6">

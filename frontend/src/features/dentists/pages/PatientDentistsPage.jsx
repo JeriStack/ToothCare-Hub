@@ -14,6 +14,7 @@ import {
   Award,
 } from 'lucide-react';
 import { dentistsApi } from '../api';
+import { CardSkeleton } from '../../../components/skeletons';
 
 export function PatientDentistsPage({ onBookDentist }) {
   const [dentists, setDentists] = useState([]);
@@ -155,24 +156,7 @@ export function PatientDentistsPage({ onBookDentist }) {
 
       {/* Loading Skeleton */}
       {loading ? (
-        <div className="portal-grid-3 gap-6">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div
-              key={i}
-              className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs animate-pulse space-y-4"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-slate-200" />
-                <div className="space-y-2 flex-1">
-                  <div className="h-4 bg-slate-200 rounded-md w-3/4" />
-                  <div className="h-3 bg-slate-200 rounded-md w-1/2" />
-                </div>
-              </div>
-              <div className="h-12 bg-slate-100 rounded-lg" />
-              <div className="h-9 bg-slate-200 rounded-xl" />
-            </div>
-          ))}
-        </div>
+        <CardSkeleton variant="dentist" count={6} className="portal-grid-3 gap-6" />
       ) : filteredDentists.length === 0 ? (
         /* Empty State */
         <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center shadow-xs">

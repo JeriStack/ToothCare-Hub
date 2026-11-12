@@ -17,6 +17,7 @@ import {
 import { useAuth } from '../../auth/context/AuthContext';
 import { dentistsApi } from '../api';
 import { ProfilePhotoUploader } from '../../../components/ui/ProfilePhotoUploader';
+import { ProfileSkeleton } from '../../../components/skeletons';
 
 const EMPTY_FORM = {
   first_name: '',
@@ -235,21 +236,7 @@ export function DentistProfilePage({ onProfileUpdated }) {
   };
 
   if (isLoading) {
-    return (
-      <div className="space-y-6 animate-pulse">
-        <div className="space-y-2">
-          <div className="h-7 w-40 rounded-lg bg-slate-200" />
-          <div className="h-4 w-80 max-w-full rounded-lg bg-slate-200" />
-        </div>
-        <div className="portal-split-1-2 gap-6 items-start">
-          <div className="h-80 rounded-2xl bg-white border border-slate-200" />
-          <div className="space-y-5">
-            <div className="h-56 rounded-2xl bg-white border border-slate-200" />
-            <div className="h-56 rounded-2xl bg-white border border-slate-200" />
-          </div>
-        </div>
-      </div>
-    );
+    return <ProfileSkeleton title="Dentist Profile" />;
   }
 
   return (

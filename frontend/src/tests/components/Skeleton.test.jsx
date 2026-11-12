@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { Skeleton } from '../../components/ui/Skeleton';
+import { Skeleton, SkeletonText, SkeletonAvatar, SkeletonButton } from '../../components/ui/Skeleton';
 import {
   StatCardSkeleton,
   TableSkeleton,
@@ -10,6 +10,12 @@ import {
   DashboardSkeleton,
   BookingStepSkeleton,
   ScheduleCalendarSkeleton,
+  ProfileSkeleton,
+  NotificationSkeleton,
+  AppointmentDetailSkeleton,
+  SystemHealthSkeleton,
+  ReportSkeleton,
+  PermissionMatrixSkeleton,
 } from '../../components/skeletons';
 
 describe('Base Skeleton Component', () => {
@@ -39,6 +45,33 @@ describe('Base Skeleton Component', () => {
     const { container } = render(<Skeleton animation="shimmer" />);
     const el = container.firstElementChild;
     expect(el).toHaveClass('before:animate-[shimmer_2s_infinite]');
+  });
+
+  it('supports srText for accessible hidden descriptions', () => {
+    render(<Skeleton srText="Loading confidential content" />);
+    expect(screen.getByText('Loading confidential content')).toBeInTheDocument();
+    expect(screen.getByText('Loading confidential content')).toHaveClass('sr-only');
+  });
+});
+
+describe('Skeleton Typography & Element Primitives', () => {
+  it('renders SkeletonText with customizable lines and ragging', () => {
+    const { container } = render(<SkeletonText lines={4} lastLineWidth="w-1/2" />);
+    const lines = container.querySelectorAll('.w-full > div');
+    expect(lines.length).toBe(4);
+    expect(lines[3]).toHaveClass('w-1/2');
+  });
+
+  it('renders SkeletonAvatar with preset sizes and shapes', () => {
+    const { container } = render(<SkeletonAvatar size="lg" shape="circle" />);
+    const avatar = container.querySelector('.rounded-full.w-12.h-12');
+    expect(avatar).toBeInTheDocument();
+  });
+
+  it('renders SkeletonButton with proper sizing and border radius', () => {
+    const { container } = render(<SkeletonButton size="md" width="w-36" />);
+    const btn = container.querySelector('.h-10.w-36');
+    expect(btn).toBeInTheDocument();
   });
 });
 
@@ -92,6 +125,7 @@ describe('CardSkeleton Component', () => {
   it('renders dentist variant with circular avatar placeholders', () => {
     const { container } = render(<CardSkeleton variant="dentist" count={2} />);
     const wrapper = container.querySelector('[aria-busy="true"]');
+    expect(wrapper).toBeInTheDocument();
     expect(wrapper.children.length).toBe(2);
     const roundAvatars = container.querySelectorAll('.rounded-full');
     expect(roundAvatars.length).toBeGreaterThanOrEqual(2);
@@ -112,7 +146,21 @@ describe('DashboardSkeleton Component', () => {
     const { container } = render(<DashboardSkeleton role="admin" />);
     const wrapper = container.querySelector('[aria-busy="true"]');
     expect(wrapper).toBeInTheDocument();
-    expect(wrapper).toHaveAttribute('aria-label', 'Loading administrator dashboard');
+    expect(wrapper).toHaveAttribute('aria-label', 'Loading administrator executive dashboard');
+  });
+
+  it('renders receptionist dashboard skeleton with front desk queues and check-in triage', () => {
+    const { container } = render(<DashboardSkeleton role="receptionist" />);
+    const wrapper = container.querySelector('[aria-busy="true"]');
+    expect(wrapper).toBeInTheDocument();
+    expect(wrapper).toHaveAttribute('aria-label', 'Loading front desk operations dashboard');
+  });
+
+  it('renders dentist clinical workspace skeleton', () => {
+    const { container } = render(<DashboardSkeleton role="dentist" />);
+    const wrapper = container.querySelector('[aria-busy="true"]');
+    expect(wrapper).toBeInTheDocument();
+    expect(wrapper).toHaveAttribute('aria-label', 'Loading dentist clinical workspace');
   });
 
   it('renders patient dashboard skeleton with greeting, next visit, and metrics', () => {
@@ -121,12 +169,50 @@ describe('DashboardSkeleton Component', () => {
     expect(wrapper).toBeInTheDocument();
     expect(wrapper).toHaveAttribute('aria-label', 'Loading patient portal');
   });
+});
 
-  it('renders dentist clinical schedule skeleton', () => {
-    const { container } = render(<DashboardSkeleton role="dentist" />);
+describe('Module-Specific Skeleton Components', () => {
+  it('renders ProfileSkeleton with responsive 1:2 layout and aria-busy', () => {
+    const { container } = render(<ProfileSkeleton title="Staff Profile" />);
     const wrapper = container.querySelector('[aria-busy="true"]');
     expect(wrapper).toBeInTheDocument();
-    expect(wrapper).toHaveAttribute('aria-label', 'Loading dentist clinical schedule');
+    expect(wrapper).toHaveAttribute('aria-label', 'Loading Staff Profile');
+  });
+
+  it('renders NotificationSkeleton in compact dropdown and page variants', () => {
+    const { container: compactContainer } = render(<NotificationSkeleton variant="compact" count={3} />);
+    expect(compactContainer.querySelector('[aria-label="Loading notifications"]')).toBeInTheDocument();
+
+    const { container: pageContainer } = render(<NotificationSkeleton variant="page" count={4} />);
+    expect(pageContainer.querySelector('[aria-label="Loading notification history"]')).toBeInTheDocument();
+  });
+
+  it('renders AppointmentDetailSkeleton with back button and clinical sections', () => {
+    const { container } = render(<AppointmentDetailSkeleton />);
+    const wrapper = container.querySelector('[aria-busy="true"]');
+    expect(wrapper).toBeInTheDocument();
+    expect(wrapper).toHaveAttribute('aria-label', 'Loading appointment clinical details');
+  });
+
+  it('renders SystemHealthSkeleton with operational diagnostics placeholders', () => {
+    const { container } = render(<SystemHealthSkeleton />);
+    const wrapper = container.querySelector('[aria-busy="true"]');
+    expect(wrapper).toBeInTheDocument();
+    expect(wrapper).toHaveAttribute('aria-label', 'Loading system diagnostics and configuration');
+  });
+
+  it('renders ReportSkeleton with KPI metrics and chart placeholders', () => {
+    const { container } = render(<ReportSkeleton />);
+    const wrapper = container.querySelector('[aria-busy="true"]');
+    expect(wrapper).toBeInTheDocument();
+    expect(wrapper).toHaveAttribute('aria-label', 'Loading reports and analytics data');
+  });
+
+  it('renders PermissionMatrixSkeleton with role cards and matrix table', () => {
+    const { container } = render(<PermissionMatrixSkeleton />);
+    const wrapper = container.querySelector('[aria-busy="true"]');
+    expect(wrapper).toBeInTheDocument();
+    expect(wrapper).toHaveAttribute('aria-label', 'Loading role permissions matrix');
   });
 });
 

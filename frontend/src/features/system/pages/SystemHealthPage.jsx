@@ -16,6 +16,7 @@ import {
   MapPin
 } from 'lucide-react';
 import { systemApi } from '../api';
+import { SystemHealthSkeleton } from '../../../components/skeletons';
 
 export function SystemHealthPage() {
   const [health, setHealth] = useState(null);
@@ -87,6 +88,10 @@ export function SystemHealthPage() {
   };
 
   const services = health?.services || {};
+
+  if (loading && !health) {
+    return <SystemHealthSkeleton />;
+  }
 
   return (
     <div className="space-y-6">

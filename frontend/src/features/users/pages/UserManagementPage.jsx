@@ -17,6 +17,7 @@ import {
   Lock
 } from 'lucide-react';
 import { usersApi } from '../api';
+import { TableSkeleton } from '../../../components/skeletons';
 
 const ROLE_BADGE_MAP = {
   ADMIN: 'bg-indigo-50 text-indigo-800 border-indigo-200',
@@ -252,11 +253,7 @@ export function UserManagementPage() {
             </button>
           </div>
         ) : loading && users.length === 0 ? (
-          <div className="p-8 space-y-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-12 bg-slate-100 rounded-xl animate-pulse" />
-            ))}
-          </div>
+          <TableSkeleton rows={6} cols={6} />
         ) : users.length === 0 ? (
           <div className="p-12 text-center text-slate-400">
             <Users className="w-10 h-10 mx-auto mb-2 text-slate-300" />
