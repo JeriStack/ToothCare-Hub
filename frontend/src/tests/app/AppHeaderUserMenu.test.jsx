@@ -33,6 +33,9 @@ vi.mock('../../features/notifications/components/NotificationCenter', () => ({
 vi.mock('../../features/dentists/pages/DentistProfilePage', () => ({
   DentistProfilePage: () => <div>DentistProfilePageMock</div>,
 }));
+vi.mock('../../features/staff/pages/StaffProfilePage', () => ({
+  StaffProfilePage: () => <div>StaffProfilePageMock</div>,
+}));
 
 describe('Portal Header Identity & Account Dropdown', () => {
   const logoutMock = vi.fn().mockResolvedValue(true);
@@ -344,5 +347,41 @@ describe('Portal Header Identity & Account Dropdown', () => {
     const profileMenuItem = within(accountMenu).getByRole('button', { name: /My Profile/i });
     fireEvent.click(profileMenuItem);
     expect(screen.getByText('DentistProfilePageMock')).toBeInTheDocument();
+  });
+
+  it('renders My Profile in receptionist navigation and replaces Portal Overview in account dropdown', () => {
+    window.history.pushState({}, '', '/receptionist');
+    mockUseAuth.mockReturnValue({
+      user: {
+        id: 3,
+        email: 'receptionist@toothcare.com',
+        first_name: 'Clarisse',
+        last_name: 'Mendoza',
+        role: 'RECEPTIONIST',
+        avatar_url: '/api/v1/users/3/avatar?v=45',
+        permissions: ['appointments.view'],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      logout: logoutMock,
+      hasPermission: (perm) => perm === 'appointments.view',
+      refreshUser: vi.fn(),
+    });
+
+    render(<App />);
+
+    expect(screen.getByRole('button', { name: 'My Profile' })).toBeInTheDocument();
+
+    const accountMenuTrigger = screen.getByRole('button', { name: /Clarisse Mendoza account menu/i });
+    expect(accountMenuTrigger).toHaveTextContent('Front Desk Specialist');
+    fireEvent.click(accountMenuTrigger);
+
+    const accountMenu = document.getElementById('user-account-menu');
+    expect(accountMenu).not.toBeNull();
+    expect(within(accountMenu).queryByText('Portal Overview')).toBeNull();
+
+    const profileMenuItem = within(accountMenu).getByRole('button', { name: /My Profile/i });
+    fireEvent.click(profileMenuItem);
+    expect(screen.getByText('StaffProfilePageMock')).toBeInTheDocument();
   });
 });

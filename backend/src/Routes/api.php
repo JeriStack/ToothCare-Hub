@@ -59,6 +59,18 @@ $router->group('/api/v1', function (Router $r): void {
     // Protected Auth Endpoints
     $r->post('/auth/logout', [AuthController::class, 'logout'], [AuthenticationMiddleware::class]);
     $r->get('/auth/me', [AuthController::class, 'me'], [AuthenticationMiddleware::class]);
+    $r->patch('/auth/me', [UserController::class, 'updateMe'], [AuthenticationMiddleware::class]);
+    $r->get('/auth/me/avatar', [UserController::class, 'serveMyAvatar'], [AuthenticationMiddleware::class]);
+    $r->post('/auth/me/avatar', [UserController::class, 'uploadMyAvatar'], [AuthenticationMiddleware::class]);
+    $r->delete('/auth/me/avatar', [UserController::class, 'deleteMyAvatar'], [AuthenticationMiddleware::class]);
+
+    // User / Staff Self-Service Profile Endpoints
+    $r->get('/user/profile', [UserController::class, 'me'], [AuthenticationMiddleware::class]);
+    $r->patch('/user/profile', [UserController::class, 'updateMe'], [AuthenticationMiddleware::class]);
+    $r->get('/user/profile/avatar', [UserController::class, 'serveMyAvatar'], [AuthenticationMiddleware::class]);
+    $r->post('/user/profile/avatar', [UserController::class, 'uploadMyAvatar'], [AuthenticationMiddleware::class]);
+    $r->delete('/user/profile/avatar', [UserController::class, 'deleteMyAvatar'], [AuthenticationMiddleware::class]);
+    $r->get('/users/{id}/avatar', [UserController::class, 'serveAvatar']);
 
     // 3. Public Catalog Endpoints (Active items for booking/discovery)
     $r->get('/services', [ServiceController::class, 'listPublic']);

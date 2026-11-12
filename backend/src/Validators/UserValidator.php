@@ -175,4 +175,54 @@ class UserValidator
             ['is_active' => 'Status must be a boolean or 1/0.']
         );
     }
+
+    /**
+     * Validate user profile update payload (name, phone)
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     * @throws HttpException
+     */
+    public static function validateUpdateProfile(array $data): array
+    {
+        $errors = [];
+        $sanitized = [];
+
+        if (array_key_exists('first_name', $data)) {
+            $firstName = trim((string) $data['first_name']);
+            if ($firstName === '') {
+                $errors['first_name'] = 'First name cannot be empty.';
+            } elseif (strlen($firstName) < 2 || strlen($firstName) > 100) {
+                $errors['first_name'] = 'First name must be between 2 and 100 characters.';
+            } else {
+                $sanitized['first_name'] = $firstName;
+            }
+        }
+
+        if (array_key_exists('last_name', $data)) {
+            $lastName = trim((string) $data['last_name']);
+            if ($lastName === '') {
+                $errors['last_name'] = 'Last name cannot be empty.';
+            } elseif (strlen($lastName) < 2 || strlen($lastName) > 100) {
+                $errors['last_name'] = 'Last name must be between 2 and 100 characters.';
+            } else {
+                $sanitized['last_name'] = $lastName;
+            }
+        }
+
+        if (array_key_exists('phone', $data)) {
+            $phone = trim((string) ($data['phone'] ?? ''));
+            if ($phone !== '' && strlen($phone) > 50) {
+                $errors['phone'] = 'Phone number cannot exceed 50 characters.';
+            } else {
+                $sanitized['phone'] = $phone !== '' ? $phone : null;
+            }
+        }
+
+        if (count($errors) > 0) {
+            throw HttpException::unprocessable('Validation failed.', $errors);
+        }
+
+        return $sanitized;
+    }
 }

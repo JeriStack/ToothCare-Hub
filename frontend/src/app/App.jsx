@@ -57,6 +57,7 @@ import { RolePermissionMatrixPage } from '../features/roles/pages/RolePermission
 import { AuditTrailPage } from '../features/audit/pages/AuditTrailPage';
 import { ReportsPage } from '../features/reports/pages/ReportsPage';
 import { SystemHealthPage } from '../features/system/pages/SystemHealthPage';
+import { StaffProfilePage } from '../features/staff/pages/StaffProfilePage';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 
 function getInitialRoute() {
@@ -98,6 +99,7 @@ function getInitialTab() {
         'audit',
         'reports',
         'system',
+        'profile',
       ].includes(sub)
     ) {
       return sub === 'queue' ? 'triage' : sub;
@@ -248,6 +250,7 @@ function getSidebarSections(currentRole, hasPermission, { onPatientNav, onAdminN
           { key: 'services', label: 'Services & Fees', icon: Stethoscope, onSelect: () => onAdminNav('services') },
           { key: 'dentists', label: 'Dentist Roster', icon: Shield, onSelect: () => onAdminNav('dentists') },
           { key: 'schedules', label: 'Hours & Schedules', icon: Clock, onSelect: () => onAdminNav('schedules') },
+          { key: 'profile', label: 'My Profile', icon: Shield, onSelect: () => onAdminNav('profile') },
         ],
       },
       ...(adminSecurityItems.length > 0
@@ -752,32 +755,23 @@ function AppContent() {
                   </div>
 
                   <div className="p-1.5 space-y-0.5">
-                    {currentRole === 'PATIENT' || currentRole === 'DENTIST' ? (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          currentRole === 'PATIENT'
-                            ? handlePatientNav('profile')
-                            : handleDentistNav('profile')
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        if (currentRole === 'PATIENT') {
+                          handlePatientNav('profile');
+                        } else if (currentRole === 'DENTIST') {
+                          handleDentistNav('profile');
+                        } else {
+                          handleAdminNav('profile');
                         }
-                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#12304A] transition-colors text-left"
-                      >
-                        <User className="w-4 h-4 text-[#0D9488]" />
-                        <span>My Profile</span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          setActiveTab('dashboard');
-                        }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#12304A] transition-colors text-left"
-                      >
-                        <Calendar className="w-4 h-4 text-[#0D9488]" />
-                        <span>Portal Overview</span>
-                      </button>
-                    )}
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#12304A] transition-colors text-left"
+                    >
+                      <User className="w-4 h-4 text-[#0D9488]" />
+                      <span>My Profile</span>
+                    </button>
 
                     <div className="my-1 border-t border-slate-100" />
 
@@ -1008,6 +1002,10 @@ function AppContent() {
               {activeTab === 'system' && (hasPermission('system.health') || hasPermission('settings.manage')) && (
                 <SystemHealthPage />
               )}
+
+              {activeTab === 'profile' && (
+                <StaffProfilePage onProfileUpdated={(msg) => showToast(msg || 'Your staff profile has been updated.')} />
+              )}
             </>
           )}
 
@@ -1038,6 +1036,10 @@ function AppContent() {
 
               {activeTab === 'schedules' && (
                 <AdminSchedulePage />
+              )}
+
+              {activeTab === 'profile' && (
+                <StaffProfilePage onProfileUpdated={(msg) => showToast(msg || 'Your administrator profile has been updated.')} />
               )}
 
               {activeTab === 'users' && (

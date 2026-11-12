@@ -396,11 +396,29 @@ class AuthService
             ? $this->dentistRepository->stripInternalFields($dentist)
             : null;
 
+        $avatarUrl = null;
+        if (!empty($patient['avatar_url'])) {
+            $avatarUrl = (string) $patient['avatar_url'];
+        } elseif (!empty($dentist['avatar_url'])) {
+            $avatarUrl = (string) $dentist['avatar_url'];
+        } elseif (!empty($user['avatar_url'])) {
+            $avatarUrl = (string) $user['avatar_url'];
+        } elseif (!empty($user['avatar_path']) && isset($user['id'])) {
+            $versionSource = (string) ($user['avatar_updated_at'] ?? $user['avatar_path'] ?? '');
+            $avatarUrl = '/api/v1/users/' . (int) $user['id'] . '/avatar?v=' . rawurlencode($versionSource);
+        }
+
+        $phone = !empty($user['phone'])
+            ? (string) $user['phone']
+            : (!empty($dentist['phone']) ? (string) $dentist['phone'] : (!empty($patient['phone']) ? (string) $patient['phone'] : null));
+
         return [
             'id' => (int) $user['id'],
             'email' => (string) $user['email'],
             'first_name' => $firstName !== '' ? $firstName : null,
             'last_name' => $lastName !== '' ? $lastName : null,
+            'phone' => $phone,
+            'avatar_url' => $avatarUrl,
             'display_name' => $displayName,
             'role' => $role,
             'permissions' => $this->resolveUserPermissions($role),
