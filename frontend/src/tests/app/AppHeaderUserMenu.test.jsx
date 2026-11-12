@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import App, { resolveUserIdentity } from '../../app/App';
+import { globalLoadingManager } from '../../lib/loadingManager';
 
 const mockUseAuth = vi.fn();
 
@@ -407,5 +408,42 @@ describe('Portal Header Identity & Account Dropdown', () => {
     const profileMenuItem = within(accountMenu).getByRole('button', { name: /My Profile/i });
     fireEvent.click(profileMenuItem);
     expect(screen.getByText('StaffProfilePageMock')).toBeInTheDocument();
+  });
+
+  it('registers route navigation transitions in App without flashing or leaking active loading state', async () => {
+    window.history.pushState({}, '', '/admin');
+    mockUseAuth.mockReturnValue({
+      user: {
+        id: 1,
+        first_name: 'Admin',
+        last_name: 'User',
+        role: 'ADMIN',
+        permissions: ['appointments.view'],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      logout: logoutMock,
+      hasPermission: () => true,
+      refreshUser: vi.fn(),
+    });
+
+    const startSpy = vi.spyOn(globalLoadingManager, 'start');
+    render(<App />);
+
+    expect(screen.queryByTestId('global-loading-bar')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'My Profile' }));
+    expect(screen.getByText('StaffProfilePageMock')).toBeInTheDocument();
+    expect(startSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/^nav:ADMIN:profile/),
+      expect.objectContaining({ type: 'route' })
+    );
+
+    await waitFor(() => {
+      expect(globalLoadingManager.getSnapshot().activeCount).toBe(0);
+    });
+    expect(screen.queryByTestId('global-loading-bar')).not.toBeInTheDocument();
+
+    startSpy.mockRestore();
   });
 });

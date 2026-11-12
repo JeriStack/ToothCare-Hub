@@ -26,7 +26,11 @@ export function AuthProvider({ children }) {
     }
     setError(null);
     try {
-      const data = await authApi.getMe();
+      const requestOptions =
+        isSilent || (typeof window !== 'undefined' && window.location.pathname === '/')
+          ? { background: true }
+          : undefined;
+      const data = await authApi.getMe(requestOptions);
       if (data) {
         setUser(data);
         try {

@@ -739,8 +739,10 @@ export function AdminAppointmentsPage() {
                 type="button"
                 onClick={handleConfirmAction}
                 disabled={confirming}
-                className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 shadow-sm transition-all disabled:opacity-50 flex items-center gap-1.5"
+                aria-busy={confirming}
+                className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 shadow-sm transition-all disabled:opacity-50 inline-flex items-center gap-1.5"
               >
+                {confirming && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
                 {confirming ? 'Confirming...' : 'Approve & Confirm'}
               </button>
             </div>
@@ -796,8 +798,10 @@ export function AdminAppointmentsPage() {
                 type="button"
                 onClick={handleRejectAction}
                 disabled={rejecting || !rejectReason.trim()}
-                className="px-4 py-2 rounded-xl bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 shadow-sm transition-all disabled:opacity-50"
+                aria-busy={rejecting}
+                className="px-4 py-2 rounded-xl bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 shadow-sm transition-all disabled:opacity-50 inline-flex items-center gap-1.5"
               >
+                {rejecting && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
                 {rejecting ? 'Declining...' : 'Decline Request'}
               </button>
             </div>
@@ -840,8 +844,10 @@ export function AdminAppointmentsPage() {
                 type="button"
                 onClick={handleCompleteAction}
                 disabled={completing}
-                className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 shadow-sm transition-all disabled:opacity-50"
+                aria-busy={completing}
+                className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 shadow-sm transition-all disabled:opacity-50 inline-flex items-center gap-1.5"
               >
+                {completing && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
                 {completing ? 'Completing...' : 'Mark Completed'}
               </button>
             </div>
@@ -897,8 +903,10 @@ export function AdminAppointmentsPage() {
                 type="button"
                 onClick={handleCancelAction}
                 disabled={cancelling}
-                className="px-4 py-2 rounded-xl bg-slate-700 text-white text-xs font-semibold hover:bg-slate-800 shadow-sm transition-all disabled:opacity-50"
+                aria-busy={cancelling}
+                className="px-4 py-2 rounded-xl bg-slate-700 text-white text-xs font-semibold hover:bg-slate-800 shadow-sm transition-all disabled:opacity-50 inline-flex items-center gap-1.5"
               >
+                {cancelling && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
                 {cancelling ? 'Cancelling...' : 'Confirm Cancellation'}
               </button>
             </div>

@@ -25,8 +25,8 @@ export const dentistsApi = {
   /**
    * Fetch active dentists roster for public appointment scheduling
    */
-  async getPublicDentists() {
-    const res = await apiClient.get('/dentists');
+  async getPublicDentists(options = {}) {
+    const res = await apiClient.get('/dentists', options);
     return res.data?.data || [];
   },
 

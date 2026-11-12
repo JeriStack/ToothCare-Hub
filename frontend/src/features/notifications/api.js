@@ -8,8 +8,8 @@ export const notificationsApi = {
   /**
    * Fetch paginated in-app notifications for authenticated user
    */
-  async getNotifications(params = {}) {
-    const res = await apiClient.get('/notifications', { params });
+  async getNotifications(params = {}, options = {}) {
+    const res = await apiClient.get('/notifications', { ...options, params });
     return res.data?.data || {
       items: [],
       total: 0,

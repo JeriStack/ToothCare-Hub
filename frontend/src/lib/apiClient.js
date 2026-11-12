@@ -4,7 +4,59 @@
  * parameter serialization, and standardized envelope responses using native Fetch.
  */
 
+import { globalLoadingManager } from './loadingManager';
+
 const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+
+const EXCLUDED_GLOBAL_LOADING_PATHS = [
+  /\/auth\/csrf-token$/i,
+  /\/notifications\/unread-count$/i,
+  /\/user\/profile\/avatar$/i,
+];
+
+/**
+ * Determine whether an HTTP request qualifies for the Global Top Loading Bar.
+ * Supports explicit opt-in (`globalLoading: true`) and opt-out (`globalLoading: false`,
+ * `skipGlobalLoading: true`, `background: true`, `silent: true`) plus sensible defaults
+ * for silent CSRF fetches, polling badges, and file transfer operations.
+ */
+export function shouldTrackGlobalLoading(method, path = '', data = null, options = {}) {
+  if (
+    options.globalLoading === false ||
+    options.skipGlobalLoading === true ||
+    options.background === true ||
+    options.silent === true
+  ) {
+    return false;
+  }
+
+  if (options.globalLoading === true) {
+    return true;
+  }
+
+  if (options.signal?.aborted) {
+    return false;
+  }
+
+  // Defer file upload/download tracking to dedicated transfer progress controls
+  if (
+    typeof FormData !== 'undefined' &&
+    data instanceof FormData
+  ) {
+    return false;
+  }
+
+  if (options.onUploadProgress || options.onDownloadProgress) {
+    return false;
+  }
+
+  const normalizedPath = String(path).split('?')[0];
+  if (EXCLUDED_GLOBAL_LOADING_PATHS.some((pattern) => pattern.test(normalizedPath))) {
+    return false;
+  }
+
+  return true;
+}
 
 let cachedCsrfToken = null;
 let isFetchingCsrfToken = null;
@@ -66,14 +118,26 @@ async function request(method, path, data = null, options = {}) {
   const upperMethod = method.toUpperCase();
   const unsafeMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
+  const {
+    params,
+    globalLoading,
+    skipGlobalLoading,
+    background,
+    silent,
+    loadingKey,
+    onUploadProgress,
+    onDownloadProgress,
+    ...restOptions
+  } = options;
+
   let url = path.startsWith('http')
     ? path
     : `${baseURL.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
 
   // Query parameter serialization
-  if (options.params && typeof options.params === 'object') {
+  if (params && typeof params === 'object') {
     const searchParams = new URLSearchParams();
-    for (const [key, val] of Object.entries(options.params)) {
+    for (const [key, val] of Object.entries(params)) {
       if (val !== undefined && val !== null && val !== '') {
         searchParams.append(key, String(val));
       }
@@ -84,106 +148,134 @@ async function request(method, path, data = null, options = {}) {
     }
   }
 
-  const headers = {
-    'Accept': 'application/json',
-    ...(data !== null && !(data instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
-    ...(options.headers || {}),
-  };
+  const trackGlobal = shouldTrackGlobalLoading(upperMethod, path, data, {
+    globalLoading,
+    skipGlobalLoading,
+    background,
+    silent,
+    onUploadProgress,
+    onDownloadProgress,
+    signal: restOptions.signal,
+  });
 
-  // Inject CSRF token on mutating requests
-  if (unsafeMethods.includes(upperMethod) && !headers['X-CSRF-Token']) {
-    const token = await fetchCsrfToken();
-    if (token) {
-      headers['X-CSRF-Token'] = token;
-    }
-  }
+  const trackingId = trackGlobal
+    ? globalLoadingManager.start(loadingKey || null, {
+        type: 'api',
+        method: upperMethod,
+        path,
+      })
+    : null;
 
-  const fetchOptions = {
-    method: upperMethod,
-    headers,
-    credentials: 'include',
-    ...options,
-  };
-
-  if (data !== null) {
-    fetchOptions.body = data instanceof FormData ? data : JSON.stringify(data);
-  }
-
-  let response;
   try {
-    response = await fetch(url, fetchOptions);
-  } catch (networkErr) {
-    const err = new Error(networkErr.message || 'Network request failed');
-    err.isNetworkError = true;
-    throw err;
-  }
-
-  let responseData = null;
-  const contentType = response.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) {
-    try {
-      responseData = await response.json();
-    } catch {
-      responseData = null;
-    }
-  } else {
-    try {
-      responseData = await response.text();
-    } catch {
-      responseData = null;
-    }
-  }
-
-  if (!response.ok) {
-    const error = new Error(
-      responseData?.error?.message ||
-        responseData?.message ||
-        `Request failed with status ${response.status}`
-    );
-    error.response = {
-      status: response.status,
-      statusText: response.statusText,
-      data: responseData,
-      headers: response.headers,
+    const headers = {
+      'Accept': 'application/json',
+      ...(data !== null && !(data instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
+      ...(restOptions.headers || {}),
     };
 
-    if (response.status === 401) {
-      clearCsrfToken();
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(
-          new CustomEvent('toothcare:unauthorized', {
-            detail: {
-              code: responseData?.error?.code || 'UNAUTHENTICATED',
-              message: responseData?.error?.message || 'Authentication is required.',
-            },
-          })
-        );
-      }
-    } else if (response.status === 403) {
-      if (responseData?.error?.code === 'CSRF_TOKEN_INVALID') {
-        clearCsrfToken();
-      }
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(
-          new CustomEvent('toothcare:forbidden', {
-            detail: {
-              code: responseData?.error?.code || 'FORBIDDEN',
-              message: responseData?.error?.message || 'You do not have permission to perform this action.',
-            },
-          })
-        );
+    // Inject CSRF token on mutating requests
+    if (unsafeMethods.includes(upperMethod) && !headers['X-CSRF-Token']) {
+      const token = await fetchCsrfToken();
+      if (token) {
+        headers['X-CSRF-Token'] = token;
       }
     }
 
-    throw error;
-  }
+    const fetchOptions = {
+      method: upperMethod,
+      headers,
+      credentials: 'include',
+      ...restOptions,
+    };
 
-  return {
-    data: responseData,
-    status: response.status,
-    statusText: response.statusText,
-    headers: response.headers,
-  };
+    if (data !== null) {
+      fetchOptions.body = data instanceof FormData ? data : JSON.stringify(data);
+    }
+
+    let response;
+    try {
+      response = await fetch(url, fetchOptions);
+    } catch (networkErr) {
+      if (networkErr?.name === 'AbortError') {
+        networkErr.isCancelled = true;
+        throw networkErr;
+      }
+      const err = new Error(networkErr?.message || 'Network request failed');
+      err.isNetworkError = true;
+      throw err;
+    }
+
+    let responseData = null;
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      try {
+        responseData = await response.json();
+      } catch {
+        responseData = null;
+      }
+    } else {
+      try {
+        responseData = await response.text();
+      } catch {
+        responseData = null;
+      }
+    }
+
+    if (!response.ok) {
+      const error = new Error(
+        responseData?.error?.message ||
+          responseData?.message ||
+          `Request failed with status ${response.status}`
+      );
+      error.response = {
+        status: response.status,
+        statusText: response.statusText,
+        data: responseData,
+        headers: response.headers,
+      };
+
+      if (response.status === 401) {
+        clearCsrfToken();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('toothcare:unauthorized', {
+              detail: {
+                code: responseData?.error?.code || 'UNAUTHENTICATED',
+                message: responseData?.error?.message || 'Authentication is required.',
+              },
+            })
+          );
+        }
+      } else if (response.status === 403) {
+        if (responseData?.error?.code === 'CSRF_TOKEN_INVALID') {
+          clearCsrfToken();
+        }
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('toothcare:forbidden', {
+              detail: {
+                code: responseData?.error?.code || 'FORBIDDEN',
+                message: responseData?.error?.message || 'You do not have permission to perform this action.',
+              },
+            })
+          );
+        }
+      }
+
+      throw error;
+    }
+
+    return {
+      data: responseData,
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+    };
+  } finally {
+    if (trackingId) {
+      globalLoadingManager.stop(trackingId);
+    }
+  }
 }
 
 export const apiClient = {

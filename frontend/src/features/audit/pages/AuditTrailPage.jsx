@@ -107,9 +107,14 @@ export function AuditTrailPage() {
         <button
           onClick={handleExportCsv}
           disabled={exporting}
+          aria-busy={exporting}
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#12304A] hover:bg-[#1e496e] text-white text-sm font-semibold rounded-xl shadow-xs transition-colors disabled:opacity-50"
         >
-          <Download className="w-4 h-4 text-teal-400" />
+          {exporting ? (
+            <RefreshCw className="w-4 h-4 animate-spin text-teal-400" />
+          ) : (
+            <Download className="w-4 h-4 text-teal-400" />
+          )}
           {exporting ? 'Exporting CSV...' : 'Export CSV Log'}
         </button>
       </div>

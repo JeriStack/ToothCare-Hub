@@ -13,7 +13,7 @@ export function useNotifications(pollIntervalMs = 30000) {
   const fetchNotifications = useCallback(async () => {
     try {
       setError(null);
-      const data = await notificationsApi.getNotifications({ per_page: 20 });
+      const data = await notificationsApi.getNotifications({ per_page: 20 }, { background: true });
       setNotifications(data.items || []);
       setUnreadCount(data.unread_count || 0);
     } catch (err) {

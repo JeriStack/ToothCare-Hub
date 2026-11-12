@@ -25,8 +25,8 @@ export const servicesApi = {
   /**
    * Fetch active services for public booking / dropdowns
    */
-  async getPublicServices() {
-    const res = await apiClient.get('/services');
+  async getPublicServices(options = {}) {
+    const res = await apiClient.get('/services', options);
     return res.data?.data || [];
   },
 

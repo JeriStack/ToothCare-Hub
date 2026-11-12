@@ -37,8 +37,8 @@ export const authApi = {
   /**
    * Retrieve current authenticated user context
    */
-  async getMe() {
-    const res = await apiClient.get('/auth/me');
+  async getMe(options = {}) {
+    const res = await apiClient.get('/auth/me', options);
     return res.data?.data;
   },
 

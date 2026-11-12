@@ -59,6 +59,8 @@ import { ReportsPage } from '../features/reports/pages/ReportsPage';
 import { SystemHealthPage } from '../features/system/pages/SystemHealthPage';
 import { StaffProfilePage } from '../features/staff/pages/StaffProfilePage';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
+import { LoadingProvider, useRouteLoading } from '../contexts/LoadingContext';
+import { GlobalLoadingBar } from '../components/ui/GlobalLoadingBar';
 
 function getInitialRoute() {
   if (typeof window === 'undefined') return 'LANDING';
@@ -314,6 +316,21 @@ function AppContent() {
   const [selectedDentistAppointmentId, setSelectedDentistAppointmentId] = useState(null);
   const userMenuRef = useRef(null);
   const userMenuTriggerRef = useRef(null);
+  const { triggerRouteTransition } = useRouteLoading();
+  const prevNavKeyRef = useRef(null);
+
+  // Trigger route transition tracking on qualifying navigation, tab, and detail changes
+  useEffect(() => {
+    const nextKey = `${currentRoute}:${activeTab}:${selectedDentistAppointmentId || ''}`;
+    if (prevNavKeyRef.current === null) {
+      prevNavKeyRef.current = nextKey;
+      return;
+    }
+    if (prevNavKeyRef.current !== nextKey) {
+      prevNavKeyRef.current = nextKey;
+      triggerRouteTransition(nextKey);
+    }
+  }, [currentRoute, activeTab, selectedDentistAppointmentId, triggerRouteTransition]);
 
   // Trigger Toast helper
   const showToast = (msg) => {
@@ -1137,9 +1154,12 @@ function AppContent() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <LoadingProvider>
+        <GlobalLoadingBar />
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </LoadingProvider>
     </ErrorBoundary>
   );
 }
