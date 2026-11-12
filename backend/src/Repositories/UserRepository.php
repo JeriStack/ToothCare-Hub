@@ -30,7 +30,7 @@ class UserRepository
         $stmt->execute([strtolower(trim($email))]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return $row ?: null;
+        return $row ? $this->hydrateAvatarFields($row) : null;
     }
 
     /**
@@ -163,7 +163,7 @@ class UserRepository
     public function hydrateAvatarFields(array $row): array
     {
         $hasAvatar = !empty($row['avatar_path']) && isset($row['id']);
-        $versionSource = (string) ($row['avatar_updated_at'] ?? $row['avatar_path'] ?? '');
+        $versionSource = (string) ($row['avatar_updated_at'] ?? '') . '_' . (string) ($row['avatar_path'] ?? '');
         $row['avatar_url'] = $hasAvatar
             ? '/api/v1/users/' . (int) $row['id'] . '/avatar?v=' . rawurlencode($versionSource)
             : null;

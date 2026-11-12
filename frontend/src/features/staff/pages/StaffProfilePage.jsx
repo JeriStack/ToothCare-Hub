@@ -42,7 +42,7 @@ function getFieldInputClasses(hasError, extra = '') {
 }
 
 export function StaffProfilePage({ onProfileUpdated }) {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, updateUser } = useAuth();
 
   const [profile, setProfile] = useState(null);
   const [formData, setFormData] = useState(EMPTY_FORM);
@@ -135,13 +135,17 @@ export function StaffProfilePage({ onProfileUpdated }) {
   };
 
   const handleAvatarChangeSuccess = async (message, updated) => {
-    setProfile((prev) =>
-      updated
-        ? updated
-        : prev
-        ? { ...prev, avatar_url: message.includes('removed') ? null : prev.avatar_url }
-        : prev
-    );
+    if (updated) {
+      setProfile(updated);
+      updateUser?.(updated);
+    } else {
+      setProfile((prev) =>
+        prev ? { ...prev, avatar_url: message.includes('removed') ? null : prev.avatar_url } : prev
+      );
+      if (message.includes('removed')) {
+        updateUser?.((prev) => (prev ? { ...prev, avatar_url: null } : prev));
+      }
+    }
     await refreshUser?.();
     if (onProfileUpdated) {
       onProfileUpdated(message);
@@ -192,6 +196,7 @@ export function StaffProfilePage({ onProfileUpdated }) {
 
       const updated = await authApi.updateMyProfile(payload);
       setProfile(updated);
+      updateUser?.(updated);
       const mapped = mapProfileToForm(updated);
       setFormData(mapped);
       setSavedSnapshot(mapped);

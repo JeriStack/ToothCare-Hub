@@ -48,7 +48,7 @@ function getFieldInputClasses(hasError, extra = '') {
 }
 
 export function DentistProfilePage({ onProfileUpdated }) {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, updateUser } = useAuth();
 
   const [profile, setProfile] = useState(null);
   const [formData, setFormData] = useState(EMPTY_FORM);
@@ -119,13 +119,25 @@ export function DentistProfilePage({ onProfileUpdated }) {
   const serverAvatarUrl = profile?.avatar_url || user?.dentist?.avatar_url || null;
 
   const handleAvatarChangeSuccess = async (message, updated) => {
-    setProfile((prev) =>
-      updated
-        ? updated
-        : prev
-        ? { ...prev, avatar_url: message.includes('removed') ? null : prev.avatar_url }
-        : prev
-    );
+    if (updated) {
+      setProfile(updated);
+      updateUser?.((prev) => (prev ? {
+        ...prev,
+        avatar_url: updated.avatar_url,
+        dentist: { ...(prev.dentist || {}), avatar_url: updated.avatar_url },
+      } : prev));
+    } else {
+      setProfile((prev) =>
+        prev ? { ...prev, avatar_url: message.includes('removed') ? null : prev.avatar_url } : prev
+      );
+      if (message.includes('removed')) {
+        updateUser?.((prev) => (prev ? {
+          ...prev,
+          avatar_url: null,
+          dentist: { ...(prev.dentist || {}), avatar_url: null },
+        } : prev));
+      }
+    }
     await refreshUser?.();
     if (onProfileUpdated) {
       onProfileUpdated(message);

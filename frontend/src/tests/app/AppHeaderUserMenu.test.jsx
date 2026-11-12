@@ -74,6 +74,23 @@ describe('Portal Header Identity & Account Dropdown', () => {
     expect(
       resolveUserIdentity(
         {
+          email: 'receptionist@toothcare.com',
+          first_name: 'Clarisse',
+          last_name: 'Mendoza',
+          avatar_url: '/api/v1/users/3/avatar?v=1',
+        },
+        'RECEPTIONIST'
+      )
+    ).toEqual({
+      displayName: 'Clarisse Mendoza',
+      initials: 'CM',
+      roleLabel: 'Front Desk Specialist',
+      avatarUrl: '/api/v1/users/3/avatar?v=1',
+    });
+
+    expect(
+      resolveUserIdentity(
+        {
           email: 'dentist@toothcare.com',
           dentist: {
             first_name: 'Maria',
@@ -374,10 +391,17 @@ describe('Portal Header Identity & Account Dropdown', () => {
 
     const accountMenuTrigger = screen.getByRole('button', { name: /Clarisse Mendoza account menu/i });
     expect(accountMenuTrigger).toHaveTextContent('Front Desk Specialist');
+    const headerAvatarImg = accountMenuTrigger.querySelector('img');
+    expect(headerAvatarImg).not.toBeNull();
+    expect(headerAvatarImg).toHaveAttribute('src', '/api/v1/users/3/avatar?v=45');
+
     fireEvent.click(accountMenuTrigger);
 
     const accountMenu = document.getElementById('user-account-menu');
     expect(accountMenu).not.toBeNull();
+    const dropdownAvatarImg = accountMenu.querySelector('img');
+    expect(dropdownAvatarImg).not.toBeNull();
+    expect(dropdownAvatarImg).toHaveAttribute('src', '/api/v1/users/3/avatar?v=45');
     expect(within(accountMenu).queryByText('Portal Overview')).toBeNull();
 
     const profileMenuItem = within(accountMenu).getByRole('button', { name: /My Profile/i });

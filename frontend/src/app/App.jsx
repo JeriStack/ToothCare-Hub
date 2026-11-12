@@ -160,7 +160,7 @@ export function resolveUserIdentity(user, currentRole) {
     }
   }
 
-  const avatarUrl = patient?.avatar_url || dentist?.avatar_url || null;
+  const avatarUrl = patient?.avatar_url || dentist?.avatar_url || user?.avatar_url || null;
 
   return { displayName, initials, roleLabel, avatarUrl };
 }
@@ -297,6 +297,10 @@ function AppContent() {
   const [failedAvatarUrl, setFailedAvatarUrl] = useState(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(readSidebarCollapsedPref);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setFailedAvatarUrl(null);
+  }, [user?.avatar_url, user?.patient?.avatar_url, user?.dentist?.avatar_url]);
 
   const toggleSidebarCollapsed = () => {
     setIsSidebarCollapsed((prev) => {

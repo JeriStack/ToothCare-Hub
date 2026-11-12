@@ -8,8 +8,22 @@ export function AuthProvider({ children }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchCurrentUser = useCallback(async () => {
-    setIsLoading(true);
+  const updateUser = useCallback((updatedUser) => {
+    if (!updatedUser) return;
+    setUser((prev) => {
+      const next = typeof updatedUser === 'function' ? updatedUser(prev) : { ...prev, ...updatedUser };
+      try {
+        localStorage.setItem('toothcare_user', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
+
+  const fetchCurrentUser = useCallback(async (options = {}) => {
+    const isSilent = Boolean(options?.silent);
+    if (!isSilent && !localStorage.getItem('toothcare_user')) {
+      setIsLoading(true);
+    }
     setError(null);
     try {
       const data = await authApi.getMe();
@@ -186,6 +200,7 @@ export function AuthProvider({ children }) {
     register,
     logout,
     refreshUser: fetchCurrentUser,
+    updateUser,
     forgotPassword,
     resetPassword,
     verifyEmail,

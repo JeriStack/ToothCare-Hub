@@ -404,7 +404,7 @@ class AuthService
         } elseif (!empty($user['avatar_url'])) {
             $avatarUrl = (string) $user['avatar_url'];
         } elseif (!empty($user['avatar_path']) && isset($user['id'])) {
-            $versionSource = (string) ($user['avatar_updated_at'] ?? $user['avatar_path'] ?? '');
+            $versionSource = (string) ($user['avatar_updated_at'] ?? '') . '_' . (string) ($user['avatar_path'] ?? '');
             $avatarUrl = '/api/v1/users/' . (int) $user['id'] . '/avatar?v=' . rawurlencode($versionSource);
         }
 
