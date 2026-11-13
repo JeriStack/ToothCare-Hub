@@ -85,7 +85,7 @@ export function BenefitsSection() {
                     <h3 className="font-bold text-slate-900 dark:text-gray-100 text-base sm:text-lg leading-snug group-hover:text-[#0F766E] dark:group-hover:text-teal-200 transition-colors">
                       {b.title}
                     </h3>
-                    <p className="text-xs sm:text-sm text-slate-600 dark:text-gray-300 leading-relaxed font-normal">
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-gray-300 leading-relaxed font-normal text-justify">
                       {b.description}
                     </p>
                   </div>
