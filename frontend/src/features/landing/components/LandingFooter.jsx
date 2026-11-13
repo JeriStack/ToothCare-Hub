@@ -145,7 +145,7 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-8 border-t border-slate-800 flex flex-col items-center justify-center gap-4 text-xs text-slate-400 text-center">
+        <div className="pt-8 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400 text-center sm:text-left">
           <p>
             © {new Date().getFullYear()} ToothCare Hub. All rights reserved. Professional Dental Clinic Management.
           </p>
