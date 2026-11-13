@@ -30,15 +30,19 @@ export function AuthLayout({ children, onNavigateHome, title, subtitle }) {
             </div>
           </button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <ThemeToggle variant="surface" />
             <button
               type="button"
               onClick={onNavigateHome}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-gray-300 hover:text-[#12304A] dark:hover:text-white py-2 px-3 rounded-lg hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400"
+              aria-label="Back to website"
+              title="Back to website"
+              className="group inline-flex items-center justify-center w-10 h-10 p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[#12304A] dark:text-slate-100 hover:bg-teal-50 dark:hover:bg-teal-900/35 hover:border-[#0D9488]/40 dark:hover:border-teal-400/50 hover:text-[#0D9488] dark:hover:text-teal-300 shadow-sm active:scale-[0.97] transition-all duration-200 motion-reduce:transition-none cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900"
             >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back to website</span>
+              <ArrowLeft
+                className="w-[18px] h-[18px] stroke-[2.25] transition-transform duration-200 group-hover:-translate-x-0.5 motion-reduce:transform-none"
+                aria-hidden="true"
+              />
             </button>
           </div>
         </div>
