@@ -1,7 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import { Menu, X, Calendar, User, LogIn } from 'lucide-react';
 import { useAuth } from '../../../features/auth';
 import { ThemeToggle } from '../../../components/ui/ThemeToggle';
+
+const NAV_LINKS = [
+  { id: 'home', label: 'Home' },
+  { id: 'about', label: 'About' },
+  { id: 'services', label: 'Services' },
+  { id: 'dentists', label: 'Our Dentists' },
+  { id: 'how-it-works', label: 'How It Works' },
+  { id: 'contact', label: 'Contact' },
+];
+
+const HEADER_SCROLL_OFFSET = 80;
+const SECTION_ACTIVATION_THRESHOLD = 140;
 
 export function LandingNavbar({ onBookAppointment, onLogin }) {
   const { user, isAuthenticated } = useAuth();
@@ -9,51 +21,161 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('home');
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
+  const navRef = useRef(null);
+  const linkRefs = useRef({});
+  const scrollLockRef = useRef({ targetId: null, targetY: 0, until: 0 });
+  const [indicator, setIndicator] = useState({ left: 0, width: 0, ready: false });
 
-      const sections = ['home', 'services', 'dentists', 'how-it-works', 'about', 'contact'];
-      for (const section of sections) {
-        const el = document.getElementById(section);
-        if (el) {
-          const rect = el.getBoundingClientRect();
-          if (rect.top <= 120 && rect.bottom >= 120) {
-            setActiveSection(section);
-            break;
-          }
+  const resolveActiveSection = useCallback(() => {
+    const scrollY = window.scrollY || 0;
+    if (scrollY <= 24) {
+      return 'home';
+    }
+
+    const docEl = document.documentElement;
+    const isNearBottom =
+      docEl.scrollHeight > window.innerHeight &&
+      scrollY + window.innerHeight >= docEl.scrollHeight - 24;
+
+    if (isNearBottom) {
+      for (let i = NAV_LINKS.length - 1; i >= 0; i -= 1) {
+        if (document.getElementById(NAV_LINKS[i].id)) {
+          return NAV_LINKS[i].id;
+        }
+      }
+    }
+
+    let currentSection = 'home';
+    for (const link of NAV_LINKS) {
+      const el = document.getElementById(link.id);
+      if (el && el.getBoundingClientRect().top <= SECTION_ACTIVATION_THRESHOLD) {
+        currentSection = link.id;
+      }
+    }
+    return currentSection;
+  }, []);
+
+  const updateIndicator = useCallback(() => {
+    const activeEl = linkRefs.current[activeSection];
+    if (activeEl && activeEl.offsetWidth > 0) {
+      setIndicator((prev) => {
+        if (prev.ready && prev.left === activeEl.offsetLeft && prev.width === activeEl.offsetWidth) {
+          return prev;
+        }
+        return {
+          left: activeEl.offsetLeft,
+          width: activeEl.offsetWidth,
+          ready: true,
+        };
+      });
+    }
+  }, [activeSection]);
+
+  useLayoutEffect(() => {
+    updateIndicator();
+  }, [updateIndicator]);
+
+  useEffect(() => {
+    window.addEventListener('resize', updateIndicator);
+    let resizeObserver = null;
+    if (typeof ResizeObserver !== 'undefined' && navRef.current) {
+      resizeObserver = new ResizeObserver(() => updateIndicator());
+      resizeObserver.observe(navRef.current);
+    }
+    if (document.fonts?.ready) {
+      document.fonts.ready.then(() => updateIndicator()).catch(() => {});
+    }
+    return () => {
+      window.removeEventListener('resize', updateIndicator);
+      resizeObserver?.disconnect();
+    };
+  }, [updateIndicator]);
+
+  useEffect(() => {
+    let frameId = null;
+
+    const syncScrollState = () => {
+      frameId = null;
+      const scrollY = window.scrollY || 0;
+      setIsScrolled(scrollY > 20);
+
+      const lock = scrollLockRef.current;
+      if (lock.targetId) {
+        const reachedTarget = Math.abs(scrollY - lock.targetY) <= 12;
+        if (!reachedTarget && Date.now() <= lock.until) {
+          return;
+        }
+        scrollLockRef.current = { targetId: null, targetY: 0, until: 0 };
+      }
+
+      const nextSection = resolveActiveSection();
+      setActiveSection((prev) => (prev === nextSection ? prev : nextSection));
+    };
+
+    const handleScroll = () => {
+      if (frameId === null) {
+        let ranSync = false;
+        const scheduledId = window.requestAnimationFrame(() => {
+          ranSync = true;
+          syncScrollState();
+        });
+        if (!ranSync) {
+          frameId = scheduledId;
         }
       }
     };
 
+    const releaseScrollLock = () => {
+      if (scrollLockRef.current.targetId) {
+        scrollLockRef.current = { targetId: null, targetY: 0, until: 0 };
+      }
+    };
+
+    syncScrollState();
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    window.addEventListener('resize', handleScroll, { passive: true });
+    window.addEventListener('wheel', releaseScrollLock, { passive: true });
+    window.addEventListener('touchstart', releaseScrollLock, { passive: true });
+
+    return () => {
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
+      window.removeEventListener('wheel', releaseScrollLock);
+      window.removeEventListener('touchstart', releaseScrollLock);
+    };
+  }, [resolveActiveSection]);
 
   const scrollToSection = (e, sectionId) => {
     e.preventDefault();
     setMobileMenuOpen(false);
+    setActiveSection(sectionId);
+
     const element = document.getElementById(sectionId);
     if (element) {
-      const topOffset = 80;
-      const elementPosition = element.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.pageYOffset - topOffset;
+      const currentScrollY = window.scrollY || 0;
+      const rawTargetY = element.getBoundingClientRect().top + currentScrollY - HEADER_SCROLL_OFFSET;
+      const maxScrollY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      const targetY =
+        document.documentElement.scrollHeight > window.innerHeight
+          ? Math.min(Math.max(0, rawTargetY), maxScrollY)
+          : Math.max(0, rawTargetY);
+
+      const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+      scrollLockRef.current = {
+        targetId: sectionId,
+        targetY,
+        until: Date.now() + (prefersReducedMotion ? 100 : 900),
+      };
+
       window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth',
+        top: targetY,
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
       });
-      setActiveSection(sectionId);
     }
   };
-
-  const navLinks = [
-    { id: 'home', label: 'Home' },
-    { id: 'services', label: 'Services' },
-    { id: 'dentists', label: 'Our Dentists' },
-    { id: 'how-it-works', label: 'How It Works' },
-    { id: 'about', label: 'About' },
-    { id: 'contact', label: 'Contact' },
-  ];
 
   return (
     <header
@@ -90,20 +212,42 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
 
           {/* Desktop Center Pill Navigation */}
           <nav
+            ref={navRef}
             aria-label="Primary"
-            className="hidden lg:flex items-center bg-white/80 dark:bg-gray-800/80 border border-slate-200/90 dark:border-gray-700 rounded-full px-2 py-1 shadow-xs backdrop-blur-xs"
+            className="hidden lg:flex relative items-center gap-0.5 bg-white/90 dark:bg-gray-900/85 border border-slate-200/90 dark:border-gray-700/80 rounded-full p-1.5 shadow-sm shadow-slate-900/5 dark:shadow-black/30 backdrop-blur-md"
           >
-            {navLinks.map((link) => {
+            {indicator.ready && (
+              <span
+                aria-hidden="true"
+                data-testid="nav-active-indicator"
+                style={{
+                  width: `${indicator.width}px`,
+                  transform: `translateX(${indicator.left}px)`,
+                }}
+                className="pointer-events-none absolute top-1.5 bottom-1.5 left-0 rounded-full bg-[#CCFBF1] dark:bg-teal-500/20 border border-[#0D9488]/30 dark:border-teal-400/50 shadow-xs shadow-teal-900/10 dark:shadow-[0_0_16px_rgba(45,212,191,0.2)] transition-[transform,width] duration-300 ease-out motion-reduce:transition-none"
+              >
+                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full bg-[#0D9488] dark:bg-teal-400" />
+              </span>
+            )}
+            {NAV_LINKS.map((link) => {
               const isActive = activeSection === link.id;
               return (
                 <a
                   key={link.id}
+                  ref={(el) => {
+                    linkRefs.current[link.id] = el;
+                  }}
                   href={`#${link.id}`}
+                  aria-current={isActive ? 'location' : undefined}
                   onClick={(e) => scrollToSection(e, link.id)}
-                  className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
+                  className={`relative z-10 px-4 py-1.5 rounded-full text-xs whitespace-nowrap transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
                     isActive
-                      ? 'bg-slate-100 dark:bg-gray-700 text-[#12304A] dark:text-white'
-                      : 'text-slate-600 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-gray-700/60'
+                      ? `font-bold text-[#0F766E] dark:text-teal-200 ${
+                          !indicator.ready
+                            ? 'bg-[#CCFBF1] dark:bg-teal-500/20 border border-[#0D9488]/30 dark:border-teal-400/50 shadow-xs'
+                            : ''
+                        }`
+                      : 'font-semibold text-slate-600 dark:text-gray-300 hover:text-[#12304A] dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-white/5'
                   }`}
                 >
                   {link.label}
@@ -169,21 +313,28 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
         <div className="lg:hidden bg-white/98 dark:bg-gray-900/98 backdrop-blur-md border-b border-slate-200 dark:border-gray-800 shadow-xl px-5 py-6 space-y-4 animate-in slide-in-from-top-2 duration-200">
-          <nav className="flex flex-col space-y-1">
-            {navLinks.map((link) => (
-              <a
-                key={link.id}
-                href={`#${link.id}`}
-                onClick={(e) => scrollToSection(e, link.id)}
-                className={`px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${
-                  activeSection === link.id
-                    ? 'bg-[#CCFBF1] dark:bg-teal-500/20 text-[#0F766E] dark:text-teal-300'
-                    : 'text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-800'
-                }`}
-              >
-                {link.label}
-              </a>
-            ))}
+          <nav aria-label="Mobile navigation" className="flex flex-col space-y-1">
+            {NAV_LINKS.map((link) => {
+              const isActive = activeSection === link.id;
+              return (
+                <a
+                  key={link.id}
+                  href={`#${link.id}`}
+                  aria-current={isActive ? 'location' : undefined}
+                  onClick={(e) => scrollToSection(e, link.id)}
+                  className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm transition-colors ${
+                    isActive
+                      ? 'font-bold bg-[#CCFBF1] dark:bg-teal-500/20 border border-[#0D9488]/25 dark:border-teal-400/40 text-[#0F766E] dark:text-teal-200'
+                      : 'font-semibold text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  <span>{link.label}</span>
+                  {isActive && (
+                    <span className="w-2 h-2 rounded-full bg-[#0D9488] dark:bg-teal-400" aria-hidden="true" />
+                  )}
+                </a>
+              );
+            })}
           </nav>
 
           <div className="pt-4 border-t border-slate-100 dark:border-gray-800 flex flex-col gap-2.5">
