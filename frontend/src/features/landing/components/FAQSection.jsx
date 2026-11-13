@@ -39,7 +39,7 @@ export function FAQSection() {
     <section className="py-20 bg-slate-50/60 dark:bg-gray-950/60 border-t border-slate-100 dark:border-gray-800">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
         
-        <div className="text-center space-y-3">
+        <div className="landing-reveal text-center space-y-3">
           <h2 className="text-3xl sm:text-4xl font-extrabold text-[#12304A] dark:text-white tracking-tight">
             Frequently Asked Questions
           </h2>
@@ -54,7 +54,8 @@ export function FAQSection() {
             return (
               <div
                 key={idx}
-                className="bg-white dark:bg-gray-800 border border-slate-200/80 dark:border-gray-700 rounded-2xl overflow-hidden transition-all shadow-xs"
+                style={{ '--reveal-index': idx % 4 }}
+                className="landing-reveal bg-white dark:bg-gray-800 border border-slate-200/80 dark:border-gray-700 rounded-2xl overflow-hidden transition-colors shadow-xs"
               >
                 <button
                   type="button"
@@ -62,28 +63,30 @@ export function FAQSection() {
                   aria-expanded={isOpen}
                   aria-controls={`faq-content-${idx}`}
                   onClick={() => toggleFAQ(idx)}
-                  className="w-full text-left p-5 sm:p-6 flex items-center justify-between gap-4 font-bold text-slate-900 dark:text-gray-100 text-sm sm:text-base focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                  className="w-full text-left p-5 sm:p-6 flex items-center justify-between gap-4 font-bold text-slate-900 dark:text-gray-100 text-sm sm:text-base cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
                 >
                   <span>{faq.q}</span>
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border border-slate-200 dark:border-gray-600 text-slate-500 dark:text-gray-300 transition-transform duration-200 ${
+                    className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border border-slate-200 dark:border-gray-600 text-slate-500 dark:text-gray-300 transition-transform duration-200 motion-reduce:transition-none ${
                       isOpen ? 'rotate-180 bg-slate-100 dark:bg-gray-700 text-slate-800 dark:text-white' : 'bg-white dark:bg-gray-900'
                     }`}
                   >
-                    <ChevronDown className="w-4 h-4" />
+                    <ChevronDown className="w-4 h-4" aria-hidden="true" />
                   </div>
                 </button>
 
-                {isOpen && (
-                  <div
-                    id={`faq-content-${idx}`}
-                    role="region"
-                    aria-labelledby={`faq-btn-${idx}`}
-                    className="px-5 pb-5 sm:px-6 sm:pb-6 text-xs sm:text-sm text-slate-600 dark:text-gray-300 leading-relaxed font-normal border-t border-slate-100 dark:border-gray-700 pt-3"
-                  >
+                <div
+                  id={`faq-content-${idx}`}
+                  role="region"
+                  aria-labelledby={`faq-btn-${idx}`}
+                  aria-hidden={!isOpen}
+                  data-open={isOpen ? 'true' : 'false'}
+                  className="faq-accordion-panel"
+                >
+                  <div className="px-5 pb-5 sm:px-6 sm:pb-6 text-xs sm:text-sm text-slate-600 dark:text-gray-300 leading-relaxed font-normal border-t border-slate-100 dark:border-gray-700 pt-3">
                     {faq.a}
                   </div>
-                )}
+                </div>
               </div>
             );
           })}

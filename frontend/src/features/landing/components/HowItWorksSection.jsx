@@ -37,7 +37,7 @@ export function HowItWorksSection({ onBookAppointment }) {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-14">
         {/* Section Heading */}
-        <div className="text-center max-w-2xl mx-auto space-y-3">
+        <div className="landing-reveal text-center max-w-2xl mx-auto space-y-3">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-500/15 border border-[#0D9488]/20 dark:border-teal-400/30 text-[#0F766E] dark:text-teal-300 text-xs font-semibold">
             <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
             <span>4-Step Booking Flow</span>
@@ -60,12 +60,13 @@ export function HowItWorksSection({ onBookAppointment }) {
             aria-hidden="true"
           />
 
-          {STEPS.map((step) => {
+          {STEPS.map((step, idx) => {
             const Icon = step.icon;
             return (
               <article
                 key={step.number}
-                className="group relative z-10 bg-[#F8FAFC] dark:bg-gray-800/95 border border-slate-200/90 dark:border-gray-700/80 hover:border-[#0D9488]/45 dark:hover:border-teal-400/45 hover:bg-white dark:hover:bg-gray-800 rounded-2xl p-6 shadow-xs hover:shadow-md hover:shadow-teal-900/5 dark:hover:shadow-black/30 hover:-translate-y-0.5 motion-reduce:transform-none transition-all duration-200 flex flex-col justify-between gap-5"
+                style={{ '--reveal-index': idx }}
+                className="landing-reveal group relative z-10 bg-[#F8FAFC] dark:bg-gray-800/95 border border-slate-200/90 dark:border-gray-700/80 hover:border-[#0D9488]/45 dark:hover:border-teal-400/45 hover:bg-white dark:hover:bg-gray-800 rounded-2xl p-6 shadow-xs hover:shadow-md hover:shadow-teal-900/5 dark:hover:shadow-black/30 hover:-translate-y-0.5 motion-reduce:transform-none transition-all duration-200 flex flex-col justify-between gap-5"
               >
                 <div className="space-y-4">
                   {/* Step Header */}
@@ -113,7 +114,7 @@ export function HowItWorksSection({ onBookAppointment }) {
         </div>
 
         {/* Bottom Banner */}
-        <div className="bg-gradient-to-r from-[#F8FAFC] to-teal-50/60 dark:from-gray-800/95 dark:to-teal-950/35 border border-slate-200/90 dark:border-teal-500/25 rounded-2xl p-6 sm:p-8 shadow-xs dark:shadow-lg dark:shadow-black/20 flex flex-col sm:flex-row items-center justify-between gap-6 max-w-4xl mx-auto">
+        <div className="landing-reveal bg-gradient-to-r from-[#F8FAFC] to-teal-50/60 dark:from-gray-800/95 dark:to-teal-950/35 border border-slate-200/90 dark:border-teal-500/25 rounded-2xl p-6 sm:p-8 shadow-xs dark:shadow-lg dark:shadow-black/20 flex flex-col sm:flex-row items-center justify-between gap-6 max-w-4xl mx-auto">
           <div className="flex items-start gap-3.5 text-center sm:text-left">
             <div className="hidden sm:flex w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-500/15 border border-[#0D9488]/20 dark:border-teal-400/30 text-[#0D9488] dark:text-teal-300 items-center justify-center shrink-0 mt-0.5">
               <CalendarCheck className="w-5 h-5" aria-hidden="true" />

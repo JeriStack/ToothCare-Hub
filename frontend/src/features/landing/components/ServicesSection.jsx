@@ -66,7 +66,7 @@ export function ServicesSection({ onBookService }) {
     <section id="services" className="py-20 bg-white dark:bg-gray-900" aria-labelledby="services-heading">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
         {/* Section Heading */}
-        <div className="text-center max-w-2xl mx-auto space-y-3">
+        <div className="landing-reveal text-center max-w-2xl mx-auto space-y-3">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-500/15 border border-[#0D9488]/20 dark:border-teal-400/30 text-[#0F766E] dark:text-teal-300 text-xs font-semibold">
             <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Standardized Fee Catalog</span>
@@ -155,10 +155,11 @@ export function ServicesSection({ onBookService }) {
         {/* Active Services Grid */}
         {!loading && !error && filteredServices.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-7">
-            {filteredServices.map((service) => (
+            {filteredServices.map((service, idx) => (
               <article
                 key={service.id}
-                className="group bg-[#F8FAFC] dark:bg-gray-800/95 border border-slate-200/90 dark:border-gray-700/80 hover:border-[#0D9488]/45 dark:hover:border-teal-400/45 hover:bg-white dark:hover:bg-gray-800 shadow-xs hover:shadow-md hover:shadow-teal-900/5 dark:hover:shadow-black/30 hover:-translate-y-0.5 motion-reduce:transform-none transition-all duration-200 rounded-2xl p-6 flex flex-col justify-between gap-6"
+                style={{ '--reveal-index': idx % 3 }}
+                className="landing-reveal group bg-[#F8FAFC] dark:bg-gray-800/95 border border-slate-200/90 dark:border-gray-700/80 hover:border-[#0D9488]/45 dark:hover:border-teal-400/45 hover:bg-white dark:hover:bg-gray-800 shadow-xs hover:shadow-md hover:shadow-teal-900/5 dark:hover:shadow-black/30 hover:-translate-y-0.5 motion-reduce:transform-none transition-all duration-200 rounded-2xl p-6 flex flex-col justify-between gap-6"
               >
                 <div className="space-y-3.5">
                   <div className="flex items-center justify-between gap-2">

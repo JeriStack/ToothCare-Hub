@@ -29,15 +29,23 @@ export function HeroSection({ onBookAppointment, onExploreServices }) {
       className="relative pt-28 pb-16 md:pt-36 md:pb-24 overflow-hidden bg-gradient-to-b from-[#F5F8FA] via-white to-white dark:from-gray-950 dark:via-gray-900 dark:to-gray-900"
     >
       {/* Background Soft Glow Elements */}
-      <div className="absolute top-12 left-1/4 w-96 h-96 bg-teal-100/40 dark:bg-teal-900/20 rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute top-24 right-10 w-96 h-96 bg-teal-50/50 dark:bg-sky-900/15 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div
+        className="landing-ambient-float absolute top-12 left-1/4 w-96 h-96 bg-teal-100/40 dark:bg-teal-900/20 rounded-full blur-3xl pointer-events-none -z-10"
+        style={{ '--float-delay': '0ms' }}
+        aria-hidden="true"
+      />
+      <div
+        className="landing-ambient-float absolute top-24 right-10 w-96 h-96 bg-teal-50/50 dark:bg-sky-900/15 rounded-full blur-3xl pointer-events-none -z-10"
+        style={{ '--float-delay': '1.8s' }}
+        aria-hidden="true"
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
           
           {/* Left Column: Headline, Copy, Action, and Stats */}
           <div className="lg:col-span-6 space-y-8 text-left">
-            <div className="space-y-4">
+            <div className="landing-hero-enter space-y-4" style={{ '--hero-delay': '40ms' }}>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#12304A] dark:text-white tracking-tight leading-[1.12]">
                 Your trusted partner in dental health
               </h1>
@@ -48,7 +56,7 @@ export function HeroSection({ onBookAppointment, onExploreServices }) {
             </div>
 
             {/* CTAs */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
+            <div className="landing-hero-enter flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2" style={{ '--hero-delay': '130ms' }}>
               <button
                 type="button"
                 onClick={onBookAppointment}
@@ -75,12 +83,13 @@ export function HeroSection({ onBookAppointment, onExploreServices }) {
 
             {/* Trust Stats Cards */}
             <div className="pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {TRUST_STATS.map((stat) => {
+              {TRUST_STATS.map((stat, idx) => {
                 const StatIcon = stat.icon;
                 return (
                   <article
                     key={stat.title}
-                    className="group bg-[#F8FAFC] dark:bg-gray-800/90 border border-slate-200/90 dark:border-gray-700/80 hover:border-[#0D9488]/45 dark:hover:border-teal-400/45 hover:bg-white dark:hover:bg-gray-800 rounded-2xl p-5 shadow-xs hover:shadow-md hover:shadow-teal-900/5 dark:hover:shadow-black/30 hover:-translate-y-0.5 motion-reduce:transform-none transition-all duration-200 flex flex-col justify-between gap-3.5"
+                    style={{ '--hero-delay': `${220 + idx * 90}ms` }}
+                    className="landing-hero-enter group bg-[#F8FAFC] dark:bg-gray-800/90 border border-slate-200/90 dark:border-gray-700/80 hover:border-[#0D9488]/45 dark:hover:border-teal-400/45 hover:bg-white dark:hover:bg-gray-800 rounded-2xl p-5 shadow-xs hover:shadow-md hover:shadow-teal-900/5 dark:hover:shadow-black/30 hover:-translate-y-0.5 motion-reduce:transform-none transition-all duration-200 flex flex-col justify-between gap-3.5"
                   >
                     <div className="space-y-2.5">
                       <div className="flex items-center justify-between gap-3">
@@ -122,7 +131,7 @@ export function HeroSection({ onBookAppointment, onExploreServices }) {
           </div>
 
           {/* Right Column: Hero Photograph with Organic Masking */}
-          <div className="lg:col-span-6 relative">
+          <div className="landing-hero-enter lg:col-span-6 relative" style={{ '--hero-delay': '160ms' }}>
             <div className="relative mx-auto max-w-lg lg:max-w-none">
               
               {/* Asymmetric Organic Decorative Container */}

@@ -114,7 +114,7 @@ export function ContactSection({ onBookAppointment }) {
       aria-labelledby="contact-heading"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-        <div className="text-center max-w-2xl mx-auto space-y-3">
+        <div className="landing-reveal text-center max-w-2xl mx-auto space-y-3">
           <h2
             id="contact-heading"
             className="text-3xl sm:text-4xl font-extrabold text-[#12304A] dark:text-white tracking-tight"
@@ -128,7 +128,10 @@ export function ContactSection({ onBookAppointment }) {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
           {/* Left Column: Operating Hours Card */}
-          <div className="lg:col-span-6 bg-[#F8FAFC] dark:bg-gray-800/95 border border-slate-200/90 dark:border-gray-700/80 rounded-3xl p-6 sm:p-8 shadow-sm dark:shadow-lg dark:shadow-black/20 flex flex-col justify-between space-y-6">
+          <div
+            className="landing-reveal lg:col-span-6 bg-[#F8FAFC] dark:bg-gray-800/95 border border-slate-200/90 dark:border-gray-700/80 rounded-3xl p-6 sm:p-8 shadow-sm dark:shadow-lg dark:shadow-black/20 flex flex-col justify-between space-y-6"
+            style={{ '--reveal-index': 0 }}
+          >
             <div className="space-y-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
@@ -224,7 +227,10 @@ export function ContactSection({ onBookAppointment }) {
           </div>
 
           {/* Right Column: Reception & Booking Assistance */}
-          <div className="lg:col-span-6 bg-[#12304A] dark:bg-gradient-to-br dark:from-slate-800/95 dark:to-gray-900 border border-[#1E4668] dark:border-teal-500/25 text-white rounded-3xl p-6 sm:p-8 shadow-sm dark:shadow-lg dark:shadow-black/25 flex flex-col justify-between space-y-7">
+          <div
+            className="landing-reveal lg:col-span-6 bg-[#12304A] dark:bg-gradient-to-br dark:from-slate-800/95 dark:to-gray-900 border border-[#1E4668] dark:border-teal-500/25 text-white rounded-3xl p-6 sm:p-8 shadow-sm dark:shadow-lg dark:shadow-black/25 flex flex-col justify-between space-y-7"
+            style={{ '--reveal-index': 1 }}
+          >
             <div className="space-y-6">
               <div className="space-y-3">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-400/15 border border-teal-400/25 text-teal-300 text-[11px] font-semibold">

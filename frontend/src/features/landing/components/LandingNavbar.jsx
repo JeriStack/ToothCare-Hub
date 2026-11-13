@@ -23,6 +23,7 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
 
   const navRef = useRef(null);
   const linkRefs = useRef({});
+  const progressRef = useRef(null);
   const scrollLockRef = useRef({ targetId: null, targetY: 0, until: 0 });
   const [indicator, setIndicator] = useState({ left: 0, width: 0, ready: false });
 
@@ -93,11 +94,23 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
 
   useEffect(() => {
     let frameId = null;
+    const supportsNativeScrollProgress =
+      typeof CSS !== 'undefined' &&
+      typeof CSS.supports === 'function' &&
+      CSS.supports('animation-timeline', 'scroll()');
+    const prefersReducedMotion =
+      window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
 
     const syncScrollState = () => {
       frameId = null;
       const scrollY = window.scrollY || 0;
       setIsScrolled(scrollY > 20);
+
+      if (!supportsNativeScrollProgress && !prefersReducedMotion && progressRef.current) {
+        const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+        const progress = scrollable > 0 ? Math.min(1, Math.max(0, scrollY / scrollable)) : 0;
+        progressRef.current.style.transform = `scaleX(${progress})`;
+      }
 
       const lock = scrollLockRef.current;
       if (lock.targetId) {
@@ -310,9 +323,16 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
         </div>
       </div>
 
+      {/* Scroll Progress Indicator */}
+      <div
+        ref={progressRef}
+        aria-hidden="true"
+        className="landing-scroll-progress pointer-events-none absolute bottom-0 left-0 right-0 h-[2.5px] bg-gradient-to-r from-[#0D9488] via-teal-400 to-sky-400 dark:from-teal-400 dark:via-emerald-300 dark:to-sky-400"
+      />
+
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-white/98 dark:bg-gray-900/98 backdrop-blur-md border-b border-slate-200 dark:border-gray-800 shadow-xl px-5 py-6 space-y-4 animate-in slide-in-from-top-2 duration-200">
+        <div className="lg:hidden landing-hero-enter bg-white/98 dark:bg-gray-900/98 backdrop-blur-md border-b border-slate-200 dark:border-gray-800 shadow-xl px-5 py-6 space-y-4">
           <nav aria-label="Mobile navigation" className="flex flex-col space-y-1">
             {NAV_LINKS.map((link) => {
               const isActive = activeSection === link.id;

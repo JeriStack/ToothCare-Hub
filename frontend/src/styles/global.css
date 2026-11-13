@@ -4,6 +4,7 @@
 
 :root {
   color-scheme: light;
+  interpolate-size: allow-keywords;
   --color-brand-navy: #12304A;
   --color-brand-teal: #0D9488;
   --color-brand-soft-teal: #CCFBF1;
@@ -332,5 +333,132 @@ dialog::backdrop {
   overscroll-behavior: contain;
   background: var(--backdrop-overlay);
   backdrop-filter: blur(4px);
+}
+
+/* Landing Page Animations — compositor-friendly & reduced-motion safe */
+.landing-scroll-progress {
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+}
+
+.landing-hero-enter,
+.landing-reveal {
+  opacity: 1;
+  translate: 0 0;
+  scale: 1;
+}
+
+.faq-accordion-panel {
+  block-size: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    block-size 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 240ms ease-out;
+}
+
+.faq-accordion-panel[data-open="true"] {
+  block-size: auto;
+  block-size: calc-size(auto, size);
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .faq-accordion-panel {
+    transition: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes landing-hero-rise {
+    from {
+      opacity: 0;
+      translate: 0 22px;
+      scale: 0.985;
+    }
+    to {
+      opacity: 1;
+      translate: 0 0;
+      scale: 1;
+    }
+  }
+
+  @keyframes landing-ambient-parallax {
+    from {
+      translate: 0 0;
+    }
+    to {
+      translate: 0 36px;
+    }
+  }
+
+  @keyframes landing-view-reveal {
+    from {
+      opacity: 0.01;
+      translate: 0 26px;
+      scale: 0.98;
+    }
+    to {
+      opacity: 1;
+      translate: 0 0;
+      scale: 1;
+    }
+  }
+
+  @keyframes landing-scroll-progress {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+
+  .landing-hero-enter {
+    animation: landing-hero-rise 680ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--hero-delay, 0ms);
+  }
+
+  /* Native CSS Scroll-Driven Animations where fully supported */
+  @supports ((animation-timeline: view()) and (animation-range: entry)) {
+    .landing-reveal {
+      animation: landing-view-reveal auto cubic-bezier(0.22, 1, 0.36, 1) both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 24%;
+    }
+  }
+
+  @supports (animation-timeline: scroll()) {
+    .landing-scroll-progress {
+      animation: landing-scroll-progress auto linear;
+      animation-timeline: scroll(root block);
+    }
+
+    .landing-ambient-float {
+      animation: landing-ambient-parallax auto linear both;
+      animation-timeline: scroll(root block);
+    }
+  }
+
+  /* IntersectionObserver fallback when scroll-driven view() is unavailable */
+  .landing-animated-root[data-reveal-fallback="true"] .landing-reveal:not(.is-revealed) {
+    opacity: 0;
+    translate: 0 22px;
+    scale: 0.985;
+  }
+
+  .landing-animated-root[data-reveal-fallback="true"] .landing-reveal {
+    transition:
+      opacity 620ms cubic-bezier(0.22, 1, 0.36, 1),
+      translate 620ms cubic-bezier(0.22, 1, 0.36, 1),
+      scale 620ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: calc(var(--reveal-index, 0) * 65ms);
+  }
+
+  .landing-animated-root[data-reveal-fallback="true"] .landing-reveal.is-revealed {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
 }
 

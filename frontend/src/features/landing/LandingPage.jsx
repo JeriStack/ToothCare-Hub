@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { LandingNavbar } from './components/LandingNavbar';
 import { HeroSection } from './components/HeroSection';
 import { TrustSection } from './components/TrustSection';
@@ -11,8 +11,12 @@ import { BenefitsSection } from './components/BenefitsSection';
 import { FAQSection } from './components/FAQSection';
 import { ContactSection } from './components/ContactSection';
 import { LandingFooter } from './components/LandingFooter';
+import { useScrollReveal } from './hooks/useScrollReveal';
 
 export function LandingPage({ onBookAppointment, onLogin, onAdminLogin }) {
+  const landingRootRef = useRef(null);
+  useScrollReveal(landingRootRef);
+
   const handleScrollToServices = () => {
     const el = document.getElementById('services');
     if (el) {
@@ -21,7 +25,10 @@ export function LandingPage({ onBookAppointment, onLogin, onAdminLogin }) {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 font-sans selection:bg-[#CCFBF1] selection:text-[#0F766E] dark:selection:bg-teal-900/70 dark:selection:text-teal-100">
+    <div
+      ref={landingRootRef}
+      className="landing-animated-root min-h-screen bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 font-sans selection:bg-[#CCFBF1] selection:text-[#0F766E] dark:selection:bg-teal-900/70 dark:selection:text-teal-100"
+    >
       {/* 1. Header Navigation */}
       <LandingNavbar
         onBookAppointment={() => onBookAppointment?.()}

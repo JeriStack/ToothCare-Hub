@@ -53,7 +53,7 @@ export function DentistsSection({ onSelectDentist }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
         
         {/* Section Heading */}
-        <div className="text-center max-w-2xl mx-auto space-y-3">
+        <div className="landing-reveal text-center max-w-2xl mx-auto space-y-3">
           <h2 id="dentists-heading" className="text-3xl sm:text-4xl font-extrabold text-[#12304A] dark:text-white tracking-tight">
             Meet the People Behind Your Smile
           </h2>
@@ -99,7 +99,7 @@ export function DentistsSection({ onSelectDentist }) {
         {/* Active Dentists Grid */}
         {!loading && !error && dentists.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {dentists.map((dentist) => {
+            {dentists.map((dentist, idx) => {
               const fullName = dentist.first_name && dentist.last_name
                 ? `Dr. ${dentist.first_name} ${dentist.last_name}, DMD`
                 : dentist.name || 'Dr. Dental Specialist';
@@ -107,11 +107,12 @@ export function DentistsSection({ onSelectDentist }) {
               return (
                 <article
                   key={dentist.id}
-                  className="bg-white dark:bg-gray-800 border border-slate-200/90 dark:border-gray-700 rounded-2xl p-6 hover:shadow-xl hover:shadow-slate-200/60 dark:hover:shadow-slate-950/60 transition-all flex flex-col justify-between space-y-6 group"
+                  style={{ '--reveal-index': idx % 3 }}
+                  className="landing-reveal bg-white dark:bg-gray-800 border border-slate-200/90 dark:border-gray-700 rounded-2xl p-6 hover:shadow-xl hover:shadow-slate-200/60 dark:hover:shadow-slate-950/60 hover:-translate-y-0.5 motion-reduce:transform-none transition-all flex flex-col justify-between space-y-6 group"
                 >
                   <div className="space-y-4 text-center">
                     {/* Doctor Avatar / Icon Frame */}
-                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-teal-50 to-slate-100 dark:from-teal-950/70 dark:to-gray-700 border border-slate-100 dark:border-gray-600 flex items-center justify-center mx-auto text-3xl shadow-xs group-hover:scale-105 transition-transform">
+                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-teal-50 to-slate-100 dark:from-teal-950/70 dark:to-gray-700 border border-slate-100 dark:border-gray-600 flex items-center justify-center mx-auto text-3xl shadow-xs group-hover:scale-105 motion-reduce:transform-none transition-transform">
                       {dentist.avatar || '🩺'}
                     </div>
 
