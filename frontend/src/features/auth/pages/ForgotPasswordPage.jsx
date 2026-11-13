@@ -46,14 +46,14 @@ export function ForgotPasswordPage({
     >
       {isSubmitted ? (
         <div className="text-center py-4 space-y-5 animate-in fade-in duration-300">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-[#CCFBF1] text-[#0D9488] flex items-center justify-center">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-[#CCFBF1] dark:bg-teal-900/50 text-[#0D9488] dark:text-teal-300 flex items-center justify-center">
             <CheckCircle2 className="w-8 h-8" />
           </div>
 
           <div>
-            <h2 className="text-xl font-bold text-[#12304A]">Instructions Dispatched</h2>
-            <p className="mt-2 text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
-              If an account is associated with <strong className="text-slate-800">{email}</strong>,
+            <h2 className="text-xl font-bold text-[#12304A] dark:text-gray-50">Instructions Dispatched</h2>
+            <p className="mt-2 text-xs text-slate-600 dark:text-gray-300 leading-relaxed max-w-sm mx-auto">
+              If an account is associated with <strong className="text-slate-800 dark:text-white">{email}</strong>,
               we have sent instructions to reset your password. Please inspect your inbox and spam folder.
             </p>
           </div>
@@ -62,7 +62,7 @@ export function ForgotPasswordPage({
             <button
               type="button"
               onClick={onNavigateLogin}
-              className="w-full py-3 px-4 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] text-white font-semibold text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+              className="w-full py-3 px-4 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] dark:bg-[#0F766E] dark:hover:bg-[#0D9488] text-white font-semibold text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
             >
               Return to Sign In
             </button>
@@ -72,7 +72,7 @@ export function ForgotPasswordPage({
                 setIsSubmitted(false);
                 setEmail('');
               }}
-              className="text-xs text-slate-500 hover:text-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded"
+              className="text-xs text-slate-500 dark:text-gray-400 hover:text-slate-800 dark:hover:text-gray-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded"
             >
               Try another email address
             </button>
@@ -83,9 +83,9 @@ export function ForgotPasswordPage({
           {formError && (
             <div
               role="alert"
-              className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-start gap-2.5"
+              className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-sm flex items-start gap-2.5"
             >
-              <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+              <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
               <p className="text-xs font-medium">{formError}</p>
             </div>
           )}
@@ -93,12 +93,12 @@ export function ForgotPasswordPage({
           <div>
             <label
               htmlFor="forgot-email"
-              className="block text-xs font-bold text-[#12304A] mb-1.5"
+              className="block text-xs font-bold text-[#12304A] dark:text-gray-200 mb-1.5"
             >
               Email address
             </label>
             <div className="relative">
-              <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] flex items-center justify-center text-[#0D9488] pointer-events-none">
+              <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] dark:bg-teal-900/50 flex items-center justify-center text-[#0D9488] dark:text-teal-300 pointer-events-none">
                 <Mail className="w-4 h-4 stroke-[2.2]" />
               </div>
               <input
@@ -115,13 +115,13 @@ export function ForgotPasswordPage({
                 placeholder="youremail@example.com"
                 aria-invalid={Boolean(fieldError)}
                 aria-describedby={fieldError ? 'forgot-email-error' : undefined}
-                className={`w-full pl-12 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 placeholder:text-slate-400 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
-                  fieldError ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
+                className={`w-full pl-12 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
+                  fieldError ? 'border-rose-400 dark:border-rose-500 bg-rose-50/20 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600 hover:border-slate-400 dark:hover:border-gray-500'
                 }`}
               />
             </div>
             {fieldError && (
-              <p id="forgot-email-error" className="mt-1 text-xs text-rose-600 font-medium">
+              <p id="forgot-email-error" className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">
                 {fieldError}
               </p>
             )}
@@ -130,7 +130,7 @@ export function ForgotPasswordPage({
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full mt-2 py-3 px-4 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] active:bg-[#115E59] text-white font-semibold text-sm shadow-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full mt-2 py-3 px-4 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] dark:bg-[#0F766E] dark:hover:bg-[#0D9488] active:bg-[#115E59] text-white font-semibold text-sm shadow-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-800 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isLoading ? (
               <>
@@ -146,7 +146,7 @@ export function ForgotPasswordPage({
             <button
               type="button"
               onClick={onNavigateLogin}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back to sign in</span>

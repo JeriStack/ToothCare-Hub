@@ -19,19 +19,19 @@ import { NotificationSkeleton } from '../../../components/skeletons';
 function getNotificationIcon(type) {
   switch (type) {
     case 'APPOINTMENT_REQUESTED':
-      return <Clock className="w-5 h-5 text-amber-500" />;
+      return <Clock className="w-5 h-5 text-amber-500 dark:text-amber-400" />;
     case 'APPOINTMENT_CONFIRMED':
-      return <CheckCircle2 className="w-5 h-5 text-[#0D9488]" />;
+      return <CheckCircle2 className="w-5 h-5 text-[#0D9488] dark:text-[#2DD4BF]" />;
     case 'APPOINTMENT_REJECTED':
-      return <XCircle className="w-5 h-5 text-rose-500" />;
+      return <XCircle className="w-5 h-5 text-rose-500 dark:text-rose-400" />;
     case 'APPOINTMENT_CANCELLED':
-      return <AlertTriangle className="w-5 h-5 text-slate-500" />;
+      return <AlertTriangle className="w-5 h-5 text-slate-500 dark:text-slate-400" />;
     case 'APPOINTMENT_COMPLETED':
-      return <Sparkles className="w-5 h-5 text-teal-600" />;
+      return <Sparkles className="w-5 h-5 text-teal-600 dark:text-[#2DD4BF]" />;
     case 'APPOINTMENT_RESCHEDULED':
-      return <Calendar className="w-5 h-5 text-sky-500" />;
+      return <Calendar className="w-5 h-5 text-sky-500 dark:text-sky-400" />;
     default:
-      return <Bell className="w-5 h-5 text-[#0D9488]" />;
+      return <Bell className="w-5 h-5 text-[#0D9488] dark:text-[#2DD4BF]" />;
   }
 }
 
@@ -97,8 +97,8 @@ export function PatientNotificationsPage({ onNavigateToAppointments }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-[#12304A]">Notifications</h2>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h2 className="text-xl sm:text-2xl font-bold text-[#12304A] dark:text-slate-50">Notifications</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Real-time status updates and appointment alerts for your clinical visits.
           </p>
         </div>
@@ -106,23 +106,23 @@ export function PatientNotificationsPage({ onNavigateToAppointments }) {
           <button
             type="button"
             onClick={handleMarkAllAsRead}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-[#0D9488] hover:border-teal-200 text-xs font-semibold shadow-2xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 text-slate-700 dark:text-slate-200 hover:text-[#0D9488] dark:hover:text-[#2DD4BF] hover:border-teal-200 dark:hover:border-teal-700 text-xs font-semibold shadow-2xs transition-colors"
           >
-            <CheckCheck className="w-4 h-4 text-[#0D9488]" />
+            <CheckCheck className="w-4 h-4 text-[#0D9488] dark:text-[#2DD4BF]" />
             <span>Mark all as read</span>
           </button>
         )}
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-gray-700 pb-2">
         <button
           type="button"
           onClick={() => setFilter('ALL')}
           className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
             filter === 'ALL'
-              ? 'bg-[#12304A] text-white'
-              : 'text-slate-600 hover:bg-slate-100'
+              ? 'bg-[#12304A] dark:bg-[#0F766E] text-white'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-gray-800'
           }`}
         >
           All Notifications ({total})
@@ -132,8 +132,8 @@ export function PatientNotificationsPage({ onNavigateToAppointments }) {
           onClick={() => setFilter('UNREAD')}
           className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
             filter === 'UNREAD'
-              ? 'bg-[#12304A] text-white'
-              : 'text-slate-600 hover:bg-slate-100'
+              ? 'bg-[#12304A] dark:bg-[#0F766E] text-white'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-gray-800'
           }`}
         >
           <span>Unread</span>
@@ -149,23 +149,23 @@ export function PatientNotificationsPage({ onNavigateToAppointments }) {
       {loading ? (
         <NotificationSkeleton variant="page" count={4} />
       ) : error ? (
-        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs flex items-center justify-between">
           <span>{error}</span>
           <button
             type="button"
             onClick={() => fetchList(page)}
-            className="px-3 py-1 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-800 font-semibold"
+            className="px-3 py-1 rounded-lg bg-rose-100 dark:bg-rose-900/50 hover:bg-rose-200 dark:hover:bg-rose-900/70 text-rose-800 dark:text-rose-200 font-semibold"
           >
             Retry
           </button>
         </div>
       ) : displayedNotifications.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200/90 p-12 text-center shadow-xs">
-          <Bell className="w-12 h-12 text-slate-300 mx-auto mb-3 stroke-[1.5]" />
-          <h3 className="text-base font-bold text-[#12304A]">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200/90 dark:border-gray-700 p-12 text-center shadow-xs transition-colors">
+          <Bell className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3 stroke-[1.5]" />
+          <h3 className="text-base font-bold text-[#12304A] dark:text-slate-50">
             {filter === 'UNREAD' ? 'No unread notifications' : 'No notifications yet'}
           </h3>
-          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
             {filter === 'UNREAD'
               ? 'You are all caught up! Switch to "All Notifications" to view your historical alerts.'
               : 'Updates regarding your requested, confirmed, and completed appointments will appear here.'}
@@ -180,25 +180,25 @@ export function PatientNotificationsPage({ onNavigateToAppointments }) {
                 key={notif.id}
                 className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
                   isUnread
-                    ? 'bg-teal-50/30 border-teal-200/80 shadow-xs'
-                    : 'bg-white border-slate-200/90 hover:border-slate-300 shadow-2xs'
+                    ? 'bg-teal-50/30 dark:bg-teal-950/25 border-teal-200/80 dark:border-teal-800/70 shadow-xs'
+                    : 'bg-white dark:bg-gray-800 border-slate-200/90 dark:border-gray-700 hover:border-slate-300 dark:hover:border-gray-600 shadow-2xs'
                 }`}
               >
                 <div className="flex items-start gap-3.5">
-                  <div className="p-2.5 rounded-xl bg-white border border-slate-200 shadow-2xs shrink-0 mt-0.5">
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 shadow-2xs shrink-0 mt-0.5">
                     {getNotificationIcon(notif.type)}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h4 className="text-sm font-bold text-[#12304A]">{notif.title}</h4>
+                      <h4 className="text-sm font-bold text-[#12304A] dark:text-slate-50">{notif.title}</h4>
                       {isUnread && (
-                        <span className="w-2 h-2 rounded-full bg-[#0D9488]" />
+                        <span className="w-2 h-2 rounded-full bg-[#0D9488] dark:bg-[#2DD4BF]" />
                       )}
                     </div>
-                    <p className="text-xs text-slate-600 mt-1 leading-relaxed max-w-2xl">
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed max-w-2xl">
                       {notif.message}
                     </p>
-                    <p className="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1.5">
+                    <p className="text-[11px] text-slate-400 dark:text-slate-400 mt-1.5 flex items-center gap-1.5">
                       <Clock className="w-3 h-3" />
                       <span>{notif.created_at}</span>
                     </p>
@@ -210,9 +210,9 @@ export function PatientNotificationsPage({ onNavigateToAppointments }) {
                     <button
                       type="button"
                       onClick={() => handleMarkAsRead(notif.id)}
-                      className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors flex items-center gap-1"
+                      className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-slate-50 dark:hover:bg-gray-600 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors flex items-center gap-1"
                     >
-                      <Check className="w-3.5 h-3.5 text-[#0D9488]" />
+                      <Check className="w-3.5 h-3.5 text-[#0D9488] dark:text-[#2DD4BF]" />
                       <span>Mark read</span>
                     </button>
                   )}
@@ -223,7 +223,7 @@ export function PatientNotificationsPage({ onNavigateToAppointments }) {
                         if (isUnread) handleMarkAsRead(notif.id);
                         onNavigateToAppointments?.(notif.reference_id);
                       }}
-                      className="px-3 py-1.5 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] text-white text-xs font-semibold transition-colors flex items-center gap-1 shadow-2xs"
+                      className="px-3 py-1.5 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-teal-600 text-white text-xs font-semibold transition-colors flex items-center gap-1 shadow-2xs"
                     >
                       <span>View Visit</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -236,8 +236,8 @@ export function PatientNotificationsPage({ onNavigateToAppointments }) {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between pt-4 border-t border-slate-200">
-              <p className="text-xs text-slate-500">
+            <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-gray-700">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Page {page} of {totalPages} ({total} total)
               </p>
               <div className="flex items-center gap-2">
@@ -245,7 +245,7 @@ export function PatientNotificationsPage({ onNavigateToAppointments }) {
                   type="button"
                   disabled={page <= 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-xs font-medium text-slate-600 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-gray-700 disabled:opacity-50"
                 >
                   Previous
                 </button>
@@ -253,7 +253,7 @@ export function PatientNotificationsPage({ onNavigateToAppointments }) {
                   type="button"
                   disabled={page >= totalPages}
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-xs font-medium text-slate-600 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-gray-700 disabled:opacity-50"
                 >
                   Next
                 </button>

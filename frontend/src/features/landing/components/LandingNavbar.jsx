@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X, Calendar, User, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../../features/auth';
+import { ThemeToggle } from '../../../components/ui/ThemeToggle';
 
 export function LandingNavbar({ onBookAppointment, onLogin }) {
   const { user, isAuthenticated } = useAuth();
@@ -58,7 +59,7 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         isScrolled
-          ? 'bg-white/95 backdrop-blur-md shadow-xs border-b border-slate-200/80 py-3'
+          ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-xs border-b border-slate-200/80 dark:border-gray-800 py-3'
           : 'bg-transparent py-5'
       }`}
     >
@@ -68,7 +69,7 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
           <a
             href="#home"
             onClick={(e) => scrollToSection(e, 'home')}
-            className="flex items-center gap-2.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded-lg"
+            className="flex items-center gap-2.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 rounded-lg"
           >
             <div className="w-10 h-10 group-hover:scale-105 transition-transform flex items-center justify-center shrink-0">
               <img
@@ -78,10 +79,10 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
               />
             </div>
             <div>
-              <span className="font-bold text-xl tracking-tight text-[#12304A]">
-                Tooth<span className="text-[#0D9488]">Care</span> Hub
+              <span className="font-bold text-xl tracking-tight text-[#12304A] dark:text-white">
+                Tooth<span className="text-[#0D9488] dark:text-teal-400">Care</span> Hub
               </span>
-              <span className="hidden sm:block text-[10px] tracking-wide text-slate-500 font-medium">
+              <span className="hidden sm:block text-[10px] tracking-wide text-slate-500 dark:text-gray-400 font-medium">
                 Healthier Smiles. Brighter Futures.
               </span>
             </div>
@@ -90,7 +91,7 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
           {/* Desktop Center Pill Navigation */}
           <nav
             aria-label="Primary"
-            className="hidden lg:flex items-center bg-white/80 border border-slate-200/90 rounded-full px-2 py-1 shadow-xs backdrop-blur-xs"
+            className="hidden lg:flex items-center bg-white/80 dark:bg-gray-800/80 border border-slate-200/90 dark:border-gray-700 rounded-full px-2 py-1 shadow-xs backdrop-blur-xs"
           >
             {navLinks.map((link) => {
               const isActive = activeSection === link.id;
@@ -101,8 +102,8 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
                   onClick={(e) => scrollToSection(e, link.id)}
                   className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
                     isActive
-                      ? 'bg-slate-100 text-[#12304A]'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'bg-slate-100 dark:bg-gray-700 text-[#12304A] dark:text-white'
+                      : 'text-slate-600 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-gray-700/60'
                   }`}
                 >
                   {link.label}
@@ -112,14 +113,15 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
           </nav>
 
           {/* Desktop Right Action CTAs */}
-          <div className="hidden sm:flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2.5 lg:gap-3">
+            <ThemeToggle variant="surface" />
             {isAuthenticated ? (
               <button
                 type="button"
                 onClick={onLogin}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-[#0D9488] bg-teal-50 hover:bg-teal-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-[#0D9488] dark:text-teal-300 bg-teal-50 dark:bg-teal-900/40 hover:bg-teal-100 dark:hover:bg-teal-900/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
               >
-                <User className="w-4 h-4 text-[#0D9488]" />
+                <User className="w-4 h-4 text-[#0D9488] dark:text-teal-300" />
                 <span>
                   Portal ({user?.patient?.first_name || user?.dentist?.first_name || user?.first_name || 'Account'})
                 </span>
@@ -128,38 +130,43 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
               <button
                 type="button"
                 onClick={onLogin}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-gray-200 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-gray-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
               >
-                <User className="w-4 h-4 text-slate-500" />
+                <User className="w-4 h-4 text-slate-500 dark:text-gray-400" />
                 Sign In
               </button>
             )}
             <button
               type="button"
               onClick={onBookAppointment}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0D9488] text-white text-xs font-semibold hover:bg-[#0F766E] active:bg-[#115E59] shadow-md shadow-teal-900/15 hover:shadow-teal-900/25 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] text-white text-xs font-semibold hover:bg-[#0F766E] dark:hover:bg-[#0D9488] active:bg-[#115E59] shadow-md shadow-teal-900/15 hover:shadow-teal-900/25 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900"
             >
               <Calendar className="w-4 h-4" />
               Book Appointment
             </button>
           </div>
 
-          {/* Mobile Hamburger Button */}
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-expanded={mobileMenuOpen}
-            aria-label="Toggle navigation menu"
-            className="lg:hidden p-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
-          >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+          {/* Mobile Controls */}
+          <div className="lg:hidden flex items-center gap-2">
+            <div className="sm:hidden">
+              <ThemeToggle variant="surface" />
+            </div>
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-expanded={mobileMenuOpen}
+              aria-label="Toggle navigation menu"
+              className="p-2.5 rounded-xl border border-slate-200 dark:border-gray-700 text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-white/98 backdrop-blur-md border-b border-slate-200 shadow-xl px-5 py-6 space-y-4 animate-in slide-in-from-top-2 duration-200">
+        <div className="lg:hidden bg-white/98 dark:bg-gray-900/98 backdrop-blur-md border-b border-slate-200 dark:border-gray-800 shadow-xl px-5 py-6 space-y-4 animate-in slide-in-from-top-2 duration-200">
           <nav className="flex flex-col space-y-1">
             {navLinks.map((link) => (
               <a
@@ -168,8 +175,8 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
                 onClick={(e) => scrollToSection(e, link.id)}
                 className={`px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${
                   activeSection === link.id
-                    ? 'bg-[#CCFBF1] text-[#0F766E]'
-                    : 'text-slate-700 hover:bg-slate-100'
+                    ? 'bg-[#CCFBF1] dark:bg-teal-500/20 text-[#0F766E] dark:text-teal-300'
+                    : 'text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-800'
                 }`}
               >
                 {link.label}
@@ -177,7 +184,7 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
             ))}
           </nav>
 
-          <div className="pt-4 border-t border-slate-100 flex flex-col gap-2.5">
+          <div className="pt-4 border-t border-slate-100 dark:border-gray-800 flex flex-col gap-2.5">
             {isAuthenticated ? (
               <button
                 type="button"
@@ -185,9 +192,9 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
                   setMobileMenuOpen(false);
                   onLogin?.();
                 }}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-teal-50 text-[#0D9488] text-sm font-semibold hover:bg-teal-100 transition-colors"
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-teal-50 dark:bg-teal-900/40 text-[#0D9488] dark:text-teal-300 text-sm font-semibold hover:bg-teal-100 dark:hover:bg-teal-900/60 transition-colors"
               >
-                <User className="w-4 h-4 text-[#0D9488]" />
+                <User className="w-4 h-4 text-[#0D9488] dark:text-teal-300" />
                 Go to Portal ({user?.patient?.first_name || user?.dentist?.first_name || user?.first_name || 'My Account'})
               </button>
             ) : (
@@ -197,7 +204,7 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
                   setMobileMenuOpen(false);
                   onLogin?.();
                 }}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors"
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-200 dark:border-gray-700 text-slate-700 dark:text-gray-200 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-gray-800 transition-colors"
               >
                 <User className="w-4 h-4" />
                 Sign In
@@ -209,7 +216,7 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
                 setMobileMenuOpen(false);
                 onBookAppointment?.();
               }}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[#0D9488] text-white text-sm font-semibold hover:bg-[#0F766E] shadow-md shadow-teal-900/15 transition-all"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] text-white text-sm font-semibold hover:bg-[#0F766E] dark:hover:bg-[#0D9488] shadow-md shadow-teal-900/15 transition-all"
             >
               <Calendar className="w-4 h-4" />
               Book an Appointment

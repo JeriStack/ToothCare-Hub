@@ -278,14 +278,14 @@ export function DentistListPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Clinic Dentist Roster</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50 tracking-tight">Clinic Dentist Roster</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Manage licensed dental practitioners, PRC credentials, assigned operatories, and active practice schedules.
           </p>
         </div>
         <button
           onClick={openCreateModal}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-medium text-sm rounded-lg shadow-sm transition-colors focus:ring-2 focus:ring-teal-500 focus:outline-none"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 dark:bg-[#0F766E] hover:bg-teal-700 dark:hover:bg-teal-600 text-white font-medium text-sm rounded-lg shadow-sm transition-colors focus:ring-2 focus:ring-teal-500 focus:outline-none"
         >
           <Plus className="w-4 h-4" />
           Add Licensed Dentist
@@ -293,9 +293,9 @@ export function DentistListPage() {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3 sm:space-y-0 sm:flex sm:items-center sm:gap-4">
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-slate-200 dark:border-gray-700 shadow-sm space-y-3 sm:space-y-0 sm:flex sm:items-center sm:gap-4 transition-colors">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+          <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400 dark:text-slate-500" />
           <input
             type="text"
             placeholder="Search by practitioner name, license number, or phone..."
@@ -304,18 +304,18 @@ export function DentistListPage() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
+            className="w-full pl-9 pr-4 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-400 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
           />
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <select
             value={specializationFilter}
             onChange={(e) => {
               setSpecializationFilter(e.target.value);
               setPage(1);
             }}
-            className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+            className="px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-none"
           >
             <option value="">All Specialties</option>
             {SPECIALIZATION_OPTIONS.map((spec) => (
@@ -331,7 +331,7 @@ export function DentistListPage() {
               setStatusFilter(e.target.value);
               setPage(1);
             }}
-            className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+            className="px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-none"
           >
             <option value="">All Statuses</option>
             <option value="1">Active Practice</option>
@@ -341,7 +341,7 @@ export function DentistListPage() {
           <button
             onClick={fetchDentists}
             title="Refresh Roster"
-            className="p-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors"
+            className="p-2 border border-slate-300 dark:border-gray-600 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -355,23 +355,23 @@ export function DentistListPage() {
           columns={['w-12', 'w-48', 'w-36', 'w-28', 'w-24', 'w-24', 'w-28']}
         />
       ) : (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-slate-200 dark:border-gray-700 shadow-sm overflow-hidden transition-colors">
         {error ? (
           <div className="p-12 text-center">
-            <AlertTriangle className="w-8 h-8 text-rose-500 mx-auto mb-3" />
-            <p className="text-slate-800 font-medium">{error}</p>
+            <AlertTriangle className="w-8 h-8 text-rose-500 dark:text-rose-400 mx-auto mb-3" />
+            <p className="text-slate-800 dark:text-slate-100 font-medium">{error}</p>
             <button
               onClick={fetchDentists}
-              className="mt-4 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors"
+              className="mt-4 px-4 py-2 bg-slate-100 dark:bg-gray-700 hover:bg-slate-200 dark:hover:bg-gray-600 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-lg transition-colors"
             >
               Try Again
             </button>
           </div>
         ) : dentists.length === 0 ? (
           <div className="p-12 text-center">
-            <Stethoscope className="w-8 h-8 text-slate-400 mx-auto mb-3" />
-            <h3 className="text-slate-800 font-medium">No dental practitioners found</h3>
-            <p className="text-slate-500 text-sm mt-1">
+            <Stethoscope className="w-8 h-8 text-slate-400 dark:text-slate-500 mx-auto mb-3" />
+            <h3 className="text-slate-800 dark:text-slate-100 font-medium">No dental practitioners found</h3>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
               {search || specializationFilter || statusFilter !== ''
                 ? 'Try adjusting your search criteria or filters.'
                 : 'Get started by adding your clinic’s first practitioner.'}
@@ -381,79 +381,79 @@ export function DentistListPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                <tr className="bg-slate-50/80 dark:bg-gray-900/50 border-b border-slate-200 dark:border-gray-700 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                   <th className="py-3.5 px-4 cursor-pointer" onClick={() => handleSort('id')}>
                     <div className="flex items-center gap-1.5">
                       ID
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     </div>
                   </th>
                   <th className="py-3.5 px-4 cursor-pointer" onClick={() => handleSort('name')}>
                     <div className="flex items-center gap-1.5">
                       Practitioner Name
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     </div>
                   </th>
                   <th className="py-3.5 px-4 cursor-pointer" onClick={() => handleSort('specialization')}>
                     <div className="flex items-center gap-1.5">
                       Specialization
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     </div>
                   </th>
                   <th className="py-3.5 px-4 cursor-pointer" onClick={() => handleSort('license_number')}>
                     <div className="flex items-center gap-1.5">
                       PRC License
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     </div>
                   </th>
                   <th className="py-3.5 px-4">Operatory</th>
                   <th className="py-3.5 px-4 cursor-pointer" onClick={() => handleSort('is_active')}>
                     <div className="flex items-center gap-1.5">
                       Status
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     </div>
                   </th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-sm">
+              <tbody className="divide-y divide-slate-100 dark:divide-gray-700 text-sm">
                 {dentists.map((dentist) => (
-                  <tr key={dentist.id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="py-3.5 px-4 font-mono text-xs text-slate-500">#{dentist.id}</td>
+                  <tr key={dentist.id} className="hover:bg-slate-50/60 dark:hover:bg-gray-700/40 transition-colors">
+                    <td className="py-3.5 px-4 font-mono text-xs text-slate-500 dark:text-slate-400">#{dentist.id}</td>
                     <td className="py-3.5 px-4">
-                      <div className="font-medium text-slate-900">
+                      <div className="font-medium text-slate-900 dark:text-slate-50">
                         Dr. {dentist.first_name} {dentist.last_name}
                       </div>
-                      <div className="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
+                      <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5">
                         <span className="flex items-center gap-1">
-                          <Mail className="w-3 h-3 text-slate-400" />
+                          <Mail className="w-3 h-3 text-slate-400 dark:text-slate-500" />
                           {dentist.email || '—'}
                         </span>
                         <span className="flex items-center gap-1">
-                          <Phone className="w-3 h-3 text-slate-400" />
+                          <Phone className="w-3 h-3 text-slate-400 dark:text-slate-500" />
                           {dentist.phone}
                         </span>
                       </div>
                     </td>
                     <td className="py-3.5 px-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-50 text-teal-700">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-50 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300">
                         {dentist.specialization}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 font-mono text-xs text-slate-700">
+                    <td className="py-3.5 px-4 font-mono text-xs text-slate-700 dark:text-slate-300">
                       {dentist.license_number}
                     </td>
-                    <td className="py-3.5 px-4 text-xs font-medium text-slate-600">
+                    <td className="py-3.5 px-4 text-xs font-medium text-slate-600 dark:text-slate-300">
                       {dentist.default_operatory_chair || 'Chair 1'}
                     </td>
                     <td className="py-3.5 px-4">
                       {dentist.is_active ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
                           <CheckCircle className="w-3 h-3" />
                           Active Practice
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300">
                           <XCircle className="w-3 h-3" />
                           Inactive
                         </span>
@@ -462,7 +462,7 @@ export function DentistListPage() {
                     <td className="py-3.5 px-4 text-right space-x-1">
                       <button
                         onClick={() => openEditModal(dentist)}
-                        className="p-1.5 text-slate-600 hover:text-teal-600 hover:bg-slate-100 rounded-lg transition-colors"
+                        className="p-1.5 text-slate-600 dark:text-slate-300 hover:text-teal-600 dark:hover:text-teal-300 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                         title="Edit Profile"
                       >
                         <Edit2 className="w-4 h-4" />
@@ -471,8 +471,8 @@ export function DentistListPage() {
                         onClick={() => handleStatusToggleClick(dentist)}
                         className={`p-1.5 rounded-lg transition-colors ${
                           dentist.is_active
-                            ? 'text-rose-600 hover:bg-rose-50'
-                            : 'text-emerald-600 hover:bg-emerald-50'
+                            ? 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50'
+                            : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
                         }`}
                         title={dentist.is_active ? 'Deactivate Dentist' : 'Activate Dentist'}
                       >
@@ -488,29 +488,29 @@ export function DentistListPage() {
 
         {/* Pagination Bar */}
         {meta.total > 0 && (
-          <div className="px-4 py-3 border-t border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-slate-500">
+          <div className="px-4 py-3 border-t border-slate-200 dark:border-gray-700 bg-slate-50/50 dark:bg-gray-900/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
             <div>
-              Showing <span className="font-medium text-slate-700">{(meta.page - 1) * meta.per_page + 1}</span> to{' '}
-              <span className="font-medium text-slate-700">
+              Showing <span className="font-medium text-slate-700 dark:text-slate-200">{(meta.page - 1) * meta.per_page + 1}</span> to{' '}
+              <span className="font-medium text-slate-700 dark:text-slate-200">
                 {Math.min(meta.page * meta.per_page, meta.total)}
               </span>{' '}
-              of <span className="font-medium text-slate-700">{meta.total}</span> dentists
+              of <span className="font-medium text-slate-700 dark:text-slate-200">{meta.total}</span> dentists
             </div>
             <div className="flex items-center gap-2">
               <button
                 disabled={meta.page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="px-3 py-1.5 border border-slate-300 rounded bg-white text-slate-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50"
+                className="px-3 py-1.5 border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-slate-700 dark:text-slate-200 font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-gray-600"
               >
                 Previous
               </button>
-              <span className="font-medium text-slate-700">
+              <span className="font-medium text-slate-700 dark:text-slate-200">
                 Page {meta.page} of {meta.last_page}
               </span>
               <button
                 disabled={meta.page >= meta.last_page}
                 onClick={() => setPage((p) => p + 1)}
-                className="px-3 py-1.5 border border-slate-300 rounded bg-white text-slate-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50"
+                className="px-3 py-1.5 border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-slate-700 dark:text-slate-200 font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-gray-600"
               >
                 Next
               </button>
@@ -522,15 +522,15 @@ export function DentistListPage() {
 
       {/* Dentist Modal (Create / Edit) */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-              <h2 className="text-lg font-semibold text-slate-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-black/65 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/50 dark:bg-gray-900/40">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
                 {editingDentist ? 'Edit Dentist Profile' : 'Register Licensed Dentist'}
               </h2>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 rounded-lg p-1"
+                className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg p-1"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -538,16 +538,16 @@ export function DentistListPage() {
 
             <form onSubmit={handleFormSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
               {formErrors.general && (
-                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-lg">
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-sm rounded-lg">
                   {formErrors.general}
                 </div>
               )}
 
               {/* Names */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
-                    First Name <span className="text-rose-500">*</span>
+                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
+                    First Name <span className="text-rose-500 dark:text-rose-400">*</span>
                   </label>
                   <input
                     type="text"
@@ -555,18 +555,18 @@ export function DentistListPage() {
                     placeholder="e.g., Maria"
                     value={formData.first_name}
                     onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                    className={`w-full px-3.5 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none ${
-                      formErrors.first_name ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
+                    className={`w-full px-3.5 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-teal-500 focus:outline-none ${
+                      formErrors.first_name ? 'border-rose-400 dark:border-rose-500 bg-rose-50/30 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600'
                     }`}
                   />
                   {formErrors.first_name && (
-                    <p className="text-xs text-rose-600 mt-1">{formErrors.first_name}</p>
+                    <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{formErrors.first_name}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
-                    Last Name <span className="text-rose-500">*</span>
+                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
+                    Last Name <span className="text-rose-500 dark:text-rose-400">*</span>
                   </label>
                   <input
                     type="text"
@@ -574,22 +574,22 @@ export function DentistListPage() {
                     placeholder="e.g., Santos"
                     value={formData.last_name}
                     onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                    className={`w-full px-3.5 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none ${
-                      formErrors.last_name ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
+                    className={`w-full px-3.5 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-teal-500 focus:outline-none ${
+                      formErrors.last_name ? 'border-rose-400 dark:border-rose-500 bg-rose-50/30 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600'
                     }`}
                   />
                   {formErrors.last_name && (
-                    <p className="text-xs text-rose-600 mt-1">{formErrors.last_name}</p>
+                    <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{formErrors.last_name}</p>
                   )}
                 </div>
               </div>
 
               {/* Credentials / Auth (Only for new dentist) */}
               {!editingDentist && (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
-                      Account Email <span className="text-rose-500">*</span>
+                    <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
+                      Account Email <span className="text-rose-500 dark:text-rose-400">*</span>
                     </label>
                     <input
                       type="email"
@@ -597,16 +597,16 @@ export function DentistListPage() {
                       placeholder="dr.santos@toothcare.com"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className={`w-full px-3.5 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none ${
-                        formErrors.email ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
+                      className={`w-full px-3.5 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-teal-500 focus:outline-none ${
+                        formErrors.email ? 'border-rose-400 dark:border-rose-500 bg-rose-50/30 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600'
                       }`}
                     />
-                    {formErrors.email && <p className="text-xs text-rose-600 mt-1">{formErrors.email}</p>}
+                    {formErrors.email && <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{formErrors.email}</p>}
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
-                      Initial Password <span className="text-rose-500">*</span>
+                    <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
+                      Initial Password <span className="text-rose-500 dark:text-rose-400">*</span>
                     </label>
                     <input
                       type="password"
@@ -614,22 +614,22 @@ export function DentistListPage() {
                       placeholder="••••••••"
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className={`w-full px-3.5 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none ${
-                        formErrors.password ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
+                      className={`w-full px-3.5 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-teal-500 focus:outline-none ${
+                        formErrors.password ? 'border-rose-400 dark:border-rose-500 bg-rose-50/30 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600'
                       }`}
                     />
                     {formErrors.password && (
-                      <p className="text-xs text-rose-600 mt-1">{formErrors.password}</p>
+                      <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{formErrors.password}</p>
                     )}
                   </div>
                 </div>
               )}
 
               {/* License Number & Phone */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
-                    PRC License Number <span className="text-rose-500">*</span>
+                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
+                    PRC License Number <span className="text-rose-500 dark:text-rose-400">*</span>
                   </label>
                   <input
                     type="text"
@@ -639,17 +639,19 @@ export function DentistListPage() {
                     value={formData.license_number}
                     onChange={(e) => setFormData({ ...formData, license_number: e.target.value })}
                     className={`w-full px-3.5 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none font-mono ${
-                      editingDentist ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'border-slate-300'
+                      editingDentist
+                        ? 'bg-slate-100 dark:bg-gray-900/50 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-gray-700 cursor-not-allowed'
+                        : 'border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100'
                     }`}
                   />
                   {formErrors.license_number && (
-                    <p className="text-xs text-rose-600 mt-1">{formErrors.license_number}</p>
+                    <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{formErrors.license_number}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
-                    Direct Contact Phone <span className="text-rose-500">*</span>
+                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
+                    Direct Contact Phone <span className="text-rose-500 dark:text-rose-400">*</span>
                   </label>
                   <input
                     type="tel"
@@ -657,24 +659,24 @@ export function DentistListPage() {
                     placeholder="+63 917 555 1234"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className={`w-full px-3.5 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none ${
-                      formErrors.phone ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
+                    className={`w-full px-3.5 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-teal-500 focus:outline-none ${
+                      formErrors.phone ? 'border-rose-400 dark:border-rose-500 bg-rose-50/30 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600'
                     }`}
                   />
-                  {formErrors.phone && <p className="text-xs text-rose-600 mt-1">{formErrors.phone}</p>}
+                  {formErrors.phone && <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{formErrors.phone}</p>}
                 </div>
               </div>
 
               {/* Specialization & Operatory Chair */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
+                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
                     Specialization
                   </label>
                   <select
                     value={formData.specialization}
                     onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
-                    className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                    className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                   >
                     {SPECIALIZATION_OPTIONS.map((spec) => (
                       <option key={spec} value={spec}>
@@ -685,13 +687,13 @@ export function DentistListPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
+                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
                     Default Operatory Chair
                   </label>
                   <select
                     value={formData.default_operatory_chair}
                     onChange={(e) => setFormData({ ...formData, default_operatory_chair: e.target.value })}
-                    className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                    className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                   >
                     {OPERATORY_CHAIR_OPTIONS.map((chair) => (
                       <option key={chair} value={chair}>
@@ -704,7 +706,7 @@ export function DentistListPage() {
 
               {/* Bio */}
               <div>
-                <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
+                <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
                   Professional Bio & Clinical Background
                 </label>
                 <textarea
@@ -712,7 +714,7 @@ export function DentistListPage() {
                   placeholder="Doctor's education, certifications, and special clinical interests..."
                   value={formData.bio}
                   onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                  className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 />
               </div>
 
@@ -724,27 +726,27 @@ export function DentistListPage() {
                     id="dentist-active"
                     checked={formData.is_active === 1}
                     onChange={(e) => setFormData({ ...formData, is_active: e.target.checked ? 1 : 0 })}
-                    className="w-4 h-4 text-teal-600 rounded border-slate-300 focus:ring-teal-500"
+                    className="w-4 h-4 text-teal-600 rounded border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-teal-500"
                   />
-                  <label htmlFor="dentist-active" className="text-sm font-medium text-slate-700 cursor-pointer">
+                  <label htmlFor="dentist-active" className="text-sm font-medium text-slate-700 dark:text-slate-200 cursor-pointer">
                     Enable immediate active practice status and appointment availability
                   </label>
                 </div>
               )}
 
               {/* Actions */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-gray-700">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-slate-300 text-slate-700 font-medium text-sm rounded-lg hover:bg-slate-50 transition-colors"
+                  className="px-4 py-2 border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 font-medium text-sm rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={formSubmitting}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-medium text-sm rounded-lg shadow-sm transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 dark:bg-[#0F766E] hover:bg-teal-700 dark:hover:bg-teal-600 text-white font-medium text-sm rounded-lg shadow-sm transition-colors disabled:opacity-50"
                 >
                   {formSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
                   {editingDentist ? 'Save Changes' : 'Register Dentist'}
@@ -757,27 +759,27 @@ export function DentistListPage() {
 
       {/* Confirmation Modal */}
       {confirmModal.isOpen && confirmModal.dentist && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-150 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-black/65 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-150 space-y-4">
             <div className="flex items-center gap-3">
               <div
                 className={`p-3 rounded-full ${
-                  confirmModal.targetStatus === 0 ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'
+                  confirmModal.targetStatus === 0 ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-300' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-300'
                 }`}
               >
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-base font-semibold text-slate-900">
+                <h3 className="text-base font-semibold text-slate-900 dark:text-slate-50">
                   {confirmModal.targetStatus === 0 ? 'Deactivate Practitioner?' : 'Activate Practitioner?'}
                 </h3>
-                <p className="text-xs text-slate-500 font-medium">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                   Dr. {confirmModal.dentist.first_name} {confirmModal.dentist.last_name}
                 </p>
               </div>
             </div>
 
-            <p className="text-sm text-slate-600 leading-relaxed">
+            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
               {confirmModal.targetStatus === 0
                 ? "Deactivating this practitioner's active status will suspend their login access and prevent new appointment booking. All prior patient consultations, treatment records, and appointment history are preserved."
                 : 'Activating this practitioner will re-enable their portal login access and restore their clinical availability for appointment scheduling.'}
@@ -789,7 +791,7 @@ export function DentistListPage() {
                 onClick={() =>
                   setConfirmModal({ isOpen: false, dentist: null, targetStatus: 0, submitting: false })
                 }
-                className="px-4 py-2 border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors"
+                className="px-4 py-2 border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors"
               >
                 Cancel
               </button>
@@ -799,8 +801,8 @@ export function DentistListPage() {
                 onClick={handleConfirmStatusChange}
                 className={`inline-flex items-center gap-2 px-4 py-2 font-medium text-sm text-white rounded-lg transition-colors ${
                   confirmModal.targetStatus === 0
-                    ? 'bg-amber-600 hover:bg-amber-700'
-                    : 'bg-teal-600 hover:bg-teal-700'
+                    ? 'bg-amber-600 dark:bg-amber-700 hover:bg-amber-700 dark:hover:bg-amber-600'
+                    : 'bg-teal-600 dark:bg-[#0F766E] hover:bg-teal-700 dark:hover:bg-teal-600'
                 }`}
               >
                 {confirmModal.submitting && <RefreshCw className="w-4 h-4 animate-spin" />}

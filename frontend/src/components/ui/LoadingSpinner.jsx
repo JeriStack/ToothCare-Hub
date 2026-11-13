@@ -22,10 +22,10 @@ export function LoadingSpinner({
   const spinner = (
     <div
       role="status"
-      className={`inline-flex items-center gap-2.5 text-[#0D9488] ${className}`}
+      className={`inline-flex items-center gap-2.5 text-[#0D9488] dark:text-teal-400 ${className}`}
     >
       <Loader2 className={`${sizeClasses} animate-spin shrink-0`} aria-hidden="true" />
-      {label && <span className="text-xs text-slate-500 font-medium">{label}</span>}
+      {label && <span className="text-xs text-slate-500 dark:text-gray-400 font-medium">{label}</span>}
       <span className="sr-only">{label}</span>
     </div>
   );

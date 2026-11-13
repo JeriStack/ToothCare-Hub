@@ -36,14 +36,14 @@ export function BenefitsSection() {
   ];
 
   return (
-    <section className="py-20 bg-white border-t border-slate-100">
+    <section className="py-20 bg-white dark:bg-gray-900 border-t border-slate-100 dark:border-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-14">
         
         <div className="text-center max-w-2xl mx-auto space-y-3">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#12304A] tracking-tight">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#12304A] dark:text-white tracking-tight">
             Designed for Modern Patient Care
           </h2>
-          <p className="text-sm sm:text-base text-slate-600 font-normal">
+          <p className="text-sm sm:text-base text-slate-600 dark:text-gray-300 font-normal">
             ToothCare Hub balances clinical precision with an intuitive, comfortable patient scheduling journey.
           </p>
         </div>
@@ -54,13 +54,13 @@ export function BenefitsSection() {
             return (
               <div
                 key={idx}
-                className="p-6 rounded-2xl bg-[#F8FAFC]/80 border border-slate-200/80 hover:border-slate-300 transition-colors space-y-3"
+                className="p-6 rounded-2xl bg-[#F8FAFC]/80 dark:bg-gray-800 border border-slate-200/80 dark:border-gray-700 hover:border-slate-300 dark:hover:border-gray-600 transition-colors space-y-3"
               >
-                <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-[#0D9488] flex items-center justify-center shadow-xs">
+                <div className="w-10 h-10 rounded-xl bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 text-[#0D9488] dark:text-teal-400 flex items-center justify-center shadow-xs">
                   <Icon className="w-5 h-5" />
                 </div>
-                <h3 className="font-bold text-slate-900 text-base">{b.title}</h3>
-                <p className="text-xs text-slate-600 leading-relaxed font-normal">
+                <h3 className="font-bold text-slate-900 dark:text-gray-100 text-base">{b.title}</h3>
+                <p className="text-xs text-slate-600 dark:text-gray-400 leading-relaxed font-normal">
                   {b.description}
                 </p>
               </div>

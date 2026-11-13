@@ -205,15 +205,15 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
     <div className="space-y-6">
       {/* Top Banner / Notification */}
       {notification && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl flex items-center justify-between text-sm shadow-sm animate-fade-in">
+        <div className="bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 px-4 py-3 rounded-xl flex items-center justify-between text-sm shadow-sm animate-fade-in">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <span>{notification.message}</span>
           </div>
           <button
             type="button"
             onClick={() => setNotification(null)}
-            className="text-emerald-700 hover:text-emerald-900"
+            className="text-emerald-700 dark:text-emerald-300 hover:text-emerald-900 dark:hover:text-emerald-100"
           >
             <X className="w-4 h-4" />
           </button>
@@ -221,10 +221,10 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
       )}
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white dark:bg-gray-800 p-6 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-sm">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-[#12304A]">My Appointments</h2>
-          <p className="text-sm text-slate-500 mt-1">
+          <h2 className="text-xl sm:text-2xl font-bold text-[#12304A] dark:text-slate-100">My Appointments</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Track your consultations, view booking history, and manage upcoming clinic visits.
           </p>
         </div>
@@ -233,7 +233,7 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
             type="button"
             onClick={() => setRefreshKey((k) => k + 1)}
             disabled={loading}
-            className="p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+            className="p-2.5 rounded-xl border border-slate-200 dark:border-gray-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
             title="Refresh appointments"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -242,7 +242,7 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
             <button
               type="button"
               onClick={onNavigateToBook}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0D9488] text-white font-semibold text-sm hover:bg-[#0F766E] shadow-sm transition-all"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] text-white font-semibold text-sm hover:bg-[#0F766E] dark:hover:bg-[#0D9488] shadow-sm transition-all"
             >
               <Plus className="w-4 h-4" />
               Book Appointment
@@ -252,9 +252,9 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-sm space-y-4">
         {/* Filter Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-100">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-100 dark:border-gray-700">
           {[
             { id: 'ALL', label: 'All Visits' },
             { id: 'UPCOMING', label: 'Upcoming' },
@@ -268,8 +268,8 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
               onClick={() => setActiveTab(tab.id)}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
                 activeTab === tab.id
-                  ? 'bg-[#CCFBF1] text-[#0F766E] shadow-xs'
-                  : 'text-slate-600 hover:bg-slate-100'
+                  ? 'bg-[#CCFBF1] dark:bg-teal-900/60 text-[#0F766E] dark:text-teal-300 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-gray-700'
               }`}
             >
               {tab.label}
@@ -279,19 +279,19 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
 
         {/* Search Input */}
         <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by dentist, service name, or booking reference..."
-            className="w-full pl-10 pr-4 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 text-sm border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:border-transparent"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             >
               <X className="w-4 h-4" />
             </button>
@@ -301,15 +301,15 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
 
       {/* Error State */}
       {error && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl flex items-center justify-between text-sm">
+        <div className="bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 p-4 rounded-xl flex items-center justify-between text-sm">
           <div className="flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+            <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
             <span>{error}</span>
           </div>
           <button
             type="button"
             onClick={() => setRefreshKey((k) => k + 1)}
-            className="text-xs font-semibold text-rose-700 underline hover:text-rose-900"
+            className="text-xs font-semibold text-rose-700 dark:text-rose-300 underline hover:text-rose-900 dark:hover:text-rose-100"
           >
             Retry
           </button>
@@ -320,13 +320,13 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
       {loading ? (
         <AppointmentCardSkeleton count={4} />
       ) : filteredAppointments.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm space-y-4">
-          <div className="w-14 h-14 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 p-12 text-center shadow-sm space-y-4">
+          <div className="w-14 h-14 bg-slate-100 dark:bg-gray-700 text-slate-400 dark:text-slate-500 rounded-2xl flex items-center justify-center mx-auto">
             <CalendarCheck className="w-7 h-7" />
           </div>
           <div className="max-w-md mx-auto space-y-1">
-            <h3 className="font-bold text-slate-900 text-base">No appointments found</h3>
-            <p className="text-xs text-slate-500">
+            <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base">No appointments found</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               {searchQuery
                 ? 'No bookings matched your search query. Try clearing the filter or search term.'
                 : activeTab === 'ALL'
@@ -338,7 +338,7 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
             <button
               type="button"
               onClick={onNavigateToBook}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0D9488] text-white font-semibold text-xs hover:bg-[#0F766E] shadow-sm transition-all"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] text-white font-semibold text-xs hover:bg-[#0F766E] dark:hover:bg-[#0D9488] shadow-sm transition-all"
             >
               <Plus className="w-4 h-4" />
               Book First Appointment
@@ -362,22 +362,22 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
 
       {/* DETAIL MODAL / DRAWER */}
       {detailModalAppt && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-scale-up">
+        <div className="fixed inset-0 z-50 bg-slate-900/40 dark:bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-2xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-scale-up">
             {/* Header */}
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+            <div className="p-5 border-b border-slate-100 dark:border-gray-700 flex items-center justify-between">
               <div>
-                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                   Appointment Overview
                 </span>
-                <h3 className="text-lg font-bold text-slate-900">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
                   Ref #{detailModalAppt.id} — {detailModalAppt.service_name}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setDetailModalAppt(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                className="p-1 rounded-lg text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-gray-700"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -394,7 +394,7 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
                     <SIcon className={`w-5 h-5 ${sInfo.text}`} />
                     <div>
                       <h4 className={`font-bold text-xs ${sInfo.text}`}>Status: {sInfo.label}</h4>
-                      <p className="text-xs text-slate-600 mt-0.5">
+                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
                         {detailModalAppt.status === 'PENDING' &&
                           'Our clinic staff is verifying schedule availability and chair allocation.'}
                         {detailModalAppt.status === 'CONFIRMED' &&
@@ -412,45 +412,45 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
               })()}
 
               {/* Key Details Grid */}
-              <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+              <div className="grid grid-cols-2 gap-4 bg-slate-50 dark:bg-gray-900/60 p-4 rounded-xl border border-slate-100 dark:border-gray-700">
                 <div>
-                  <span className="text-xs text-slate-400 font-medium">Attending Dentist</span>
-                  <p className="font-bold text-slate-900 mt-0.5">
+                  <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">Attending Dentist</span>
+                  <p className="font-bold text-slate-900 dark:text-slate-100 mt-0.5">
                     Dr. {detailModalAppt.dentist_first_name} {detailModalAppt.dentist_last_name}
                   </p>
-                  <p className="text-xs text-slate-500">{detailModalAppt.dentist_specialization || 'General Dentistry'}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{detailModalAppt.dentist_specialization || 'General Dentistry'}</p>
                 </div>
                 <div>
-                  <span className="text-xs text-slate-400 font-medium">Operatory Room</span>
-                  <p className="font-bold text-slate-900 mt-0.5">
+                  <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">Operatory Room</span>
+                  <p className="font-bold text-slate-900 dark:text-slate-100 mt-0.5">
                     {detailModalAppt.dentist_room_number || 'Chair 1 — Main Operatory'}
                   </p>
                 </div>
                 <div>
-                  <span className="text-xs text-slate-400 font-medium">Date & Time</span>
-                  <p className="font-bold text-slate-900 mt-0.5">
+                  <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">Date & Time</span>
+                  <p className="font-bold text-slate-900 dark:text-slate-100 mt-0.5">
                     {detailModalAppt.start_at ? detailModalAppt.start_at.substring(0, 16) : 'N/A'}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     Duration: {detailModalAppt.duration_snapshot || 30} minutes
                   </p>
                 </div>
                 <div>
-                  <span className="text-xs text-slate-400 font-medium">Fee Snapshot</span>
-                  <p className="font-bold text-[#0D9488] mt-0.5">
+                  <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">Fee Snapshot</span>
+                  <p className="font-bold text-[#0D9488] dark:text-teal-400 mt-0.5">
                     ₱{Number(detailModalAppt.price_snapshot || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </p>
-                  <p className="text-[11px] text-slate-400">Locked at booking time</p>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500">Locked at booking time</p>
                 </div>
               </div>
 
               {/* Chief Complaint */}
               {detailModalAppt.chief_complaint && (
                 <div>
-                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Chief Complaint / Notes
                   </span>
-                  <p className="mt-1 text-xs text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                  <p className="mt-1 text-xs text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-gray-900/60 p-3 rounded-lg border border-slate-100 dark:border-gray-700">
                     "{detailModalAppt.chief_complaint}"
                   </p>
                 </div>
@@ -458,8 +458,8 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
 
               {/* Reschedule Trace */}
               {detailModalAppt.rescheduled_from_id && (
-                <div className="text-xs text-slate-600 bg-sky-50 p-3 rounded-lg border border-sky-100 flex items-center gap-2">
-                  <History className="w-4 h-4 text-sky-600 shrink-0" />
+                <div className="text-xs text-slate-600 dark:text-sky-200 bg-sky-50 dark:bg-sky-950/50 p-3 rounded-lg border border-sky-100 dark:border-sky-800 flex items-center gap-2">
+                  <History className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
                   <span>
                     Rescheduled from prior appointment reference <strong>#{detailModalAppt.rescheduled_from_id}</strong>.
                   </span>
@@ -468,42 +468,42 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
 
               {/* Status Timeline */}
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">
                   <History className="w-3.5 h-3.5" />
                   Lifecycle History Timeline
                 </h4>
                 {loadingDetails ? (
-                  <div className="text-xs text-slate-400 animate-pulse">Loading status timeline...</div>
+                  <div className="text-xs text-slate-400 dark:text-slate-500 animate-pulse">Loading status timeline...</div>
                 ) : detailModalAppt.status_history && detailModalAppt.status_history.length > 0 ? (
-                  <div className="relative pl-6 space-y-4 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
+                  <div className="relative pl-6 space-y-4 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200 dark:before:bg-gray-700">
                     {detailModalAppt.status_history.map((h, idx) => (
                       <div key={idx} className="relative">
-                        <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-[#0D9488] ring-4 ring-white" />
-                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-xs space-y-1">
+                        <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-[#0D9488] dark:bg-teal-400 ring-4 ring-white dark:ring-gray-800" />
+                        <div className="bg-slate-50 dark:bg-gray-900/60 p-3 rounded-lg border border-slate-100 dark:border-gray-700 text-xs space-y-1">
                           <div className="flex items-center justify-between">
-                            <span className="font-bold text-slate-800">
+                            <span className="font-bold text-slate-800 dark:text-slate-100">
                               {h.from_status ? `${h.from_status} → ` : ''}
                               {h.to_status}
                             </span>
-                            <span className="text-slate-400 text-[11px]">{h.created_at}</span>
+                            <span className="text-slate-400 dark:text-slate-500 text-[11px]">{h.created_at}</span>
                           </div>
-                          {h.reason && <p className="text-slate-600 italic">"{h.reason}"</p>}
+                          {h.reason && <p className="text-slate-600 dark:text-slate-300 italic">"{h.reason}"</p>}
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-400 italic">No transition history recorded yet.</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 italic">No transition history recorded yet.</p>
                 )}
               </div>
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-3">
+            <div className="p-4 border-t border-slate-100 dark:border-gray-700 bg-slate-50 dark:bg-gray-900/60 flex items-center justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setDetailModalAppt(null)}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-gray-600 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-gray-700"
               >
                 Close
               </button>
@@ -514,21 +514,21 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
 
       {/* CANCEL MODAL */}
       {cancelModalAppt && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4 animate-scale-up">
+        <div className="fixed inset-0 z-50 bg-slate-900/40 dark:bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-2xl max-w-md w-full p-6 space-y-4 animate-scale-up">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 text-base">Cancel Appointment #{cancelModalAppt.id}</h3>
-                <p className="text-xs text-slate-500 mt-1">
+                <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base">Cancel Appointment #{cancelModalAppt.id}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   Are you sure you want to cancel this visit with Dr. {cancelModalAppt.dentist_last_name}?
                 </p>
               </div>
             </div>
 
-            <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs text-amber-800 space-y-1">
+            <div className="bg-amber-50 dark:bg-amber-950/50 p-3 rounded-xl border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-200 space-y-1">
               <p className="font-semibold">Clinic Cancellation Policy:</p>
               <p>
                 Appointments cancelled will release the time slot back to the clinic roster. If you need to change your
@@ -537,21 +537,21 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
             </div>
 
             {cancelError && (
-              <div className="bg-rose-50 border border-rose-200 text-rose-700 p-3 rounded-lg text-xs">
+              <div className="bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 p-3 rounded-lg text-xs">
                 {cancelError}
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Reason for cancellation <span className="text-slate-400 font-normal">(optional)</span>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Reason for cancellation <span className="text-slate-400 dark:text-slate-500 font-normal">(optional)</span>
               </label>
               <textarea
                 rows={3}
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
                 placeholder="Please let us know why you need to cancel..."
-                className="w-full text-xs p-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                className="w-full text-xs p-3 border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent"
               />
             </div>
 
@@ -560,7 +560,7 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
                 type="button"
                 onClick={() => setCancelModalAppt(null)}
                 disabled={cancelling}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-gray-600 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-gray-700"
               >
                 Keep Appointment
               </button>
@@ -579,46 +579,46 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
 
       {/* RESCHEDULE MODAL */}
       {rescheduleModalAppt && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-scale-up">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 bg-slate-900/40 dark:bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-2xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-scale-up">
+            <div className="p-5 border-b border-slate-100 dark:border-gray-700 flex items-center justify-between">
               <div>
-                <span className="text-xs font-semibold text-[#0D9488] uppercase tracking-wider">
+                <span className="text-xs font-semibold text-[#0D9488] dark:text-teal-400 uppercase tracking-wider">
                   Reschedule Appointment
                 </span>
-                <h3 className="text-lg font-bold text-slate-900">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
                   Adjust Visit Ref #{rescheduleModalAppt.id}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setRescheduleModalAppt(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                className="p-1 rounded-lg text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-gray-700"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="p-6 overflow-y-auto space-y-5 text-sm">
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1">
-                <p className="text-xs text-slate-500">Currently Scheduled For:</p>
-                <p className="font-bold text-slate-800">
+              <div className="bg-slate-50 dark:bg-gray-900/60 p-4 rounded-xl border border-slate-200 dark:border-gray-700 space-y-1">
+                <p className="text-xs text-slate-500 dark:text-slate-400">Currently Scheduled For:</p>
+                <p className="font-bold text-slate-800 dark:text-slate-100">
                   {rescheduleModalAppt.service_name} with Dr. {rescheduleModalAppt.dentist_first_name} {rescheduleModalAppt.dentist_last_name}
                 </p>
-                <p className="text-xs text-slate-600">
+                <p className="text-xs text-slate-600 dark:text-slate-300">
                   Existing slot: <strong>{rescheduleModalAppt.start_at}</strong>
                 </p>
               </div>
 
               {rescheduleError && (
-                <div className={`p-3 rounded-lg text-xs ${rescheduleConflict ? 'bg-amber-50 border border-amber-200 text-amber-800' : 'bg-rose-50 border border-rose-200 text-rose-700'}`}>
+                <div className={`p-3 rounded-lg text-xs ${rescheduleConflict ? 'bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200' : 'bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300'}`}>
                   {rescheduleError}
                 </div>
               )}
 
               {/* Date Selector */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Select New Consultation Date
                 </label>
                 <input
@@ -629,13 +629,13 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
                     setRescheduleDate(e.target.value);
                     setRescheduleSlot(null);
                   }}
-                  className="w-full text-xs p-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
+                  className="w-full text-xs p-2.5 border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
                 />
               </div>
 
               {/* Dynamic Availability Slot Picker */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-2">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
                   Select New Time Slot
                 </label>
                 <AvailabilitySlotPicker
@@ -653,25 +653,25 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
 
               {/* Reschedule Reason */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Reason for rescheduling <span className="text-slate-400 font-normal">(optional)</span>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Reason for rescheduling <span className="text-slate-400 dark:text-slate-500 font-normal">(optional)</span>
                 </label>
                 <textarea
                   rows={2}
                   value={rescheduleReason}
                   onChange={(e) => setRescheduleReason(e.target.value)}
                   placeholder="e.g., Work conflict, personal emergency..."
-                  className="w-full text-xs p-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
+                  className="w-full text-xs p-3 border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
                 />
               </div>
             </div>
 
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-3">
+            <div className="p-4 border-t border-slate-100 dark:border-gray-700 bg-slate-50 dark:bg-gray-900/60 flex items-center justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setRescheduleModalAppt(null)}
                 disabled={rescheduling}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-gray-600 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-gray-700"
               >
                 Cancel
               </button>
@@ -679,7 +679,7 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
                 type="button"
                 onClick={handleConfirmReschedule}
                 disabled={rescheduling || !rescheduleSlot}
-                className="px-5 py-2 rounded-xl bg-[#0D9488] text-white text-xs font-semibold hover:bg-[#0F766E] shadow-sm transition-all disabled:opacity-50 flex items-center gap-1.5"
+                className="px-5 py-2 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] text-white text-xs font-semibold hover:bg-[#0F766E] dark:hover:bg-[#0D9488] shadow-sm transition-all disabled:opacity-50 flex items-center gap-1.5"
               >
                 {rescheduling ? 'Rescheduling...' : 'Confirm Reschedule'}
               </button>

@@ -77,10 +77,10 @@ export function VerifyEmailPage({
       {/* 1. Verifying State */}
       {status === 'VERIFYING' && (
         <div className="text-center py-8 space-y-4">
-          <Loader2 className="w-10 h-10 animate-spin text-[#0D9488] mx-auto" />
+          <Loader2 className="w-10 h-10 animate-spin text-[#0D9488] dark:text-teal-400 mx-auto" />
           <div>
-            <h2 className="text-lg font-bold text-[#12304A]">Verifying your email...</h2>
-            <p className="text-xs text-slate-500 mt-1">Please wait while we confirm your security token.</p>
+            <h2 className="text-lg font-bold text-[#12304A] dark:text-gray-50">Verifying your email...</h2>
+            <p className="text-xs text-slate-500 dark:text-gray-400 mt-1">Please wait while we confirm your security token.</p>
           </div>
         </div>
       )}
@@ -88,13 +88,13 @@ export function VerifyEmailPage({
       {/* 2. Success State */}
       {status === 'SUCCESS' && (
         <div className="text-center py-4 space-y-5 animate-in fade-in duration-300">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-[#CCFBF1] text-[#0D9488] flex items-center justify-center">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-[#CCFBF1] dark:bg-teal-900/50 text-[#0D9488] dark:text-teal-300 flex items-center justify-center">
             <CheckCircle2 className="w-8 h-8" />
           </div>
 
           <div>
-            <h2 className="text-xl font-bold text-[#12304A]">Email Verified Successfully</h2>
-            <p className="mt-2 text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
+            <h2 className="text-xl font-bold text-[#12304A] dark:text-gray-50">Email Verified Successfully</h2>
+            <p className="mt-2 text-xs text-slate-600 dark:text-gray-300 leading-relaxed max-w-sm mx-auto">
               Thank you! Your email address has been verified. Your patient account is now fully active,
               and you can proceed to sign in and schedule appointments.
             </p>
@@ -104,7 +104,7 @@ export function VerifyEmailPage({
             <button
               type="button"
               onClick={onNavigateLogin}
-              className="w-full py-3 px-4 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] text-white font-semibold text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+              className="w-full py-3 px-4 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] dark:bg-[#0F766E] dark:hover:bg-[#0D9488] text-white font-semibold text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
             >
               Sign In to Patient Portal
             </button>
@@ -115,15 +115,15 @@ export function VerifyEmailPage({
       {/* 3. Error or No Token State */}
       {(status === 'ERROR' || status === 'NO_TOKEN') && (
         <div className="text-center py-3 space-y-5">
-          <div className="w-12 h-12 mx-auto rounded-2xl bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center">
+          <div className="w-12 h-12 mx-auto rounded-2xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 flex items-center justify-center">
             <AlertCircle className="w-6 h-6" />
           </div>
 
           <div>
-            <h2 className="text-lg font-bold text-[#12304A]">
+            <h2 className="text-lg font-bold text-[#12304A] dark:text-gray-50">
               {status === 'NO_TOKEN' ? 'Verification Token Missing' : 'Verification Link Expired'}
             </h2>
-            <p className="mt-1 text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
+            <p className="mt-1 text-xs text-slate-600 dark:text-gray-300 leading-relaxed max-w-sm mx-auto">
               {status === 'NO_TOKEN'
                 ? 'No verification token was detected in the URL. If you need a new confirmation link, please enter your email address below.'
                 : errorMessage}
@@ -131,11 +131,11 @@ export function VerifyEmailPage({
           </div>
 
           {/* Resend Form */}
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-left">
-            <h3 className="text-xs font-semibold text-slate-700 mb-2">Need a new verification link?</h3>
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-700 text-left">
+            <h3 className="text-xs font-semibold text-slate-700 dark:text-gray-200 mb-2">Need a new verification link?</h3>
             {resendSuccess ? (
-              <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>Verification link sent! Please check your inbox.</span>
               </div>
             ) : (
@@ -149,17 +149,17 @@ export function VerifyEmailPage({
                       if (resendError) setResendError(null);
                     }}
                     placeholder="Enter your registered email"
-                    className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-slate-300 text-slate-800 bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                    className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-gray-600 text-slate-800 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
                   />
-                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Mail className="w-4 h-4 text-slate-400 dark:text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 </div>
                 {resendError && (
-                  <p className="text-[11px] text-rose-600 font-medium">{resendError}</p>
+                  <p className="text-[11px] text-rose-600 dark:text-rose-400 font-medium">{resendError}</p>
                 )}
                 <button
                   type="submit"
                   disabled={resendLoading}
-                  className="w-full py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                  className="w-full py-2 px-3 rounded-lg bg-slate-800 dark:bg-teal-700 hover:bg-slate-900 dark:hover:bg-teal-600 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
                 >
                   {resendLoading ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -176,7 +176,7 @@ export function VerifyEmailPage({
             <button
               type="button"
               onClick={onNavigateLogin}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back to sign in</span>

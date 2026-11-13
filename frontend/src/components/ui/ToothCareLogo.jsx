@@ -71,16 +71,16 @@ export function ToothCareLogo({
       <div className="flex flex-col text-left">
         <span
           className={`font-bold tracking-tight leading-tight ${sizeClasses.text} ${
-            theme === 'dark' ? 'text-white' : 'text-[#12304A]'
+            theme === 'dark' ? 'text-white' : 'text-[#12304A] dark:text-white'
           }`}
         >
-          Tooth<span className="text-[#0D9488]">Care</span>{' '}
-          <span className={theme === 'dark' ? 'text-slate-100' : 'text-[#12304A]'}>Hub</span>
+          Tooth<span className="text-[#0D9488] dark:text-teal-400">Care</span>{' '}
+          <span className={theme === 'dark' ? 'text-slate-100' : 'text-[#12304A] dark:text-slate-100'}>Hub</span>
         </span>
         {showTagline ? (
           <span
             className={`font-medium tracking-wide ${sizeClasses.sub} ${
-              theme === 'dark' ? 'text-teal-200/80' : 'text-slate-500'
+              theme === 'dark' ? 'text-teal-200/80' : 'text-slate-500 dark:text-teal-200/80'
             }`}
           >
             Healthier Smiles. Brighter Futures.
@@ -88,7 +88,7 @@ export function ToothCareLogo({
         ) : (
           <span
             className={`font-medium tracking-wide ${sizeClasses.sub} ${
-              theme === 'dark' ? 'text-teal-200/70' : 'text-slate-500'
+              theme === 'dark' ? 'text-teal-200/70' : 'text-slate-500 dark:text-slate-400'
             }`}
           >
             Dental Clinic &amp; Care

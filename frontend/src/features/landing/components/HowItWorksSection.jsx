@@ -30,15 +30,15 @@ export function HowItWorksSection({ onBookAppointment }) {
   ];
 
   return (
-    <section id="how-it-works" className="py-20 bg-white">
+    <section id="how-it-works" className="py-20 bg-white dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         
         {/* Section Heading */}
         <div className="text-center max-w-2xl mx-auto space-y-3">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#12304A] tracking-tight">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#12304A] dark:text-white tracking-tight">
             How It Works
           </h2>
-          <p className="text-sm sm:text-base text-slate-600 font-normal">
+          <p className="text-sm sm:text-base text-slate-600 dark:text-gray-300 font-normal">
             Request your consultation in four straightforward steps with full visibility every step of the way.
           </p>
         </div>
@@ -50,27 +50,27 @@ export function HowItWorksSection({ onBookAppointment }) {
             return (
               <div
                 key={idx}
-                className="relative bg-[#F8FAFC] border border-slate-200/80 rounded-2xl p-6 flex flex-col justify-between space-y-4 hover:border-slate-300 transition-colors"
+                className="relative bg-[#F8FAFC] dark:bg-gray-800 border border-slate-200/80 dark:border-gray-700 rounded-2xl p-6 flex flex-col justify-between space-y-4 hover:border-slate-300 dark:hover:border-gray-600 transition-colors"
               >
                 {/* Step Header */}
                 <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 text-[#0D9488] flex items-center justify-center shadow-xs">
+                  <div className="w-12 h-12 rounded-xl bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 text-[#0D9488] dark:text-teal-400 flex items-center justify-center shadow-xs">
                     <Icon className="w-6 h-6" />
                   </div>
-                  <span className="text-2xl font-black text-slate-200">
+                  <span className="text-2xl font-black text-slate-200 dark:text-gray-700">
                     0{step.number}
                   </span>
                 </div>
 
                 {/* Content */}
                 <div className="space-y-2">
-                  <h3 className="font-bold text-slate-900 text-base">{step.title}</h3>
-                  <p className="text-xs text-slate-600 leading-relaxed font-normal">
+                  <h3 className="font-bold text-slate-900 dark:text-gray-100 text-base">{step.title}</h3>
+                  <p className="text-xs text-slate-600 dark:text-gray-400 leading-relaxed font-normal">
                     {step.description}
                   </p>
                 </div>
 
-                <div className="pt-2 text-[11px] font-semibold text-slate-400">
+                <div className="pt-2 text-[11px] font-semibold text-slate-400 dark:text-gray-500">
                   Step {step.number} of 4
                 </div>
               </div>
@@ -79,12 +79,12 @@ export function HowItWorksSection({ onBookAppointment }) {
         </div>
 
         {/* Bottom Banner */}
-        <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 max-w-4xl mx-auto">
+        <div className="bg-slate-50 dark:bg-gray-800 border border-slate-200/80 dark:border-gray-700 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 max-w-4xl mx-auto">
           <div className="space-y-1 text-center sm:text-left">
-            <h4 className="font-bold text-slate-900 text-base">
+            <h4 className="font-bold text-slate-900 dark:text-gray-100 text-base">
               Ready to schedule your dental visit?
             </h4>
-            <p className="text-xs text-slate-500 font-normal">
+            <p className="text-xs text-slate-500 dark:text-gray-400 font-normal">
               Zero phone tag. View available dates and pick the slot that fits your schedule.
             </p>
           </div>

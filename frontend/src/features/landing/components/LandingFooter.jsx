@@ -165,22 +165,22 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
 
       {/* LEGAL / PRIVACY MODAL */}
       {legalModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white text-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-bold text-slate-900 text-base">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 dark:bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 text-slate-800 dark:text-gray-200 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-gray-700 pb-3">
+              <h3 className="font-bold text-slate-900 dark:text-gray-50 text-base">
                 {legalModal === 'privacy' ? 'Patient Privacy Policy' : 'Appointment Terms & Conditions'}
               </h3>
               <button
                 type="button"
                 onClick={() => setLegalModal(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                className="p-1 rounded-lg text-slate-400 dark:text-gray-400 hover:text-slate-600 dark:hover:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="text-xs text-slate-600 space-y-3 leading-relaxed">
+            <div className="text-xs text-slate-600 dark:text-gray-300 space-y-3 leading-relaxed">
               {legalModal === 'privacy' ? (
                 <>
                   <p>
@@ -196,7 +196,7 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
               ) : (
                 <>
                   <p>
-                    Online appointment requests are initially recorded with a <strong>Pending</strong> status and are
+                    Online appointment requests are initially recorded with a <strong className="dark:text-white">Pending</strong> status and are
                     subject to clinic reception verification of operatory chair availability and dentist schedules.
                   </p>
                   <p>
@@ -207,11 +207,11 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
               )}
             </div>
 
-            <div className="pt-3 border-t border-slate-100 flex justify-end">
+            <div className="pt-3 border-t border-slate-100 dark:border-gray-700 flex justify-end">
               <button
                 type="button"
                 onClick={() => setLegalModal(null)}
-                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold hover:bg-slate-200"
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-gray-200 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-gray-600"
               >
                 Close
               </button>

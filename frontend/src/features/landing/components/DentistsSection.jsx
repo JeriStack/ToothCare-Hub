@@ -49,15 +49,15 @@ export function DentistsSection({ onSelectDentist }) {
   }, [fetchDentists]);
 
   return (
-    <section id="dentists" className="py-20 bg-slate-50/60 border-t border-slate-100" aria-labelledby="dentists-heading">
+    <section id="dentists" className="py-20 bg-slate-50/60 dark:bg-gray-950/60 border-t border-slate-100 dark:border-gray-800" aria-labelledby="dentists-heading">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
         
         {/* Section Heading */}
         <div className="text-center max-w-2xl mx-auto space-y-3">
-          <h2 id="dentists-heading" className="text-3xl sm:text-4xl font-extrabold text-[#12304A] tracking-tight">
+          <h2 id="dentists-heading" className="text-3xl sm:text-4xl font-extrabold text-[#12304A] dark:text-white tracking-tight">
             Meet the People Behind Your Smile
           </h2>
-          <p className="text-sm sm:text-base text-slate-600 font-normal">
+          <p className="text-sm sm:text-base text-slate-600 dark:text-gray-300 font-normal">
             Certified practitioners dedicated to patient comfort, preventive care, and clinical excellence.
           </p>
         </div>
@@ -67,13 +67,13 @@ export function DentistsSection({ onSelectDentist }) {
 
         {/* Error State with Retry Button */}
         {!loading && error && (
-          <div className="max-w-md mx-auto p-6 rounded-2xl bg-rose-50/70 border border-rose-200 text-center space-y-4">
-            <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+          <div className="max-w-md mx-auto p-6 rounded-2xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-300 flex items-center justify-center mx-auto">
               <AlertCircle className="w-6 h-6" />
             </div>
             <div className="space-y-1">
-              <h3 className="font-bold text-slate-900 text-sm">Dentists Unavailable</h3>
-              <p className="text-xs text-slate-600">{error}</p>
+              <h3 className="font-bold text-slate-900 dark:text-gray-100 text-sm">Dentists Unavailable</h3>
+              <p className="text-xs text-slate-600 dark:text-gray-300">{error}</p>
             </div>
             <Button
               variant="outline"
@@ -107,40 +107,40 @@ export function DentistsSection({ onSelectDentist }) {
               return (
                 <article
                   key={dentist.id}
-                  className="bg-white border border-slate-200/90 rounded-2xl p-6 hover:shadow-xl hover:shadow-slate-200/60 transition-all flex flex-col justify-between space-y-6 group"
+                  className="bg-white dark:bg-gray-800 border border-slate-200/90 dark:border-gray-700 rounded-2xl p-6 hover:shadow-xl hover:shadow-slate-200/60 dark:hover:shadow-slate-950/60 transition-all flex flex-col justify-between space-y-6 group"
                 >
                   <div className="space-y-4 text-center">
                     {/* Doctor Avatar / Icon Frame */}
-                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-teal-50 to-slate-100 border border-slate-100 flex items-center justify-center mx-auto text-3xl shadow-xs group-hover:scale-105 transition-transform">
+                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-teal-50 to-slate-100 dark:from-teal-950/70 dark:to-gray-700 border border-slate-100 dark:border-gray-600 flex items-center justify-center mx-auto text-3xl shadow-xs group-hover:scale-105 transition-transform">
                       {dentist.avatar || '🩺'}
                     </div>
 
                     <div>
-                      <h3 className="font-bold text-lg text-slate-900">{fullName}</h3>
-                      <p className="text-xs font-semibold text-[#0D9488] mt-0.5">
+                      <h3 className="font-bold text-lg text-slate-900 dark:text-gray-100">{fullName}</h3>
+                      <p className="text-xs font-semibold text-[#0D9488] dark:text-teal-400 mt-0.5">
                         {dentist.specialization || 'General Dentistry'}
                       </p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
+                      <p className="text-[11px] text-slate-400 dark:text-gray-400 mt-0.5">
                         Operatory: {dentist.room_number || dentist.default_operatory_chair || 'Operatory Chair 1'}
                       </p>
                     </div>
 
-                    <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed font-normal">
+                    <p className="text-xs text-slate-600 dark:text-gray-400 line-clamp-3 leading-relaxed font-normal">
                       {dentist.bio || 'Committed to delivering gentle, state-of-the-art oral healthcare.'}
                     </p>
                   </div>
 
                   {/* Clinic Schedule Shifts & Booking CTA */}
-                  <div className="space-y-4 pt-4 border-t border-slate-100">
+                  <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-gray-700">
                     {dentist.shifts && Array.isArray(dentist.shifts) && dentist.shifts.length > 0 && (
                       <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">
+                        <span className="text-[10px] font-semibold text-slate-400 dark:text-gray-400 uppercase tracking-wide">
                           Clinic Days:
                         </span>
                         {dentist.shifts.map((shift) => (
                           <span
                             key={shift}
-                            className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-700"
+                            className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-gray-200"
                           >
                             {shift}
                           </span>
@@ -151,7 +151,7 @@ export function DentistsSection({ onSelectDentist }) {
                     <button
                       type="button"
                       onClick={() => onSelectDentist?.(dentist)}
-                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-[#0D9488] hover:text-white hover:border-[#0D9488] transition-all shadow-2xs group/btn focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-700 text-xs font-semibold text-slate-700 dark:text-gray-200 hover:bg-[#0D9488] dark:hover:bg-[#0D9488] hover:text-white hover:border-[#0D9488] transition-all shadow-2xs group/btn focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
                     >
                       <Calendar className="w-3.5 h-3.5" />
                       <span>Consult with Doctor</span>

@@ -3,9 +3,9 @@ import { Calendar, User, ArrowRight, ShieldCheck } from 'lucide-react';
 
 export function BookingCTA({ onBookAppointment, onLogin }) {
   return (
-    <section className="py-20 bg-slate-50/70">
+    <section className="py-20 bg-slate-50/70 dark:bg-gray-950/70">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="relative rounded-3xl bg-gradient-to-br from-[#12304A] via-[#0B1D2D] to-[#12304A] text-white p-8 sm:p-14 overflow-hidden shadow-2xl shadow-slate-900/10 border border-slate-800 text-center space-y-8">
+        <div className="relative rounded-3xl bg-gradient-to-br from-[#12304A] via-[#0B1D2D] to-[#12304A] dark:from-slate-900 dark:via-[#0B1D2D] dark:to-slate-900 text-white p-8 sm:p-14 overflow-hidden shadow-2xl shadow-slate-900/10 dark:shadow-slate-950/60 border border-slate-800 text-center space-y-8">
           
           {/* Subtle Decorative Background Ring */}
           <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full border border-white/5 pointer-events-none" />

@@ -56,45 +56,45 @@ export function Modal({
     >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+        className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/75 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* Surface */}
       <div
-        className={`relative w-full ${sizeClasses} bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden transform transition-all animate-in zoom-in-95 duration-200 z-10 ${className}`}
+        className={`relative w-full ${sizeClasses} bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-slate-100 dark:border-gray-700 overflow-hidden transform transition-all animate-in zoom-in-95 duration-200 z-10 ${className}`}
       >
         {/* Header */}
-        <div className="flex items-start justify-between p-5 sm:p-6 border-b border-slate-100">
+        <div className="flex items-start justify-between p-5 sm:p-6 border-b border-slate-100 dark:border-gray-700">
           <div>
             {title && (
-              <h3 id="modal-title" className="text-lg font-bold text-[#12304A] tracking-tight">
+              <h3 id="modal-title" className="text-lg font-bold text-[#12304A] dark:text-gray-50 tracking-tight">
                 {title}
               </h3>
             )}
             {subtitle && (
-              <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>
+              <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">{subtitle}</p>
             )}
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close dialog"
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+            className="p-1.5 rounded-lg text-slate-400 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-100 hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content Body */}
-        <div className="p-5 sm:p-6 overflow-y-auto max-h-[calc(85vh-140px)]">
+        <div className="p-5 sm:p-6 overflow-y-auto max-h-[calc(85vh-140px)] text-slate-700 dark:text-gray-200">
           {children}
         </div>
 
         {/* Footer */}
         {footer && (
-          <div className="flex items-center justify-end gap-3 px-5 py-4 sm:px-6 bg-slate-50/80 border-t border-slate-100">
+          <div className="flex items-center justify-end gap-3 px-5 py-4 sm:px-6 bg-slate-50/80 dark:bg-gray-900/60 border-t border-slate-100 dark:border-gray-700">
             {footer}
           </div>
         )}

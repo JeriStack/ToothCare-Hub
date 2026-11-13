@@ -21,7 +21,7 @@ export function LandingPage({ onBookAppointment, onLogin, onAdminLogin }) {
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-800 font-sans selection:bg-[#CCFBF1] selection:text-[#0F766E]">
+    <div className="min-h-screen bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 font-sans selection:bg-[#CCFBF1] selection:text-[#0F766E] dark:selection:bg-teal-900/70 dark:selection:text-teal-100">
       {/* 1. Header Navigation */}
       <LandingNavbar
         onBookAppointment={() => onBookAppointment?.()}
