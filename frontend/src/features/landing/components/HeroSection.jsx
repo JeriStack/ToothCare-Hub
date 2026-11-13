@@ -1,6 +1,25 @@
 import React, { useState } from 'react';
-import { Calendar, ArrowRight, CheckCircle2, ShieldCheck, Clock, Star } from 'lucide-react';
+import { Calendar, ArrowRight, ShieldCheck, Clock, Users, TrendingUp } from 'lucide-react';
 import { Skeleton } from '../../../components/ui/Skeleton';
+
+const TRUST_STATS = [
+  {
+    value: '12K',
+    badge: '↑',
+    title: 'Smiles Protected',
+    description: 'Trusted by families for reliable and caring dental consultations.',
+    icon: Users,
+    valueClass: 'text-[#12304A] dark:text-white',
+  },
+  {
+    value: '99%',
+    badge: '↑',
+    title: 'Schedule Precision',
+    description: 'Delivering comfortable, on-time visits with zero double-booking.',
+    icon: Clock,
+    valueClass: 'text-[#0D9488] dark:text-teal-400',
+  },
+];
 
 export function HeroSection({ onBookAppointment, onExploreServices }) {
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -22,7 +41,7 @@ export function HeroSection({ onBookAppointment, onExploreServices }) {
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#12304A] dark:text-white tracking-tight leading-[1.12]">
                 Your trusted partner in dental health
               </h1>
-              <p className="text-base sm:text-lg text-slate-600 dark:text-gray-300 leading-relaxed max-w-xl font-normal">
+              <p className="text-base sm:text-lg text-slate-600 dark:text-gray-300 leading-relaxed max-w-xl font-normal text-justify">
                 We prioritize preventive care and personalized treatment plans that safeguard your oral health,
                 address your individual needs, and provide convenient online appointment scheduling.
               </p>
@@ -33,9 +52,9 @@ export function HeroSection({ onBookAppointment, onExploreServices }) {
               <button
                 type="button"
                 onClick={onBookAppointment}
-                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] text-white font-semibold text-sm hover:bg-[#0F766E] dark:hover:bg-[#0D9488] active:bg-[#115E59] shadow-lg shadow-teal-900/15 hover:shadow-teal-900/25 transition-all transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900"
+                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] text-white font-semibold text-sm hover:bg-[#0F766E] dark:hover:bg-[#0D9488] active:bg-[#115E59] shadow-lg shadow-teal-900/15 hover:shadow-teal-900/25 transition-all transform hover:-translate-y-0.5 motion-reduce:transform-none cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900"
               >
-                <Calendar className="w-4 h-4" />
+                <Calendar className="w-4 h-4" aria-hidden="true" />
                 Book Your Appointment
               </button>
               <a
@@ -44,36 +63,61 @@ export function HeroSection({ onBookAppointment, onExploreServices }) {
                   e.preventDefault();
                   onExploreServices?.();
                 }}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border border-slate-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 text-slate-700 dark:text-gray-200 font-semibold text-sm hover:bg-slate-50 dark:hover:bg-gray-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                className="group inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border border-slate-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 text-slate-700 dark:text-gray-200 font-semibold text-sm hover:bg-slate-50 dark:hover:bg-gray-800 hover:border-[#0D9488]/35 dark:hover:border-teal-400/40 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
               >
-                Explore Services
-                <ArrowRight className="w-4 h-4 text-slate-400 dark:text-gray-400" />
+                <span>Explore Services</span>
+                <ArrowRight
+                  className="w-4 h-4 text-slate-400 dark:text-gray-400 group-hover:text-[#0D9488] dark:group-hover:text-teal-300 transition-all duration-200 group-hover:translate-x-0.5 motion-reduce:transform-none"
+                  aria-hidden="true"
+                />
               </a>
             </div>
 
-            {/* Trust Stats Cards (Echoing the visual reference) */}
+            {/* Trust Stats Cards */}
             <div className="pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="bg-[#F8FAFC] dark:bg-gray-800 border border-slate-100 dark:border-gray-700 rounded-2xl p-5 shadow-xs space-y-1">
-                <div className="flex items-center gap-1.5 text-2xl font-bold text-[#12304A] dark:text-white">
-                  <span>12K</span>
-                  <span className="text-base text-teal-600 dark:text-teal-400 font-semibold">↑</span>
-                </div>
-                <p className="text-xs font-semibold text-slate-800 dark:text-gray-200">Smiles Protected</p>
-                <p className="text-[11px] text-slate-500 dark:text-gray-400 leading-normal">
-                  Trusted by families for reliable and caring dental consultations.
-                </p>
-              </div>
+              {TRUST_STATS.map((stat) => {
+                const StatIcon = stat.icon;
+                return (
+                  <article
+                    key={stat.title}
+                    className="group bg-[#F8FAFC] dark:bg-gray-800/90 border border-slate-200/90 dark:border-gray-700/80 hover:border-[#0D9488]/45 dark:hover:border-teal-400/45 hover:bg-white dark:hover:bg-gray-800 rounded-2xl p-5 shadow-xs hover:shadow-md hover:shadow-teal-900/5 dark:hover:shadow-black/30 hover:-translate-y-0.5 motion-reduce:transform-none transition-all duration-200 flex flex-col justify-between gap-3.5"
+                  >
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-2xl sm:text-3xl font-extrabold tracking-tight tabular-nums ${stat.valueClass}`}>
+                            {stat.value}
+                          </span>
+                          <span
+                            className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[11px] font-bold bg-teal-50 dark:bg-teal-500/15 text-[#0F766E] dark:text-teal-300 border border-[#0D9488]/20 dark:border-teal-400/30"
+                            aria-hidden="true"
+                          >
+                            <TrendingUp className="w-3 h-3" />
+                            <span>{stat.badge}</span>
+                          </span>
+                        </div>
+                        <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-500/15 border border-[#0D9488]/20 dark:border-teal-400/30 text-[#0D9488] dark:text-teal-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-200 motion-reduce:transform-none">
+                          <StatIcon className="w-4 h-4" aria-hidden="true" />
+                        </div>
+                      </div>
 
-              <div className="bg-[#F8FAFC] dark:bg-gray-800 border border-slate-100 dark:border-gray-700 rounded-2xl p-5 shadow-xs space-y-1">
-                <div className="flex items-center gap-1.5 text-2xl font-bold text-[#0D9488] dark:text-teal-400">
-                  <span>99%</span>
-                  <span className="text-base text-teal-500 dark:text-teal-300 font-semibold">↑</span>
-                </div>
-                <p className="text-xs font-semibold text-slate-800 dark:text-gray-200">Schedule Precision</p>
-                <p className="text-[11px] text-slate-500 dark:text-gray-400 leading-normal">
-                  Delivering comfortable, on-time visits with zero double-booking.
-                </p>
-              </div>
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-bold text-slate-900 dark:text-gray-100 group-hover:text-[#0F766E] dark:group-hover:text-teal-200 transition-colors">
+                          {stat.title}
+                        </h3>
+                        <p className="text-xs text-slate-600 dark:text-gray-300 leading-relaxed font-normal text-justify">
+                          {stat.description}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div
+                      className="h-0.5 w-8 rounded-full bg-slate-200 dark:bg-gray-700 group-hover:w-14 group-hover:bg-[#0D9488] dark:group-hover:bg-teal-400 transition-all duration-300 motion-reduce:transition-none"
+                      aria-hidden="true"
+                    />
+                  </article>
+                );
+              })}
             </div>
           </div>
 
