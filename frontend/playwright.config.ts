@@ -7,10 +7,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Safely load environment variables from frontend/.env and root .env
-dotenv.config({ path: path.resolve(__dirname, '.env') });
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config({ path: path.resolve(__dirname, '.env'), quiet: true });
+dotenv.config({ path: path.resolve(__dirname, '../.env'), quiet: true });
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173';
+const isLocalTarget = /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?(\/.*)?$/i.test(
+  baseURL.replace(/\/+$/, '')
+);
 
 export default defineConfig({
   testDir: './e2e',
@@ -46,11 +49,13 @@ export default defineConfig({
       },
     },
   ],
-  // Automatically spin up Vite dev server if it's not already running
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: true,
-    timeout: 60000,
-  },
+  // Automatically spin up Vite dev server when testing against localhost
+  webServer: isLocalTarget
+    ? {
+        command: 'npm run dev -- --port 5173 --strictPort',
+        url: 'http://localhost:5173',
+        reuseExistingServer: !process.env.CI,
+        timeout: 60000,
+      }
+    : undefined,
 });
