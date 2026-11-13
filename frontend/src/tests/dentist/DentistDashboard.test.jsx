@@ -180,6 +180,19 @@ describe('DentistDashboard Component', () => {
     fireEvent.click(openModalBtn);
 
     expect(screen.getByText(/Submit your practitioner leave request/i)).toBeDefined();
+    expect(screen.getByText(/Submit your practitioner leave request/i)).toHaveClass('text-justify');
+    expect(
+      screen.queryByText(/Reserve unavailability hours for administrative review and schedule blocking\./i)
+    ).toBeNull();
+    expect(screen.queryByText('*')).toBeNull();
+
+    // Quick-select preset updates the leave reason field
+    const medicalChip = screen.getByRole('button', { name: 'Medical / Sick Leave' });
+    fireEvent.click(medicalChip);
+    expect(screen.getByLabelText(/Reason \/ Leave Category/i)).toHaveValue('Medical / Sick Leave');
+
+    const cmeChip = screen.getByRole('button', { name: 'Annual Dental Conference (CME)' });
+    fireEvent.click(cmeChip);
 
     // Fill datetime inputs using accessible label queries
     const startInput = screen.getByLabelText(/Start Date & Time/i);
@@ -188,6 +201,9 @@ describe('DentistDashboard Component', () => {
 
     fireEvent.change(startInput, { target: { value: '2026-12-05T09:00' } });
     fireEvent.change(endInput, { target: { value: '2026-12-07T17:00' } });
+    expect(screen.getByText(/Requested Duration:/i)).toBeDefined();
+    expect(screen.getByText(/2 days, 8 hours/i)).toBeDefined();
+
     fireEvent.click(submitBtn);
 
     await waitFor(() => {

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { servicesApi } from '../api';
 import { formatCurrency } from '../../../utils/formatCurrency';
+import { CardSkeleton } from '../../../components/skeletons';
 
 function formatDuration(minutes) {
   if (!minutes) return '30 mins';
@@ -129,15 +130,7 @@ export function PatientServicesPage({ onBookService }) {
 
       {/* Grid */}
       {loading ? (
-        <div className="portal-grid-3">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="h-48 bg-white rounded-2xl border border-slate-200/80 p-5 space-y-3 animate-pulse">
-              <div className="h-5 bg-slate-200 rounded w-3/4" />
-              <div className="h-4 bg-slate-100 rounded w-1/2" />
-              <div className="h-14 bg-slate-100 rounded" />
-            </div>
-          ))}
-        </div>
+        <CardSkeleton variant="service" count={6} className="portal-grid-3" />
       ) : error ? (
         <div className="p-6 bg-rose-50 border border-rose-200 rounded-2xl text-center space-y-2">
           <p className="text-sm font-semibold text-rose-800">{error}</p>

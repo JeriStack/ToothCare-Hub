@@ -12,6 +12,7 @@ import {
   Users
 } from 'lucide-react';
 import { rolesApi } from '../api';
+import { PermissionMatrixSkeleton } from '../../../components/skeletons';
 
 const PROTECTED_ADMIN_PERMISSIONS = [
   'users.view',
@@ -101,6 +102,10 @@ export function RolePermissionMatrixPage() {
   };
 
   const moduleEntries = Object.entries(groupedPermissions);
+
+  if (loading && roles.length === 0) {
+    return <PermissionMatrixSkeleton />;
+  }
 
   return (
     <div className="space-y-6">

@@ -18,7 +18,7 @@ import {
 import { appointmentsApi } from '../../appointments/api';
 import { TreatmentRecordViewer } from '../../treatment-records/components/TreatmentRecordViewer';
 import { TreatmentRecordEditor } from '../../treatment-records/components/TreatmentRecordEditor';
-import { DashboardSkeleton } from '../../../components/skeletons/DashboardSkeleton';
+import { AppointmentDetailSkeleton } from '../../../components/skeletons';
 
 export function DentistAppointmentDetailPage({ appointmentId, onBack }) {
   const [appointment, setAppointment] = useState(null);
@@ -78,7 +78,7 @@ export function DentistAppointmentDetailPage({ appointmentId, onBack }) {
   };
 
   if (loading) {
-    return <DashboardSkeleton role="dentist" />;
+    return <AppointmentDetailSkeleton onBack={onBack} />;
   }
 
   if (error || !appointment) {

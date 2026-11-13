@@ -50,13 +50,17 @@ import { PatientNotificationsPage } from '../features/notifications/pages/Patien
 import { NotificationCenter } from '../features/notifications/components/NotificationCenter';
 import { DentistAppointmentsPage } from '../features/dentists/pages/DentistAppointmentsPage';
 import { DentistAppointmentDetailPage } from '../features/dentists/pages/DentistAppointmentDetailPage';
+import { DentistProfilePage } from '../features/dentists/pages/DentistProfilePage';
 import { DentistTreatmentRecordsPage } from '../features/treatment-records/pages/DentistTreatmentRecordsPage';
 import { UserManagementPage } from '../features/users/pages/UserManagementPage';
 import { RolePermissionMatrixPage } from '../features/roles/pages/RolePermissionMatrixPage';
 import { AuditTrailPage } from '../features/audit/pages/AuditTrailPage';
 import { ReportsPage } from '../features/reports/pages/ReportsPage';
 import { SystemHealthPage } from '../features/system/pages/SystemHealthPage';
+import { StaffProfilePage } from '../features/staff/pages/StaffProfilePage';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
+import { LoadingProvider, useRouteLoading } from '../contexts/LoadingContext';
+import { GlobalLoadingBar } from '../components/ui/GlobalLoadingBar';
 
 function getInitialRoute() {
   if (typeof window === 'undefined') return 'LANDING';
@@ -97,6 +101,7 @@ function getInitialTab() {
         'audit',
         'reports',
         'system',
+        'profile',
       ].includes(sub)
     ) {
       return sub === 'queue' ? 'triage' : sub;
@@ -104,7 +109,7 @@ function getInitialTab() {
   }
   if (path.startsWith('/dentist/')) {
     const sub = path.replace('/dentist/', '').split('/')[0];
-    if (['dashboard', 'appointments', 'treatment-records', 'shifts'].includes(sub)) {
+    if (['dashboard', 'appointments', 'treatment-records', 'profile'].includes(sub)) {
       return sub;
     }
   }
@@ -114,7 +119,7 @@ function getInitialTab() {
 const ROLE_DISPLAY_TITLES = {
   ADMIN: 'Administrator',
   RECEPTIONIST: 'Front Desk Specialist',
-  DENTIST: 'Attending Dentist',
+  DENTIST: 'Dentist',
   PATIENT: 'Patient',
 };
 
@@ -157,7 +162,9 @@ export function resolveUserIdentity(user, currentRole) {
     }
   }
 
-  return { displayName, initials, roleLabel };
+  const avatarUrl = patient?.avatar_url || dentist?.avatar_url || user?.avatar_url || null;
+
+  return { displayName, initials, roleLabel, avatarUrl };
 }
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'toothcare_sidebar_collapsed';
@@ -245,6 +252,7 @@ function getSidebarSections(currentRole, hasPermission, { onPatientNav, onAdminN
           { key: 'services', label: 'Services & Fees', icon: Stethoscope, onSelect: () => onAdminNav('services') },
           { key: 'dentists', label: 'Dentist Roster', icon: Shield, onSelect: () => onAdminNav('dentists') },
           { key: 'schedules', label: 'Hours & Schedules', icon: Clock, onSelect: () => onAdminNav('schedules') },
+          { key: 'profile', label: 'My Profile', icon: Shield, onSelect: () => onAdminNav('profile') },
         ],
       },
       ...(adminSecurityItems.length > 0
@@ -268,7 +276,7 @@ function getSidebarSections(currentRole, hasPermission, { onPatientNav, onAdminN
           { key: 'dashboard', label: 'Overview', icon: Clock, onSelect: () => onDentistNav('dashboard') },
           { key: 'appointments', label: 'Assigned Appointments', icon: Calendar, onSelect: () => onDentistNav('appointments') },
           { key: 'treatment-records', label: 'Treatment Records', icon: FileText, onSelect: () => onDentistNav('treatment-records') },
-          { key: 'shifts', label: 'My Shifts & Leaves', icon: Clock, onSelect: () => onDentistNav('shifts') },
+          { key: 'profile', label: 'My Profile', icon: Shield, onSelect: () => onDentistNav('profile') },
         ],
       },
     ];
@@ -288,8 +296,13 @@ function AppContent() {
   
   // UI Panels
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [failedAvatarUrl, setFailedAvatarUrl] = useState(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(readSidebarCollapsedPref);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setFailedAvatarUrl(null);
+  }, [user?.avatar_url, user?.patient?.avatar_url, user?.dentist?.avatar_url]);
 
   const toggleSidebarCollapsed = () => {
     setIsSidebarCollapsed((prev) => {
@@ -303,6 +316,21 @@ function AppContent() {
   const [selectedDentistAppointmentId, setSelectedDentistAppointmentId] = useState(null);
   const userMenuRef = useRef(null);
   const userMenuTriggerRef = useRef(null);
+  const { triggerRouteTransition } = useRouteLoading();
+  const prevNavKeyRef = useRef(null);
+
+  // Trigger route transition tracking on qualifying navigation, tab, and detail changes
+  useEffect(() => {
+    const nextKey = `${currentRoute}:${activeTab}:${selectedDentistAppointmentId || ''}`;
+    if (prevNavKeyRef.current === null) {
+      prevNavKeyRef.current = nextKey;
+      return;
+    }
+    if (prevNavKeyRef.current !== nextKey) {
+      prevNavKeyRef.current = nextKey;
+      triggerRouteTransition(nextKey);
+    }
+  }, [currentRoute, activeTab, selectedDentistAppointmentId, triggerRouteTransition]);
 
   // Trigger Toast helper
   const showToast = (msg) => {
@@ -609,7 +637,9 @@ function AppContent() {
     displayName: userDisplayName,
     initials: userInitials,
     roleLabel: userRoleLabel,
+    avatarUrl: userAvatarUrl,
   } = resolveUserIdentity(user, currentRole);
+  const showUserAvatar = Boolean(userAvatarUrl && failedAvatarUrl !== userAvatarUrl);
 
   const sidebarSections = getSidebarSections(currentRole, hasPermission, {
     onPatientNav: handlePatientNav,
@@ -688,8 +718,17 @@ function AppContent() {
                 aria-label={`${userDisplayName} account menu`}
                 className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 cursor-pointer"
               >
-                <div className="w-8 h-8 rounded-full bg-[#0D9488]/30 border border-[#14B8A6] text-teal-200 flex items-center justify-center font-semibold text-xs shrink-0">
-                  {userInitials}
+                <div className="w-8 h-8 rounded-full bg-[#0D9488]/30 border border-[#14B8A6] text-teal-200 flex items-center justify-center font-semibold text-xs shrink-0 overflow-hidden">
+                  {showUserAvatar ? (
+                    <img
+                      src={userAvatarUrl}
+                      alt=""
+                      onError={() => setFailedAvatarUrl(userAvatarUrl)}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    userInitials
+                  )}
                 </div>
                 <div className="hidden md:block text-left">
                   <p className="text-xs font-semibold leading-tight text-white">
@@ -713,8 +752,17 @@ function AppContent() {
                 >
                   <div className="px-4 py-3 bg-slate-50/90 border-b border-slate-100">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-full bg-[#CCFBF1] border border-teal-200 text-[#0F766E] flex items-center justify-center font-bold text-xs shrink-0">
-                        {userInitials}
+                      <div className="w-9 h-9 rounded-full bg-[#CCFBF1] border border-teal-200 text-[#0F766E] flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden">
+                        {showUserAvatar ? (
+                          <img
+                            src={userAvatarUrl}
+                            alt=""
+                            onError={() => setFailedAvatarUrl(userAvatarUrl)}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          userInitials
+                        )}
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-[#12304A] truncate">
@@ -728,28 +776,23 @@ function AppContent() {
                   </div>
 
                   <div className="p-1.5 space-y-0.5">
-                    {currentRole === 'PATIENT' ? (
-                      <button
-                        type="button"
-                        onClick={() => handlePatientNav('profile')}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#12304A] transition-colors text-left"
-                      >
-                        <User className="w-4 h-4 text-[#0D9488]" />
-                        <span>My Profile</span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          setActiveTab('dashboard');
-                        }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#12304A] transition-colors text-left"
-                      >
-                        <Calendar className="w-4 h-4 text-[#0D9488]" />
-                        <span>Portal Overview</span>
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        if (currentRole === 'PATIENT') {
+                          handlePatientNav('profile');
+                        } else if (currentRole === 'DENTIST') {
+                          handleDentistNav('profile');
+                        } else {
+                          handleAdminNav('profile');
+                        }
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#12304A] transition-colors text-left"
+                    >
+                      <User className="w-4 h-4 text-[#0D9488]" />
+                      <span>My Profile</span>
+                    </button>
 
                     <div className="my-1 border-t border-slate-100" />
 
@@ -923,9 +966,9 @@ function AppContent() {
 
               {activeTab === 'profile' && (
                 <PatientProfilePage
-                  onProfileUpdated={() => {
+                  onProfileUpdated={(message) => {
                     refreshUser?.();
-                    showToast('Your clinical profile has been updated.');
+                    showToast(message || 'Your clinical profile has been updated.');
                   }}
                 />
               )}
@@ -980,6 +1023,10 @@ function AppContent() {
               {activeTab === 'system' && (hasPermission('system.health') || hasPermission('settings.manage')) && (
                 <SystemHealthPage />
               )}
+
+              {activeTab === 'profile' && (
+                <StaffProfilePage onProfileUpdated={(msg) => showToast(msg || 'Your staff profile has been updated.')} />
+              )}
             </>
           )}
 
@@ -1012,6 +1059,10 @@ function AppContent() {
                 <AdminSchedulePage />
               )}
 
+              {activeTab === 'profile' && (
+                <StaffProfilePage onProfileUpdated={(msg) => showToast(msg || 'Your administrator profile has been updated.')} />
+              )}
+
               {activeTab === 'users' && (
                 <UserManagementPage />
               )}
@@ -1039,7 +1090,7 @@ function AppContent() {
           {/* ======================================================== */}
           {currentRole === 'DENTIST' && (
             <>
-              {(activeTab === 'dashboard' || activeTab === 'shifts') && (
+              {activeTab === 'dashboard' && (
                 <DentistDashboard
                   dentistId={user?.dentist?.id || user?.id || 1}
                   onNavigateTab={(tab) => {
@@ -1069,6 +1120,15 @@ function AppContent() {
               {activeTab === 'treatment-records' && (
                 <DentistTreatmentRecordsPage />
               )}
+
+              {activeTab === 'profile' && (
+                <DentistProfilePage
+                  onProfileUpdated={(message) => {
+                    refreshUser?.();
+                    showToast(message || 'Your practitioner profile has been updated.');
+                  }}
+                />
+              )}
             </>
           )}
 
@@ -1094,9 +1154,12 @@ function AppContent() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <LoadingProvider>
+        <GlobalLoadingBar />
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </LoadingProvider>
     </ErrorBoundary>
   );
 }

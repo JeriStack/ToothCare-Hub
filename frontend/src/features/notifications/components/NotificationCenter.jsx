@@ -12,6 +12,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { useNotifications } from '../hooks/useNotifications';
+import { NotificationSkeleton } from '../../../components/skeletons';
 
 function getNotificationIcon(type) {
   switch (type) {
@@ -125,7 +126,7 @@ export function NotificationCenter({ onNavigateToAppointments, onViewAllNotifica
           {/* Notification List */}
           <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
             {loading && notifications.length === 0 ? (
-              <div className="p-6 text-center text-xs text-slate-400">Loading notifications...</div>
+              <NotificationSkeleton variant="compact" count={3} />
             ) : notifications.length === 0 ? (
               <div className="p-8 text-center">
                 <Bell className="w-8 h-8 text-slate-300 mx-auto mb-2 stroke-[1.5]" />

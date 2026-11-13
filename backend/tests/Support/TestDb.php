@@ -36,6 +36,10 @@ class TestDb
                 email TEXT NOT NULL UNIQUE,
                 first_name TEXT NULL,
                 last_name TEXT NULL,
+                phone TEXT NULL,
+                avatar_path TEXT NULL,
+                avatar_mime TEXT NULL,
+                avatar_updated_at TEXT NULL,
                 password_hash TEXT NOT NULL,
                 role TEXT NOT NULL DEFAULT "PATIENT",
                 is_active INTEGER NOT NULL DEFAULT 1,
@@ -57,6 +61,9 @@ class TestDb
                 emergency_contact_name TEXT NULL,
                 emergency_contact_phone TEXT NULL,
                 medical_alerts TEXT NULL,
+                avatar_path TEXT NULL,
+                avatar_mime TEXT NULL,
+                avatar_updated_at TEXT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
@@ -71,6 +78,9 @@ class TestDb
                 phone TEXT NOT NULL,
                 default_operatory_chair TEXT NOT NULL DEFAULT "Chair 1",
                 bio TEXT NULL,
+                avatar_path TEXT NULL,
+                avatar_mime TEXT NULL,
+                avatar_updated_at TEXT NULL,
                 is_active INTEGER NOT NULL DEFAULT 1,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP

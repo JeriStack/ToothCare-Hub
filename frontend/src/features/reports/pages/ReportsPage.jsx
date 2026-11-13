@@ -12,6 +12,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { reportsApi } from '../api';
+import { ReportSkeleton } from '../../../components/skeletons';
 
 export function ReportsPage() {
   const [dateRange, setDateRange] = useState('30'); // '7' | '30' | '90'
@@ -56,6 +57,10 @@ export function ReportsPage() {
     fetchReports();
   }, [fetchReports]);
 
+  if (loading && !apptData) {
+    return <ReportSkeleton />;
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -70,7 +75,9 @@ export function ReportsPage() {
           <select
             value={dateRange}
             onChange={(e) => setDateRange(e.target.value)}
-            className="px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 shadow-xs outline-none"
+            disabled={loading}
+            aria-busy={loading}
+            className="px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 shadow-xs outline-none disabled:opacity-60"
           >
             <option value="7">Last 7 Days</option>
             <option value="30">Last 30 Days</option>
@@ -78,7 +85,9 @@ export function ReportsPage() {
           </select>
           <button
             onClick={fetchReports}
-            className="p-2 border border-slate-200 rounded-xl bg-white text-slate-600 hover:bg-slate-50 transition-colors"
+            disabled={loading}
+            aria-busy={loading}
+            className="p-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-60"
             title="Refresh"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-teal-600' : ''}`} />
@@ -90,12 +99,6 @@ export function ReportsPage() {
         <div className="p-8 bg-rose-50 border border-rose-200 rounded-2xl text-center space-y-2">
           <AlertTriangle className="w-8 h-8 text-rose-500 mx-auto" />
           <p className="text-sm font-medium text-rose-800">{error}</p>
-        </div>
-      ) : loading && !apptData ? (
-        <div className="p-12 space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-24 bg-slate-100 rounded-2xl animate-pulse" />
-          ))}
         </div>
       ) : (
         <>

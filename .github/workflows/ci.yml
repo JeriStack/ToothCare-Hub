@@ -80,4 +80,5 @@ jobs:
         working-directory: frontend
         run: |
           npm ci
+          npm test -- --run
           npm run build

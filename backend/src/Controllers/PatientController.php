@@ -12,6 +12,7 @@ use App\Repositories\AuditLogRepository;
 use App\Repositories\DentistRepository;
 use App\Repositories\PatientRepository;
 use App\Repositories\UserRepository;
+use App\Services\AvatarStorageService;
 use App\Validators\PatientValidator;
 
 /**
@@ -25,17 +26,21 @@ class PatientController
     private DentistRepository $dentistRepository;
     private UserRepository $userRepository;
     private AuditLogRepository $auditLogRepository;
+    private AvatarStorageService $avatarStorageService;
 
     public function __construct(
         ?PatientRepository $patientRepository = null,
         ?DentistRepository $dentistRepository = null,
         ?UserRepository $userRepository = null,
-        ?AuditLogRepository $auditLogRepository = null
+        ?AuditLogRepository $auditLogRepository = null,
+        ?string $avatarStorageDir = null,
+        ?AvatarStorageService $avatarStorageService = null
     ) {
         $this->patientRepository = $patientRepository ?? new PatientRepository();
         $this->dentistRepository = $dentistRepository ?? new DentistRepository();
         $this->userRepository = $userRepository ?? new UserRepository();
         $this->auditLogRepository = $auditLogRepository ?? new AuditLogRepository();
+        $this->avatarStorageService = $avatarStorageService ?? new AvatarStorageService($avatarStorageDir);
     }
 
     /**
@@ -85,7 +90,7 @@ class PatientController
         $fullPatient = $this->patientRepository->findWithUserById((int) $patient['id']) ?? $patient;
         $fullPatient['appointment_count'] = $this->patientRepository->countAppointmentsReferencing((int) $patient['id']);
 
-        return Response::success($fullPatient);
+        return Response::success($this->patientRepository->stripInternalFields($fullPatient));
     }
 
     /**
@@ -131,7 +136,150 @@ class PatientController
             ['updated_fields' => array_keys($validated)]
         );
 
-        return Response::success($fresh);
+        return Response::success($this->patientRepository->stripInternalFields($fresh));
+    }
+
+    /**
+     * POST /api/v1/patients/me/avatar
+     * Upload or replace the authenticated patient's profile picture (JPEG, PNG, WebP up to 2 MB).
+     */
+    public function uploadMyAvatar(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required.', 'AUTHENTICATION_REQUIRED');
+        }
+
+        $userId = (int) $user['id'];
+        $patient = $this->patientRepository->findByUserId($userId);
+        if ($patient === null) {
+            throw HttpException::notFound('Patient profile not found for this account.');
+        }
+
+        $stored = $this->avatarStorageService->storeUploadedImage($request->getFile('avatar'));
+        $filename = $stored['filename'];
+        $detectedMime = $stored['mime'];
+        $actualSize = $stored['size_bytes'];
+
+        $patientId = (int) $patient['id'];
+        $oldFilename = !empty($patient['avatar_path']) ? basename((string) $patient['avatar_path']) : null;
+
+        try {
+            $this->patientRepository->updateAvatar($patientId, $filename, $detectedMime);
+        } catch (\Throwable $e) {
+            $this->avatarStorageService->deleteFile($filename);
+            throw $e;
+        }
+
+        if ($oldFilename !== null && $oldFilename !== '' && $oldFilename !== $filename) {
+            $this->avatarStorageService->deleteFile($oldFilename);
+        }
+
+        $fresh = $this->patientRepository->findWithUserById($patientId) ?? $this->patientRepository->findById($patientId);
+        if ($fresh !== null) {
+            $fresh['appointment_count'] = $this->patientRepository->countAppointmentsReferencing($patientId);
+        }
+
+        $this->auditLogRepository->record(
+            'PATIENT_AVATAR_UPDATED',
+            'patients',
+            $patientId,
+            $userId,
+            $request->getClientIp(),
+            $request->getHeader('user-agent'),
+            ['mime' => $detectedMime, 'size_bytes' => $actualSize]
+        );
+
+        return Response::success($fresh !== null ? $this->patientRepository->stripInternalFields($fresh) : null);
+    }
+
+    /**
+     * DELETE /api/v1/patients/me/avatar
+     * Remove the authenticated patient's profile picture.
+     */
+    public function deleteMyAvatar(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required.', 'AUTHENTICATION_REQUIRED');
+        }
+
+        $userId = (int) $user['id'];
+        $patient = $this->patientRepository->findByUserId($userId);
+        if ($patient === null) {
+            throw HttpException::notFound('Patient profile not found for this account.');
+        }
+
+        $patientId = (int) $patient['id'];
+        $oldFilename = !empty($patient['avatar_path']) ? basename((string) $patient['avatar_path']) : null;
+
+        $this->patientRepository->clearAvatar($patientId);
+        if ($oldFilename !== null && $oldFilename !== '') {
+            $this->avatarStorageService->deleteFile($oldFilename);
+        }
+
+        $fresh = $this->patientRepository->findWithUserById($patientId) ?? $this->patientRepository->findById($patientId);
+        if ($fresh !== null) {
+            $fresh['appointment_count'] = $this->patientRepository->countAppointmentsReferencing($patientId);
+        }
+
+        $this->auditLogRepository->record(
+            'PATIENT_AVATAR_REMOVED',
+            'patients',
+            $patientId,
+            $userId,
+            $request->getClientIp(),
+            $request->getHeader('user-agent')
+        );
+
+        return Response::success($fresh !== null ? $this->patientRepository->stripInternalFields($fresh) : null);
+    }
+
+    /**
+     * GET /api/v1/patients/me/avatar
+     * Serve authenticated patient's own profile photo securely.
+     */
+    public function serveMyAvatar(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required.', 'AUTHENTICATION_REQUIRED');
+        }
+
+        $patient = $this->patientRepository->findByUserId((int) $user['id']);
+        if ($patient === null) {
+            throw HttpException::notFound('Patient profile not found for this account.');
+        }
+
+        return $this->avatarStorageService->buildImageResponse(
+            $patient['avatar_path'] ?? null,
+            $patient['avatar_mime'] ?? null
+        );
+    }
+
+    /**
+     * GET /api/v1/patients/{id}/avatar
+     * Serve patient profile photo to the owning patient or authorized clinical/front-desk staff.
+     */
+    public function serveAvatar(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null) {
+            throw HttpException::unauthorized('Authentication is required.', 'AUTHENTICATION_REQUIRED');
+        }
+
+        $patientId = (int) $request->getParam('id');
+        $patient = $this->patientRepository->findById($patientId);
+        if ($patient === null) {
+            throw HttpException::notFound("Patient record #{$patientId} was not found.");
+        }
+
+        $this->assertCanAccessPatient($request, $patient);
+
+        return $this->avatarStorageService->buildImageResponse(
+            $patient['avatar_path'] ?? null,
+            $patient['avatar_mime'] ?? null
+        );
     }
 
     /**
@@ -158,7 +306,7 @@ class PatientController
         // Include appointment count for administrative context
         $patient['appointment_count'] = $this->patientRepository->countAppointmentsReferencing($patientId);
 
-        return Response::success($patient);
+        return Response::success($this->patientRepository->stripInternalFields($patient));
     }
 
     /**
@@ -251,7 +399,7 @@ class PatientController
 
         $freshPatient = $this->patientRepository->findWithUserById($patientId);
 
-        return Response::success($freshPatient);
+        return Response::success($freshPatient !== null ? $this->patientRepository->stripInternalFields($freshPatient) : null);
     }
 
     /**

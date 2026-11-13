@@ -1,7 +1,8 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import App, { resolveUserIdentity } from '../../app/App';
+import { globalLoadingManager } from '../../lib/loadingManager';
 
 const mockUseAuth = vi.fn();
 
@@ -30,6 +31,12 @@ vi.mock('../../features/dashboard/PatientDashboard', () => ({
 vi.mock('../../features/notifications/components/NotificationCenter', () => ({
   NotificationCenter: () => <div>NotificationCenterMock</div>,
 }));
+vi.mock('../../features/dentists/pages/DentistProfilePage', () => ({
+  DentistProfilePage: () => <div>DentistProfilePageMock</div>,
+}));
+vi.mock('../../features/staff/pages/StaffProfilePage', () => ({
+  StaffProfilePage: () => <div>StaffProfilePageMock</div>,
+}));
 
 describe('Portal Header Identity & Account Dropdown', () => {
   const logoutMock = vi.fn().mockResolvedValue(true);
@@ -50,6 +57,7 @@ describe('Portal Header Identity & Account Dropdown', () => {
       displayName: 'Marco Villanueva',
       initials: 'MV',
       roleLabel: 'Administrator',
+      avatarUrl: null,
     });
 
     expect(
@@ -61,26 +69,69 @@ describe('Portal Header Identity & Account Dropdown', () => {
       displayName: 'Clarisse Mendoza',
       initials: 'CM',
       roleLabel: 'Front Desk Specialist',
+      avatarUrl: null,
+    });
+
+    expect(
+      resolveUserIdentity(
+        {
+          email: 'receptionist@toothcare.com',
+          first_name: 'Clarisse',
+          last_name: 'Mendoza',
+          avatar_url: '/api/v1/users/3/avatar?v=1',
+        },
+        'RECEPTIONIST'
+      )
+    ).toEqual({
+      displayName: 'Clarisse Mendoza',
+      initials: 'CM',
+      roleLabel: 'Front Desk Specialist',
+      avatarUrl: '/api/v1/users/3/avatar?v=1',
     });
 
     expect(
       resolveUserIdentity(
         {
           email: 'dentist@toothcare.com',
-          dentist: { first_name: 'Maria', last_name: 'Santos' },
+          dentist: {
+            first_name: 'Maria',
+            last_name: 'Santos',
+            avatar_url: '/api/v1/dentists/5/avatar?v=99',
+          },
         },
         'DENTIST'
       )
     ).toEqual({
       displayName: 'Dr. Maria Santos',
       initials: 'MS',
-      roleLabel: 'Attending Dentist',
+      roleLabel: 'Dentist',
+      avatarUrl: '/api/v1/dentists/5/avatar?v=99',
     });
 
     expect(resolveUserIdentity({ email: 'legacy.user@gmail.com' }, 'ADMIN')).toEqual({
       displayName: 'Administrator',
       initials: 'AD',
       roleLabel: 'Administrator',
+      avatarUrl: null,
+    });
+
+    expect(
+      resolveUserIdentity(
+        {
+          email: 'patient@toothcare.com',
+          patient: {
+            first_name: 'Juan',
+            last_name: 'Dela Cruz',
+            avatar_url: '/api/v1/patients/1/avatar?v=1',
+          },
+        },
+        'PATIENT'
+      )
+    ).toEqual({
+      displayName: 'Juan Dela Cruz',
+      initials: 'JD',
+      roleLabel: 'Patient',
+      avatarUrl: '/api/v1/patients/1/avatar?v=1',
     });
   });
 
@@ -230,5 +281,169 @@ describe('Portal Header Identity & Account Dropdown', () => {
     fireEvent.click(expandBtn);
     expect(remounted.container.querySelector('#portal-sidebar')).toHaveAttribute('data-collapsed', 'false');
     expect(window.localStorage.getItem('toothcare_sidebar_collapsed')).toBe('false');
+  });
+
+  it('renders patient profile picture in header and dropdown when avatar_url is set and falls back on error', () => {
+    window.history.pushState({}, '', '/patient');
+    mockUseAuth.mockReturnValue({
+      user: {
+        id: 23,
+        email: 'patient@toothcare.com',
+        role: 'PATIENT',
+        patient: {
+          id: 9,
+          first_name: 'Juan',
+          last_name: 'Dela Cruz',
+          avatar_url: '/api/v1/patients/9/avatar?v=42',
+        },
+        permissions: [],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      logout: logoutMock,
+      hasPermission: () => false,
+      refreshUser: vi.fn(),
+    });
+
+    render(<App />);
+
+    const trigger = screen.getByRole('button', { name: 'Juan Dela Cruz account menu' });
+    const headerImg = trigger.querySelector('img');
+    expect(headerImg).not.toBeNull();
+    expect(headerImg).toHaveAttribute('src', '/api/v1/patients/9/avatar?v=42');
+
+    fireEvent.click(trigger);
+    const menuImgs = document.getElementById('user-account-menu')?.querySelectorAll('img');
+    expect(menuImgs?.length).toBe(1);
+    expect(menuImgs?.[0]).toHaveAttribute('src', '/api/v1/patients/9/avatar?v=42');
+
+    // Graceful fallback to initials if image fails to load
+    fireEvent.error(headerImg);
+    expect(trigger.querySelector('img')).toBeNull();
+    expect(trigger).toHaveTextContent('JD');
+  });
+
+  it('omits redundant My Shifts & Leaves item from dentist sidebar navigation', () => {
+    window.history.pushState({}, '', '/dentist/shifts');
+    mockUseAuth.mockReturnValue({
+      user: {
+        id: 30,
+        email: 'dentist@toothcare.com',
+        role: 'DENTIST',
+        dentist: {
+          id: 5,
+          first_name: 'Maria',
+          last_name: 'Santos',
+        },
+        permissions: [],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      logout: logoutMock,
+      hasPermission: () => false,
+      refreshUser: vi.fn(),
+    });
+
+    render(<App />);
+
+    expect(screen.getByRole('button', { name: 'Overview' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Assigned Appointments' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Treatment Records' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'My Profile' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /My Shifts & Leaves/i })).toBeNull();
+    expect(screen.getByText('DentistDashboardMock')).toBeInTheDocument();
+
+    const accountMenuTrigger = screen.getByRole('button', { name: /Dr\. Maria Santos account menu/i });
+    expect(accountMenuTrigger).toHaveTextContent('Dentist');
+    expect(accountMenuTrigger).not.toHaveTextContent('Attending Dentist');
+
+    fireEvent.click(accountMenuTrigger);
+    const accountMenu = document.getElementById('user-account-menu');
+    expect(accountMenu).not.toBeNull();
+    expect(within(accountMenu).queryByText('Portal Overview')).toBeNull();
+
+    const profileMenuItem = within(accountMenu).getByRole('button', { name: /My Profile/i });
+    fireEvent.click(profileMenuItem);
+    expect(screen.getByText('DentistProfilePageMock')).toBeInTheDocument();
+  });
+
+  it('renders My Profile in receptionist navigation and replaces Portal Overview in account dropdown', () => {
+    window.history.pushState({}, '', '/receptionist');
+    mockUseAuth.mockReturnValue({
+      user: {
+        id: 3,
+        email: 'receptionist@toothcare.com',
+        first_name: 'Clarisse',
+        last_name: 'Mendoza',
+        role: 'RECEPTIONIST',
+        avatar_url: '/api/v1/users/3/avatar?v=45',
+        permissions: ['appointments.view'],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      logout: logoutMock,
+      hasPermission: (perm) => perm === 'appointments.view',
+      refreshUser: vi.fn(),
+    });
+
+    render(<App />);
+
+    expect(screen.getByRole('button', { name: 'My Profile' })).toBeInTheDocument();
+
+    const accountMenuTrigger = screen.getByRole('button', { name: /Clarisse Mendoza account menu/i });
+    expect(accountMenuTrigger).toHaveTextContent('Front Desk Specialist');
+    const headerAvatarImg = accountMenuTrigger.querySelector('img');
+    expect(headerAvatarImg).not.toBeNull();
+    expect(headerAvatarImg).toHaveAttribute('src', '/api/v1/users/3/avatar?v=45');
+
+    fireEvent.click(accountMenuTrigger);
+
+    const accountMenu = document.getElementById('user-account-menu');
+    expect(accountMenu).not.toBeNull();
+    const dropdownAvatarImg = accountMenu.querySelector('img');
+    expect(dropdownAvatarImg).not.toBeNull();
+    expect(dropdownAvatarImg).toHaveAttribute('src', '/api/v1/users/3/avatar?v=45');
+    expect(within(accountMenu).queryByText('Portal Overview')).toBeNull();
+
+    const profileMenuItem = within(accountMenu).getByRole('button', { name: /My Profile/i });
+    fireEvent.click(profileMenuItem);
+    expect(screen.getByText('StaffProfilePageMock')).toBeInTheDocument();
+  });
+
+  it('registers route navigation transitions in App without flashing or leaking active loading state', async () => {
+    window.history.pushState({}, '', '/admin');
+    mockUseAuth.mockReturnValue({
+      user: {
+        id: 1,
+        first_name: 'Admin',
+        last_name: 'User',
+        role: 'ADMIN',
+        permissions: ['appointments.view'],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      logout: logoutMock,
+      hasPermission: () => true,
+      refreshUser: vi.fn(),
+    });
+
+    const startSpy = vi.spyOn(globalLoadingManager, 'start');
+    render(<App />);
+
+    expect(screen.queryByTestId('global-loading-bar')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'My Profile' }));
+    expect(screen.getByText('StaffProfilePageMock')).toBeInTheDocument();
+    expect(startSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/^nav:ADMIN:profile/),
+      expect.objectContaining({ type: 'route' })
+    );
+
+    await waitFor(() => {
+      expect(globalLoadingManager.getSnapshot().activeCount).toBe(0);
+    });
+    expect(screen.queryByTestId('global-loading-bar')).not.toBeInTheDocument();
+
+    startSpy.mockRestore();
   });
 });

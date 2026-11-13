@@ -30,7 +30,7 @@ class UserRepository
         $stmt->execute([strtolower(trim($email))]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return $row ?: null;
+        return $row ? $this->hydrateAvatarFields($row) : null;
     }
 
     /**
@@ -43,7 +43,7 @@ class UserRepository
         $stmt->execute([$id]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return $row ?: null;
+        return $row ? $this->hydrateAvatarFields($row) : null;
     }
 
     public function create(
@@ -80,7 +80,7 @@ class UserRepository
         $pdo = $this->database->getConnection();
         $stmt = $pdo->prepare('
             UPDATE users
-            SET first_name = ?, last_name = ?, updated_at = NOW()
+            SET first_name = ?, last_name = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         ');
 
@@ -89,6 +89,98 @@ class UserRepository
             $lastName !== null && trim($lastName) !== '' ? trim($lastName) : null,
             $userId,
         ]);
+    }
+
+    /**
+     * Update user profile contact information and names
+     *
+     * @param array<string, mixed> $data
+     */
+    public function updateProfile(int $userId, array $data): bool
+    {
+        $pdo = $this->database->getConnection();
+        $fields = [];
+        $params = [];
+
+        $allowedColumns = ['first_name', 'last_name', 'phone'];
+        foreach ($allowedColumns as $col) {
+            if (array_key_exists($col, $data)) {
+                $fields[] = "{$col} = ?";
+                $val = $data[$col] !== null ? trim((string) $data[$col]) : null;
+                $params[] = $val === '' ? null : $val;
+            }
+        }
+
+        if (empty($fields)) {
+            return false;
+        }
+
+        $fields[] = 'updated_at = CURRENT_TIMESTAMP';
+        $params[] = $userId;
+
+        $setClause = implode(', ', $fields);
+        $stmt = $pdo->prepare("UPDATE users SET {$setClause} WHERE id = ?");
+
+        return $stmt->execute($params);
+    }
+
+    public function updateAvatar(int $userId, string $filename, string $mime): bool
+    {
+        $pdo = $this->database->getConnection();
+        $stmt = $pdo->prepare('
+            UPDATE users
+            SET avatar_path = ?,
+                avatar_mime = ?,
+                avatar_updated_at = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ');
+
+        return $stmt->execute([$filename, $mime, $userId]);
+    }
+
+    public function clearAvatar(int $userId): bool
+    {
+        $pdo = $this->database->getConnection();
+        $stmt = $pdo->prepare('
+            UPDATE users
+            SET avatar_path = NULL,
+                avatar_mime = NULL,
+                avatar_updated_at = NULL,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ');
+
+        return $stmt->execute([$userId]);
+    }
+
+    /**
+     * Append computed avatar_url when an avatar file is registered on the user row.
+     *
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    public function hydrateAvatarFields(array $row): array
+    {
+        $hasAvatar = !empty($row['avatar_path']) && isset($row['id']);
+        $versionSource = (string) ($row['avatar_updated_at'] ?? '') . '_' . (string) ($row['avatar_path'] ?? '');
+        $row['avatar_url'] = $hasAvatar
+            ? '/api/v1/users/' . (int) $row['id'] . '/avatar?v=' . rawurlencode($versionSource)
+            : null;
+
+        return $row;
+    }
+
+    /**
+     * Strip internal server storage fields before serializing a user payload to API clients.
+     *
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    public function stripInternalFields(array $row): array
+    {
+        unset($row['avatar_path'], $row['avatar_mime'], $row['password_hash']);
+        return $row;
     }
 
     public function updatePassword(int $userId, string $passwordHash): bool

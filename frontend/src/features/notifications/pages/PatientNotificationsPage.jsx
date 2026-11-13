@@ -14,6 +14,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import notificationsApi from '../api';
+import { NotificationSkeleton } from '../../../components/skeletons';
 
 function getNotificationIcon(type) {
   switch (type) {
@@ -146,11 +147,7 @@ export function PatientNotificationsPage({ onNavigateToAppointments }) {
 
       {/* Content */}
       {loading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 bg-white rounded-2xl border border-slate-200/80 p-4 animate-pulse" />
-          ))}
-        </div>
+        <NotificationSkeleton variant="page" count={4} />
       ) : error ? (
         <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between">
           <span>{error}</span>

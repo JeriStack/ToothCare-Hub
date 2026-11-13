@@ -12,6 +12,7 @@ import {
   Filter
 } from 'lucide-react';
 import { auditApi } from '../api';
+import { TableSkeleton } from '../../../components/skeletons';
 
 export function AuditTrailPage() {
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'security'
@@ -106,9 +107,14 @@ export function AuditTrailPage() {
         <button
           onClick={handleExportCsv}
           disabled={exporting}
+          aria-busy={exporting}
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#12304A] hover:bg-[#1e496e] text-white text-sm font-semibold rounded-xl shadow-xs transition-colors disabled:opacity-50"
         >
-          <Download className="w-4 h-4 text-teal-400" />
+          {exporting ? (
+            <RefreshCw className="w-4 h-4 animate-spin text-teal-400" />
+          ) : (
+            <Download className="w-4 h-4 text-teal-400" />
+          )}
           {exporting ? 'Exporting CSV...' : 'Export CSV Log'}
         </button>
       </div>
@@ -225,11 +231,7 @@ export function AuditTrailPage() {
             </button>
           </div>
         ) : loading && logs.length === 0 ? (
-          <div className="p-8 space-y-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-12 bg-slate-100 rounded-xl animate-pulse" />
-            ))}
-          </div>
+          <TableSkeleton rows={6} cols={6} />
         ) : logs.length === 0 ? (
           <div className="p-12 text-center text-slate-400">
             <Activity className="w-10 h-10 mx-auto mb-2 text-slate-300" />

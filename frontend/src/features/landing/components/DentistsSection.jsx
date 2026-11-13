@@ -29,7 +29,7 @@ export function DentistsSection({ onSelectDentist }) {
     setError(null);
 
     try {
-      const data = await dentistsApi.getPublicDentists();
+      const data = await dentistsApi.getPublicDentists({ background: true });
       if (Array.isArray(data) && data.length > 0) {
         const activeOnly = data.filter((d) => Number(d.is_active) === 1);
         setDentists(activeOnly.length > 0 ? activeOnly : FALLBACK_DENTISTS);

@@ -37,8 +37,42 @@ export const authApi = {
   /**
    * Retrieve current authenticated user context
    */
-  async getMe() {
-    const res = await apiClient.get('/auth/me');
+  async getMe(options = {}) {
+    const res = await apiClient.get('/auth/me', options);
+    return res.data?.data;
+  },
+
+  /**
+   * Fetch authenticated user's own profile
+   */
+  async getMyProfile() {
+    const res = await apiClient.get('/user/profile');
+    return res.data?.data;
+  },
+
+  /**
+   * Update authenticated user's profile details
+   */
+  async updateMyProfile(payload) {
+    const res = await apiClient.patch('/user/profile', payload);
+    return res.data?.data;
+  },
+
+  /**
+   * Upload or replace authenticated user's profile picture
+   */
+  async uploadMyAvatar(file) {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    const res = await apiClient.post('/user/profile/avatar', formData);
+    return res.data?.data;
+  },
+
+  /**
+   * Remove authenticated user's profile picture
+   */
+  async deleteMyAvatar() {
+    const res = await apiClient.delete('/user/profile/avatar');
     return res.data?.data;
   },
 

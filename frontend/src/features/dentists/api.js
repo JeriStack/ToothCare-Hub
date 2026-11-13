@@ -25,8 +25,8 @@ export const dentistsApi = {
   /**
    * Fetch active dentists roster for public appointment scheduling
    */
-  async getPublicDentists() {
-    const res = await apiClient.get('/dentists');
+  async getPublicDentists(options = {}) {
+    const res = await apiClient.get('/dentists', options);
     return res.data?.data || [];
   },
 
@@ -51,6 +51,40 @@ export const dentistsApi = {
    */
   async updateDentist(id, payload) {
     const res = await apiClient.put(`/admin/dentists/${id}`, payload);
+    return res.data?.data;
+  },
+
+  /**
+   * Fetch authenticated dentist's own clinical profile
+   */
+  async getMyProfile() {
+    const res = await apiClient.get('/dentist/profile');
+    return res.data?.data;
+  },
+
+  /**
+   * Update authenticated dentist's own clinical profile
+   */
+  async updateMyProfile(payload) {
+    const res = await apiClient.patch('/dentist/profile', payload);
+    return res.data?.data;
+  },
+
+  /**
+   * Upload or replace authenticated dentist's profile picture
+   */
+  async uploadMyAvatar(file) {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    const res = await apiClient.post('/dentist/profile/avatar', formData);
+    return res.data?.data;
+  },
+
+  /**
+   * Remove authenticated dentist's profile picture
+   */
+  async deleteMyAvatar() {
+    const res = await apiClient.delete('/dentist/profile/avatar');
     return res.data?.data;
   },
 

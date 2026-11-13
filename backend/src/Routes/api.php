@@ -59,15 +59,32 @@ $router->group('/api/v1', function (Router $r): void {
     // Protected Auth Endpoints
     $r->post('/auth/logout', [AuthController::class, 'logout'], [AuthenticationMiddleware::class]);
     $r->get('/auth/me', [AuthController::class, 'me'], [AuthenticationMiddleware::class]);
+    $r->patch('/auth/me', [UserController::class, 'updateMe'], [AuthenticationMiddleware::class]);
+    $r->get('/auth/me/avatar', [UserController::class, 'serveMyAvatar'], [AuthenticationMiddleware::class]);
+    $r->post('/auth/me/avatar', [UserController::class, 'uploadMyAvatar'], [AuthenticationMiddleware::class]);
+    $r->delete('/auth/me/avatar', [UserController::class, 'deleteMyAvatar'], [AuthenticationMiddleware::class]);
+
+    // User / Staff Self-Service Profile Endpoints
+    $r->get('/user/profile', [UserController::class, 'me'], [AuthenticationMiddleware::class]);
+    $r->patch('/user/profile', [UserController::class, 'updateMe'], [AuthenticationMiddleware::class]);
+    $r->get('/user/profile/avatar', [UserController::class, 'serveMyAvatar'], [AuthenticationMiddleware::class]);
+    $r->post('/user/profile/avatar', [UserController::class, 'uploadMyAvatar'], [AuthenticationMiddleware::class]);
+    $r->delete('/user/profile/avatar', [UserController::class, 'deleteMyAvatar'], [AuthenticationMiddleware::class]);
+    $r->get('/users/{id}/avatar', [UserController::class, 'serveAvatar']);
 
     // 3. Public Catalog Endpoints (Active items for booking/discovery)
     $r->get('/services', [ServiceController::class, 'listPublic']);
     $r->get('/dentists', [DentistController::class, 'listPublic']);
     $r->get('/dentists/{id}', [DentistController::class, 'showPublic']);
+    $r->get('/dentists/{id}/avatar', [DentistController::class, 'serveAvatar']);
 
     // 4. Patients Self-Management Group (Phase 7 & 11 ownership checks)
     $r->get('/patients/me', [PatientController::class, 'me'], [AuthenticationMiddleware::class]);
     $r->patch('/patients/me', [PatientController::class, 'updateMe'], [AuthenticationMiddleware::class]);
+    $r->get('/patients/me/avatar', [PatientController::class, 'serveMyAvatar'], [AuthenticationMiddleware::class]);
+    $r->post('/patients/me/avatar', [PatientController::class, 'uploadMyAvatar'], [AuthenticationMiddleware::class]);
+    $r->delete('/patients/me/avatar', [PatientController::class, 'deleteMyAvatar'], [AuthenticationMiddleware::class]);
+    $r->get('/patients/{id}/avatar', [PatientController::class, 'serveAvatar'], [AuthenticationMiddleware::class]);
     $r->get('/patients/{id}', [PatientController::class, 'show'], [AuthenticationMiddleware::class]);
     $r->patch('/patients/{id}', [PatientController::class, 'update'], [AuthenticationMiddleware::class]);
 
@@ -184,6 +201,11 @@ $router->group('/api/v1', function (Router $r): void {
 
     // Dentist Scoped Endpoints (Phase 12 Dentist Dashboard & Assigned Workload)
     $dentistAuth = [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN'])];
+    $r->get('/dentist/profile', [DentistController::class, 'me'], $dentistAuth);
+    $r->patch('/dentist/profile', [DentistController::class, 'updateMe'], $dentistAuth);
+    $r->get('/dentist/profile/avatar', [DentistController::class, 'serveMyAvatar'], $dentistAuth);
+    $r->post('/dentist/profile/avatar', [DentistController::class, 'uploadMyAvatar'], $dentistAuth);
+    $r->delete('/dentist/profile/avatar', [DentistController::class, 'deleteMyAvatar'], $dentistAuth);
     $r->get('/dentist/dashboard', [AppointmentController::class, 'dentistDashboard'], [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN']), AuthorizationMiddleware::hasPermission('appointments.view', ['DENTIST', 'ADMIN'])]);
     $r->get('/dentist/appointments', [AppointmentController::class, 'dentistIndex'], [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN']), AuthorizationMiddleware::hasPermission('appointments.view', ['DENTIST', 'ADMIN'])]);
     $r->get('/dentist/appointments/{id}', [AppointmentController::class, 'dentistShow'], [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN']), AuthorizationMiddleware::hasPermission('appointments.view', ['DENTIST', 'ADMIN'])]);

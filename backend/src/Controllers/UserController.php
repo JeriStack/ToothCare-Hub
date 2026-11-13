@@ -11,6 +11,8 @@ use App\Core\Response;
 use App\Middleware\AuthorizationMiddleware;
 use App\Repositories\AuditLogRepository;
 use App\Repositories\UserRepository;
+use App\Services\AuthService;
+use App\Services\AvatarStorageService;
 use App\Validators\UserValidator;
 use PDO;
 
@@ -21,13 +23,20 @@ class UserController
 {
     private UserRepository $userRepository;
     private AuditLogRepository $auditLogRepository;
+    private AuthService $authService;
+    private AvatarStorageService $avatarStorageService;
 
     public function __construct(
         ?UserRepository $userRepository = null,
-        ?AuditLogRepository $auditLogRepository = null
+        ?AuditLogRepository $auditLogRepository = null,
+        ?AuthService $authService = null,
+        ?AvatarStorageService $avatarStorageService = null,
+        ?string $avatarStorageDir = null
     ) {
         $this->userRepository = $userRepository ?? new UserRepository();
         $this->auditLogRepository = $auditLogRepository ?? new AuditLogRepository();
+        $this->authService = $authService ?? new AuthService();
+        $this->avatarStorageService = $avatarStorageService ?? new AvatarStorageService($avatarStorageDir);
     }
 
     /**
@@ -244,5 +253,183 @@ class UserController
         $updated = $this->userRepository->getUserWithProfile($userId);
 
         return Response::success($updated);
+    }
+
+    /**
+     * GET /api/v1/user/profile
+     * Retrieve authenticated staff / user's own profile.
+     */
+    public function me(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required.', 'AUTHENTICATION_REQUIRED');
+        }
+
+        $currentUser = $this->authService->getCurrentUser((int) $user['id']);
+
+        return Response::success($currentUser);
+    }
+
+    /**
+     * PATCH /api/v1/user/profile
+     * Update authenticated user's own names and phone.
+     */
+    public function updateMe(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required.', 'AUTHENTICATION_REQUIRED');
+        }
+
+        $userId = (int) $user['id'];
+        $body = $request->getBody();
+        unset($body['id'], $body['email'], $body['role'], $body['is_active'], $body['password_hash']);
+
+        $validated = UserValidator::validateUpdateProfile($body);
+        $this->userRepository->updateProfile($userId, $validated);
+
+        $this->auditLogRepository->record(
+            'USER_SELF_PROFILE_UPDATED',
+            'users',
+            $userId,
+            $userId,
+            $request->getClientIp(),
+            $request->getHeader('user-agent'),
+            ['updated_fields' => array_keys($validated)]
+        );
+
+        $freshUser = $this->authService->getCurrentUser($userId);
+
+        return Response::success($freshUser);
+    }
+
+    /**
+     * POST /api/v1/user/profile/avatar
+     * Upload or replace authenticated user's profile photo (JPEG, PNG, WebP up to 2 MB).
+     */
+    public function uploadMyAvatar(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required.', 'AUTHENTICATION_REQUIRED');
+        }
+
+        $userId = (int) $user['id'];
+        $dbUser = $this->userRepository->findById($userId);
+        if ($dbUser === null) {
+            throw HttpException::notFound('User account not found.');
+        }
+
+        $stored = $this->avatarStorageService->storeUploadedImage($request->getFile('avatar'));
+        $filename = $stored['filename'];
+        $detectedMime = $stored['mime'];
+        $actualSize = $stored['size_bytes'];
+
+        $oldFilename = !empty($dbUser['avatar_path']) ? basename((string) $dbUser['avatar_path']) : null;
+
+        try {
+            $this->userRepository->updateAvatar($userId, $filename, $detectedMime);
+        } catch (\Throwable $e) {
+            $this->avatarStorageService->deleteFile($filename);
+            throw $e;
+        }
+
+        if ($oldFilename !== null && $oldFilename !== '' && $oldFilename !== $filename) {
+            $this->avatarStorageService->deleteFile($oldFilename);
+        }
+
+        $this->auditLogRepository->record(
+            'USER_AVATAR_UPDATED',
+            'users',
+            $userId,
+            $userId,
+            $request->getClientIp(),
+            $request->getHeader('user-agent'),
+            ['mime' => $detectedMime, 'size_bytes' => $actualSize]
+        );
+
+        $freshUser = $this->authService->getCurrentUser($userId);
+
+        return Response::success($freshUser);
+    }
+
+    /**
+     * DELETE /api/v1/user/profile/avatar
+     * Remove the authenticated user's profile photo.
+     */
+    public function deleteMyAvatar(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required.', 'AUTHENTICATION_REQUIRED');
+        }
+
+        $userId = (int) $user['id'];
+        $dbUser = $this->userRepository->findById($userId);
+        if ($dbUser === null) {
+            throw HttpException::notFound('User account not found.');
+        }
+
+        $oldFilename = !empty($dbUser['avatar_path']) ? basename((string) $dbUser['avatar_path']) : null;
+
+        $this->userRepository->clearAvatar($userId);
+        if ($oldFilename !== null && $oldFilename !== '') {
+            $this->avatarStorageService->deleteFile($oldFilename);
+        }
+
+        $this->auditLogRepository->record(
+            'USER_AVATAR_REMOVED',
+            'users',
+            $userId,
+            $userId,
+            $request->getClientIp(),
+            $request->getHeader('user-agent')
+        );
+
+        $freshUser = $this->authService->getCurrentUser($userId);
+
+        return Response::success($freshUser);
+    }
+
+    /**
+     * GET /api/v1/user/profile/avatar
+     * Serve authenticated user's own profile photo securely.
+     */
+    public function serveMyAvatar(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required.', 'AUTHENTICATION_REQUIRED');
+        }
+
+        $dbUser = $this->userRepository->findById((int) $user['id']);
+        if ($dbUser === null) {
+            throw HttpException::notFound('User account not found.');
+        }
+
+        return $this->avatarStorageService->buildImageResponse(
+            $dbUser['avatar_path'] ?? null,
+            $dbUser['avatar_mime'] ?? null
+        );
+    }
+
+    /**
+     * GET /api/v1/users/{id}/avatar
+     * Serve user profile photo.
+     */
+    public function serveAvatar(Request $request): Response
+    {
+        $id = (int) $request->getParam('id');
+        $dbUser = $this->userRepository->findById($id);
+        if ($dbUser === null) {
+            throw HttpException::notFound("User profile #{$id} was not found.");
+        }
+
+        return $this->avatarStorageService->buildImageResponse(
+            $dbUser['avatar_path'] ?? null,
+            $dbUser['avatar_mime'] ?? null,
+            'public, max-age=3600'
+        );
     }
 }

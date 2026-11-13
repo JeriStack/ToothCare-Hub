@@ -26,7 +26,7 @@ export function ServicesSection({ onBookService }) {
     setError(null);
 
     try {
-      const data = await servicesApi.getPublicServices();
+      const data = await servicesApi.getPublicServices({ background: true });
       if (Array.isArray(data) && data.length > 0) {
         const activeOnly = data.filter((s) => Number(s.is_active) === 1);
         setServices(activeOnly.length > 0 ? activeOnly : FALLBACK_SERVICES);
