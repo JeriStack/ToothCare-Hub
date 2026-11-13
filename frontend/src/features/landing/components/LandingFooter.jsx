@@ -13,11 +13,11 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 space-y-12">
         
         {/* Top Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 text-center">
           
           {/* Brand Info */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="flex items-center gap-2.5">
+          <div className="md:col-span-2 lg:col-span-2 space-y-4 flex flex-col items-center text-center">
+            <div className="flex items-center justify-center gap-2.5">
               <div className="w-10 h-10 flex items-center justify-center shrink-0">
                 <img
                   src="/images/logo-icon.png"
@@ -25,7 +25,7 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
                   className="w-full h-full object-contain"
                 />
               </div>
-              <div className="flex flex-col text-left">
+              <div className="flex flex-col items-center text-center">
                 <span className="font-bold text-xl text-white tracking-tight leading-tight">
                   Tooth<span className="text-[#0D9488]">Care</span> Hub
                 </span>
@@ -34,22 +34,25 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
                 </span>
               </div>
             </div>
-            <p className="text-xs text-slate-400 max-w-sm leading-relaxed font-normal">
+            <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed font-normal text-center">
               A comprehensive dental appointment and clinic management platform designed to help patients discover
               dental services, find available dentists, and request appointments seamlessly.
             </p>
-            <div className="pt-1 flex items-center gap-2 text-[11px] text-teal-400">
+            <div className="pt-1 flex items-center justify-center gap-2 text-[11px] text-teal-400 text-center">
               <ShieldCheck className="w-4 h-4 text-teal-400 shrink-0" />
               <span>Standardized Clinical Data Isolation & Protection</span>
             </div>
           </div>
 
           {/* Quick Navigation */}
-          <div className="space-y-3">
+          <div className="space-y-3 text-center">
             <h4 className="text-xs font-bold uppercase tracking-wider text-white">Platform Navigation</h4>
-            <ul className="space-y-2 text-xs">
+            <ul className="space-y-2 text-xs flex flex-col items-center">
               <li>
                 <a href="#home" className="hover:text-white transition-colors">Home</a>
+              </li>
+              <li>
+                <a href="#about" className="hover:text-white transition-colors">About Platform</a>
               </li>
               <li>
                 <a href="#services" className="hover:text-white transition-colors">Services & Pricing</a>
@@ -61,23 +64,20 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
                 <a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a>
               </li>
               <li>
-                <a href="#about" className="hover:text-white transition-colors">About Platform</a>
-              </li>
-              <li>
                 <a href="#contact" className="hover:text-white transition-colors">Operating Hours</a>
               </li>
             </ul>
           </div>
 
           {/* Patient Portal Links */}
-          <div className="space-y-3">
+          <div className="space-y-3 text-center">
             <h4 className="text-xs font-bold uppercase tracking-wider text-white">Patient Services</h4>
-            <ul className="space-y-2 text-xs">
+            <ul className="space-y-2 text-xs flex flex-col items-center">
               <li>
                 <button
                   type="button"
                   onClick={onBookAppointment}
-                  className="hover:text-white transition-colors text-left font-medium text-teal-400"
+                  className="hover:text-teal-300 transition-colors text-center font-medium text-teal-400 cursor-pointer"
                 >
                   Book an Appointment
                 </button>
@@ -86,7 +86,7 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
                 <button
                   type="button"
                   onClick={onLogin}
-                  className="hover:text-white transition-colors text-left"
+                  className="hover:text-white transition-colors text-center cursor-pointer"
                 >
                   Sign In to Patient Portal
                 </button>
@@ -95,7 +95,7 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
                 <button
                   type="button"
                   onClick={onLogin}
-                  className="hover:text-white transition-colors text-left"
+                  className="hover:text-white transition-colors text-center cursor-pointer"
                 >
                   View Appointment Status
                 </button>
@@ -104,7 +104,7 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
                 <button
                   type="button"
                   onClick={onAdminLogin}
-                  className="hover:text-white transition-colors text-left text-slate-500 hover:text-slate-400"
+                  className="text-slate-400 hover:text-white transition-colors text-center cursor-pointer"
                 >
                   Staff & Admin Login
                 </button>
@@ -113,14 +113,14 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
           </div>
 
           {/* Legal / Policy */}
-          <div className="space-y-3">
+          <div className="space-y-3 md:col-span-2 lg:col-span-1 text-center">
             <h4 className="text-xs font-bold uppercase tracking-wider text-white">Policies & Care</h4>
-            <ul className="space-y-2 text-xs">
+            <ul className="space-y-2 text-xs flex flex-col items-center">
               <li>
                 <button
                   type="button"
                   onClick={() => setLegalModal('privacy')}
-                  className="hover:text-white transition-colors text-left"
+                  className="hover:text-white transition-colors text-center cursor-pointer"
                 >
                   Patient Privacy Policy
                 </button>
@@ -129,7 +129,7 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
                 <button
                   type="button"
                   onClick={() => setLegalModal('terms')}
-                  className="hover:text-white transition-colors text-left"
+                  className="hover:text-white transition-colors text-center cursor-pointer"
                 >
                   Appointment Terms & Conditions
                 </button>
@@ -145,7 +145,7 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-8 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+        <div className="pt-8 border-t border-slate-800 flex flex-col items-center justify-center gap-4 text-xs text-slate-400 text-center">
           <p>
             © {new Date().getFullYear()} ToothCare Hub. All rights reserved. Professional Dental Clinic Management.
           </p>
@@ -154,7 +154,7 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
             type="button"
             onClick={scrollToTop}
             aria-label="Scroll back to top of page"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors text-xs"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors text-xs cursor-pointer"
           >
             <span>Back to top</span>
             <ArrowUp className="w-3.5 h-3.5" />
