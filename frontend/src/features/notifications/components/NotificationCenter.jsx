@@ -100,13 +100,13 @@ export function NotificationCenter({ onNavigateToAppointments, onViewAllNotifica
 
       {/* Dropdown Panel */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white shadow-2xl border border-slate-200/90 z-50 overflow-hidden text-slate-800 animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-gray-800 shadow-2xl border border-slate-200/90 dark:border-gray-700 z-50 overflow-hidden text-slate-800 dark:text-gray-100 animate-in fade-in zoom-in-95 duration-150">
           {/* Header */}
-          <div className="p-3.5 px-4 bg-slate-50/80 border-b border-slate-200/80 flex items-center justify-between">
+          <div className="p-3.5 px-4 bg-slate-50/80 dark:bg-gray-900/70 border-b border-slate-200/80 dark:border-gray-700 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-[#12304A]">Notifications</h3>
+              <h3 className="text-sm font-bold text-[#12304A] dark:text-gray-50">Notifications</h3>
               {unreadCount > 0 && (
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#CCFBF1] text-[#0F766E]">
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#CCFBF1] dark:bg-teal-900/60 text-[#0F766E] dark:text-teal-200">
                   {unreadCount} unread
                 </span>
               )}
@@ -115,7 +115,7 @@ export function NotificationCenter({ onNavigateToAppointments, onViewAllNotifica
               <button
                 type="button"
                 onClick={markAllAsRead}
-                className="text-xs font-semibold text-[#0D9488] hover:text-[#0F766E] flex items-center gap-1 transition-colors"
+                className="text-xs font-semibold text-[#0D9488] dark:text-teal-400 hover:text-[#0F766E] dark:hover:text-teal-300 flex items-center gap-1 transition-colors"
               >
                 <CheckCheck className="w-3.5 h-3.5" />
                 <span>Mark all as read</span>
@@ -124,14 +124,14 @@ export function NotificationCenter({ onNavigateToAppointments, onViewAllNotifica
           </div>
 
           {/* Notification List */}
-          <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+          <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-gray-700/80">
             {loading && notifications.length === 0 ? (
               <NotificationSkeleton variant="compact" count={3} />
             ) : notifications.length === 0 ? (
               <div className="p-8 text-center">
-                <Bell className="w-8 h-8 text-slate-300 mx-auto mb-2 stroke-[1.5]" />
-                <p className="text-xs font-semibold text-slate-600">No notifications yet</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">
+                <Bell className="w-8 h-8 text-slate-300 dark:text-gray-600 mx-auto mb-2 stroke-[1.5]" />
+                <p className="text-xs font-semibold text-slate-600 dark:text-gray-300">No notifications yet</p>
+                <p className="text-[11px] text-slate-400 dark:text-gray-400 mt-0.5">
                   You will receive updates here about your dental appointments.
                 </p>
               </div>
@@ -143,27 +143,29 @@ export function NotificationCenter({ onNavigateToAppointments, onViewAllNotifica
                     key={notif.id}
                     onClick={() => handleItemClick(notif)}
                     className={`p-3.5 px-4 flex items-start gap-3 cursor-pointer transition-colors ${
-                      isUnread ? 'bg-teal-50/40 hover:bg-teal-50/70' : 'hover:bg-slate-50'
+                      isUnread
+                        ? 'bg-teal-50/40 dark:bg-teal-950/35 hover:bg-teal-50/70 dark:hover:bg-teal-950/55'
+                        : 'hover:bg-slate-50 dark:hover:bg-gray-700/60'
                     }`}
                   >
-                    <div className="p-2 rounded-xl bg-white border border-slate-200/80 shadow-2xs shrink-0 mt-0.5">
+                    <div className="p-2 rounded-xl bg-white dark:bg-gray-900 border border-slate-200/80 dark:border-gray-700 shadow-2xs shrink-0 mt-0.5">
                       {getNotificationIcon(notif.type)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1 mb-0.5">
-                        <p className={`text-xs ${isUnread ? 'font-bold text-[#12304A]' : 'font-medium text-slate-700'} truncate`}>
+                        <p className={`text-xs ${isUnread ? 'font-bold text-[#12304A] dark:text-gray-50' : 'font-medium text-slate-700 dark:text-gray-200'} truncate`}>
                           {notif.title}
                         </p>
-                        <span className="text-[10px] text-slate-400 whitespace-nowrap shrink-0">
+                        <span className="text-[10px] text-slate-400 dark:text-gray-400 whitespace-nowrap shrink-0">
                           {formatRelativeTime(notif.created_at)}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
+                      <p className="text-[11px] text-slate-500 dark:text-gray-400 line-clamp-2 leading-relaxed">
                         {notif.message}
                       </p>
                     </div>
                     {isUnread && (
-                      <span className="w-2 h-2 rounded-full bg-[#0D9488] shrink-0 mt-2" />
+                      <span className="w-2 h-2 rounded-full bg-[#0D9488] dark:bg-teal-400 shrink-0 mt-2" />
                     )}
                   </div>
                 );
@@ -173,14 +175,14 @@ export function NotificationCenter({ onNavigateToAppointments, onViewAllNotifica
 
           {/* Footer */}
           {notifications.length > 0 && (
-            <div className="p-2.5 px-4 bg-slate-50 border-t border-slate-200/80 text-center">
+            <div className="p-2.5 px-4 bg-slate-50 dark:bg-gray-900/70 border-t border-slate-200/80 dark:border-gray-700 text-center">
               <button
                 type="button"
                 onClick={() => {
                   setIsOpen(false);
                   onViewAllNotifications?.();
                 }}
-                className="text-xs font-semibold text-[#0D9488] hover:text-[#0F766E] inline-flex items-center gap-1.5 transition-colors"
+                className="text-xs font-semibold text-[#0D9488] dark:text-teal-400 hover:text-[#0F766E] dark:hover:text-teal-300 inline-flex items-center gap-1.5 transition-colors"
               >
                 <span>View all notifications</span>
                 <ExternalLink className="w-3.5 h-3.5" />

@@ -76,6 +76,7 @@ class Config
             'session_cookie_secure' => $this->parseBool($this->env('SESSION_COOKIE_SECURE', 'false')),
             'session_cookie_samesite' => $this->env('SESSION_COOKIE_SAMESITE', 'Lax'),
             'session_lifetime' => (int) $this->env('SESSION_LIFETIME', '7200'), // 2 hours
+            'session_remember_lifetime' => (int) $this->env('SESSION_REMEMBER_LIFETIME', '2592000'), // 30 days
             
             // Request Constraints
             'request_body_max_bytes' => (int) $this->env('REQUEST_BODY_MAX_BYTES', '1048576'), // 1MB

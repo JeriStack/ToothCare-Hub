@@ -60,7 +60,9 @@ import { SystemHealthPage } from '../features/system/pages/SystemHealthPage';
 import { StaffProfilePage } from '../features/staff/pages/StaffProfilePage';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { LoadingProvider, useRouteLoading } from '../contexts/LoadingContext';
+import { ThemeProvider } from '../contexts/ThemeContext';
 import { GlobalLoadingBar } from '../components/ui/GlobalLoadingBar';
+import { ThemeToggle } from '../components/ui/ThemeToggle';
 
 function getInitialRoute() {
   if (typeof window === 'undefined') return 'LANDING';
@@ -479,10 +481,10 @@ function AppContent() {
     (currentRoute === 'PATIENT' || currentRoute === 'ADMIN' || currentRoute === 'DENTIST')
   ) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center transition-colors">
         <div className="flex flex-col items-center gap-3">
-          <RefreshCw className="w-6 h-6 text-[#0D9488] animate-spin" />
-          <p className="text-xs text-slate-500 font-medium">Verifying authenticated session...</p>
+          <RefreshCw className="w-6 h-6 text-[#0D9488] dark:text-[#2DD4BF] animate-spin" />
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Verifying authenticated session...</p>
         </div>
       </div>
     );
@@ -648,16 +650,16 @@ function AppContent() {
   });
 
   return (
-    <div className="min-h-dvh bg-[#F5F8FA] text-[#334155] flex flex-col font-sans overflow-x-clip selection:bg-[#CCFBF1] selection:text-[#0F766E]">
+    <div className="min-h-dvh bg-[#F5F8FA] dark:bg-gray-900 text-[#334155] dark:text-slate-200 flex flex-col font-sans overflow-x-clip selection:bg-[#CCFBF1] selection:text-[#0F766E] dark:selection:bg-teal-900/70 dark:selection:text-teal-100">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[#12304A] focus:text-white focus:text-xs focus:font-semibold focus:shadow-lg"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[#12304A] dark:focus:bg-teal-700 focus:text-white focus:text-xs focus:font-semibold focus:shadow-lg"
       >
         Skip to main content
       </a>
       
       {/* MAIN APPLICATION TOPBAR */}
-      <header className="bg-[#12304A] text-white sticky top-0 z-40 shadow-md">
+      <header className="bg-[#12304A] dark:bg-slate-950/95 dark:border-b dark:border-slate-800 text-white sticky top-0 z-40 shadow-md">
         <div className="w-full px-3 sm:px-5 lg:px-6 xl:px-8 h-16 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
@@ -693,7 +695,9 @@ function AppContent() {
             </button>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle variant="header" />
+
             {/* In-App Notifications Dropdown */}
             {(currentRole === 'PATIENT' || currentRole === 'DENTIST') && (
               <NotificationCenter
@@ -748,11 +752,11 @@ function AppContent() {
               {isUserMenuOpen && (
                 <div
                   id="user-account-menu"
-                  className="absolute right-0 mt-2 w-64 max-w-[calc(100dvw-2rem)] rounded-2xl bg-white shadow-2xl border border-slate-200/90 z-50 overflow-hidden text-slate-800 animate-in fade-in zoom-in-95 duration-150"
+                  className="absolute right-0 mt-2 w-64 max-w-[calc(100dvw-2rem)] rounded-2xl bg-white dark:bg-gray-800 shadow-2xl border border-slate-200/90 dark:border-gray-700 z-50 overflow-hidden text-slate-800 dark:text-gray-100 animate-in fade-in zoom-in-95 duration-150"
                 >
-                  <div className="px-4 py-3 bg-slate-50/90 border-b border-slate-100">
+                  <div className="px-4 py-3 bg-slate-50/90 dark:bg-gray-900/70 border-b border-slate-100 dark:border-gray-700">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-full bg-[#CCFBF1] border border-teal-200 text-[#0F766E] flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden">
+                      <div className="w-9 h-9 rounded-full bg-[#CCFBF1] dark:bg-teal-900/60 border border-teal-200 dark:border-teal-700 text-[#0F766E] dark:text-teal-200 flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden">
                         {showUserAvatar ? (
                           <img
                             src={userAvatarUrl}
@@ -765,10 +769,10 @@ function AppContent() {
                         )}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs font-bold text-[#12304A] truncate">
+                        <p className="text-xs font-bold text-[#12304A] dark:text-gray-50 truncate">
                           {userDisplayName}
                         </p>
-                        <p className="text-[11px] font-medium text-[#0F766E] truncate">
+                        <p className="text-[11px] font-medium text-[#0F766E] dark:text-teal-300 truncate">
                           {userRoleLabel}
                         </p>
                       </div>
@@ -788,18 +792,18 @@ function AppContent() {
                           handleAdminNav('profile');
                         }
                       }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#12304A] transition-colors text-left"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-gray-700/70 hover:text-[#12304A] dark:hover:text-white transition-colors text-left"
                     >
-                      <User className="w-4 h-4 text-[#0D9488]" />
+                      <User className="w-4 h-4 text-[#0D9488] dark:text-teal-400" />
                       <span>My Profile</span>
                     </button>
 
-                    <div className="my-1 border-t border-slate-100" />
+                    <div className="my-1 border-t border-slate-100 dark:border-gray-700" />
 
                     <button
                       type="button"
                       onClick={handleSignOut}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors text-left"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors text-left"
                     >
                       <LogOut className="w-4 h-4" />
                       <span>Sign Out</span>
@@ -824,19 +828,19 @@ function AppContent() {
           } ${isMobileMenuOpen ? 'block' : 'hidden lg:block'}`}
         >
           <div
-            className={`bg-white rounded-xl border border-slate-200/80 shadow-sm lg:sticky lg:top-20 ${
+            className={`bg-white dark:bg-gray-800 rounded-xl border border-slate-200/80 dark:border-gray-700 shadow-sm lg:sticky lg:top-20 ${
               isSidebarCollapsed ? 'p-3 lg:p-2' : 'p-3'
             }`}
           >
             <div
               className={`flex items-center ${
                 isSidebarCollapsed
-                  ? 'justify-between lg:justify-center pb-2 mb-1.5 lg:border-b lg:border-slate-100'
+                  ? 'justify-between lg:justify-center pb-2 mb-1.5 lg:border-b lg:border-slate-100 dark:lg:border-gray-700'
                   : 'justify-between pl-3 pr-1 py-1 mb-1'
               }`}
             >
               <span
-                className={`text-[11px] font-semibold uppercase text-slate-400 tracking-wider ${
+                className={`text-[11px] font-semibold uppercase text-slate-400 dark:text-gray-400 tracking-wider ${
                   isSidebarCollapsed ? 'lg:hidden' : ''
                 }`}
               >
@@ -849,7 +853,7 @@ function AppContent() {
                 aria-controls="portal-sidebar-nav"
                 aria-label="Toggle sidebar"
                 title={isSidebarCollapsed ? 'Expand sidebar' : 'Minimize sidebar'}
-                className="hidden lg:inline-flex items-center justify-center min-h-9 min-w-9 rounded-lg text-slate-400 hover:text-[#12304A] hover:bg-slate-100 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                className="hidden lg:inline-flex items-center justify-center min-h-9 min-w-9 rounded-lg text-slate-400 dark:text-gray-400 hover:text-[#12304A] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-gray-700/70 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400"
               >
                 {isSidebarCollapsed ? (
                   <PanelLeftOpen className="w-4 h-4" aria-hidden="true" />
@@ -866,12 +870,12 @@ function AppContent() {
                       <div
                         className={`pt-3 pb-1 px-3 ${isSidebarCollapsed ? 'lg:hidden' : ''}`}
                       >
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400">
                           {section.heading}
                         </span>
                       </div>
                       {isSidebarCollapsed && (
-                        <div className="hidden lg:block my-2 border-t border-slate-100" aria-hidden="true" />
+                        <div className="hidden lg:block my-2 border-t border-slate-100 dark:border-gray-700" aria-hidden="true" />
                       )}
                     </>
                   )}
@@ -888,8 +892,8 @@ function AppContent() {
                           isSidebarCollapsed ? 'lg:justify-center lg:px-2' : ''
                         } ${
                           isActive
-                            ? 'bg-[#CCFBF1] text-[#0F766E]'
-                            : 'text-slate-600 hover:bg-slate-50'
+                            ? 'bg-[#CCFBF1] text-[#0F766E] dark:bg-teal-500/20 dark:text-teal-300'
+                            : 'text-slate-600 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-700/60 dark:hover:text-white'
                         }`}
                       >
                         <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -1144,7 +1148,7 @@ function AppContent() {
       )}
 
       {/* FOOTER */}
-      <footer className="bg-white border-t border-slate-200 mt-auto py-4 text-center text-xs text-slate-400">
+      <footer className="bg-white dark:bg-gray-900 border-t border-slate-200 dark:border-gray-800 mt-auto py-4 text-center text-xs text-slate-400 dark:text-gray-400">
         ToothCare Hub &copy; 2026. Real-Time Clinical Management System.
       </footer>
     </div>
@@ -1154,12 +1158,14 @@ function AppContent() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <LoadingProvider>
-        <GlobalLoadingBar />
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
-      </LoadingProvider>
+      <ThemeProvider>
+        <LoadingProvider>
+          <GlobalLoadingBar />
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
+        </LoadingProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

@@ -138,7 +138,7 @@ class AuthValidator
      * Validate login input
      *
      * @param array<string, mixed> $data
-     * @return array{email: string, password: string}
+     * @return array{email: string, password: string, remember_me: bool}
      * @throws HttpException
      */
     public static function validateLogin(array $data): array
@@ -157,6 +157,8 @@ class AuthValidator
             $errors['password'] = 'Password is required.';
         }
 
+        $rememberMe = filter_var($data['remember_me'] ?? false, FILTER_VALIDATE_BOOL);
+
         if (!empty($errors)) {
             throw HttpException::unprocessableEntity('Validation failed for login credentials.', $errors);
         }
@@ -164,6 +166,7 @@ class AuthValidator
         return [
             'email' => strtolower($rawEmail),
             'password' => $password,
+            'remember_me' => $rememberMe,
         ];
     }
 

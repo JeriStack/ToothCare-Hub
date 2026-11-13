@@ -20,21 +20,21 @@ export function EmptyState({
     <div
       role="region"
       aria-label={title}
-      className={`flex flex-col items-center justify-center p-8 sm:p-12 text-center rounded-2xl bg-white border border-slate-100 shadow-xs max-w-lg mx-auto ${className}`}
+      className={`flex flex-col items-center justify-center p-8 sm:p-12 text-center rounded-2xl bg-white dark:bg-gray-800 border border-slate-100 dark:border-gray-700 shadow-xs max-w-lg mx-auto ${className}`}
     >
-      <div className="w-14 h-14 rounded-2xl bg-[#F5F8FA] border border-slate-200/80 flex items-center justify-center text-[#12304A] mb-4 shadow-2xs">
+      <div className="w-14 h-14 rounded-2xl bg-[#F5F8FA] dark:bg-gray-900 border border-slate-200/80 dark:border-gray-700 flex items-center justify-center text-[#12304A] dark:text-gray-200 mb-4 shadow-2xs">
         {React.isValidElement(Icon) ? (
           Icon
         ) : (
-          <Icon className="w-7 h-7 text-slate-400" aria-hidden="true" />
+          <Icon className="w-7 h-7 text-slate-400 dark:text-gray-400" aria-hidden="true" />
         )}
       </div>
 
-      <h3 className="text-base font-bold text-[#12304A] tracking-tight mb-1.5">
+      <h3 className="text-base font-bold text-[#12304A] dark:text-gray-100 tracking-tight mb-1.5">
         {title}
       </h3>
 
-      <p className="text-xs sm:text-sm text-slate-500 max-w-sm mb-6 leading-relaxed">
+      <p className="text-xs sm:text-sm text-slate-500 dark:text-gray-400 max-w-sm mb-6 leading-relaxed">
         {description}
       </p>
 

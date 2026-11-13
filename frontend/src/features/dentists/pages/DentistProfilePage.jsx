@@ -41,10 +41,10 @@ function mapProfileToForm(data) {
 
 function getFieldInputClasses(hasError, extra = '') {
   const base =
-    'w-full px-3.5 py-2.5 min-h-[44px] rounded-xl text-sm text-[#12304A] bg-white border transition-colors focus:outline-none focus-visible:ring-2';
+    'w-full px-3.5 py-2.5 min-h-[44px] rounded-xl text-sm text-[#12304A] dark:text-slate-100 bg-white dark:bg-gray-700 placeholder-slate-400 border transition-colors focus:outline-none focus-visible:ring-2';
   const state = hasError
-    ? 'border-red-400 focus-visible:ring-red-200 focus:border-red-500'
-    : 'border-slate-300 hover:border-slate-400 focus-visible:ring-teal-500/25 focus:border-[#0D9488]';
+    ? 'border-red-400 dark:border-rose-500 focus-visible:ring-red-200 dark:focus-visible:ring-rose-500/30 focus:border-red-500'
+    : 'border-slate-300 dark:border-gray-600 hover:border-slate-400 dark:hover:border-gray-500 focus-visible:ring-teal-500/25 focus:border-[#0D9488] dark:focus:border-[#2DD4BF]';
   return `${base} ${state} ${extra}`.trim();
 }
 
@@ -244,20 +244,20 @@ export function DentistProfilePage({ onProfileUpdated }) {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#12304A] tracking-tight">My Profile</h1>
-          <p className="text-xs sm:text-sm text-slate-600 mt-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-[#12304A] dark:text-slate-50 tracking-tight">My Profile</h1>
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1">
             Manage your practitioner credentials, clinic assignment, contact details, and public bio.
           </p>
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
           {isDirty && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 dark:bg-amber-400" />
               Unsaved changes
             </span>
           )}
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#F0FDFA] text-[#0F766E] border border-[#CCFBF1]">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#F0FDFA] dark:bg-teal-900/40 text-[#0F766E] dark:text-teal-300 border border-[#CCFBF1] dark:border-teal-800">
             <ShieldCheck className="w-3.5 h-3.5" />
             {completeness.percent}% Complete
           </span>
@@ -270,7 +270,7 @@ export function DentistProfilePage({ onProfileUpdated }) {
         <aside>
           <section
             aria-label="Practitioner Profile Summary"
-            className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
+            className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-sm overflow-hidden transition-colors"
           >
             <div className="h-20 bg-gradient-to-r from-[#12304A] via-[#134E4A] to-[#0D9488]" />
 
@@ -286,15 +286,15 @@ export function DentistProfilePage({ onProfileUpdated }) {
                 onSuccess={handleAvatarChangeSuccess}
               />
 
-              <div className="mt-5 pt-4 border-t border-slate-100 space-y-3">
+              <div className="mt-5 pt-4 border-t border-slate-100 dark:border-gray-700 space-y-3">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-medium text-slate-600">Profile Completeness</span>
-                  <span className="font-semibold text-[#12304A]">
+                  <span className="font-medium text-slate-600 dark:text-slate-400">Profile Completeness</span>
+                  <span className="font-semibold text-[#12304A] dark:text-slate-100">
                     {completeness.filled}/{completeness.total} fields
                   </span>
                 </div>
                 <div
-                  className="w-full h-2 rounded-full bg-slate-100 overflow-hidden"
+                  className="w-full h-2 rounded-full bg-slate-100 dark:bg-gray-700 overflow-hidden"
                   role="progressbar"
                   aria-valuenow={completeness.percent}
                   aria-valuemin={0}
@@ -302,7 +302,7 @@ export function DentistProfilePage({ onProfileUpdated }) {
                   aria-label="Profile completeness"
                 >
                   <div
-                    className="h-full rounded-full bg-[#0D9488] transition-all duration-300"
+                    className="h-full rounded-full bg-[#0D9488] dark:bg-[#2DD4BF] transition-all duration-300"
                     style={{ width: `${completeness.percent}%` }}
                   />
                 </div>
@@ -310,27 +310,27 @@ export function DentistProfilePage({ onProfileUpdated }) {
                 <dl className="pt-2 space-y-2 text-xs">
                   {profile?.license_number && (
                     <div className="flex items-center justify-between gap-2">
-                      <dt className="text-slate-600">PRC License</dt>
-                      <dd className="font-semibold text-[#12304A]">{profile.license_number}</dd>
+                      <dt className="text-slate-600 dark:text-slate-400">PRC License</dt>
+                      <dd className="font-semibold text-[#12304A] dark:text-slate-100">{profile.license_number}</dd>
                     </div>
                   )}
                   <div className="flex items-center justify-between gap-2">
-                    <dt className="text-slate-600">Assigned Chair</dt>
-                    <dd className="font-semibold text-[#12304A]">
+                    <dt className="text-slate-600 dark:text-slate-400">Assigned Chair</dt>
+                    <dd className="font-semibold text-[#12304A] dark:text-slate-100">
                       {formData.default_operatory_chair || 'Chair 1'}
                     </dd>
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <dt className="text-slate-600">Practice Status</dt>
-                    <dd className="inline-flex items-center gap-1 font-semibold text-emerald-700">
+                    <dt className="text-slate-600 dark:text-slate-400">Practice Status</dt>
+                    <dd className="inline-flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-300">
                       <ShieldCheck className="w-3.5 h-3.5" />
                       {profile?.is_active === 0 ? 'Inactive' : 'Active & Licensed'}
                     </dd>
                   </div>
                   {typeof profile?.appointment_count === 'number' && (
                     <div className="flex items-center justify-between gap-2">
-                      <dt className="text-slate-600">Assigned Visits</dt>
-                      <dd className="font-semibold text-[#12304A]">{profile.appointment_count}</dd>
+                      <dt className="text-slate-600 dark:text-slate-400">Assigned Visits</dt>
+                      <dd className="font-semibold text-[#12304A] dark:text-slate-100">{profile.appointment_count}</dd>
                     </div>
                   )}
                 </dl>
@@ -344,9 +344,9 @@ export function DentistProfilePage({ onProfileUpdated }) {
           {errorMsg && (
             <div
               role="alert"
-              className="p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 text-red-700 text-xs font-medium"
+              className="p-3.5 bg-red-50 dark:bg-rose-950/50 border border-red-200 dark:border-rose-800 rounded-xl flex items-start gap-2.5 text-red-700 dark:text-rose-200 text-xs font-medium"
             >
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-500 dark:text-rose-400" />
               <span>{errorMsg}</span>
             </div>
           )}
@@ -354,9 +354,9 @@ export function DentistProfilePage({ onProfileUpdated }) {
           {successMsg && (
             <div
               role="status"
-              className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-2.5 text-emerald-800 text-xs font-medium"
+              className="p-3.5 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-start gap-2.5 text-emerald-800 dark:text-emerald-200 text-xs font-medium"
             >
-              <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" />
+              <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
               <span>{successMsg}</span>
             </div>
           )}
@@ -364,19 +364,19 @@ export function DentistProfilePage({ onProfileUpdated }) {
           {/* 1. Practitioner Identity & Specialization */}
           <section
             aria-labelledby="dentist-identity-heading"
-            className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 space-y-5"
+            className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-sm p-5 sm:p-6 space-y-5 transition-colors"
           >
-            <div className="pb-3.5 border-b border-slate-100">
+            <div className="pb-3.5 border-b border-slate-100 dark:border-gray-700">
               <h2
                 id="dentist-identity-heading"
-                className="text-sm font-bold text-[#12304A] flex items-center gap-2"
+                className="text-sm font-bold text-[#12304A] dark:text-slate-50 flex items-center gap-2"
               >
-                <span className="w-7 h-7 rounded-lg bg-[#F0FDFA] text-[#0D9488] flex items-center justify-center">
+                <span className="w-7 h-7 rounded-lg bg-[#F0FDFA] dark:bg-teal-900/40 text-[#0D9488] dark:text-[#2DD4BF] flex items-center justify-center">
                   <User className="w-4 h-4" />
                 </span>
                 Professional Credentials
               </h2>
-              <p className="text-xs text-slate-600 mt-1">
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                 Displayed across patient booking rosters, treatment records, and clinic schedules.
               </p>
             </div>
@@ -385,7 +385,7 @@ export function DentistProfilePage({ onProfileUpdated }) {
               <div>
                 <label
                   htmlFor="first_name"
-                  className="block text-xs font-semibold text-slate-700 mb-1.5"
+                  className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
                 >
                   First Name
                 </label>
@@ -403,7 +403,7 @@ export function DentistProfilePage({ onProfileUpdated }) {
                   className={getFieldInputClasses(Boolean(formErrors.first_name))}
                 />
                 {formErrors.first_name && (
-                  <p id="first_name-error" className="text-xs text-red-600 font-medium mt-1">
+                  <p id="first_name-error" className="text-xs text-red-600 dark:text-rose-400 font-medium mt-1">
                     {formErrors.first_name}
                   </p>
                 )}
@@ -412,7 +412,7 @@ export function DentistProfilePage({ onProfileUpdated }) {
               <div>
                 <label
                   htmlFor="last_name"
-                  className="block text-xs font-semibold text-slate-700 mb-1.5"
+                  className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
                 >
                   Last Name
                 </label>
@@ -430,7 +430,7 @@ export function DentistProfilePage({ onProfileUpdated }) {
                   className={getFieldInputClasses(Boolean(formErrors.last_name))}
                 />
                 {formErrors.last_name && (
-                  <p id="last_name-error" className="text-xs text-red-600 font-medium mt-1">
+                  <p id="last_name-error" className="text-xs text-red-600 dark:text-rose-400 font-medium mt-1">
                     {formErrors.last_name}
                   </p>
                 )}
@@ -439,12 +439,12 @@ export function DentistProfilePage({ onProfileUpdated }) {
               <div>
                 <label
                   htmlFor="specialization"
-                  className="block text-xs font-semibold text-slate-700 mb-1.5"
+                  className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
                 >
                   Dental Specialization
                 </label>
                 <div className="relative">
-                  <Stethoscope className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Stethoscope className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     id="specialization"
                     type="text"
@@ -459,7 +459,7 @@ export function DentistProfilePage({ onProfileUpdated }) {
                   />
                 </div>
                 {formErrors.specialization && (
-                  <p id="specialization-error" className="text-xs text-red-600 font-medium mt-1">
+                  <p id="specialization-error" className="text-xs text-red-600 dark:text-rose-400 font-medium mt-1">
                     {formErrors.specialization}
                   </p>
                 )}
@@ -469,28 +469,28 @@ export function DentistProfilePage({ onProfileUpdated }) {
                 <div className="flex items-center justify-between gap-2 mb-1.5">
                   <label
                     htmlFor="license_number"
-                    className="text-xs font-semibold text-slate-700"
+                    className="text-xs font-semibold text-slate-700 dark:text-slate-300"
                   >
                     PRC License Number
                   </label>
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#0F766E]">
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#0F766E] dark:text-[#2DD4BF]">
                     <Award className="w-3.5 h-3.5" />
                     Verified
                   </span>
                 </div>
                 <div className="relative">
-                  <Award className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Award className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     id="license_number"
                     type="text"
                     value={profile?.license_number || ''}
                     readOnly
                     aria-describedby="license-help"
-                    className="w-full pl-10 pr-10 py-2.5 min-h-[44px] rounded-xl text-sm text-slate-600 bg-slate-50 border border-slate-200 cursor-not-allowed focus:outline-none"
+                    className="w-full pl-10 pr-10 py-2.5 min-h-[44px] rounded-xl text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-gray-900/50 border border-slate-200 dark:border-gray-700 cursor-not-allowed focus:outline-none"
                   />
-                  <Lock className="w-3.5 h-3.5 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Lock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
-                <p id="license-help" className="text-xs text-slate-600 mt-1.5">
+                <p id="license-help" className="text-xs text-slate-600 dark:text-slate-400 mt-1.5">
                   License number updates are verified and managed by clinic administration.
                 </p>
               </div>
@@ -500,19 +500,19 @@ export function DentistProfilePage({ onProfileUpdated }) {
           {/* 2. Contact & Operatory Assignment */}
           <section
             aria-labelledby="dentist-contact-heading"
-            className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 space-y-5"
+            className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-sm p-5 sm:p-6 space-y-5 transition-colors"
           >
-            <div className="pb-3.5 border-b border-slate-100">
+            <div className="pb-3.5 border-b border-slate-100 dark:border-gray-700">
               <h2
                 id="dentist-contact-heading"
-                className="text-sm font-bold text-[#12304A] flex items-center gap-2"
+                className="text-sm font-bold text-[#12304A] dark:text-slate-50 flex items-center gap-2"
               >
-                <span className="w-7 h-7 rounded-lg bg-[#F0FDFA] text-[#0D9488] flex items-center justify-center">
+                <span className="w-7 h-7 rounded-lg bg-[#F0FDFA] dark:bg-teal-900/40 text-[#0D9488] dark:text-[#2DD4BF] flex items-center justify-center">
                   <Phone className="w-4 h-4" />
                 </span>
                 Contact &amp; Clinic Assignment
               </h2>
-              <p className="text-xs text-slate-600 mt-1">
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                 Used by front-desk staff for scheduling coordination and operatory room setup.
               </p>
             </div>
@@ -522,38 +522,38 @@ export function DentistProfilePage({ onProfileUpdated }) {
                 <div className="flex items-center justify-between gap-2 mb-1.5">
                   <label
                     htmlFor="email"
-                    className="text-xs font-semibold text-slate-700"
+                    className="text-xs font-semibold text-slate-700 dark:text-slate-300"
                   >
                     Account Email
                   </label>
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#0F766E]">
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#0F766E] dark:text-[#2DD4BF]">
                     <ShieldCheck className="w-3.5 h-3.5" />
                     Verified
                   </span>
                 </div>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Mail className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     id="email"
                     type="email"
                     autoComplete="email"
                     value={profile?.email || user?.email || ''}
                     readOnly
-                    className="w-full pl-10 pr-10 py-2.5 min-h-[44px] rounded-xl text-sm text-slate-600 bg-slate-50 border border-slate-200 cursor-not-allowed focus:outline-none"
+                    className="w-full pl-10 pr-10 py-2.5 min-h-[44px] rounded-xl text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-gray-900/50 border border-slate-200 dark:border-gray-700 cursor-not-allowed focus:outline-none"
                   />
-                  <Lock className="w-3.5 h-3.5 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Lock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               </div>
 
               <div>
                 <label
                   htmlFor="phone"
-                  className="block text-xs font-semibold text-slate-700 mb-1.5"
+                  className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
                 >
                   Contact Phone
                 </label>
                 <div className="relative">
-                  <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Phone className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     id="phone"
                     type="tel"
@@ -569,7 +569,7 @@ export function DentistProfilePage({ onProfileUpdated }) {
                   />
                 </div>
                 {formErrors.phone && (
-                  <p id="phone-error" className="text-xs text-red-600 font-medium mt-1">
+                  <p id="phone-error" className="text-xs text-red-600 dark:text-rose-400 font-medium mt-1">
                     {formErrors.phone}
                   </p>
                 )}
@@ -578,12 +578,12 @@ export function DentistProfilePage({ onProfileUpdated }) {
               <div>
                 <label
                   htmlFor="default_operatory_chair"
-                  className="block text-xs font-semibold text-slate-700 mb-1.5"
+                  className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
                 >
                   Default Operatory Chair
                 </label>
                 <div className="relative">
-                  <Building2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Building2 className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     id="default_operatory_chair"
                     type="text"
@@ -601,16 +601,16 @@ export function DentistProfilePage({ onProfileUpdated }) {
           {/* 3. Clinical Biography */}
           <section
             aria-labelledby="dentist-bio-heading"
-            className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 space-y-4"
+            className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-sm p-5 sm:p-6 space-y-4 transition-colors"
           >
-            <div className="pb-3 border-b border-slate-100">
+            <div className="pb-3 border-b border-slate-100 dark:border-gray-700">
               <h2
                 id="dentist-bio-heading"
-                className="text-sm font-bold text-[#12304A]"
+                className="text-sm font-bold text-[#12304A] dark:text-slate-50"
               >
                 Clinical Biography &amp; Patient Notes
               </h2>
-              <p className="text-xs text-slate-600 mt-1">
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                 Shown on the clinic&apos;s public dentist directory when patients choose a provider.
               </p>
             </div>
@@ -618,7 +618,7 @@ export function DentistProfilePage({ onProfileUpdated }) {
             <div>
               <label
                 htmlFor="bio"
-                className="block text-xs font-semibold text-slate-700 mb-1.5"
+                className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
               >
                 Practitioner Bio
               </label>
@@ -629,14 +629,14 @@ export function DentistProfilePage({ onProfileUpdated }) {
                 value={formData.bio}
                 onChange={handleChange}
                 placeholder="Share your clinical background, education, and areas of focus..."
-                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#12304A] bg-white border border-slate-300 hover:border-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/25 focus:border-[#0D9488] resize-y"
+                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-[#12304A] dark:text-slate-100 bg-white dark:bg-gray-700 placeholder-slate-400 border border-slate-300 dark:border-gray-600 hover:border-slate-400 dark:hover:border-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/25 focus:border-[#0D9488] dark:focus:border-[#2DD4BF] resize-y"
               />
             </div>
           </section>
 
           {/* Form Action Footer */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <p className="text-xs text-slate-600">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-sm px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 transition-colors">
+            <p className="text-xs text-slate-600 dark:text-slate-400">
               {isDirty
                 ? 'Review your updates above, then save to sync your practitioner profile.'
                 : 'Your practitioner profile is up to date.'}
@@ -646,7 +646,7 @@ export function DentistProfilePage({ onProfileUpdated }) {
                 type="button"
                 onClick={handleDiscardChanges}
                 disabled={!isDirty || isSaving}
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 hover:bg-slate-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 Discard Changes
@@ -655,7 +655,7 @@ export function DentistProfilePage({ onProfileUpdated }) {
               <button
                 type="submit"
                 disabled={isSaving}
-                className="inline-flex items-center justify-center gap-2 px-6 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white bg-[#0D9488] hover:bg-[#0F766E] transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                className="inline-flex items-center justify-center gap-2 px-6 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-teal-600 transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
               >
                 {isSaving ? (
                   <>

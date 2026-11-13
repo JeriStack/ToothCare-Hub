@@ -109,17 +109,17 @@ export function SystemHealthPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">System Health & Clinic Configuration</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">System Health & Clinic Configuration</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Monitor container topologies, database latency, background services, and configure global clinic operating rules.
           </p>
         </div>
         <button
           onClick={fetchData}
           disabled={loading}
-          className="inline-flex items-center gap-2 px-3.5 py-2 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors shadow-xs"
+          className="inline-flex items-center gap-2 px-3.5 py-2 border border-slate-200 dark:border-gray-600 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-gray-800 hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors shadow-xs"
         >
-          <RefreshCw className={`w-4 h-4 text-teal-600 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 text-teal-600 dark:text-teal-400 ${loading ? 'animate-spin' : ''}`} />
           Run Health Diagnostics
         </button>
       </div>
@@ -127,46 +127,46 @@ export function SystemHealthPage() {
       {/* Health Overview Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Database Status */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+        <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-xs">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">MySQL 8.0 Primary</span>
-            <Database className="w-4 h-4 text-teal-600" />
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">MySQL 8.0 Primary</span>
+            <Database className="w-4 h-4 text-teal-600 dark:text-teal-400" />
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-            <span className="text-lg font-bold text-slate-900">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+            <span className="text-lg font-bold text-slate-900 dark:text-slate-100">
               {services.database?.status === 'healthy' ? 'Operational' : 'Degraded'}
             </span>
           </div>
-          <div className="mt-3 text-xs text-slate-500 space-y-1">
-            <div>Latency: <strong className="text-slate-700 font-mono">{services.database?.latency_ms || 0} ms</strong></div>
-            <div>Threads: <strong className="text-slate-700 font-mono">{services.database?.threads_connected || 1}</strong></div>
-            <div>Database Size: <strong className="text-slate-700 font-mono">{services.database?.size_mb || 0} MB</strong></div>
+          <div className="mt-3 text-xs text-slate-500 dark:text-slate-400 space-y-1">
+            <div>Latency: <strong className="text-slate-700 dark:text-slate-200 font-mono">{services.database?.latency_ms || 0} ms</strong></div>
+            <div>Threads: <strong className="text-slate-700 dark:text-slate-200 font-mono">{services.database?.threads_connected || 1}</strong></div>
+            <div>Database Size: <strong className="text-slate-700 dark:text-slate-200 font-mono">{services.database?.size_mb || 0} MB</strong></div>
           </div>
         </div>
 
         {/* PHP-FPM Status */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+        <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-xs">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">PHP-FPM Runtime</span>
-            <Cpu className="w-4 h-4 text-indigo-600" />
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">PHP-FPM Runtime</span>
+            <Cpu className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-            <span className="text-lg font-bold text-slate-900">v{services.php_fpm?.version?.split('-')[0] || '8.5'}</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+            <span className="text-lg font-bold text-slate-900 dark:text-slate-100">v{services.php_fpm?.version?.split('-')[0] || '8.5'}</span>
           </div>
-          <div className="mt-3 text-xs text-slate-500 space-y-1">
-            <div>Memory In-Use: <strong className="text-slate-700 font-mono">{services.php_fpm?.memory_usage_mb || 0} MB</strong></div>
-            <div>Memory Peak: <strong className="text-slate-700 font-mono">{services.php_fpm?.memory_peak_mb || 0} MB</strong></div>
-            <div>Environment: <strong className="text-slate-700 uppercase font-mono">{health?.environment || 'DEV'}</strong></div>
+          <div className="mt-3 text-xs text-slate-500 dark:text-slate-400 space-y-1">
+            <div>Memory In-Use: <strong className="text-slate-700 dark:text-slate-200 font-mono">{services.php_fpm?.memory_usage_mb || 0} MB</strong></div>
+            <div>Memory Peak: <strong className="text-slate-700 dark:text-slate-200 font-mono">{services.php_fpm?.memory_peak_mb || 0} MB</strong></div>
+            <div>Environment: <strong className="text-slate-700 dark:text-slate-200 uppercase font-mono">{health?.environment || 'DEV'}</strong></div>
           </div>
         </div>
 
         {/* Realtime Service */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+        <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-xs">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Realtime Service</span>
-            <Server className="w-4 h-4 text-teal-600" />
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Realtime Service</span>
+            <Server className="w-4 h-4 text-teal-600 dark:text-teal-400" />
           </div>
           <div className="flex items-center gap-2">
             <span
@@ -178,24 +178,24 @@ export function SystemHealthPage() {
                   : 'bg-amber-400'
               }`}
             />
-            <span className="text-lg font-bold text-slate-900 capitalize">
+            <span className="text-lg font-bold text-slate-900 dark:text-slate-100 capitalize">
               {services.realtime?.status === 'healthy'
                 ? 'Active'
                 : services.realtime?.status || 'Unverified'}
             </span>
           </div>
-          <div className="mt-3 text-xs text-slate-500 space-y-1">
-            <div>Target: <strong className="text-slate-700 font-mono">{services.realtime?.host || 'toothcare-realtime'}:{services.realtime?.port || 3001}</strong></div>
-            <div>Transport: <strong className="text-slate-700">WebSocket / Socket.IO</strong></div>
+          <div className="mt-3 text-xs text-slate-500 dark:text-slate-400 space-y-1">
+            <div>Target: <strong className="text-slate-700 dark:text-slate-200 font-mono">{services.realtime?.host || 'toothcare-realtime'}:{services.realtime?.port || 3001}</strong></div>
+            <div>Transport: <strong className="text-slate-700 dark:text-slate-200">WebSocket / Socket.IO</strong></div>
             <div>
               Reachability:{' '}
               <strong
                 className={
                   services.realtime?.status === 'healthy'
-                    ? 'text-emerald-700'
+                    ? 'text-emerald-700 dark:text-emerald-400'
                     : services.realtime?.status === 'unreachable'
-                    ? 'text-rose-700'
-                    : 'text-amber-700'
+                    ? 'text-rose-700 dark:text-rose-400'
+                    : 'text-amber-700 dark:text-amber-400'
                 }
               >
                 {services.realtime?.status === 'healthy'
@@ -209,10 +209,10 @@ export function SystemHealthPage() {
         </div>
 
         {/* Backups & Persistence */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+        <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-xs">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Data Backups</span>
-            <HardDrive className="w-4 h-4 text-teal-600" />
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Data Backups</span>
+            <HardDrive className="w-4 h-4 text-teal-600 dark:text-teal-400" />
           </div>
           <div className="flex items-center gap-2">
             <span
@@ -224,7 +224,7 @@ export function SystemHealthPage() {
                   : 'bg-teal-500'
               }`}
             />
-            <span className="text-lg font-bold text-slate-900">
+            <span className="text-lg font-bold text-slate-900 dark:text-slate-100">
               {services.backups?.status === 'available'
                 ? 'Snapshots Ready'
                 : services.backups?.status === 'no_snapshots'
@@ -232,11 +232,11 @@ export function SystemHealthPage() {
                 : 'Persistent Volume'}
             </span>
           </div>
-          <div className="mt-3 text-xs text-slate-500 space-y-1">
-            <div>Volume: <strong className="text-slate-700 font-mono">{services.backups?.volume_name || 'mysql-data'}</strong></div>
+          <div className="mt-3 text-xs text-slate-500 dark:text-slate-400 space-y-1">
+            <div>Volume: <strong className="text-slate-700 dark:text-slate-200 font-mono">{services.backups?.volume_name || 'mysql-data'}</strong></div>
             <div>
               Snapshots:{' '}
-              <strong className="text-slate-700 font-mono">
+              <strong className="text-slate-700 dark:text-slate-200 font-mono">
                 {services.backups?.directory_accessible
                   ? `${services.backups?.backup_files_count ?? 0} file(s)`
                   : 'Host-managed'}
@@ -244,7 +244,7 @@ export function SystemHealthPage() {
             </div>
             <div>
               Last Snapshot:{' '}
-              <strong className="text-slate-700">
+              <strong className="text-slate-700 dark:text-slate-200">
                 {services.backups?.last_backup
                   ? new Date(services.backups.last_backup).toLocaleString()
                   : services.backups?.directory_accessible
@@ -257,83 +257,83 @@ export function SystemHealthPage() {
       </div>
 
       {/* Global Clinic Configuration Management */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-xs overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50/50 dark:bg-gray-900/50">
           <div className="flex items-center gap-2">
-            <Settings className="w-4 h-4 text-teal-600" />
-            <h3 className="font-bold text-base text-slate-900">Global Clinic Operating Settings</h3>
+            <Settings className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+            <h3 className="font-bold text-base text-slate-900 dark:text-slate-100">Global Clinic Operating Settings</h3>
           </div>
-          <span className="text-xs text-slate-400">Synchronized across Patient & Receptionist portals</span>
+          <span className="text-xs text-slate-400 dark:text-slate-500">Synchronized across Patient & Receptionist portals</span>
         </div>
 
         <form onSubmit={handleSaveSettings} className="p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Clinic Display Name</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">Clinic Display Name</label>
               <input
                 type="text"
                 value={settingsForm.clinic_name}
                 onChange={(e) => setSettingsForm({ ...settingsForm, clinic_name: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-slate-800 dark:text-slate-100 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Tagline / Motto</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">Tagline / Motto</label>
               <input
                 type="text"
                 value={settingsForm.clinic_tagline}
                 onChange={(e) => setSettingsForm({ ...settingsForm, clinic_tagline: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-slate-800 dark:text-slate-100 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Official Telephone / Mobile</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">Official Telephone / Mobile</label>
               <div className="relative">
-                <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Phone className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={settingsForm.clinic_phone}
                   onChange={(e) => setSettingsForm({ ...settingsForm, clinic_phone: e.target.value })}
-                  className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                  className="w-full pl-9 pr-3 py-2 bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-slate-800 dark:text-slate-100 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 outline-none"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Official Contact Email</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">Official Contact Email</label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Mail className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="email"
                   value={settingsForm.clinic_email}
                   onChange={(e) => setSettingsForm({ ...settingsForm, clinic_email: e.target.value })}
-                  className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                  className="w-full pl-9 pr-3 py-2 bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-slate-800 dark:text-slate-100 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 outline-none"
                 />
               </div>
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Clinic Physical Address</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">Clinic Physical Address</label>
               <div className="relative">
-                <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <MapPin className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={settingsForm.clinic_address}
                   onChange={(e) => setSettingsForm({ ...settingsForm, clinic_address: e.target.value })}
-                  className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                  className="w-full pl-9 pr-3 py-2 bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-slate-800 dark:text-slate-100 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 outline-none"
                 />
               </div>
             </div>
           </div>
 
-          <div className="pt-4 border-t border-slate-100">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">
+          <div className="pt-4 border-t border-slate-100 dark:border-gray-700">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4">
               Booking & Clinical Compliance Rules
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">
                   Max Booking Advance (Days)
                 </label>
                 <input
@@ -344,12 +344,12 @@ export function SystemHealthPage() {
                   onChange={(e) =>
                     setSettingsForm({ ...settingsForm, booking_advance_days_max: parseInt(e.target.value, 10) || 60 })
                   }
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-slate-800 dark:text-slate-100 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">
                   Cancellation Cutoff (Hours)
                 </label>
                 <input
@@ -360,12 +360,12 @@ export function SystemHealthPage() {
                   onChange={(e) =>
                     setSettingsForm({ ...settingsForm, cancellation_cutoff_hours: parseInt(e.target.value, 10) || 24 })
                   }
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-slate-800 dark:text-slate-100 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">
                   Default Slot Duration (Mins)
                 </label>
                 <input
@@ -380,17 +380,17 @@ export function SystemHealthPage() {
                       slot_duration_default_minutes: parseInt(e.target.value, 10) || 30,
                     })
                   }
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-slate-800 dark:text-slate-100 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 outline-none"
                 />
               </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-end pt-4 border-t border-slate-100">
+          <div className="flex items-center justify-end pt-4 border-t border-slate-100 dark:border-gray-700">
             <button
               type="submit"
               disabled={savingSettings}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0D9488] hover:bg-[#0F766E] text-white text-sm font-semibold rounded-xl shadow-xs transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-[#0D9488] text-white text-sm font-semibold rounded-xl shadow-xs transition-colors disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
               {savingSettings ? 'Saving Settings...' : 'Save Configuration'}

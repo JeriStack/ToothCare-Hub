@@ -175,25 +175,25 @@ export function BookAppointmentPage({
   if (loadingCatalogs) {
     return (
       <div className="w-full space-y-6">
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-slate-100">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 p-6 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-slate-100 dark:border-gray-700">
             <div>
-              <h2 className="text-xl font-bold text-slate-900">Book Dental Appointment</h2>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Book Dental Appointment</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Secure patient scheduling with real-time slot reservation and clinic validation.
               </p>
             </div>
-            <span className="text-xs font-semibold px-3 py-1 rounded-full bg-[#CCFBF1] text-[#0F766E] self-start sm:self-auto">
+            <span className="text-xs font-semibold px-3 py-1 rounded-full bg-[#CCFBF1] dark:bg-teal-900/60 text-[#0F766E] dark:text-teal-300 self-start sm:self-auto">
               Step 1 of 4: Service
             </span>
           </div>
           <div className="pt-4">
-            <div className="w-full overflow-hidden rounded-full bg-slate-100 h-1.5">
+            <div className="w-full overflow-hidden rounded-full bg-slate-100 dark:bg-gray-700 h-1.5">
               <div className="h-full bg-[#0D9488]" style={{ width: '25%' }} />
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 p-6 shadow-sm">
           <BookingStepSkeleton step={1} />
         </div>
       </div>
@@ -202,12 +202,12 @@ export function BookAppointmentPage({
 
   if (catalogError) {
     return (
-      <div className="w-full bg-white rounded-2xl border border-rose-200 p-8 shadow-sm">
+      <div className="w-full bg-white dark:bg-gray-800 rounded-2xl border border-rose-200 dark:border-rose-800 p-8 shadow-sm">
         <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+          <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
           <div>
-            <h3 className="text-sm font-bold text-rose-900">Failed to Load Booking Engine</h3>
-            <p className="text-xs text-rose-700 mt-1">{catalogError}</p>
+            <h3 className="text-sm font-bold text-rose-900 dark:text-rose-200">Failed to Load Booking Engine</h3>
+            <p className="text-xs text-rose-700 dark:text-rose-300 mt-1">{catalogError}</p>
             <button
               type="button"
               onClick={() => window.location.reload()}
@@ -224,16 +224,16 @@ export function BookAppointmentPage({
   return (
     <div className="w-full space-y-6">
       {/* Header & Stepper */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-slate-100">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 p-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-slate-100 dark:border-gray-700">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">Book Dental Appointment</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Book Dental Appointment</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Secure patient scheduling with real-time slot reservation and clinic validation.
             </p>
           </div>
           {step < 5 && (
-            <span className="text-xs font-semibold px-3 py-1 rounded-full bg-[#CCFBF1] text-[#0F766E] self-start sm:self-auto">
+            <span className="text-xs font-semibold px-3 py-1 rounded-full bg-[#CCFBF1] dark:bg-teal-900/60 text-[#0F766E] dark:text-teal-300 self-start sm:self-auto">
               Step {step} of 4: {['Service', 'Dentist', 'Date & Time', 'Review'][step - 1]}
             </span>
           )}
@@ -242,9 +242,9 @@ export function BookAppointmentPage({
         {/* Stepper Progress Bar */}
         {step < 5 && (
           <div className="pt-4">
-            <div className="w-full overflow-hidden rounded-full bg-slate-100 h-1.5">
+            <div className="w-full overflow-hidden rounded-full bg-slate-100 dark:bg-gray-700 h-1.5">
               <div
-                className="h-full bg-[#0D9488] transition-all duration-300"
+                className="h-full bg-[#0D9488] dark:bg-teal-400 transition-all duration-300"
                 style={{ width: `${(step / 4) * 100}%` }}
               />
             </div>
@@ -254,10 +254,10 @@ export function BookAppointmentPage({
 
       {/* Conflict / Stale Slot Banner */}
       {isConflict && (
-        <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 flex items-start gap-3 text-amber-900 shadow-sm animate-fade-in">
-          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+        <div className="bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 rounded-xl p-4 flex items-start gap-3 text-amber-900 dark:text-amber-200 shadow-sm animate-fade-in">
+          <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <div className="flex-1 text-xs">
-            <h4 className="font-bold text-amber-950 text-sm">Selected Time Slot No Longer Available</h4>
+            <h4 className="font-bold text-amber-950 dark:text-amber-100 text-sm">Selected Time Slot No Longer Available</h4>
             <p className="mt-1">
               Another patient just reserved this appointment slot. Please return to Step 3 and pick another available time.
             </p>
@@ -278,10 +278,10 @@ export function BookAppointmentPage({
 
       {/* General Submission Error */}
       {submitError && !isConflict && (
-        <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start gap-3 text-rose-800 shadow-sm">
-          <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+        <div className="bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 rounded-xl p-4 flex items-start gap-3 text-rose-800 dark:text-rose-200 shadow-sm">
+          <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
           <div className="text-xs">
-            <h4 className="font-bold text-rose-950 text-sm">Booking Submission Error</h4>
+            <h4 className="font-bold text-rose-950 dark:text-rose-100 text-sm">Booking Submission Error</h4>
             <p className="mt-1">{submitError}</p>
           </div>
         </div>
@@ -289,10 +289,10 @@ export function BookAppointmentPage({
 
       {/* ================= STEP 1: SERVICE SELECTION ================= */}
       {step === 1 && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 p-6 shadow-sm space-y-5">
           <div>
-            <h3 className="text-base font-bold text-slate-900">Select a Dental Service</h3>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Select a Dental Service</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Choose the procedure or treatment you need. Duration determines required slot length.
             </p>
           </div>
@@ -306,30 +306,30 @@ export function BookAppointmentPage({
                   onClick={() => handleServiceChange(srv)}
                   className={`cursor-pointer rounded-xl p-4 border transition-all text-left flex flex-col justify-between ${
                     isSelected
-                      ? 'border-[#0D9488] bg-[#F0FDFA] ring-2 ring-[#0D9488]/20'
-                      : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
+                      ? 'border-[#0D9488] dark:border-teal-500 bg-[#F0FDFA] dark:bg-teal-950/50 ring-2 ring-[#0D9488]/20 dark:ring-teal-500/30'
+                      : 'border-slate-200 dark:border-gray-700 hover:border-slate-300 dark:hover:border-gray-600 hover:bg-slate-50/50 dark:hover:bg-gray-700/40'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900">{srv.name}</h4>
-                      <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600">
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">{srv.name}</h4>
+                      <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-slate-300">
                         {srv.category || 'General Dentistry'}
                       </span>
                     </div>
                     <div className="text-right">
-                      <span className="text-sm font-extrabold text-[#0D9488]">
+                      <span className="text-sm font-extrabold text-[#0D9488] dark:text-teal-400">
                         ₱{Number(srv.price).toLocaleString()}
                       </span>
                     </div>
                   </div>
 
                   {srv.description && (
-                    <p className="text-xs text-slate-500 mt-2 line-clamp-2">{srv.description}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">{srv.description}</p>
                   )}
 
-                  <div className="flex items-center gap-1.5 text-xs text-slate-600 mt-3 pt-3 border-t border-slate-100 font-medium">
-                    <Clock className="w-3.5 h-3.5 text-slate-400" />
+                  <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 mt-3 pt-3 border-t border-slate-100 dark:border-gray-700 font-medium">
+                    <Clock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     <span>Duration: {srv.duration_minutes} minutes</span>
                   </div>
                 </div>
@@ -337,12 +337,12 @@ export function BookAppointmentPage({
             })}
           </div>
 
-          <div className="flex justify-end pt-4 border-t border-slate-100">
+          <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-gray-700">
             <button
               type="button"
               disabled={!selectedService}
               onClick={() => setStep(2)}
-              className="px-5 py-2.5 bg-[#0D9488] hover:bg-[#0F766E] disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm"
+              className="px-5 py-2.5 bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-[#0D9488] disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm"
             >
               Next: Choose Dentist <ArrowRight className="w-4 h-4" />
             </button>
@@ -352,15 +352,15 @@ export function BookAppointmentPage({
 
       {/* ================= STEP 2: DENTIST SELECTION ================= */}
       {step === 2 && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 p-6 shadow-sm space-y-5">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-base font-bold text-slate-900">Select a Dentist Practitioner</h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Select a Dentist Practitioner</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Our board-certified dentists adhere to strict sterilization and operatory standards.
               </p>
             </div>
-            <span className="text-xs text-slate-500">Service: <strong>{selectedService?.name}</strong></span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Service: <strong className="text-slate-800 dark:text-slate-100">{selectedService?.name}</strong></span>
           </div>
 
           <div className="portal-grid-3 pt-2">
@@ -372,22 +372,22 @@ export function BookAppointmentPage({
                   onClick={() => handleDentistChange(dnt)}
                   className={`cursor-pointer rounded-xl p-4 border transition-all text-left flex items-start gap-3.5 ${
                     isSelected
-                      ? 'border-[#0D9488] bg-[#F0FDFA] ring-2 ring-[#0D9488]/20'
-                      : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
+                      ? 'border-[#0D9488] dark:border-teal-500 bg-[#F0FDFA] dark:bg-teal-950/50 ring-2 ring-[#0D9488]/20 dark:ring-teal-500/30'
+                      : 'border-slate-200 dark:border-gray-700 hover:border-slate-300 dark:hover:border-gray-600 hover:bg-slate-50/50 dark:hover:bg-gray-700/40'
                   }`}
                 >
-                  <div className="w-10 h-10 rounded-full bg-[#CCFBF1] text-[#0F766E] font-bold flex items-center justify-center shrink-0 text-sm">
+                  <div className="w-10 h-10 rounded-full bg-[#CCFBF1] dark:bg-teal-900/60 text-[#0F766E] dark:text-teal-300 font-bold flex items-center justify-center shrink-0 text-sm">
                     {dnt.first_name?.[0]}{dnt.last_name?.[0]}
                   </div>
 
                   <div className="flex-1">
-                    <h4 className="text-sm font-bold text-slate-900">
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                       Dr. {dnt.first_name} {dnt.last_name}
                     </h4>
-                    <p className="text-xs text-[#0D9488] font-medium mt-0.5">{dnt.specialization}</p>
-                    <p className="text-[11px] text-slate-400 mt-1">License: {dnt.license_number}</p>
+                    <p className="text-xs text-[#0D9488] dark:text-teal-400 font-medium mt-0.5">{dnt.specialization}</p>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">License: {dnt.license_number}</p>
                     {dnt.bio && (
-                      <p className="text-xs text-slate-500 mt-2 line-clamp-2">{dnt.bio}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">{dnt.bio}</p>
                     )}
                   </div>
                 </div>
@@ -395,11 +395,11 @@ export function BookAppointmentPage({
             })}
           </div>
 
-          <div className="flex justify-between items-center pt-4 border-t border-slate-100">
+          <div className="flex justify-between items-center pt-4 border-t border-slate-100 dark:border-gray-700">
             <button
               type="button"
               onClick={() => setStep(1)}
-              className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all"
+              className="px-4 py-2 border border-slate-200 dark:border-gray-600 hover:bg-slate-50 dark:hover:bg-gray-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all"
             >
               <ArrowLeft className="w-4 h-4" /> Back to Services
             </button>
@@ -407,7 +407,7 @@ export function BookAppointmentPage({
               type="button"
               disabled={!selectedDentist}
               onClick={() => setStep(3)}
-              className="px-5 py-2.5 bg-[#0D9488] hover:bg-[#0F766E] disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm"
+              className="px-5 py-2.5 bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-[#0D9488] disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm"
             >
               Next: Select Date & Time <ArrowRight className="w-4 h-4" />
             </button>
@@ -417,36 +417,36 @@ export function BookAppointmentPage({
 
       {/* ================= STEP 3: DATE & TIME SLOT SELECTION ================= */}
       {step === 3 && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-100">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 p-6 shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-100 dark:border-gray-700">
             <div>
-              <h3 className="text-base font-bold text-slate-900">Choose Appointment Date & Time</h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Choose Appointment Date & Time</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Slots are calculated in real time based on Dr. {selectedDentist?.last_name}'s schedule and buffer time.
               </p>
             </div>
-            <div className="text-xs bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-lg text-slate-600">
-              <strong>{selectedService?.name}</strong> · {selectedService?.duration_minutes} mins
+            <div className="text-xs bg-slate-50 dark:bg-gray-900/60 border border-slate-100 dark:border-gray-700 px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300">
+              <strong className="text-slate-900 dark:text-slate-100">{selectedService?.name}</strong> · {selectedService?.duration_minutes} mins
             </div>
           </div>
 
           {/* Date Picker Input */}
           <div className="max-w-xs space-y-1.5">
-            <label className="text-xs font-bold text-slate-700">Appointment Date</label>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Appointment Date</label>
             <div className="relative">
               <input
                 type="date"
                 value={selectedDate}
                 min={new Date().toISOString().split('T')[0]}
                 onChange={(e) => handleDateChange(e.target.value)}
-                className="w-full text-xs font-medium border border-slate-200 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
+                className="w-full text-xs font-medium border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
               />
             </div>
           </div>
 
           {/* Dynamic Slot Picker */}
           <div className="pt-2">
-            <label className="text-xs font-bold text-slate-700 block mb-2">Available Time Slots</label>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-2">Available Time Slots</label>
             <AvailabilitySlotPicker
               dentistId={selectedDentist?.id}
               serviceId={selectedService?.id}
@@ -460,11 +460,11 @@ export function BookAppointmentPage({
             />
           </div>
 
-          <div className="flex justify-between items-center pt-4 border-t border-slate-100">
+          <div className="flex justify-between items-center pt-4 border-t border-slate-100 dark:border-gray-700">
             <button
               type="button"
               onClick={() => setStep(2)}
-              className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all"
+              className="px-4 py-2 border border-slate-200 dark:border-gray-600 hover:bg-slate-50 dark:hover:bg-gray-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all"
             >
               <ArrowLeft className="w-4 h-4" /> Back to Dentists
             </button>
@@ -472,7 +472,7 @@ export function BookAppointmentPage({
               type="button"
               disabled={!selectedSlot}
               onClick={() => setStep(4)}
-              className="px-5 py-2.5 bg-[#0D9488] hover:bg-[#0F766E] disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm"
+              className="px-5 py-2.5 bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-[#0D9488] disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm"
             >
               Next: Review & Confirm <ArrowRight className="w-4 h-4" />
             </button>
@@ -482,60 +482,60 @@ export function BookAppointmentPage({
 
       {/* ================= STEP 4: REVIEW & CONFIRM ================= */}
       {step === 4 && (
-        <form onSubmit={handleSubmitBooking} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-6">
+        <form onSubmit={handleSubmitBooking} className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 p-6 shadow-sm space-y-6">
           <div>
-            <h3 className="text-base font-bold text-slate-900">Review Appointment Summary</h3>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Review Appointment Summary</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Please inspect your appointment details before submitting your request.
             </p>
           </div>
 
           {/* Summary Card */}
-          <div className="bg-slate-50/70 border border-slate-200 rounded-xl p-5 space-y-4 text-xs">
+          <div className="bg-slate-50/70 dark:bg-gray-900/60 border border-slate-200 dark:border-gray-700 rounded-xl p-5 space-y-4 text-xs">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <span className="text-slate-400 block text-[11px] uppercase tracking-wider font-semibold">Service</span>
-                <span className="text-sm font-bold text-slate-900 mt-0.5 block">{selectedService?.name}</span>
-                <span className="text-slate-500">Duration: {selectedService?.duration_minutes} minutes</span>
+                <span className="text-slate-400 dark:text-slate-500 block text-[11px] uppercase tracking-wider font-semibold">Service</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-0.5 block">{selectedService?.name}</span>
+                <span className="text-slate-500 dark:text-slate-400">Duration: {selectedService?.duration_minutes} minutes</span>
               </div>
               <div>
-                <span className="text-slate-400 block text-[11px] uppercase tracking-wider font-semibold">Dentist</span>
-                <span className="text-sm font-bold text-slate-900 mt-0.5 block">
+                <span className="text-slate-400 dark:text-slate-500 block text-[11px] uppercase tracking-wider font-semibold">Dentist</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-0.5 block">
                   Dr. {selectedDentist?.first_name} {selectedDentist?.last_name}
                 </span>
-                <span className="text-slate-500">{selectedDentist?.specialization}</span>
+                <span className="text-slate-500 dark:text-slate-400">{selectedDentist?.specialization}</span>
               </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="pt-3 border-t border-slate-200 dark:border-gray-700 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <span className="text-slate-400 block text-[11px] uppercase tracking-wider font-semibold">Scheduled Time</span>
-                <span className="text-sm font-bold text-[#0D9488] mt-0.5 block">
+                <span className="text-slate-400 dark:text-slate-500 block text-[11px] uppercase tracking-wider font-semibold">Scheduled Time</span>
+                <span className="text-sm font-bold text-[#0D9488] dark:text-teal-400 mt-0.5 block">
                   {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                 </span>
-                <span className="text-slate-600 font-medium">
+                <span className="text-slate-600 dark:text-slate-300 font-medium">
                   {formatSlotTime(selectedSlot?.start_at)} – {formatSlotTime(selectedSlot?.end_at)}
                 </span>
-                <p className="text-[11px] text-slate-400 mt-1">
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
                   (Turnaround buffer: 10 mins allocated for room sterilization)
                 </p>
               </div>
 
               <div>
-                <span className="text-slate-400 block text-[11px] uppercase tracking-wider font-semibold">Estimated Fee</span>
-                <span className="text-base font-extrabold text-slate-900 mt-0.5 block">
+                <span className="text-slate-400 dark:text-slate-500 block text-[11px] uppercase tracking-wider font-semibold">Estimated Fee</span>
+                <span className="text-base font-extrabold text-slate-900 dark:text-slate-100 mt-0.5 block">
                   ₱{Number(selectedService?.price).toLocaleString()}
                 </span>
-                <span className="text-[11px] text-slate-400">Payable at clinic upon consultation</span>
+                <span className="text-[11px] text-slate-400 dark:text-slate-500">Payable at clinic upon consultation</span>
               </div>
             </div>
           </div>
 
           {/* Chief Complaint / Optional Reason */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
               <span>Reason for Visit / Chief Complaint (Optional)</span>
-              <span className="text-slate-400 text-[11px] font-normal">{chiefComplaint.length}/1000</span>
+              <span className="text-slate-400 dark:text-slate-500 text-[11px] font-normal">{chiefComplaint.length}/1000</span>
             </label>
             <textarea
               rows={3}
@@ -543,37 +543,37 @@ export function BookAppointmentPage({
               value={chiefComplaint}
               onChange={(e) => setChiefComplaint(e.target.value)}
               placeholder="Describe any symptoms, tooth sensitivity, or specific concern..."
-              className="w-full text-xs border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-[#0D9488] resize-none"
+              className="w-full text-xs border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-400 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-[#0D9488] resize-none"
             />
           </div>
 
           {/* Clinic Cancellation Policy Agreement */}
-          <div className="bg-teal-50/50 border border-teal-100 rounded-xl p-4 flex items-start gap-3">
+          <div className="bg-teal-50/50 dark:bg-teal-950/40 border border-teal-100 dark:border-teal-800/70 rounded-xl p-4 flex items-start gap-3">
             <input
               type="checkbox"
               id="policy-agree"
               checked={agreedPolicy}
               onChange={(e) => setAgreedPolicy(e.target.checked)}
-              className="mt-0.5 h-4 w-4 text-[#0D9488] focus:ring-[#0D9488] border-slate-300 rounded cursor-pointer"
+              className="mt-0.5 h-4 w-4 text-[#0D9488] focus:ring-[#0D9488] border-slate-300 dark:border-gray-600 rounded cursor-pointer"
             />
-            <label htmlFor="policy-agree" className="text-xs text-slate-600 cursor-pointer select-none">
-              <strong className="text-slate-800">Clinic Scheduling Policy:</strong> I understand that my appointment request will be placed in <span className="font-semibold text-amber-700">PENDING</span> status until reviewed by clinic staff. Cancellations must be made at least 2 hours in advance.
+            <label htmlFor="policy-agree" className="text-xs text-slate-600 dark:text-slate-300 cursor-pointer select-none">
+              <strong className="text-slate-800 dark:text-slate-100">Clinic Scheduling Policy:</strong> I understand that my appointment request will be placed in <span className="font-semibold text-amber-700 dark:text-amber-400">PENDING</span> status until reviewed by clinic staff. Cancellations must be made at least 2 hours in advance.
             </label>
           </div>
 
-          <div className="flex justify-between items-center pt-4 border-t border-slate-100">
+          <div className="flex justify-between items-center pt-4 border-t border-slate-100 dark:border-gray-700">
             <button
               type="button"
               disabled={submitting}
               onClick={() => setStep(3)}
-              className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all"
+              className="px-4 py-2 border border-slate-200 dark:border-gray-600 hover:bg-slate-50 dark:hover:bg-gray-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all"
             >
               <ArrowLeft className="w-4 h-4" /> Back to Slot Selection
             </button>
             <button
               type="submit"
               disabled={submitting || !agreedPolicy}
-              className="px-6 py-2.5 bg-[#0D9488] hover:bg-[#0F766E] disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm"
+              className="px-6 py-2.5 bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-[#0D9488] disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm"
             >
               {submitting ? (
                 <>
@@ -591,40 +591,40 @@ export function BookAppointmentPage({
 
       {/* ================= STEP 5: SUCCESS CONFIRMATION ================= */}
       {step === 5 && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center shadow-sm space-y-6">
-          <div className="w-16 h-16 bg-[#CCFBF1] text-[#0D9488] rounded-full flex items-center justify-center mx-auto ring-8 ring-teal-50">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 p-8 text-center shadow-sm space-y-6">
+          <div className="w-16 h-16 bg-[#CCFBF1] dark:bg-teal-900/60 text-[#0D9488] dark:text-teal-300 rounded-full flex items-center justify-center mx-auto ring-8 ring-teal-50 dark:ring-teal-950/60">
             <CheckCircle2 className="w-10 h-10" />
           </div>
 
           <div className="max-w-md mx-auto">
-            <h3 className="text-xl font-bold text-slate-900">Appointment Request Submitted!</h3>
-            <p className="text-xs text-slate-500 mt-1">
+            <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Appointment Request Submitted!</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               Your appointment request has been safely recorded in the clinic system under reference{' '}
-              <strong className="text-slate-800">#{createdAppointment?.id}</strong>.
+              <strong className="text-slate-800 dark:text-slate-100">#{createdAppointment?.id}</strong>.
             </p>
           </div>
 
           {/* Details Box */}
-          <div className="max-w-md mx-auto bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-left space-y-2">
+          <div className="max-w-md mx-auto bg-slate-50 dark:bg-gray-900/60 border border-slate-200 dark:border-gray-700 rounded-xl p-4 text-xs text-left space-y-2">
             <div className="flex justify-between">
-              <span className="text-slate-500">Status:</span>
-              <span className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-[11px]">
+              <span className="text-slate-500 dark:text-slate-400">Status:</span>
+              <span className="font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/60 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800 text-[11px]">
                 PENDING REVIEW
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">Service:</span>
-              <span className="font-semibold text-slate-800">{createdAppointment?.service_name || selectedService?.name}</span>
+              <span className="text-slate-500 dark:text-slate-400">Service:</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-100">{createdAppointment?.service_name || selectedService?.name}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">Dentist:</span>
-              <span className="font-semibold text-slate-800">
+              <span className="text-slate-500 dark:text-slate-400">Dentist:</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-100">
                 Dr. {createdAppointment?.dentist_first_name || selectedDentist?.first_name} {createdAppointment?.dentist_last_name || selectedDentist?.last_name}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">Scheduled:</span>
-              <span className="font-semibold text-slate-800">
+              <span className="text-slate-500 dark:text-slate-400">Scheduled:</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-100">
                 {createdAppointment?.start_at} ({createdAppointment?.operatory_chair || 'Chair 1'})
               </span>
             </div>
@@ -634,14 +634,14 @@ export function BookAppointmentPage({
             <button
               type="button"
               onClick={resetForm}
-              className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold transition-all"
+              className="px-4 py-2 border border-slate-200 dark:border-gray-600 hover:bg-slate-50 dark:hover:bg-gray-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition-all"
             >
               Book Another Appointment
             </button>
             <button
               type="button"
               onClick={() => onNavigateToAppointments && onNavigateToAppointments()}
-              className="px-5 py-2.5 bg-[#0D9488] hover:bg-[#0F766E] text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+              className="px-5 py-2.5 bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-[#0D9488] text-white rounded-xl text-xs font-bold transition-all shadow-sm"
             >
               View My Appointments
             </button>

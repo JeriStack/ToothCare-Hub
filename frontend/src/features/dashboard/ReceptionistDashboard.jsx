@@ -207,14 +207,14 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
     <div className="space-y-8 pb-12">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#12304A] text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 border border-teal-500/30 text-sm animate-in fade-in slide-in-from-bottom-3 duration-200">
+        <div className="fixed bottom-6 right-6 z-50 bg-[#12304A] dark:bg-slate-900 text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 border border-teal-500/30 dark:border-teal-400/30 text-sm animate-in fade-in slide-in-from-bottom-3 duration-200">
           <CheckCircle2 className="w-5 h-5 text-teal-400 flex-shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
 
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-[#12304A] to-[#1E3A8A] text-white rounded-2xl p-6 sm:p-8 shadow-sm relative overflow-hidden">
+      <div className="bg-gradient-to-r from-[#12304A] to-[#1E3A8A] dark:from-[#0f2438] dark:to-[#172c64] dark:border dark:border-slate-700/80 text-white rounded-2xl p-6 sm:p-8 shadow-sm relative overflow-hidden">
         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="space-y-1.5">
@@ -264,11 +264,11 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-start gap-3">
+        <div className="p-4 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800/80 rounded-xl text-red-700 dark:text-red-300 text-sm flex items-start gap-3">
           <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
             <p className="font-semibold">Unable to refresh dashboard data</p>
-            <p className="text-xs text-red-600 mt-0.5">{error}</p>
+            <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">{error}</p>
           </div>
         </div>
       )}
@@ -276,92 +276,92 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
       {/* 7 Operational KPI Summary Cards */}
       <div className="portal-grid-7">
         {/* 1. Today's Total */}
-        <div className="bg-white rounded-xl p-4 border border-slate-200/80 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-500">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-slate-200/80 dark:border-gray-700 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
             <span className="text-xs font-medium uppercase tracking-wider">Today's Visits</span>
-            <Calendar className="w-4 h-4 text-slate-400" />
+            <Calendar className="w-4 h-4 text-slate-400 dark:text-slate-500" />
           </div>
           <div className="mt-3">
-            <span className="text-2xl font-bold text-slate-900">{counts.today_total}</span>
-            <p className="text-[11px] text-slate-500 mt-0.5">Total scheduled</p>
+            <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">{counts.today_total}</span>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Total scheduled</p>
           </div>
         </div>
 
         {/* 2. Pending Requests */}
         <div
           onClick={() => onNavigateTab?.('triage')}
-          className="bg-white rounded-xl p-4 border border-amber-200/80 shadow-xs flex flex-col justify-between cursor-pointer hover:border-amber-300 transition-colors"
+          className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-amber-200/80 dark:border-amber-800/70 shadow-xs flex flex-col justify-between cursor-pointer hover:border-amber-300 dark:hover:border-amber-600 transition-colors"
         >
-          <div className="flex items-center justify-between text-amber-600">
+          <div className="flex items-center justify-between text-amber-600 dark:text-amber-400">
             <span className="text-xs font-medium uppercase tracking-wider">Pending Review</span>
-            <Clock className="w-4 h-4 text-amber-500" />
+            <Clock className="w-4 h-4 text-amber-500 dark:text-amber-400" />
           </div>
           <div className="mt-3">
-            <span className="text-2xl font-bold text-amber-600">{counts.pending_requests}</span>
-            <p className="text-[11px] text-amber-600/80 mt-0.5">Awaiting triage</p>
+            <span className="text-2xl font-bold text-amber-600 dark:text-amber-400">{counts.pending_requests}</span>
+            <p className="text-[11px] text-amber-600/80 dark:text-amber-300/80 mt-0.5">Awaiting triage</p>
           </div>
         </div>
 
         {/* 3. Confirmed Today */}
-        <div className="bg-white rounded-xl p-4 border border-slate-200/80 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-blue-600">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-slate-200/80 dark:border-gray-700 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between text-blue-600 dark:text-blue-400">
             <span className="text-xs font-medium uppercase tracking-wider">Confirmed</span>
-            <CheckCircle2 className="w-4 h-4 text-blue-500" />
+            <CheckCircle2 className="w-4 h-4 text-blue-500 dark:text-blue-400" />
           </div>
           <div className="mt-3">
-            <span className="text-2xl font-bold text-blue-600">{counts.confirmed_today}</span>
-            <p className="text-[11px] text-slate-500 mt-0.5">Ready for arrival</p>
+            <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">{counts.confirmed_today}</span>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Ready for arrival</p>
           </div>
         </div>
 
         {/* 4. Arrived / Checked-In */}
-        <div className="bg-white rounded-xl p-4 border border-emerald-200/80 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-emerald-600">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-emerald-200/80 dark:border-emerald-800/70 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
             <span className="text-xs font-medium uppercase tracking-wider">Checked In</span>
-            <UserCheck className="w-4 h-4 text-emerald-500" />
+            <UserCheck className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
           </div>
           <div className="mt-3">
-            <span className="text-2xl font-bold text-emerald-600">{counts.checked_in}</span>
-            <p className="text-[11px] text-emerald-600/80 mt-0.5">At the clinic</p>
+            <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{counts.checked_in}</span>
+            <p className="text-[11px] text-emerald-600/80 dark:text-emerald-300/80 mt-0.5">At the clinic</p>
           </div>
         </div>
 
         {/* 5. Waiting in Lobby */}
-        <div className="bg-white rounded-xl p-4 border border-teal-200/80 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-teal-600">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-teal-200/80 dark:border-teal-800/70 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between text-teal-600 dark:text-teal-400">
             <span className="text-xs font-medium uppercase tracking-wider">Waiting Room</span>
-            <Timer className="w-4 h-4 text-teal-500" />
+            <Timer className="w-4 h-4 text-teal-500 dark:text-teal-400" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-teal-600">{counts.waiting}</span>
+            <span className="text-2xl font-bold text-teal-600 dark:text-teal-400">{counts.waiting}</span>
             {counts.in_consultation > 0 && (
-              <span className="text-[11px] text-indigo-600 font-medium">({counts.in_consultation} in chair)</span>
+              <span className="text-[11px] text-indigo-600 dark:text-indigo-400 font-medium">({counts.in_consultation} in chair)</span>
             )}
-            <p className="text-[11px] text-teal-600/80 mt-0.5">Queued</p>
+            <p className="text-[11px] text-teal-600/80 dark:text-teal-300/80 mt-0.5">Queued</p>
           </div>
         </div>
 
         {/* 6. Completed Today */}
-        <div className="bg-white rounded-xl p-4 border border-slate-200/80 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-500">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-slate-200/80 dark:border-gray-700 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
             <span className="text-xs font-medium uppercase tracking-wider">Completed</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
           </div>
           <div className="mt-3">
-            <span className="text-2xl font-bold text-slate-700">{counts.completed_today}</span>
-            <p className="text-[11px] text-slate-500 mt-0.5">Visits finished</p>
+            <span className="text-2xl font-bold text-slate-700 dark:text-slate-200">{counts.completed_today}</span>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Visits finished</p>
           </div>
         </div>
 
         {/* 7. Cancelled Today */}
-        <div className="bg-white rounded-xl p-4 border border-slate-200/80 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-500">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-slate-200/80 dark:border-gray-700 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
             <span className="text-xs font-medium uppercase tracking-wider">Cancelled</span>
             <XCircle className="w-4 h-4 text-rose-400" />
           </div>
           <div className="mt-3">
-            <span className="text-2xl font-bold text-rose-500">{counts.cancelled_today}</span>
-            <p className="text-[11px] text-slate-500 mt-0.5">No-show / cancelled</p>
+            <span className="text-2xl font-bold text-rose-500 dark:text-rose-400">{counts.cancelled_today}</span>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">No-show / cancelled</p>
           </div>
         </div>
       </div>
@@ -370,28 +370,28 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
       <div className="portal-split-1-2">
         {/* Left Column: Live Waiting Room Queue (1 Col) */}
         <div className="min-w-0 space-y-6">
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200/80 dark:border-gray-700 shadow-xs overflow-hidden">
+            <div className="p-5 border-b border-slate-100 dark:border-gray-700 flex items-center justify-between bg-slate-50/50 dark:bg-gray-800/80">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-teal-50 text-teal-700 rounded-lg">
+                <div className="p-2 bg-teal-50 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300 rounded-lg">
                   <Timer className="w-4 h-4" />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-slate-900">Waiting Room Queue</h2>
-                  <p className="text-xs text-slate-500">Patients currently on-site waiting for treatment</p>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Waiting Room Queue</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Patients currently on-site waiting for treatment</p>
                 </div>
               </div>
-              <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-teal-100 text-teal-800">
+              <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-300">
                 {waitingList.length} Active
               </span>
             </div>
 
-            <div className="p-4 divide-y divide-slate-100">
+            <div className="p-4 divide-y divide-slate-100 dark:divide-gray-700">
               {waitingList.length === 0 ? (
-                <div className="py-10 text-center text-slate-400">
-                  <UserCheck className="w-10 h-10 mx-auto text-slate-300 stroke-1" />
-                  <p className="mt-2 text-sm font-medium text-slate-600">No patients waiting</p>
-                  <p className="text-xs text-slate-400 mt-0.5">Arrived patients will appear here with wait times</p>
+                <div className="py-10 text-center text-slate-400 dark:text-slate-500">
+                  <UserCheck className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 stroke-1" />
+                  <p className="mt-2 text-sm font-medium text-slate-600 dark:text-slate-300">No patients waiting</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Arrived patients will appear here with wait times</p>
                 </div>
               ) : (
                 waitingList.map((item) => (
@@ -399,24 +399,24 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-slate-900 text-sm">
+                          <span className="font-semibold text-slate-900 dark:text-slate-100 text-sm">
                             {item.patient_first_name} {item.patient_last_name}
                           </span>
                           <span
                             className={`px-2 py-0.5 rounded text-[11px] font-medium ${
                               item.status === 'IN_CONSULTATION'
-                                ? 'bg-indigo-100 text-indigo-800'
-                                : 'bg-emerald-100 text-emerald-800'
+                                ? 'bg-indigo-100 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300'
+                                : 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300'
                             }`}
                           >
                             {item.status === 'IN_CONSULTATION' ? 'In Chair' : 'Waiting'}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-500 mt-0.5">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                           Dr. {item.dentist_first_name} {item.dentist_last_name} • {item.service_name}
                         </p>
-                        <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-400">
-                          <span className="flex items-center gap-1 text-teal-700 font-medium">
+                        <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-400 dark:text-slate-500">
+                          <span className="flex items-center gap-1 text-teal-700 dark:text-teal-400 font-medium">
                             <Clock className="w-3.5 h-3.5" />
                             {item.waiting_minutes !== null ? `${item.waiting_minutes}m waiting` : 'Just checked in'}
                           </span>
@@ -430,7 +430,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                             setAttendanceModalTarget(item);
                             setAttendanceStatusChoice(item.status === 'IN_CONSULTATION' ? 'FINISHED' : 'IN_CONSULTATION');
                           }}
-                          className="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                          className="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-100 dark:bg-gray-700 hover:bg-slate-200 dark:hover:bg-gray-600 text-slate-700 dark:text-slate-200 transition-colors"
                         >
                           {item.status === 'IN_CONSULTATION' ? 'Finish Visit' : 'Call into Chair'}
                         </button>
@@ -443,33 +443,33 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
           </div>
 
           {/* Quick Review Queue Peeking */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200/80 dark:border-gray-700 shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-slate-100 dark:border-gray-700 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-amber-500" />
-                <h3 className="text-sm font-bold text-slate-900">Pending Review Queue</h3>
+                <Clock className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Pending Review Queue</h3>
               </div>
               <button
                 onClick={() => onNavigateTab?.('triage')}
-                className="text-xs text-teal-700 hover:text-teal-800 font-semibold flex items-center gap-1"
+                className="text-xs text-teal-700 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 font-semibold flex items-center gap-1"
               >
                 <span>View All</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
-            <div className="p-4 divide-y divide-slate-100">
+            <div className="p-4 divide-y divide-slate-100 dark:divide-gray-700">
               {pendingReview.length === 0 ? (
-                <p className="text-xs text-slate-400 py-3 text-center">No pending appointment requests to review.</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 py-3 text-center">No pending appointment requests to review.</p>
               ) : (
                 pendingReview.slice(0, 3).map((item) => (
                   <div key={item.id} className="py-2.5 first:pt-0 last:pb-0">
-                    <p className="text-xs font-semibold text-slate-900">
+                    <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">
                       {item.patient_first_name} {item.patient_last_name}
                     </p>
-                    <p className="text-[11px] text-slate-500">{item.service_name}</p>
-                    <div className="flex items-center justify-between mt-1 text-[11px] text-slate-400">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">{item.service_name}</p>
+                    <div className="flex items-center justify-between mt-1 text-[11px] text-slate-400 dark:text-slate-500">
                       <span>{item.start_at ? item.start_at.substring(0, 16) : ''}</span>
-                      <span className="text-amber-600 font-medium">Pending</span>
+                      <span className="text-amber-600 dark:text-amber-400 font-medium">Pending</span>
                     </div>
                   </div>
                 ))
@@ -480,30 +480,30 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
 
         {/* Right Column: Today's Front Desk Schedule (2 Cols) */}
         <div className="min-w-0 space-y-6">
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200/80 dark:border-gray-700 shadow-xs overflow-hidden">
             {/* Header with Search and Filter */}
-            <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-slate-50/50">
+            <div className="p-5 border-b border-slate-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-slate-50/50 dark:bg-gray-800/80">
               <div>
-                <h2 className="text-base font-bold text-slate-900">Today's Clinic Schedule</h2>
-                <p className="text-xs text-slate-500">Manage arrivals, check-ins, and consultation progress</p>
+                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Today's Clinic Schedule</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Manage arrivals, check-ins, and consultation progress</p>
               </div>
 
               <div className="flex items-center gap-2.5 flex-wrap">
                 <div className="relative">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search patient or service..."
-                    className="pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 bg-white"
+                    className="pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-300 dark:border-gray-600 focus:outline-hidden focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 bg-white dark:bg-gray-700 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-400"
                   />
                 </div>
 
                 <select
                   value={attendanceFilter}
                   onChange={(e) => setAttendanceFilter(e.target.value)}
-                  className="px-3 py-1.5 text-xs rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 bg-white text-slate-700"
+                  className="px-3 py-1.5 text-xs rounded-xl border border-slate-300 dark:border-gray-600 focus:outline-hidden focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 bg-white dark:bg-gray-700 text-slate-700 dark:text-slate-100"
                 >
                   <option value="ALL">All Statuses</option>
                   <option value="NOT_ARRIVED">Not Arrived</option>
@@ -519,17 +519,17 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
             {/* Schedule Table / List */}
             <div className="overflow-x-auto">
               {filteredSchedule.length === 0 ? (
-                <div className="py-14 text-center text-slate-400">
-                  <Calendar className="w-10 h-10 mx-auto text-slate-300 stroke-1" />
-                  <p className="mt-2 text-sm font-medium text-slate-600">No appointments found</p>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                <div className="py-14 text-center text-slate-400 dark:text-slate-500">
+                  <Calendar className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 stroke-1" />
+                  <p className="mt-2 text-sm font-medium text-slate-600 dark:text-slate-300">No appointments found</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
                     {searchQuery ? 'Try clearing your search or status filter' : 'No appointments scheduled for today.'}
                   </p>
                 </div>
               ) : (
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50/75 text-slate-500 font-semibold uppercase tracking-wider text-[11px]">
+                    <tr className="border-b border-slate-100 dark:border-gray-700 bg-slate-50/75 dark:bg-gray-900/50 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
                       <th className="py-3 px-4">Time</th>
                       <th className="py-3 px-4">Patient</th>
                       <th className="py-3 px-4">Service & Provider</th>
@@ -538,31 +538,31 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                       <th className="py-3 px-4 text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-100 dark:divide-gray-700">
                     {filteredSchedule.map((apt) => {
                       const startTime = apt.start_at ? apt.start_at.substring(11, 16) : '--:--';
                       const endTime = apt.end_at ? apt.end_at.substring(11, 16) : '--:--';
                       const isArrived = apt.attendance_status && apt.attendance_status !== 'NOT_ARRIVED';
 
                       return (
-                        <tr key={apt.id} className="hover:bg-slate-50/60 transition-colors">
+                        <tr key={apt.id} className="hover:bg-slate-50/60 dark:hover:bg-gray-700/40 transition-colors">
                           {/* Time */}
                           <td className="py-3.5 px-4 whitespace-nowrap">
-                            <span className="font-semibold text-slate-900 block">{startTime}</span>
-                            <span className="text-[11px] text-slate-400">to {endTime}</span>
+                            <span className="font-semibold text-slate-900 dark:text-slate-100 block">{startTime}</span>
+                            <span className="text-[11px] text-slate-400 dark:text-slate-500">to {endTime}</span>
                           </td>
 
                           {/* Patient */}
                           <td className="py-3.5 px-4">
-                            <span className="font-semibold text-slate-900 block">
+                            <span className="font-semibold text-slate-900 dark:text-slate-100 block">
                               {apt.patient_first_name} {apt.patient_last_name}
                             </span>
-                            <span className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
-                              <Phone className="w-3 h-3 text-slate-400" />
+                            <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5">
+                              <Phone className="w-3 h-3 text-slate-400 dark:text-slate-500" />
                               {apt.patient_phone || 'No phone'}
                             </span>
                             {apt.patient_medical_alerts && apt.patient_medical_alerts !== 'None recorded' && (
-                              <span className="inline-flex items-center gap-1 text-[10px] text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded mt-1 border border-rose-200">
+                              <span className="inline-flex items-center gap-1 text-[10px] text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 px-1.5 py-0.5 rounded mt-1 border border-rose-200 dark:border-rose-800">
                                 <ShieldAlert className="w-2.5 h-2.5" />
                                 {apt.patient_medical_alerts}
                               </span>
@@ -571,11 +571,11 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
 
                           {/* Service & Provider */}
                           <td className="py-3.5 px-4">
-                            <span className="font-medium text-slate-800 block">{apt.service_name}</span>
-                            <span className="text-[11px] text-slate-500">
+                            <span className="font-medium text-slate-800 dark:text-slate-200 block">{apt.service_name}</span>
+                            <span className="text-[11px] text-slate-500 dark:text-slate-400">
                               Dr. {apt.dentist_first_name} {apt.dentist_last_name}
                             </span>
-                            <span className="text-[11px] text-slate-400 block mt-0.5">
+                            <span className="text-[11px] text-slate-400 dark:text-slate-500 block mt-0.5">
                               {apt.operatory_chair || 'Chair 1'}
                             </span>
                           </td>
@@ -585,12 +585,12 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                             <span
                               className={`px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase ${
                                 apt.appointment_status === 'CONFIRMED'
-                                  ? 'bg-blue-100 text-blue-800'
+                                  ? 'bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300'
                                   : apt.appointment_status === 'COMPLETED'
-                                  ? 'bg-emerald-100 text-emerald-800'
+                                  ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300'
                                   : apt.appointment_status === 'CANCELLED'
-                                  ? 'bg-rose-100 text-rose-800'
-                                  : 'bg-amber-100 text-amber-800'
+                                  ? 'bg-rose-100 dark:bg-rose-900/60 text-rose-800 dark:text-rose-300'
+                                  : 'bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300'
                               }`}
                             >
                               {apt.appointment_status}
@@ -602,16 +602,16 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                             <span
                               className={`px-2 py-1 rounded text-[11px] font-medium inline-flex items-center gap-1 ${
                                 apt.attendance_status === 'NOT_ARRIVED'
-                                  ? 'bg-slate-100 text-slate-600'
+                                  ? 'bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-slate-300'
                                   : apt.attendance_status === 'CHECKED_IN'
-                                  ? 'bg-emerald-100 text-emerald-800'
+                                  ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300'
                                   : apt.attendance_status === 'WAITING'
-                                  ? 'bg-teal-100 text-teal-800'
+                                  ? 'bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-300'
                                   : apt.attendance_status === 'IN_CONSULTATION'
-                                  ? 'bg-indigo-100 text-indigo-800'
+                                  ? 'bg-indigo-100 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300'
                                   : apt.attendance_status === 'FINISHED'
-                                  ? 'bg-slate-200 text-slate-800'
-                                  : 'bg-rose-100 text-rose-800'
+                                  ? 'bg-slate-200 dark:bg-gray-700 text-slate-800 dark:text-slate-200'
+                                  : 'bg-rose-100 dark:bg-rose-900/60 text-rose-800 dark:text-rose-300'
                               }`}
                             >
                               {apt.attendance_status === 'NOT_ARRIVED' && 'Not Arrived'}
@@ -631,7 +631,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                                   setCheckInTarget(apt);
                                   setCheckInNotes('');
                                 }}
-                                className="px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-medium text-xs transition-colors shadow-xs"
+                                className="px-3 py-1.5 rounded-lg bg-teal-600 dark:bg-teal-700 hover:bg-teal-500 dark:hover:bg-teal-600 text-white font-medium text-xs transition-colors shadow-xs"
                               >
                                 Check In
                               </button>
@@ -642,7 +642,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                                   setAttendanceStatusChoice(apt.attendance_status || 'WAITING');
                                   setAttendanceNotes(apt.attendance_notes || '');
                                 }}
-                                className="px-2.5 py-1 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 font-medium text-xs transition-colors"
+                                className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-gray-600 hover:bg-slate-100 dark:hover:bg-gray-700 text-slate-700 dark:text-slate-200 font-medium text-xs transition-colors"
                               >
                                 Manage
                               </button>
@@ -661,33 +661,33 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
 
       {/* MODAL 1: Quick Check-In Modal */}
       {checkInTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2 text-teal-700">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/65 backdrop-blur-xs p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-gray-700 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-gray-700">
+              <div className="flex items-center gap-2 text-teal-700 dark:text-teal-400">
                 <UserCheck className="w-5 h-5" />
-                <h3 className="text-base font-bold text-slate-900">Confirm Patient Arrival</h3>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Confirm Patient Arrival</h3>
               </div>
               <button
                 onClick={() => setCheckInTarget(null)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-2 text-sm text-slate-600">
+            <div className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
               <p>
-                Confirm check-in for <strong className="text-slate-900">{checkInTarget.patient_first_name} {checkInTarget.patient_last_name}</strong>?
+                Confirm check-in for <strong className="text-slate-900 dark:text-slate-100">{checkInTarget.patient_first_name} {checkInTarget.patient_last_name}</strong>?
               </p>
-              <div className="p-3 bg-slate-50 rounded-xl space-y-1 text-xs">
-                <p><span className="text-slate-400">Service:</span> {checkInTarget.service_name}</p>
-                <p><span className="text-slate-400">Dentist:</span> Dr. {checkInTarget.dentist_first_name} {checkInTarget.dentist_last_name}</p>
-                <p><span className="text-slate-400">Scheduled Time:</span> {checkInTarget.start_at ? checkInTarget.start_at.substring(11, 16) : ''}</p>
+              <div className="p-3 bg-slate-50 dark:bg-gray-900/60 rounded-xl space-y-1 text-xs border border-slate-200/70 dark:border-gray-700">
+                <p><span className="text-slate-400 dark:text-slate-500">Service:</span> {checkInTarget.service_name}</p>
+                <p><span className="text-slate-400 dark:text-slate-500">Dentist:</span> Dr. {checkInTarget.dentist_first_name} {checkInTarget.dentist_last_name}</p>
+                <p><span className="text-slate-400 dark:text-slate-500">Scheduled Time:</span> {checkInTarget.start_at ? checkInTarget.start_at.substring(11, 16) : ''}</p>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Desk Arrival Notes (Optional)
                 </label>
                 <input
@@ -695,7 +695,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                   value={checkInNotes}
                   onChange={(e) => setCheckInNotes(e.target.value)}
                   placeholder="e.g. Arrived on time, ID verified, health declaration completed."
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
+                  className="w-full px-3 py-2 text-xs border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-400 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
                 />
               </div>
             </div>
@@ -704,7 +704,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
               <button
                 type="button"
                 onClick={() => setCheckInTarget(null)}
-                className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-800"
+                className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100"
               >
                 Cancel
               </button>
@@ -712,7 +712,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                 type="button"
                 onClick={handlePerformCheckIn}
                 disabled={isCheckingIn}
-                className="px-4 py-2 text-xs font-semibold rounded-xl bg-teal-600 hover:bg-teal-500 text-white transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-xs font-semibold rounded-xl bg-teal-600 dark:bg-teal-700 hover:bg-teal-500 dark:hover:bg-teal-600 text-white transition-colors disabled:opacity-50"
               >
                 {isCheckingIn ? 'Checking in...' : 'Confirm Check-In'}
               </button>
@@ -723,29 +723,29 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
 
       {/* MODAL 2: Manage Attendance State Modal */}
       {attendanceModalTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="text-base font-bold text-slate-900">Update Attendance State</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/65 backdrop-blur-xs p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-gray-700 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-gray-700">
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Update Attendance State</h3>
               <button
                 onClick={() => setAttendanceModalTarget(null)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-3 text-xs text-slate-600">
+            <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300">
               <p>
-                Patient: <strong className="text-slate-900">{attendanceModalTarget.patient_first_name} {attendanceModalTarget.patient_last_name}</strong>
+                Patient: <strong className="text-slate-900 dark:text-slate-100">{attendanceModalTarget.patient_first_name} {attendanceModalTarget.patient_last_name}</strong>
               </p>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Attendance Status</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Attendance Status</label>
                 <select
                   value={attendanceStatusChoice}
                   onChange={(e) => setAttendanceStatusChoice(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 bg-white"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100"
                 >
                   <option value="CHECKED_IN">Checked In (Front Desk)</option>
                   <option value="WAITING">Waiting in Lobby</option>
@@ -756,13 +756,13 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Operational Notes</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Operational Notes</label>
                 <input
                   type="text"
                   value={attendanceNotes}
                   onChange={(e) => setAttendanceNotes(e.target.value)}
                   placeholder="e.g. Sent to Operatory Chair 1"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-400 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
                 />
               </div>
             </div>
@@ -771,7 +771,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
               <button
                 type="button"
                 onClick={() => setAttendanceModalTarget(null)}
-                className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-800"
+                className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100"
               >
                 Cancel
               </button>
@@ -779,7 +779,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                 type="button"
                 onClick={handleUpdateAttendanceStatus}
                 disabled={isUpdatingAttendance}
-                className="px-4 py-2 text-xs font-semibold rounded-xl bg-[#12304A] hover:bg-slate-800 text-white transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-xs font-semibold rounded-xl bg-[#12304A] dark:bg-teal-700 hover:bg-slate-800 dark:hover:bg-teal-600 text-white transition-colors disabled:opacity-50"
               >
                 {isUpdatingAttendance ? 'Saving...' : 'Save Attendance'}
               </button>
@@ -790,29 +790,29 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
 
       {/* MODAL 3: Walk-In Patient Registration Modal */}
       {isRegisterOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2 text-teal-700">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/65 backdrop-blur-xs p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-gray-700 max-h-[90vh] overflow-y-auto space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-gray-700">
+              <div className="flex items-center gap-2 text-teal-700 dark:text-teal-400">
                 <UserPlus className="w-5 h-5" />
-                <h3 className="text-base font-bold text-slate-900">Walk-In Patient Intake</h3>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Walk-In Patient Intake</h3>
               </div>
               <button
                 onClick={() => setIsRegisterOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
               >
                 ✕
               </button>
             </div>
 
             {registerSuccessMsg && (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs">
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 rounded-xl text-emerald-800 dark:text-emerald-300 text-xs">
                 {registerSuccessMsg}
               </div>
             )}
 
             {registerErrorMsg && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs">
+              <div className="p-3 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-800 dark:text-rose-300 text-xs">
                 {registerErrorMsg}
               </div>
             )}
@@ -820,67 +820,67 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
             <form onSubmit={handleRegisterPatient} className="space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">First Name *</label>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">First Name *</label>
                   <input
                     type="text"
                     required
                     value={registerForm.first_name}
                     onChange={(e) => setRegisterForm({ ...registerForm, first_name: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Last Name *</label>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Last Name *</label>
                   <input
                     type="text"
                     required
                     value={registerForm.last_name}
                     onChange={(e) => setRegisterForm({ ...registerForm, last_name: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Email Address *</label>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Email Address *</label>
                   <input
                     type="email"
                     required
                     value={registerForm.email}
                     onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Phone Number *</label>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Phone Number *</label>
                   <input
                     type="tel"
                     required
                     value={registerForm.phone}
                     onChange={(e) => setRegisterForm({ ...registerForm, phone: e.target.value })}
                     placeholder="+639171234567"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-400 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Date of Birth</label>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Date of Birth</label>
                   <input
                     type="date"
                     value={registerForm.date_of_birth}
                     onChange={(e) => setRegisterForm({ ...registerForm, date_of_birth: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Gender</label>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Gender</label>
                   <select
                     value={registerForm.gender}
                     onChange={(e) => setRegisterForm({ ...registerForm, gender: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 bg-white"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100"
                   >
                     <option value="MALE">Male</option>
                     <option value="FEMALE">Female</option>
@@ -890,60 +890,60 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Residential Address</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Residential Address</label>
                 <input
                   type="text"
                   value={registerForm.address}
                   onChange={(e) => setRegisterForm({ ...registerForm, address: e.target.value })}
                   placeholder="Street, City, Metro Manila"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-400 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Emergency Contact Name</label>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Emergency Contact Name</label>
                   <input
                     type="text"
                     value={registerForm.emergency_contact_name}
                     onChange={(e) => setRegisterForm({ ...registerForm, emergency_contact_name: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Emergency Contact Phone</label>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Emergency Contact Phone</label>
                   <input
                     type="tel"
                     value={registerForm.emergency_contact_phone}
                     onChange={(e) => setRegisterForm({ ...registerForm, emergency_contact_phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Medical Alerts / Allergies</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Medical Alerts / Allergies</label>
                 <input
                   type="text"
                   value={registerForm.medical_alerts}
                   onChange={(e) => setRegisterForm({ ...registerForm, medical_alerts: e.target.value })}
                   placeholder="e.g. Penicillin allergy, Hypertension (or 'None recorded')"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-400 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-gray-700">
                 <button
                   type="button"
                   onClick={() => setIsRegisterOpen(false)}
-                  className="px-4 py-2 font-medium text-slate-600 hover:text-slate-800"
+                  className="px-4 py-2 font-medium text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingRegister}
-                  className="px-5 py-2 font-semibold rounded-xl bg-teal-600 hover:bg-teal-500 text-white transition-colors disabled:opacity-50"
+                  className="px-5 py-2 font-semibold rounded-xl bg-teal-600 dark:bg-teal-700 hover:bg-teal-500 dark:hover:bg-teal-600 text-white transition-colors disabled:opacity-50"
                 >
                   {isSubmittingRegister ? 'Registering...' : 'Register Patient'}
                 </button>
