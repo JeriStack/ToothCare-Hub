@@ -1,0 +1,161 @@
+erDiagram
+    USERS ||--o| PATIENTS : "has"
+    USERS ||--o| DENTISTS : "has"
+    USERS ||--o{ NOTIFICATIONS : "receives"
+    USERS ||--o{ AUDIT_LOGS : "performs"
+    USERS ||--o{ SECURITY_EVENTS : "generates"
+    USERS ||--o{ USER_ROLES : "assigned"
+    ROLES ||--o{ USER_ROLES : "contains"
+    ROLES ||--o{ ROLE_PERMISSIONS : "grants"
+    PERMISSIONS ||--o{ ROLE_PERMISSIONS : "includes"
+    
+    USERS ||--o{ EMAIL_VERIFICATION_TOKENS : "owns"
+    USERS ||--o{ PASSWORD_RESET_TOKENS : "owns"
+    USERS ||--o{ AUTH_TOKENS : "maintains"
+
+    DENTISTS ||--o{ DENTIST_SERVICES : "offers"
+    SERVICES ||--o{ DENTIST_SERVICES : "provided_by"
+    DENTISTS ||--o{ DENTIST_SCHEDULES : "maintains"
+    DENTISTS ||--o{ DENTIST_SCHEDULE_EXCEPTIONS : "defines"
+    DENTISTS ||--o{ DENTIST_TIME_OFF : "requests"
+
+    PATIENTS ||--o{ APPOINTMENTS : "books"
+    SERVICES ||--o{ APPOINTMENTS : "selected"
+    DENTISTS ||--o{ APPOINTMENTS : "assigned"
+    APPOINTMENT_STATUSES ||--o{ APPOINTMENTS : "current_status"
+    APPOINTMENTS ||--o{ APPOINTMENT_STATUS_HISTORY : "tracks"
+    APPOINTMENTS ||--o| TREATMENT_RECORDS : "documents"
+    TREATMENT_RECORDS ||--o{ TREATMENT_RECORD_VERSIONS : "amended"
+
+    USERS {
+        bigint id PK
+        varchar email UK
+        varchar password_hash
+        enum role
+        tinyint is_active
+        tinyint email_verified
+        datetime created_at
+    }
+
+    ROLES {
+        bigint id PK
+        varchar name
+        varchar slug UK
+        tinyint is_system
+    }
+
+    PERMISSIONS {
+        bigint id PK
+        varchar name
+        varchar slug UK
+        varchar module
+    }
+
+    PATIENTS {
+        bigint id PK
+        bigint user_id FK,UK
+        varchar first_name
+        varchar last_name
+        date date_of_birth
+        varchar phone
+        text medical_alerts
+    }
+
+    DENTISTS {
+        bigint id PK
+        bigint user_id FK,UK
+        varchar first_name
+        varchar last_name
+        varchar specialization
+        varchar license_number UK
+        varchar default_operatory_chair
+    }
+
+    SERVICES {
+        bigint id PK
+        varchar name
+        varchar category
+        decimal price
+        smallint duration_minutes
+        tinyint is_active
+    }
+
+    DENTIST_SERVICES {
+        bigint id PK
+        bigint dentist_id FK
+        bigint service_id FK
+        tinyint is_primary
+    }
+
+    APPOINTMENTS {
+        bigint id PK
+        bigint patient_id FK
+        bigint dentist_id FK
+        bigint service_id FK
+        datetime start_at
+        datetime end_at
+        enum status
+        varchar operatory_chair
+    }
+
+    APPOINTMENT_STATUSES {
+        bigint id PK
+        varchar status_code UK
+        varchar label
+        varchar color_code
+        tinyint is_terminal
+    }
+
+    TREATMENT_RECORDS {
+        bigint id PK
+        bigint appointment_id FK,UK
+        bigint dentist_id FK
+        bigint patient_id FK
+        json teeth_treated
+        text diagnosis
+        text procedure_notes
+        datetime locked_at
+    }
+
+    TREATMENT_RECORD_VERSIONS {
+        bigint id PK
+        bigint treatment_record_id FK
+        int version_number
+        text diagnosis
+        text procedure_notes
+        bigint amended_by_user_id FK
+        varchar amendment_reason
+    }
+
+    NOTIFICATIONS {
+        bigint id PK
+        bigint user_id FK
+        varchar title
+        text message
+        datetime read_at
+    }
+
+    AUDIT_LOGS {
+        bigint id PK
+        bigint actor_user_id FK
+        varchar action
+        varchar target_type
+        bigint target_id
+        varchar ip_address
+    }
+
+    SECURITY_EVENTS {
+        bigint id PK
+        bigint user_id FK
+        varchar event_type
+        varchar ip_address
+        json metadata
+    }
+
+    CLINIC_SETTINGS {
+        bigint id PK
+        varchar setting_key UK
+        text setting_value
+        enum value_type
+        tinyint is_public
+    }

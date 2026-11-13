@@ -38,6 +38,9 @@ services:
       APP_ENV: "production"
     restart: always
 
+  db-backup:
+    restart: always
+
   prometheus:
     restart: always
 

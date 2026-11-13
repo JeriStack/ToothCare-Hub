@@ -1,2 +1,0 @@
--- Migration 011: Create audit_logs table (Recommended)
--- Stores immutable event logs for role transitions, status changes, and critical clinic administrative actions.

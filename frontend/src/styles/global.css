@@ -1,0 +1,226 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-brand-navy: #12304A;
+  --color-brand-teal: #0D9488;
+  --color-brand-soft-teal: #CCFBF1;
+  --color-brand-canvas: #F5F8FA;
+  --color-body-slate: #334155;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background-color: var(--color-brand-canvas);
+  color: var(--color-body-slate);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Accessible focus ring */
+:focus-visible {
+  outline: 2px solid #0D9488;
+  outline-offset: 2px;
+}
+
+/* Shimmer animation for skeleton screens */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Container-driven portal layout shell & fluid grids */
+.portal-main-shell {
+  min-inline-size: 0;
+}
+
+@supports (container-type: inline-size) {
+  .portal-main-shell {
+    container: portal-main / inline-size;
+  }
+}
+
+:where(.portal-grid-3,
+.portal-grid-4,
+.portal-grid-5,
+.portal-grid-6,
+.portal-grid-7,
+.portal-split-2,
+.portal-split-3,
+.portal-split-1-2,
+.portal-split-2-1) {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+:where(.portal-grid-6) {
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+:where(.portal-grid-5) {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
+}
+
+:where(.portal-grid-7) {
+  gap: 0.875rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.25rem), 1fr));
+}
+
+:where(.portal-split-2,
+.portal-split-3,
+.portal-split-1-2,
+.portal-split-2-1) {
+  gap: 1.5rem;
+}
+
+@supports not (container-type: inline-size) {
+  @media (min-width: 34rem) {
+    .portal-grid-3 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .portal-grid-4 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .portal-grid-6 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 56rem) {
+    .portal-grid-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .portal-split-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .portal-grid-4 {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .portal-grid-5 {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+    .portal-grid-6 {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+    .portal-split-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .portal-split-1-2 {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    }
+    .portal-split-2-1 {
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    }
+  }
+
+  @media (min-width: 78rem) {
+    .portal-grid-7 {
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+  }
+}
+
+@supports (container-type: inline-size) {
+  @container portal-main (inline-size >= 32rem) {
+    .portal-grid-4 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .portal-grid-6 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @container portal-main (inline-size >= 36rem) {
+    .portal-grid-3 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .portal-split-3 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @container portal-main (inline-size >= 48rem) {
+    .portal-split-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @container portal-main (inline-size >= 50rem) {
+    .portal-grid-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @container portal-main (inline-size >= 52rem) {
+    .portal-grid-5 {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+  }
+
+  @container portal-main (inline-size >= 54rem) {
+    .portal-grid-6 {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+    .portal-split-1-2 {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    }
+    .portal-split-2-1 {
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    }
+  }
+
+  @container portal-main (inline-size >= 56rem) {
+    .portal-grid-4 {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  @container portal-main (inline-size >= 58rem) {
+    .portal-split-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @container portal-main (inline-size >= 62rem) {
+    .portal-grid-7 {
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+  }
+}
+
+/* Native modal dialog top-layer & scroll-chaining rules */
+dialog:modal {
+  overscroll-behavior: contain;
+}
+
+dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+}
+
