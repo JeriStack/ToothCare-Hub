@@ -3,15 +3,46 @@ import { Eye, EyeOff, AlertCircle, Loader2, Mail, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { validateEmail } from '../schemas/authSchema';
 
+export const REMEMBER_EMAIL_STORAGE_KEY = 'toothcare_remember_email';
+
+function readRememberedEmail() {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+
+  try {
+    return (window.localStorage.getItem(REMEMBER_EMAIL_STORAGE_KEY) || '').trim();
+  } catch {
+    return '';
+  }
+}
+
+function writeRememberedEmail(email, shouldRemember) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    const normalized = String(email || '').trim().toLowerCase();
+    if (shouldRemember && normalized) {
+      window.localStorage.setItem(REMEMBER_EMAIL_STORAGE_KEY, normalized);
+    } else {
+      window.localStorage.removeItem(REMEMBER_EMAIL_STORAGE_KEY);
+    }
+  } catch {
+    // Safe fallback when storage is unavailable
+  }
+}
+
 export function LoginForm({
   onSuccess,
   onNavigateRegister,
   onNavigateForgotPassword,
 }) {
   const { login, isLoading } = useAuth();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => readRememberedEmail());
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => Boolean(readRememberedEmail()));
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -31,8 +62,9 @@ export function LoginForm({
     }
     setFieldErrors({});
 
-    const res = await login({ email, password });
+    const res = await login({ email, password, remember_me: rememberMe });
     if (res.success) {
+      writeRememberedEmail(email, rememberMe);
       onSuccess?.(res.user);
     } else {
       setFormError(res.error || 'Invalid email or password. Please verify your credentials.');
@@ -144,9 +176,16 @@ export function LoginForm({
         <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-700 dark:text-gray-300 select-none font-medium">
           <input
             type="checkbox"
+            name="remember_me"
             checked={rememberMe}
-            onChange={(e) => setRememberMe(e.target.checked)}
-            className="w-4 h-4 rounded border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-[#0D9488] focus:ring-[#0D9488]"
+            onChange={(e) => {
+              const checked = e.target.checked;
+              setRememberMe(checked);
+              if (!checked) {
+                writeRememberedEmail('', false);
+              }
+            }}
+            className="w-4 h-4 rounded border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-[#0D9488] accent-[#0D9488] dark:accent-[#14B8A6] focus:ring-[#0D9488] cursor-pointer"
           />
           <span>Remember me</span>
         </label>

@@ -39,6 +39,18 @@ function TestConsumer() {
       </button>
       <button
         type="button"
+        onClick={() => login({ email: 'patient.juan@example.com', password: 'Password123!', remember_me: true })}
+      >
+        Login Remembered
+      </button>
+      <button
+        type="button"
+        onClick={() => login({ email: 'patient.juan@example.com', password: 'Password123!', remember_me: false })}
+      >
+        Login Ephemeral
+      </button>
+      <button
+        type="button"
         onClick={() => login({ email: 'dr.santos@toothcare.local', password: 'Password123!' })}
       >
         Login Dentist
@@ -71,6 +83,7 @@ function TestConsumer() {
 describe('AuthContext Backend Verification & State Lifecycle', () => {
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
     vi.clearAllMocks();
     authApi.getMe.mockRejectedValue(new Error('No active session'));
     authApi.login.mockImplementation(async ({ email, password }) => {
@@ -252,6 +265,36 @@ describe('AuthContext Backend Verification & State Lifecycle', () => {
     await waitFor(() => {
       expect(screen.getByTestId('user-email')).toHaveTextContent('none');
       expect(localStorage.getItem('toothcare_user')).toBeNull();
+      expect(sessionStorage.getItem('toothcare_user')).toBeNull();
     });
+  });
+
+  it('persists auth user in localStorage when remember_me is true and sessionStorage when false', async () => {
+    render(
+      <AuthProvider>
+        <TestConsumer />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('loading-state')).toHaveTextContent('idle');
+    });
+
+    // Ephemeral login (remember_me: false)
+    fireEvent.click(screen.getByRole('button', { name: 'Login Ephemeral' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('user-email')).toHaveTextContent('patient.juan@example.com');
+    });
+    expect(sessionStorage.getItem('toothcare_user')).not.toBeNull();
+    expect(localStorage.getItem('toothcare_user')).toBeNull();
+
+    // Persistent login (remember_me: true)
+    fireEvent.click(screen.getByRole('button', { name: 'Login Remembered' }));
+
+    await waitFor(() => {
+      expect(localStorage.getItem('toothcare_user')).not.toBeNull();
+    });
+    expect(sessionStorage.getItem('toothcare_user')).toBeNull();
   });
 });

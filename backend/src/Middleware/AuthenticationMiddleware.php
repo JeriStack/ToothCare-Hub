@@ -38,6 +38,12 @@ class AuthenticationMiddleware implements MiddlewareInterface
             throw HttpException::unauthorized('Authentication is required.', 'AUTHENTICATION_REQUIRED');
         }
 
+        if ($this->authService->isCurrentSessionExpired()) {
+            $expiredUserId = (int) $_SESSION['user_id'];
+            $this->authService->logout($expiredUserId);
+            throw HttpException::unauthorized('Your session has expired. Please sign in again.', 'SESSION_EXPIRED');
+        }
+
         $userId = (int) $_SESSION['user_id'];
         $user = $this->userRepository->findById($userId);
 
@@ -50,6 +56,8 @@ class AuthenticationMiddleware implements MiddlewareInterface
             $this->authService->logout($userId);
             throw HttpException::unauthorized('Account is inactive or disabled.', 'ACCOUNT_DISABLED');
         }
+
+        $this->authService->refreshActiveSession();
 
         // Attach resolved identity to request context
         $request->setUser($user);

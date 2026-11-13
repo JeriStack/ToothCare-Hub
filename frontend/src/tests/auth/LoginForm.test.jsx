@@ -20,6 +20,8 @@ vi.mock('../../features/auth/api', () => {
 
 describe('LoginForm Component', () => {
   beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
     vi.clearAllMocks();
     authApi.getMe.mockRejectedValue(new Error('No active session'));
     authApi.login.mockImplementation(async ({ email, password }) => {
@@ -147,5 +149,65 @@ describe('LoginForm Component', () => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
       expect(screen.getByText(/invalid email or password/i)).toBeInTheDocument();
     });
+  });
+
+  it('passes remember_me flag and saves non-sensitive remembered email without storing password', async () => {
+    const { container, unmount } = render(
+      <AuthProvider>
+        <LoginForm />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /^sign in$/i })).toBeEnabled();
+    });
+
+    const emailInput = container.querySelector('input[name="email"]');
+    const passwordInput = container.querySelector('input[name="password"]');
+    const rememberCheckbox = container.querySelector('input[name="remember_me"]');
+
+    expect(rememberCheckbox).not.toBeChecked();
+
+    fireEvent.change(emailInput, { target: { value: 'patient.juan@example.com' } });
+    fireEvent.change(passwordInput, { target: { value: 'Password123!' } });
+    fireEvent.click(rememberCheckbox);
+    expect(rememberCheckbox).toBeChecked();
+
+    fireEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
+
+    await waitFor(() => {
+      expect(authApi.login).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'patient.juan@example.com',
+          password: 'Password123!',
+          remember_me: true,
+        })
+      );
+    });
+
+    expect(localStorage.getItem('toothcare_remember_email')).toBe('patient.juan@example.com');
+    expect(JSON.stringify(localStorage)).not.toContain('Password123!');
+    expect(JSON.stringify(sessionStorage)).not.toContain('Password123!');
+
+    unmount();
+
+    // Remount LoginForm: remembered email should prefill and checkbox should remain checked
+    const remounted = render(
+      <AuthProvider>
+        <LoginForm />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(remounted.container.querySelector('input[name="email"]').value).toBe('patient.juan@example.com');
+    });
+
+    const remountCheckbox = remounted.container.querySelector('input[name="remember_me"]');
+    expect(remountCheckbox).toBeChecked();
+
+    // Unchecking clears remembered email immediately
+    fireEvent.click(remountCheckbox);
+    expect(remountCheckbox).not.toBeChecked();
+    expect(localStorage.getItem('toothcare_remember_email')).toBeNull();
   });
 });
