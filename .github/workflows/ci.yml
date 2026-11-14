@@ -82,3 +82,6 @@ jobs:
           npm ci
           npm test -- --run
           npm run build
+      - name: Responsive contract tests
+        working-directory: frontend
+        run: npx vitest run src/tests/components/ResponsiveContracts.test.jsx

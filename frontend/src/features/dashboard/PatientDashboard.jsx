@@ -25,6 +25,7 @@ import {
 import { appointmentsApi } from '../appointments/api';
 import { DashboardSkeleton } from '../../components/skeletons/DashboardSkeleton';
 
+import { DialogOverlay } from '../../components/ui/DialogOverlay';
 const STATUS_BADGE = {
   PENDING: 'bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800',
   CONFIRMED: 'bg-[#CCFBF1] dark:bg-teal-900/60 text-[#0F766E] dark:text-teal-300 border-teal-200 dark:border-teal-800',
@@ -612,7 +613,7 @@ export function PatientDashboard({
                         <button
                           type="button"
                           onClick={() => focusScheduleTab('pending')}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/60 hover:bg-amber-200/80 dark:hover:bg-amber-900/90 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 text-[11px] font-semibold transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-600"
+                          className="tch-tap inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/60 hover:bg-amber-200/80 dark:hover:bg-amber-900/90 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 text-[11px] font-semibold transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-600"
                         >
                           <Clock className="w-3 h-3 shrink-0" aria-hidden="true" />
                           <span>
@@ -749,7 +750,7 @@ export function PatientDashboard({
               <button
                 type="button"
                 onClick={onNavigateToAppointments}
-                className="text-xs font-semibold text-[#0D9488] dark:text-teal-400 hover:text-[#0F766E] dark:hover:text-teal-300 flex items-center gap-1 transition-colors self-start sm:self-auto shrink-0"
+                className="tch-tap text-xs font-semibold text-[#0D9488] dark:text-teal-400 hover:text-[#0F766E] dark:hover:text-teal-300 flex items-center gap-1 transition-colors self-start sm:self-auto shrink-0"
               >
                 <span>View full history</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -1029,9 +1030,8 @@ export function PatientDashboard({
 
       {/* 7. Appointment Cancellation Confirmation Modal (Phase 6) */}
       {cancelModalAppt && (
-        <div
-          role="dialog"
-          aria-modal="true"
+        <DialogOverlay
+          onClose={() => setCancelModalAppt(null)}
           aria-labelledby="cancel-modal-title"
           className="fixed inset-0 z-50 bg-black/50 dark:bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
         >
@@ -1108,14 +1108,13 @@ export function PatientDashboard({
               </div>
             </form>
           </div>
-        </div>
+        </DialogOverlay>
       )}
 
       {/* 8. Appointment Details Modal (Phase 6) */}
       {detailModalAppt && (
-        <div
-          role="dialog"
-          aria-modal="true"
+        <DialogOverlay
+          onClose={() => setDetailModalAppt(null)}
           aria-labelledby="detail-modal-title"
           className="fixed inset-0 z-50 bg-black/50 dark:bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
         >
@@ -1205,7 +1204,7 @@ export function PatientDashboard({
               </div>
             </div>
           </div>
-        </div>
+        </DialogOverlay>
       )}
     </div>
   );

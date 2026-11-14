@@ -13,7 +13,8 @@ import {
 } from 'lucide-react';
 import { auditApi } from '../api';
 import { TableSkeleton } from '../../../components/skeletons';
-
+
+import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 export function AuditTrailPage() {
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'security'
   const [logs, setLogs] = useState([]);
@@ -157,7 +158,7 @@ export function AuditTrailPage() {
           <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search action, actor email, or IP..."
+            placeholder="Search action, email, or IP"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -239,28 +240,28 @@ export function AuditTrailPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-700 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  <th className="py-3.5 px-5">Timestamp</th>
-                  <th className="py-3.5 px-4">Actor</th>
-                  <th className="py-3.5 px-4">Action</th>
-                  <th className="py-3.5 px-4">Target Entity</th>
-                  <th className="py-3.5 px-4">IP Address</th>
-                  <th className="py-3.5 px-5 text-right">Details</th>
+            <table role="table" className="tch-responsive-table w-full text-left border-collapse">
+              <thead role="rowgroup">
+                <tr role="row" className="bg-slate-50/80 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-700 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  <th role="columnheader" className="py-3.5 px-5">Timestamp</th>
+                  <th role="columnheader" className="py-3.5 px-4">Actor</th>
+                  <th role="columnheader" className="py-3.5 px-4">Action</th>
+                  <th role="columnheader" className="py-3.5 px-4">Target Entity</th>
+                  <th role="columnheader" className="py-3.5 px-4">IP Address</th>
+                  <th role="columnheader" className="py-3.5 px-5 text-right">Details</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-gray-700/70 text-xs">
+              <tbody role="rowgroup" className="divide-y divide-slate-100 dark:divide-gray-700/70 text-xs">
                 {logs.map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-gray-700/40 transition-colors">
-                    <td className="py-3.5 px-5 font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                  <tr role="row" key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-gray-700/40 transition-colors">
+                    <td role="cell" data-label="Timestamp" className="py-3.5 px-5 font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">
                       {log.created_at}
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td role="cell" data-label="Actor" className="py-3.5 px-4">
                       <span className="font-semibold text-slate-800 dark:text-slate-100 block">{log.actor_email}</span>
                       <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">{log.actor_role}</span>
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td role="cell" data-label="Action" className="py-3.5 px-4">
                       <span
                         className={`inline-flex px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${getActionBadgeStyle(
                           log.action
@@ -269,11 +270,11 @@ export function AuditTrailPage() {
                         {log.action}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-300">
+                    <td role="cell" data-label="Target Entity" className="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-300">
                       {log.target_type} {log.target_id ? `#${log.target_id}` : ''}
                     </td>
-                    <td className="py-3.5 px-4 font-mono text-slate-500 dark:text-slate-400">{log.ip_address}</td>
-                    <td className="py-3.5 px-5 text-right">
+                    <td role="cell" data-label="IP Address" className="py-3.5 px-4 font-mono text-slate-500 dark:text-slate-400">{log.ip_address}</td>
+                    <td role="cell" data-label="Details" className="py-3.5 px-5 text-right">
                       {log.payload ? (
                         <button
                           onClick={() => setInspectingLog(log)}
@@ -321,8 +322,9 @@ export function AuditTrailPage() {
 
       {/* Payload Inspector Modal */}
       {inspectingLog && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogOverlay
+          onClose={() => setInspectingLog(null)} className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-xl w-full max-w-lg max-h-[90dvh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-slate-100 dark:border-gray-700 flex items-center justify-between bg-[#12304A] dark:bg-gray-900 text-white sticky top-0 z-10">
               <div className="flex items-center gap-2">
                 <Activity className="w-4 h-4 text-teal-400" />
@@ -363,15 +365,15 @@ export function AuditTrailPage() {
                     Before vs. After Change Comparison
                   </span>
                   <div className="rounded-xl border border-slate-200 dark:border-gray-700 overflow-hidden">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-50 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-700 text-slate-500 dark:text-slate-400 font-semibold">
+                    <table role="table" className="tch-responsive-table w-full text-left text-xs">
+                      <thead role="rowgroup" className="bg-slate-50 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-700 text-slate-500 dark:text-slate-400 font-semibold">
                         <tr>
-                          <th className="px-3 py-2">Field</th>
-                          <th className="px-3 py-2">Before</th>
-                          <th className="px-3 py-2">After</th>
+                          <th role="columnheader" className="px-3 py-2">Field</th>
+                          <th role="columnheader" className="px-3 py-2">Before</th>
+                          <th role="columnheader" className="px-3 py-2">After</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-gray-700/70">
+                      <tbody role="rowgroup" className="divide-y divide-slate-100 dark:divide-gray-700/70">
                         {Array.from(
                           new Set([
                             ...Object.keys(inspectingLog.payload?.before || {}),
@@ -388,10 +390,10 @@ export function AuditTrailPage() {
                           const beforeVal = formatVal(inspectingLog.payload?.before?.[field]);
                           const afterVal = formatVal(inspectingLog.payload?.after?.[field]);
                           return (
-                            <tr key={field} className="bg-white dark:bg-gray-800">
-                              <td className="px-3 py-2 font-mono text-slate-700 dark:text-slate-200">{field}</td>
-                              <td className="px-3 py-2 text-rose-700 dark:text-rose-300 bg-rose-50/50 dark:bg-rose-950/40 break-all">{beforeVal}</td>
-                              <td className="px-3 py-2 text-emerald-700 dark:text-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/40 font-medium break-all">
+                            <tr role="row" key={field} className="bg-white dark:bg-gray-800">
+                              <td role="cell" data-label="Field" className="px-3 py-2 font-mono text-slate-700 dark:text-slate-200">{field}</td>
+                              <td role="cell" data-label="Before" className="px-3 py-2 text-rose-700 dark:text-rose-300 bg-rose-50/50 dark:bg-rose-950/40 break-all">{beforeVal}</td>
+                              <td role="cell" data-label="After" className="px-3 py-2 text-emerald-700 dark:text-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/40 font-medium break-all">
                                 {afterVal}
                               </td>
                             </tr>
@@ -426,7 +428,7 @@ export function AuditTrailPage() {
               </div>
             </div>
           </div>
-        </div>
+        </DialogOverlay>
       )}
     </div>
   );

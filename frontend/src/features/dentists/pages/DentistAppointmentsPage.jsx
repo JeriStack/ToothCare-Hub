@@ -157,7 +157,7 @@ export function DentistAppointmentsPage({ onSelectAppointment }) {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by patient name, phone, or service..."
+              placeholder="Search patient, phone, service"
               className="w-full pl-9 pr-8 py-2 text-xs bg-white dark:bg-gray-700 border border-slate-300 dark:border-gray-600 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400"
             />
             {searchQuery && (
@@ -211,17 +211,17 @@ export function DentistAppointmentsPage({ onSelectAppointment }) {
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-slate-200 dark:border-gray-700 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-700 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  <th className="py-3 px-4">Date & Time</th>
-                  <th className="py-3 px-4">Patient Demographics</th>
-                  <th className="py-3 px-4">Procedure & Chair</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Action</th>
+            <table role="table" className="tch-responsive-table w-full text-left border-collapse">
+              <thead role="rowgroup">
+                <tr role="row" className="bg-slate-50/80 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-700 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  <th role="columnheader" className="py-3 px-4">Date & Time</th>
+                  <th role="columnheader" className="py-3 px-4">Patient Demographics</th>
+                  <th role="columnheader" className="py-3 px-4">Procedure & Chair</th>
+                  <th role="columnheader" className="py-3 px-4">Status</th>
+                  <th role="columnheader" className="py-3 px-4 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-gray-700/70 text-xs">
+              <tbody role="rowgroup" className="divide-y divide-slate-100 dark:divide-gray-700/70 text-xs">
                 {appointments.map((appt) => {
                   const hasAlerts = Boolean(appt.patient_medical_alerts);
                   const isToday =
@@ -229,13 +229,13 @@ export function DentistAppointmentsPage({ onSelectAppointment }) {
                     new Date(appt.start_at).toDateString() === new Date().toDateString();
 
                   return (
-                    <tr
+                    <tr role="row"
                       key={appt.id}
                       className="hover:bg-slate-50/80 dark:hover:bg-gray-700/40 transition-colors group cursor-pointer"
                       onClick={() => onSelectAppointment && onSelectAppointment(appt.id)}
                     >
                       {/* Date & Time */}
-                      <td className="py-3 px-4 whitespace-nowrap">
+                      <td role="cell" data-label="Date & Time" className="py-3 px-4 whitespace-nowrap">
                         <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
                           <Clock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                           <span>{appt.start_at ? appt.start_at.slice(0, 16) : 'Unscheduled'}</span>
@@ -251,7 +251,7 @@ export function DentistAppointmentsPage({ onSelectAppointment }) {
                       </td>
 
                       {/* Patient Info */}
-                      <td className="py-3 px-4">
+                      <td role="cell" data-label="Patient Demographics" className="py-3 px-4">
                         <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
                           <User className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
                           <span>
@@ -273,7 +273,7 @@ export function DentistAppointmentsPage({ onSelectAppointment }) {
                       </td>
 
                       {/* Procedure & Chair */}
-                      <td className="py-3 px-4">
+                      <td role="cell" data-label="Procedure & Chair" className="py-3 px-4">
                         <div className="font-medium text-slate-800 dark:text-slate-200">{appt.service_name || 'Dental Service'}</div>
                         <div className="text-[11px] text-slate-500 dark:text-slate-400">
                           {appt.operatory_chair || 'Chair 1'}
@@ -286,12 +286,12 @@ export function DentistAppointmentsPage({ onSelectAppointment }) {
                       </td>
 
                       {/* Status */}
-                      <td className="py-3 px-4 whitespace-nowrap">
+                      <td role="cell" data-label="Status" className="py-3 px-4 whitespace-nowrap">
                         {getStatusBadge(appt.status)}
                       </td>
 
                       {/* Action */}
-                      <td className="py-3 px-4 text-right whitespace-nowrap">
+                      <td role="cell" data-label="Action" className="py-3 px-4 text-right whitespace-nowrap">
                         <button
                           type="button"
                           onClick={(e) => {

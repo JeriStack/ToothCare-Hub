@@ -22,10 +22,47 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
   const [activeSection, setActiveSection] = useState('home');
 
   const navRef = useRef(null);
+  const headerRef = useRef(null);
+  const mobileToggleRef = useRef(null);
   const linkRefs = useRef({});
   const progressRef = useRef(null);
   const scrollLockRef = useRef({ targetId: null, targetY: 0, until: 0 });
   const [indicator, setIndicator] = useState({ left: 0, width: 0, ready: false });
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return undefined;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setMobileMenuOpen(false);
+        mobileToggleRef.current?.focus();
+      }
+    };
+
+    const handlePointerDown = (event) => {
+      if (headerRef.current && !headerRef.current.contains(event.target)) {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    const handleViewportResize = () => {
+      if (window.innerWidth >= 1024) {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('mousedown', handlePointerDown);
+    window.addEventListener('resize', handleViewportResize);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousedown', handlePointerDown);
+      window.removeEventListener('resize', handleViewportResize);
+    };
+  }, [mobileMenuOpen]);
 
   const resolveActiveSection = useCallback(() => {
     const scrollY = window.scrollY || 0;
@@ -192,29 +229,30 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
 
   return (
     <header
+      ref={headerRef}
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         isScrolled
-          ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-xs border-b border-slate-200/80 dark:border-gray-800 py-3'
-          : 'bg-transparent py-5'
+          ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-sm border-b border-slate-200/80 dark:border-gray-800 py-3'
+          : 'bg-transparent py-4 sm:py-5'
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between gap-2 sm:gap-4 min-w-0">
           {/* Brand Logo & Name */}
           <a
             href="#home"
             onClick={(e) => scrollToSection(e, 'home')}
-            className="flex items-center gap-2.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 rounded-lg"
+            className="flex items-center gap-2 sm:gap-2.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 rounded-lg min-w-0"
           >
-            <div className="w-10 h-10 group-hover:scale-105 transition-transform flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 group-hover:scale-105 transition-transform flex items-center justify-center shrink-0">
               <img
                 src="/images/logo-icon.png"
                 alt="ToothCare Hub Emblem"
                 className="w-full h-full object-contain"
               />
             </div>
-            <div>
-              <span className="font-bold text-xl tracking-tight text-[#12304A] dark:text-white">
+            <div className="min-w-0">
+              <span className="font-bold text-base sm:text-xl tracking-tight text-[#12304A] dark:text-white whitespace-nowrap">
                 Tooth<span className="text-[#0D9488] dark:text-teal-400">Care</span> Hub
               </span>
               <span className="hidden sm:block text-[10px] tracking-wide text-slate-500 dark:text-gray-400 font-medium">
@@ -237,7 +275,7 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
                   width: `${indicator.width}px`,
                   transform: `translateX(${indicator.left}px)`,
                 }}
-                className="pointer-events-none absolute top-1.5 bottom-1.5 left-0 rounded-full bg-[#CCFBF1] dark:bg-teal-500/20 border border-[#0D9488]/30 dark:border-teal-400/50 shadow-xs shadow-teal-900/10 dark:shadow-[0_0_16px_rgba(45,212,191,0.2)] transition-[transform,width] duration-300 ease-out motion-reduce:transition-none"
+                className="pointer-events-none absolute top-1.5 bottom-1.5 left-0 rounded-full bg-[#CCFBF1] dark:bg-teal-500/20 border border-[#0D9488]/30 dark:border-teal-400/50 shadow-sm shadow-teal-900/10 dark:shadow-[0_0_16px_rgba(45,212,191,0.2)] transition-[transform,width] duration-300 ease-out motion-reduce:transition-none"
               >
                 <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full bg-[#0D9488] dark:bg-teal-400" />
               </span>
@@ -257,7 +295,7 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
                     isActive
                       ? `font-bold text-[#0F766E] dark:text-teal-200 ${
                           !indicator.ready
-                            ? 'bg-[#CCFBF1] dark:bg-teal-500/20 border border-[#0D9488]/30 dark:border-teal-400/50 shadow-xs'
+                            ? 'bg-[#CCFBF1] dark:bg-teal-500/20 border border-[#0D9488]/30 dark:border-teal-400/50 shadow-sm'
                             : ''
                         }`
                       : 'font-semibold text-slate-600 dark:text-gray-300 hover:text-[#12304A] dark:hover:text-white hover:bg-slate-100/70 dark:hover:bg-white/5'
@@ -287,7 +325,7 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
               <button
                 type="button"
                 onClick={onLogin}
-                className="group inline-flex items-center gap-2 min-h-10 px-4 py-2 rounded-xl text-xs font-semibold border border-[#0D9488]/30 dark:border-teal-400/40 bg-teal-50/90 dark:bg-teal-500/15 text-[#0F766E] dark:text-teal-200 shadow-xs shadow-teal-900/5 dark:shadow-sm dark:shadow-teal-950/30 hover:bg-teal-100/90 dark:hover:bg-teal-500/25 hover:border-[#0D9488]/55 dark:hover:border-teal-300/65 hover:text-[#115E59] dark:hover:text-white active:scale-[0.98] transition-all duration-200 motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900 cursor-pointer"
+                className="group inline-flex items-center gap-2 min-h-10 px-4 py-2 rounded-xl text-xs font-semibold border border-[#0D9488]/30 dark:border-teal-400/40 bg-teal-50/90 dark:bg-teal-500/15 text-[#0F766E] dark:text-teal-200 shadow-sm shadow-teal-900/5 dark:shadow-teal-950/30 hover:bg-teal-100/90 dark:hover:bg-teal-500/25 hover:border-[#0D9488]/55 dark:hover:border-teal-300/65 hover:text-[#115E59] dark:hover:text-white active:scale-[0.98] transition-all duration-200 motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900 cursor-pointer"
               >
                 <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-[#0D9488]/12 dark:bg-teal-400/20 text-[#0D9488] dark:text-teal-300 transition-colors group-hover:bg-[#0D9488]/20 dark:group-hover:bg-teal-400/30">
                   <LogIn className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transform-none" aria-hidden="true" />
@@ -306,16 +344,18 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
           </div>
 
           {/* Mobile Controls */}
-          <div className="lg:hidden flex items-center gap-2">
+          <div className="lg:hidden flex items-center gap-2 shrink-0">
             <div className="sm:hidden">
               <ThemeToggle variant="surface" />
             </div>
             <button
+              ref={mobileToggleRef}
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-expanded={mobileMenuOpen}
+              aria-controls="landing-mobile-drawer"
               aria-label="Toggle navigation menu"
-              className="p-2.5 rounded-xl border border-slate-200 dark:border-gray-700 text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+              className="inline-flex items-center justify-center w-11 h-11 rounded-xl border border-slate-200 dark:border-gray-700 bg-white/90 dark:bg-gray-900/90 text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -332,7 +372,10 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
 
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden landing-hero-enter bg-white/98 dark:bg-gray-900/98 backdrop-blur-md border-b border-slate-200 dark:border-gray-800 shadow-xl px-5 py-6 space-y-4">
+        <div
+          id="landing-mobile-drawer"
+          className="lg:hidden landing-hero-enter max-h-[calc(100dvh-4.5rem)] overflow-y-auto overscroll-contain bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-slate-200 dark:border-gray-800 shadow-xl px-5 py-5 space-y-4 tch-safe-bottom"
+        >
           <nav aria-label="Mobile navigation" className="flex flex-col space-y-1">
             {NAV_LINKS.map((link) => {
               const isActive = activeSection === link.id;

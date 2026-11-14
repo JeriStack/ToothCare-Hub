@@ -152,28 +152,28 @@ export function ReportsPage() {
               </h3>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-sm">
-                <thead>
-                  <tr className="bg-slate-50 dark:bg-gray-900/80 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400 border-b border-slate-100 dark:border-gray-700">
-                    <th className="py-3 px-5">Service Name</th>
-                    <th className="py-3 px-4">Category</th>
-                    <th className="py-3 px-4 text-right">Unit Price</th>
-                    <th className="py-3 px-4 text-right">Booked</th>
-                    <th className="py-3 px-4 text-right">Completed</th>
-                    <th className="py-3 px-5 text-right">Realized Revenue</th>
+              <table role="table" className="tch-responsive-table w-full text-left border-collapse text-sm">
+                <thead role="rowgroup">
+                  <tr role="row" className="bg-slate-50 dark:bg-gray-900/80 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400 border-b border-slate-100 dark:border-gray-700">
+                    <th role="columnheader" className="py-3 px-5">Service Name</th>
+                    <th role="columnheader" className="py-3 px-4">Category</th>
+                    <th role="columnheader" className="py-3 px-4 text-right">Unit Price</th>
+                    <th role="columnheader" className="py-3 px-4 text-right">Booked</th>
+                    <th role="columnheader" className="py-3 px-4 text-right">Completed</th>
+                    <th role="columnheader" className="py-3 px-5 text-right">Realized Revenue</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-gray-700/80">
+                <tbody role="rowgroup" className="divide-y divide-slate-100 dark:divide-gray-700/80">
                   {revenueData?.services?.map((svc) => (
-                    <tr key={svc.id} className="hover:bg-slate-50/50 dark:hover:bg-gray-700/40">
-                      <td className="py-3 px-5 font-semibold text-slate-900 dark:text-gray-100">{svc.name}</td>
-                      <td className="py-3 px-4 text-xs text-slate-500 dark:text-gray-400">{svc.category}</td>
-                      <td className="py-3 px-4 text-right font-mono text-slate-700 dark:text-gray-200">
+                    <tr role="row" key={svc.id} className="hover:bg-slate-50/50 dark:hover:bg-gray-700/40">
+                      <td role="cell" data-label="Service Name" className="py-3 px-5 font-semibold text-slate-900 dark:text-gray-100">{svc.name}</td>
+                      <td role="cell" data-label="Category" className="py-3 px-4 text-xs text-slate-500 dark:text-gray-400">{svc.category}</td>
+                      <td role="cell" data-label="Unit Price" className="py-3 px-4 text-right font-mono text-slate-700 dark:text-gray-200">
                         ₱{svc.price.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </td>
-                      <td className="py-3 px-4 text-right font-semibold text-slate-700 dark:text-gray-200">{svc.total_booked}</td>
-                      <td className="py-3 px-4 text-right font-semibold text-emerald-700 dark:text-emerald-400">{svc.completed_count}</td>
-                      <td className="py-3 px-5 text-right font-mono font-bold text-slate-900 dark:text-white">
+                      <td role="cell" data-label="Booked" className="py-3 px-4 text-right font-semibold text-slate-700 dark:text-gray-200">{svc.total_booked}</td>
+                      <td role="cell" data-label="Completed" className="py-3 px-4 text-right font-semibold text-emerald-700 dark:text-emerald-400">{svc.completed_count}</td>
+                      <td role="cell" data-label="Realized Revenue" className="py-3 px-5 text-right font-mono font-bold text-slate-900 dark:text-white">
                         ₱{svc.realized_revenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
@@ -192,28 +192,28 @@ export function ReportsPage() {
               </h3>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-sm">
-                <thead>
-                  <tr className="bg-slate-50 dark:bg-gray-900/80 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400 border-b border-slate-100 dark:border-gray-700">
-                    <th className="py-3 px-5">Provider Name</th>
-                    <th className="py-3 px-4">Specialization</th>
-                    <th className="py-3 px-4 text-right">Total Assigned</th>
-                    <th className="py-3 px-4 text-right">Confirmed Upcoming</th>
-                    <th className="py-3 px-4 text-right">Completed Visits</th>
-                    <th className="py-3 px-5 text-right">Cancellations</th>
+              <table role="table" className="tch-responsive-table w-full text-left border-collapse text-sm">
+                <thead role="rowgroup">
+                  <tr role="row" className="bg-slate-50 dark:bg-gray-900/80 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400 border-b border-slate-100 dark:border-gray-700">
+                    <th role="columnheader" className="py-3 px-5">Provider Name</th>
+                    <th role="columnheader" className="py-3 px-4">Specialization</th>
+                    <th role="columnheader" className="py-3 px-4 text-right">Total Assigned</th>
+                    <th role="columnheader" className="py-3 px-4 text-right">Confirmed Upcoming</th>
+                    <th role="columnheader" className="py-3 px-4 text-right">Completed Visits</th>
+                    <th role="columnheader" className="py-3 px-5 text-right">Cancellations</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-gray-700/80">
+                <tbody role="rowgroup" className="divide-y divide-slate-100 dark:divide-gray-700/80">
                   {dentistData?.dentists?.map((doc) => (
-                    <tr key={doc.id} className="hover:bg-slate-50/50 dark:hover:bg-gray-700/40">
-                      <td className="py-3 px-5 font-semibold text-slate-900 dark:text-gray-100">
+                    <tr role="row" key={doc.id} className="hover:bg-slate-50/50 dark:hover:bg-gray-700/40">
+                      <td role="cell" data-label="Provider Name" className="py-3 px-5 font-semibold text-slate-900 dark:text-gray-100">
                         Dr. {doc.first_name} {doc.last_name}
                       </td>
-                      <td className="py-3 px-4 text-xs text-slate-500 dark:text-gray-400">{doc.specialization}</td>
-                      <td className="py-3 px-4 text-right font-semibold text-slate-700 dark:text-gray-200">{doc.total_assigned}</td>
-                      <td className="py-3 px-4 text-right font-semibold text-teal-700 dark:text-teal-300">{doc.confirmed_count}</td>
-                      <td className="py-3 px-4 text-right font-semibold text-emerald-700 dark:text-emerald-400">{doc.completed_count}</td>
-                      <td className="py-3 px-5 text-right font-semibold text-slate-500 dark:text-gray-400">{doc.cancelled_count}</td>
+                      <td role="cell" data-label="Specialization" className="py-3 px-4 text-xs text-slate-500 dark:text-gray-400">{doc.specialization}</td>
+                      <td role="cell" data-label="Total Assigned" className="py-3 px-4 text-right font-semibold text-slate-700 dark:text-gray-200">{doc.total_assigned}</td>
+                      <td role="cell" data-label="Confirmed Upcoming" className="py-3 px-4 text-right font-semibold text-teal-700 dark:text-teal-300">{doc.confirmed_count}</td>
+                      <td role="cell" data-label="Completed Visits" className="py-3 px-4 text-right font-semibold text-emerald-700 dark:text-emerald-400">{doc.completed_count}</td>
+                      <td role="cell" data-label="Cancellations" className="py-3 px-5 text-right font-semibold text-slate-500 dark:text-gray-400">{doc.cancelled_count}</td>
                     </tr>
                   ))}
                 </tbody>

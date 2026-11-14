@@ -24,7 +24,8 @@ import {
 } from 'lucide-react';
 import { receptionistApi } from '../receptionist/api';
 import { DashboardSkeleton } from '../../components/skeletons/DashboardSkeleton';
-
+
+import { DialogOverlay } from '../../components/ui/DialogOverlay';
 export function ReceptionistDashboard({ user, onNavigateTab }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -451,7 +452,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
               </div>
               <button
                 onClick={() => onNavigateTab?.('triage')}
-                className="text-xs text-teal-700 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 font-semibold flex items-center gap-1"
+                className="tch-tap text-xs text-teal-700 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 font-semibold flex items-center gap-1"
               >
                 <span>View All</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -527,33 +528,33 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                   </p>
                 </div>
               ) : (
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-100 dark:border-gray-700 bg-slate-50/75 dark:bg-gray-900/50 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
-                      <th className="py-3 px-4">Time</th>
-                      <th className="py-3 px-4">Patient</th>
-                      <th className="py-3 px-4">Service & Provider</th>
-                      <th className="py-3 px-4">Lifecycle</th>
-                      <th className="py-3 px-4">Desk State</th>
-                      <th className="py-3 px-4 text-right">Action</th>
+                <table role="table" className="tch-responsive-table w-full text-left border-collapse text-xs">
+                  <thead role="rowgroup">
+                    <tr role="row" className="border-b border-slate-100 dark:border-gray-700 bg-slate-50/75 dark:bg-gray-900/50 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
+                      <th role="columnheader" className="py-3 px-4">Time</th>
+                      <th role="columnheader" className="py-3 px-4">Patient</th>
+                      <th role="columnheader" className="py-3 px-4">Service & Provider</th>
+                      <th role="columnheader" className="py-3 px-4">Lifecycle</th>
+                      <th role="columnheader" className="py-3 px-4">Desk State</th>
+                      <th role="columnheader" className="py-3 px-4 text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-gray-700">
+                  <tbody role="rowgroup" className="divide-y divide-slate-100 dark:divide-gray-700">
                     {filteredSchedule.map((apt) => {
                       const startTime = apt.start_at ? apt.start_at.substring(11, 16) : '--:--';
                       const endTime = apt.end_at ? apt.end_at.substring(11, 16) : '--:--';
                       const isArrived = apt.attendance_status && apt.attendance_status !== 'NOT_ARRIVED';
 
                       return (
-                        <tr key={apt.id} className="hover:bg-slate-50/60 dark:hover:bg-gray-700/40 transition-colors">
+                        <tr role="row" key={apt.id} className="hover:bg-slate-50/60 dark:hover:bg-gray-700/40 transition-colors">
                           {/* Time */}
-                          <td className="py-3.5 px-4 whitespace-nowrap">
+                          <td role="cell" data-label="Time" className="py-3.5 px-4 whitespace-nowrap">
                             <span className="font-semibold text-slate-900 dark:text-slate-100 block">{startTime}</span>
                             <span className="text-[11px] text-slate-400 dark:text-slate-500">to {endTime}</span>
                           </td>
 
                           {/* Patient */}
-                          <td className="py-3.5 px-4">
+                          <td role="cell" data-label="Patient" className="py-3.5 px-4">
                             <span className="font-semibold text-slate-900 dark:text-slate-100 block">
                               {apt.patient_first_name} {apt.patient_last_name}
                             </span>
@@ -570,7 +571,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                           </td>
 
                           {/* Service & Provider */}
-                          <td className="py-3.5 px-4">
+                          <td role="cell" data-label="Service & Provider" className="py-3.5 px-4">
                             <span className="font-medium text-slate-800 dark:text-slate-200 block">{apt.service_name}</span>
                             <span className="text-[11px] text-slate-500 dark:text-slate-400">
                               Dr. {apt.dentist_first_name} {apt.dentist_last_name}
@@ -581,7 +582,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                           </td>
 
                           {/* Lifecycle Status */}
-                          <td className="py-3.5 px-4 whitespace-nowrap">
+                          <td role="cell" data-label="Lifecycle" className="py-3.5 px-4 whitespace-nowrap">
                             <span
                               className={`px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase ${
                                 apt.appointment_status === 'CONFIRMED'
@@ -598,7 +599,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                           </td>
 
                           {/* Attendance Status */}
-                          <td className="py-3.5 px-4 whitespace-nowrap">
+                          <td role="cell" data-label="Desk State" className="py-3.5 px-4 whitespace-nowrap">
                             <span
                               className={`px-2 py-1 rounded text-[11px] font-medium inline-flex items-center gap-1 ${
                                 apt.attendance_status === 'NOT_ARRIVED'
@@ -624,7 +625,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                           </td>
 
                           {/* Action Button */}
-                          <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                          <td role="cell" data-label="Action" className="py-3.5 px-4 text-right whitespace-nowrap">
                             {!isArrived && apt.appointment_status === 'CONFIRMED' ? (
                               <button
                                 onClick={() => {
@@ -661,7 +662,8 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
 
       {/* MODAL 1: Quick Check-In Modal */}
       {checkInTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/65 backdrop-blur-xs p-4">
+        <DialogOverlay
+          onClose={() => setCheckInTarget(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/65 backdrop-blur-xs p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-gray-700 space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-gray-700">
               <div className="flex items-center gap-2 text-teal-700 dark:text-teal-400">
@@ -670,7 +672,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
               </div>
               <button
                 onClick={() => setCheckInTarget(null)}
-                className="text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
+                aria-label="Close dialog" className="inline-flex items-center justify-center min-h-11 min-w-11 sm:min-h-8 sm:min-w-8 rounded-lg text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-gray-700"
               >
                 ✕
               </button>
@@ -718,18 +720,19 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
               </button>
             </div>
           </div>
-        </div>
+        </DialogOverlay>
       )}
 
       {/* MODAL 2: Manage Attendance State Modal */}
       {attendanceModalTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/65 backdrop-blur-xs p-4">
+        <DialogOverlay
+          onClose={() => setAttendanceModalTarget(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/65 backdrop-blur-xs p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-gray-700 space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-gray-700">
               <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Update Attendance State</h3>
               <button
                 onClick={() => setAttendanceModalTarget(null)}
-                className="text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
+                aria-label="Close dialog" className="inline-flex items-center justify-center min-h-11 min-w-11 sm:min-h-8 sm:min-w-8 rounded-lg text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-gray-700"
               >
                 ✕
               </button>
@@ -785,13 +788,14 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
               </button>
             </div>
           </div>
-        </div>
+        </DialogOverlay>
       )}
 
       {/* MODAL 3: Walk-In Patient Registration Modal */}
       {isRegisterOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/65 backdrop-blur-xs p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-gray-700 max-h-[90vh] overflow-y-auto space-y-4 animate-in fade-in zoom-in-95 duration-150">
+        <DialogOverlay
+          onClose={() => setIsRegisterOpen(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/65 backdrop-blur-xs p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-gray-700 max-h-[90dvh] overflow-y-auto space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-gray-700">
               <div className="flex items-center gap-2 text-teal-700 dark:text-teal-400">
                 <UserPlus className="w-5 h-5" />
@@ -799,7 +803,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
               </div>
               <button
                 onClick={() => setIsRegisterOpen(false)}
-                className="text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
+                aria-label="Close dialog" className="inline-flex items-center justify-center min-h-11 min-w-11 sm:min-h-8 sm:min-w-8 rounded-lg text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-gray-700"
               >
                 ✕
               </button>
@@ -950,7 +954,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
               </div>
             </form>
           </div>
-        </div>
+        </DialogOverlay>
       )}
     </div>
   );

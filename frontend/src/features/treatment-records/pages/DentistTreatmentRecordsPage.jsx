@@ -16,6 +16,7 @@ import { TreatmentRecordViewer } from '../components/TreatmentRecordViewer';
 import { TreatmentRecordEditor } from '../components/TreatmentRecordEditor';
 import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
 
+import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 export function DentistTreatmentRecordsPage() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -86,7 +87,7 @@ export function DentistTreatmentRecordsPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search records by patient name, procedure, diagnosis, or tooth number..."
+            placeholder="Search patient, procedure, tooth"
             className="w-full pl-9 pr-8 py-2 text-xs bg-white dark:bg-gray-700 border border-slate-300 dark:border-gray-600 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400"
           />
           {searchQuery && (
@@ -129,23 +130,23 @@ export function DentistTreatmentRecordsPage() {
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-slate-200 dark:border-gray-700 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-700 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  <th className="py-3 px-4">Record & Date</th>
-                  <th className="py-3 px-4">Patient</th>
-                  <th className="py-3 px-4">Service & Teeth Treated</th>
-                  <th className="py-3 px-4">Compliance Status</th>
-                  <th className="py-3 px-4 text-right">Action</th>
+            <table role="table" className="tch-responsive-table w-full text-left border-collapse">
+              <thead role="rowgroup">
+                <tr role="row" className="bg-slate-50/80 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-700 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  <th role="columnheader" className="py-3 px-4">Record & Date</th>
+                  <th role="columnheader" className="py-3 px-4">Patient</th>
+                  <th role="columnheader" className="py-3 px-4">Service & Teeth Treated</th>
+                  <th role="columnheader" className="py-3 px-4">Compliance Status</th>
+                  <th role="columnheader" className="py-3 px-4 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-gray-700/70 text-xs">
+              <tbody role="rowgroup" className="divide-y divide-slate-100 dark:divide-gray-700/70 text-xs">
                 {filteredRecords.map((rec) => {
                   const isLocked = Boolean(rec.is_locked);
                   const teeth = Array.isArray(rec.teeth_treated) ? rec.teeth_treated : [];
 
                   return (
-                    <tr
+                    <tr role="row"
                       key={rec.id}
                       className="hover:bg-slate-50/80 dark:hover:bg-gray-700/40 transition-colors group cursor-pointer"
                       onClick={() => {
@@ -154,7 +155,7 @@ export function DentistTreatmentRecordsPage() {
                       }}
                     >
                       {/* ID and Date */}
-                      <td className="py-3 px-4 whitespace-nowrap">
+                      <td role="cell" data-label="Record & Date" className="py-3 px-4 whitespace-nowrap">
                         <div className="font-bold text-slate-900 dark:text-slate-100">#TR-{rec.id}</div>
                         <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5">
                           <Calendar className="w-3 h-3 text-slate-400 dark:text-slate-500" />
@@ -163,7 +164,7 @@ export function DentistTreatmentRecordsPage() {
                       </td>
 
                       {/* Patient */}
-                      <td className="py-3 px-4">
+                      <td role="cell" data-label="Patient" className="py-3 px-4">
                         <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
                           <User className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
                           <span>
@@ -180,7 +181,7 @@ export function DentistTreatmentRecordsPage() {
                       </td>
 
                       {/* Service and Teeth */}
-                      <td className="py-3 px-4">
+                      <td role="cell" data-label="Service & Teeth Treated" className="py-3 px-4">
                         <div className="font-medium text-slate-800 dark:text-slate-200">{rec.service_name || 'Dental Service'}</div>
                         <div className="flex flex-wrap gap-1 mt-1">
                           {teeth.length === 0 ? (
@@ -199,7 +200,7 @@ export function DentistTreatmentRecordsPage() {
                       </td>
 
                       {/* Compliance Status */}
-                      <td className="py-3 px-4 whitespace-nowrap">
+                      <td role="cell" data-label="Compliance Status" className="py-3 px-4 whitespace-nowrap">
                         {isLocked ? (
                           <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-gray-600">
                             <Lock className="w-3 h-3 text-slate-400 dark:text-slate-400" />
@@ -214,7 +215,7 @@ export function DentistTreatmentRecordsPage() {
                       </td>
 
                       {/* Action */}
-                      <td className="py-3 px-4 text-right whitespace-nowrap">
+                      <td role="cell" data-label="Action" className="py-3 px-4 text-right whitespace-nowrap">
                         <button
                           type="button"
                           onClick={(e) => {
@@ -239,12 +240,11 @@ export function DentistTreatmentRecordsPage() {
 
       {/* Detail / Chart Modal */}
       {selectedRecord && (
-        <div
-          role="dialog"
-          aria-modal="true"
+        <DialogOverlay
+          onClose={() => setSelectedRecord(null)}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/70 backdrop-blur-xs overflow-y-auto"
         >
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-slate-200 dark:border-gray-700 shadow-2xl max-w-3xl w-full my-8 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-slate-200 dark:border-gray-700 shadow-2xl max-w-3xl w-full my-8 max-h-[90dvh] overflow-y-auto">
             <div className="p-4 border-b border-slate-100 dark:border-gray-700 flex items-center justify-between sticky top-0 bg-white dark:bg-gray-800 z-10">
               <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <FileText className="w-4 h-4 text-teal-600 dark:text-teal-400" />
@@ -280,7 +280,7 @@ export function DentistTreatmentRecordsPage() {
               )}
             </div>
           </div>
-        </div>
+        </DialogOverlay>
       )}
     </div>
   );

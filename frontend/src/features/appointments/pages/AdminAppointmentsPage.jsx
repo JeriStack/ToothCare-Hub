@@ -25,7 +25,8 @@ import { appointmentsApi } from '../api';
 import { dentistsApi } from '../../dentists/api';
 import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
 import { STATUS_STYLES } from '../components/AppointmentCard';
-
+
+import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 export function AdminAppointmentsPage() {
   // State
   const [appointments, setAppointments] = useState([]);
@@ -392,24 +393,24 @@ export function AdminAppointmentsPage() {
       {/* Table List View */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-700 text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">
+          <table role="table" className="tch-responsive-table w-full text-left text-xs">
+            <thead role="rowgroup" className="bg-slate-50 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-700 text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">
               <tr>
-                <th className="py-3.5 px-4">Ref #</th>
-                <th className="py-3.5 px-4">Patient Details</th>
-                <th className="py-3.5 px-4">Service & Fee</th>
-                <th className="py-3.5 px-4">Dentist & Room</th>
-                <th className="py-3.5 px-4">Date & Time</th>
-                <th className="py-3.5 px-4">Status</th>
-                <th className="py-3.5 px-4 text-right">Actions</th>
+                <th role="columnheader" className="py-3.5 px-4">Ref #</th>
+                <th role="columnheader" className="py-3.5 px-4">Patient Details</th>
+                <th role="columnheader" className="py-3.5 px-4">Service & Fee</th>
+                <th role="columnheader" className="py-3.5 px-4">Dentist & Room</th>
+                <th role="columnheader" className="py-3.5 px-4">Date & Time</th>
+                <th role="columnheader" className="py-3.5 px-4">Status</th>
+                <th role="columnheader" className="py-3.5 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-gray-700/70">
+            <tbody role="rowgroup" className="divide-y divide-slate-100 dark:divide-gray-700/70">
               {loading ? (
-                <TableSkeleton.Rows count={6} columns={7} />
+                <TableSkeleton.Rows count={9} columns={7} />
               ) : (!Array.isArray(appointments) || appointments.length === 0) ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-500 dark:text-slate-400">
+                  <td role="cell" colSpan={7} className="py-12 text-center text-slate-500 dark:text-slate-400">
                     No appointments matched the current filter criteria.
                   </td>
                 </tr>
@@ -418,8 +419,8 @@ export function AdminAppointmentsPage() {
                   const sInfo = STATUS_STYLES[appt?.status] || STATUS_STYLES.PENDING;
                   const SIcon = sInfo?.icon || AlertCircle;
                   return (
-                    <tr key={appt.id} className="hover:bg-slate-50/80 dark:hover:bg-gray-700/40 transition-colors">
-                      <td className="py-3 px-4 font-mono font-bold text-slate-800 dark:text-slate-200">
+                    <tr role="row" key={appt.id} className="hover:bg-slate-50/80 dark:hover:bg-gray-700/40 transition-colors">
+                      <td role="cell" data-label="Ref #" className="py-3 px-4 font-mono font-bold text-slate-800 dark:text-slate-200">
                         #{appt.id}
                         {appt.rescheduled_from_id && (
                           <span className="block text-[10px] text-sky-600 dark:text-sky-400 font-normal">
@@ -427,7 +428,7 @@ export function AdminAppointmentsPage() {
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-4">
+                      <td role="cell" data-label="Patient Details" className="py-3 px-4">
                         <div className="font-bold text-slate-900 dark:text-slate-100">
                           {appt.patient_first_name} {appt.patient_last_name}
                         </div>
@@ -436,7 +437,7 @@ export function AdminAppointmentsPage() {
                           {appt.patient_email && <span>✉️ {appt.patient_email}</span>}
                         </div>
                       </td>
-                      <td className="py-3 px-4">
+                      <td role="cell" data-label="Service & Fee" className="py-3 px-4">
                         <div className="font-semibold text-slate-800 dark:text-slate-200">{appt.service_name}</div>
                         <div className="text-[11px] text-[#0D9488] dark:text-teal-400 font-bold mt-0.5">
                           ₱{Number(appt.price_snapshot || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
@@ -445,7 +446,7 @@ export function AdminAppointmentsPage() {
                           </span>
                         </div>
                       </td>
-                      <td className="py-3 px-4">
+                      <td role="cell" data-label="Dentist & Room" className="py-3 px-4">
                         <div className="font-semibold text-slate-800 dark:text-slate-200">
                           Dr. {appt.dentist_first_name} {appt.dentist_last_name}
                         </div>
@@ -453,7 +454,7 @@ export function AdminAppointmentsPage() {
                           {appt.dentist_room_number || 'Chair 1'}
                         </div>
                       </td>
-                      <td className="py-3 px-4">
+                      <td role="cell" data-label="Date & Time" className="py-3 px-4">
                         <div className="font-semibold text-slate-800 dark:text-slate-200">
                           {appt.start_at ? appt.start_at.substring(0, 10) : 'N/A'}
                         </div>
@@ -462,7 +463,7 @@ export function AdminAppointmentsPage() {
                           {appt.end_at ? appt.end_at.substring(11, 16) : ''}
                         </div>
                       </td>
-                      <td className="py-3 px-4">
+                      <td role="cell" data-label="Status" className="py-3 px-4">
                         <span
                           className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${sInfo.bg} ${sInfo.text} ${sInfo.border}`}
                         >
@@ -470,7 +471,7 @@ export function AdminAppointmentsPage() {
                           {sInfo.label}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-right">
+                      <td role="cell" data-label="Actions" className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           {/* Details Button */}
                           <button
@@ -588,8 +589,9 @@ export function AdminAppointmentsPage() {
 
       {/* DETAIL / AUDIT DRAWER MODAL */}
       {detailModalAppt && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 dark:bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-2xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-scale-up">
+        <DialogOverlay
+          onClose={() => setDetailModalAppt(null)} className="fixed inset-0 z-50 bg-slate-900/40 dark:bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-2xl max-w-xl w-full max-h-[90dvh] flex flex-col overflow-hidden animate-scale-up">
             <div className="p-5 border-b border-slate-100 dark:border-gray-700 flex items-center justify-between">
               <div>
                 <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
@@ -701,12 +703,14 @@ export function AdminAppointmentsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </DialogOverlay>
       )}
 
       {/* CONFIRM MODAL */}
       {confirmModalAppt && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 dark:bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <DialogOverlay
+          onClose={() => setConfirmModalAppt(null)}
+          dismissible={!(confirming)} className="fixed inset-0 z-50 bg-slate-900/40 dark:bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-2xl max-w-md w-full p-6 space-y-4 animate-scale-up">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
@@ -747,12 +751,14 @@ export function AdminAppointmentsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </DialogOverlay>
       )}
 
       {/* REJECT MODAL */}
       {rejectModalAppt && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 dark:bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <DialogOverlay
+          onClose={() => setRejectModalAppt(null)}
+          dismissible={!(rejecting)} className="fixed inset-0 z-50 bg-slate-900/40 dark:bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-2xl max-w-md w-full p-6 space-y-4 animate-scale-up">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
@@ -806,12 +812,14 @@ export function AdminAppointmentsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </DialogOverlay>
       )}
 
       {/* COMPLETE MODAL */}
       {completeModalAppt && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 dark:bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <DialogOverlay
+          onClose={() => setCompleteModalAppt(null)}
+          dismissible={!(completing)} className="fixed inset-0 z-50 bg-slate-900/40 dark:bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-2xl max-w-md w-full p-6 space-y-4 animate-scale-up">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
@@ -852,12 +860,14 @@ export function AdminAppointmentsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </DialogOverlay>
       )}
 
       {/* ADMIN CANCEL MODAL */}
       {cancelModalAppt && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 dark:bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <DialogOverlay
+          onClose={() => setCancelModalAppt(null)}
+          dismissible={!(cancelling)} className="fixed inset-0 z-50 bg-slate-900/40 dark:bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-2xl max-w-md w-full p-6 space-y-4 animate-scale-up">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
@@ -911,7 +921,7 @@ export function AdminAppointmentsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </DialogOverlay>
       )}
     </div>
   );

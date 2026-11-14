@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowUp, ShieldCheck, X } from 'lucide-react';
-
+
+import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
   const [legalModal, setLegalModal] = useState(null); // 'privacy' | 'terms' | null
 
@@ -77,7 +78,7 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
                 <button
                   type="button"
                   onClick={onBookAppointment}
-                  className="hover:text-teal-300 transition-colors text-center font-medium text-teal-400 cursor-pointer"
+                  className="tch-tap hover:text-teal-300 transition-colors text-center font-medium text-teal-400 cursor-pointer"
                 >
                   Book an Appointment
                 </button>
@@ -86,7 +87,7 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
                 <button
                   type="button"
                   onClick={onLogin}
-                  className="hover:text-white transition-colors text-center cursor-pointer"
+                  className="tch-tap hover:text-white transition-colors text-center cursor-pointer"
                 >
                   Sign In to Patient Portal
                 </button>
@@ -95,7 +96,7 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
                 <button
                   type="button"
                   onClick={onLogin}
-                  className="hover:text-white transition-colors text-center cursor-pointer"
+                  className="tch-tap hover:text-white transition-colors text-center cursor-pointer"
                 >
                   View Appointment Status
                 </button>
@@ -104,7 +105,7 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
                 <button
                   type="button"
                   onClick={onAdminLogin}
-                  className="text-slate-400 hover:text-white transition-colors text-center cursor-pointer"
+                  className="tch-tap text-slate-400 hover:text-white transition-colors text-center cursor-pointer"
                 >
                   Staff & Admin Login
                 </button>
@@ -120,7 +121,7 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
                 <button
                   type="button"
                   onClick={() => setLegalModal('privacy')}
-                  className="hover:text-white transition-colors text-center cursor-pointer"
+                  className="tch-tap hover:text-white transition-colors text-center cursor-pointer"
                 >
                   Patient Privacy Policy
                 </button>
@@ -129,7 +130,7 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
                 <button
                   type="button"
                   onClick={() => setLegalModal('terms')}
-                  className="hover:text-white transition-colors text-center cursor-pointer"
+                  className="tch-tap hover:text-white transition-colors text-center cursor-pointer"
                 >
                   Appointment Terms & Conditions
                 </button>
@@ -165,8 +166,9 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
 
       {/* LEGAL / PRIVACY MODAL */}
       {legalModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 dark:bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 text-slate-800 dark:text-gray-200 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
+        <DialogOverlay
+          onClose={() => setLegalModal(null)} className="fixed inset-0 z-50 bg-slate-900/60 dark:bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 text-slate-800 dark:text-gray-200 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[85dvh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-gray-700 pb-3">
               <h3 className="font-bold text-slate-900 dark:text-gray-50 text-base">
                 {legalModal === 'privacy' ? 'Patient Privacy Policy' : 'Appointment Terms & Conditions'}
@@ -217,7 +219,7 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
               </button>
             </div>
           </div>
-        </div>
+        </DialogOverlay>
       )}
     </footer>
   );

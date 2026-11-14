@@ -393,7 +393,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
         </button>
 
         {showOptionalFields && (
-          <div className="mt-3 p-4 rounded-2xl bg-[#F8FAFC] dark:bg-gray-900/70 border border-slate-200/80 dark:border-gray-700 space-y-3.5 animate-in fade-in duration-200">
+          <div className="mt-3 p-4 rounded-2xl bg-[#F8FAFC] dark:bg-gray-900/70 border border-slate-200/80 dark:border-gray-700 space-y-3.5 tch-animate-fade-in">
             {/* Address */}
             <div>
               <label htmlFor="reg-address" className="block text-[11px] font-bold text-[#12304A] dark:text-gray-200 mb-1">
@@ -489,7 +489,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
             onChange={(e) => handleChange('password', e.target.value)}
             placeholder="At least 8 characters"
             aria-invalid={Boolean(fieldErrors.password)}
-            className={`w-full pl-12 pr-11 py-2.5 rounded-xl border text-sm text-slate-800 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
+            className={`w-full min-w-0 pl-12 pr-12 py-2.5 rounded-xl border text-base sm:text-sm text-slate-800 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
               fieldErrors.password ? 'border-rose-400 dark:border-rose-500 bg-rose-50/20 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600 hover:border-slate-400 dark:hover:border-gray-500'
             }`}
           />
@@ -497,7 +497,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
             type="button"
             onClick={() => setShowPassword(!showPassword)}
             aria-label={showPassword ? 'Hide password' : 'Show password'}
-            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded p-0.5"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 w-10 h-10 inline-flex items-center justify-center text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded-lg"
           >
             {showPassword ? <EyeOff className="w-4 h-4 stroke-[2]" /> : <Eye className="w-4 h-4 stroke-[2]" />}
           </button>
@@ -556,7 +556,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
             onChange={(e) => handleChange('confirmPassword', e.target.value)}
             placeholder="Repeat your password"
             aria-invalid={Boolean(fieldErrors.confirmPassword)}
-            className={`w-full pl-12 pr-11 py-2.5 rounded-xl border text-sm text-slate-800 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
+            className={`w-full min-w-0 pl-12 pr-12 py-2.5 rounded-xl border text-base sm:text-sm text-slate-800 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
               fieldErrors.confirmPassword ? 'border-rose-400 dark:border-rose-500 bg-rose-50/20 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600 hover:border-slate-400 dark:hover:border-gray-500'
             }`}
           />
@@ -564,7 +564,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
             type="button"
             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
             aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded p-0.5"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 w-10 h-10 inline-flex items-center justify-center text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded-lg"
           >
             {showConfirmPassword ? <EyeOff className="w-4 h-4 stroke-[2]" /> : <Eye className="w-4 h-4 stroke-[2]" />}
           </button>
@@ -581,13 +581,13 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
             type="checkbox"
             checked={formData.agreeTerms}
             onChange={(e) => handleChange('agreeTerms', e.target.checked)}
-            className="mt-0.5 w-4 h-4 rounded border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-[#0D9488] focus:ring-[#0D9488]"
+            className="tch-check mt-0.5 rounded border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-[#0D9488] focus:ring-[#0D9488]"
           />
           <span>
             I agree to the ToothCare Hub{' '}
-            <a href="#terms" className="text-[#0D9488] dark:text-teal-400 underline hover:text-[#0F766E] dark:hover:text-teal-300">Terms of Service</a>{' '}
+            <a href="#terms" className="tch-tap text-[#0D9488] dark:text-teal-400 underline hover:text-[#0F766E] dark:hover:text-teal-300">Terms of Service</a>{' '}
             and{' '}
-            <a href="#privacy" className="text-[#0D9488] dark:text-teal-400 underline hover:text-[#0F766E] dark:hover:text-teal-300">Privacy Policy</a>.
+            <a href="#privacy" className="tch-tap text-[#0D9488] dark:text-teal-400 underline hover:text-[#0F766E] dark:hover:text-teal-300">Privacy Policy</a>.
           </span>
         </label>
         {fieldErrors.agreeTerms && (
@@ -617,7 +617,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
         <button
           type="button"
           onClick={onNavigateLogin}
-          className="font-semibold text-[#0D9488] dark:text-teal-400 hover:text-[#0F766E] dark:hover:text-teal-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded"
+          className="tch-tap font-semibold text-[#0D9488] dark:text-teal-400 hover:text-[#0F766E] dark:hover:text-teal-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded"
         >
           Sign in
         </button>

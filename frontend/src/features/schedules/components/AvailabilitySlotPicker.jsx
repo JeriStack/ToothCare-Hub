@@ -122,7 +122,7 @@ export function AvailabilitySlotPicker({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-1.5">
         <span className="text-xs font-semibold text-slate-700 dark:text-gray-200 flex items-center gap-1.5">
           <Clock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
           Available Slots ({slots.length})
@@ -130,9 +130,9 @@ export function AvailabilitySlotPicker({
         <span className="text-[11px] text-slate-400 dark:text-gray-400">10m turnaround buffer included</span>
       </div>
 
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 min-[420px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
         {slots.map((slot) => {
-          const isSelected = selectedSlot === slot.start_at;
+          const isSelected = selectedSlot?.start_at === slot.start_at || selectedSlot === slot.start_at;
           const displayTime = formatSlotTime(slot.start_at);
 
           return (
@@ -140,8 +140,9 @@ export function AvailabilitySlotPicker({
               key={slot.start_at}
               type="button"
               disabled={disabled}
+              aria-pressed={isSelected}
               onClick={() => onSelectSlot && onSelectSlot(slot)}
-              className={`p-2.5 rounded-lg text-xs font-semibold border transition-all text-center flex flex-col items-center justify-center gap-1 ${
+              className={`min-h-11 p-2.5 rounded-lg text-xs font-semibold border transition-all text-center flex flex-col items-center justify-center gap-0.5 ${
                 isSelected
                   ? 'bg-teal-600 dark:bg-[#0F766E] border-teal-600 dark:border-teal-400 text-white shadow-sm ring-2 ring-teal-200 dark:ring-teal-500/40'
                   : 'bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 text-slate-700 dark:text-gray-200 hover:border-teal-500 dark:hover:border-teal-400 hover:bg-teal-50/50 dark:hover:bg-teal-950/40'

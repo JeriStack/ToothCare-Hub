@@ -18,7 +18,8 @@ import {
 } from 'lucide-react';
 import { usersApi } from '../api';
 import { TableSkeleton } from '../../../components/skeletons';
-
+
+import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 const ROLE_BADGE_MAP = {
   ADMIN: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/70',
   DENTIST: 'bg-teal-50 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-800/70',
@@ -261,21 +262,21 @@ export function UserManagementPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-700 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  <th className="py-3.5 px-5">User / Identity</th>
-                  <th className="py-3.5 px-4">Role</th>
-                  <th className="py-3.5 px-4">Account Status</th>
-                  <th className="py-3.5 px-4">Email Verified</th>
-                  <th className="py-3.5 px-4">Registered</th>
-                  <th className="py-3.5 px-5 text-right">Actions</th>
+            <table role="table" className="tch-responsive-table w-full text-left border-collapse">
+              <thead role="rowgroup">
+                <tr role="row" className="bg-slate-50/80 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-700 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  <th role="columnheader" className="py-3.5 px-5">User / Identity</th>
+                  <th role="columnheader" className="py-3.5 px-4">Role</th>
+                  <th role="columnheader" className="py-3.5 px-4">Account Status</th>
+                  <th role="columnheader" className="py-3.5 px-4">Email Verified</th>
+                  <th role="columnheader" className="py-3.5 px-4">Registered</th>
+                  <th role="columnheader" className="py-3.5 px-5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-gray-700/70 text-sm">
+              <tbody role="rowgroup" className="divide-y divide-slate-100 dark:divide-gray-700/70 text-sm">
                 {users.map((u) => (
-                  <tr key={u.id} className="hover:bg-slate-50/50 dark:hover:bg-gray-700/40 transition-colors">
-                    <td className="py-3.5 px-5">
+                  <tr role="row" key={u.id} className="hover:bg-slate-50/50 dark:hover:bg-gray-700/40 transition-colors">
+                    <td role="cell" data-label="User / Identity" className="py-3.5 px-5">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full bg-teal-50 dark:bg-teal-950/60 border border-teal-200/60 dark:border-teal-800/70 flex items-center justify-center text-teal-700 dark:text-teal-300 font-bold text-xs shrink-0">
                           {u.display_name?.charAt(0)?.toUpperCase() || u.email.charAt(0).toUpperCase()}
@@ -286,7 +287,7 @@ export function UserManagementPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td role="cell" data-label="Role" className="py-3.5 px-4">
                       <span
                         className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
                           ROLE_BADGE_MAP[u.role] || ROLE_BADGE_MAP.PATIENT
@@ -299,7 +300,7 @@ export function UserManagementPage() {
                         {u.role}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td role="cell" data-label="Account Status" className="py-3.5 px-4">
                       <span
                         className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-md ${
                           u.is_active
@@ -315,7 +316,7 @@ export function UserManagementPage() {
                         {u.is_active ? 'Active' : 'Disabled'}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td role="cell" data-label="Email Verified" className="py-3.5 px-4">
                       <span
                         className={`text-xs font-medium ${
                           u.email_verified ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
@@ -324,10 +325,10 @@ export function UserManagementPage() {
                         {u.email_verified ? 'Verified' : 'Pending Verification'}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 text-xs text-slate-500 dark:text-slate-400 font-mono">
+                    <td role="cell" data-label="Registered" className="py-3.5 px-4 text-xs text-slate-500 dark:text-slate-400 font-mono">
                       {u.created_at?.split(' ')[0]}
                     </td>
-                    <td className="py-3.5 px-5 text-right space-x-2">
+                    <td role="cell" data-label="Actions" className="py-3.5 px-5 text-right space-x-2">
                       <button
                         onClick={() => {
                           setEditingUser(u);
@@ -383,7 +384,8 @@ export function UserManagementPage() {
 
       {/* Create Staff Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <DialogOverlay
+          onClose={() => setShowCreateModal(false)} className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-xl w-full max-w-lg overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 dark:border-gray-700 flex items-center justify-between bg-[#12304A] dark:bg-gray-900 text-white">
               <div className="flex items-center gap-2">
@@ -522,12 +524,13 @@ export function UserManagementPage() {
               </div>
             </form>
           </div>
-        </div>
+        </DialogOverlay>
       )}
 
       {/* Role Reassignment Modal */}
       {editingUser && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <DialogOverlay
+          onClose={() => setEditingUser(null)} className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-xl w-full max-w-md overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 dark:border-gray-700 flex items-center justify-between bg-slate-50 dark:bg-gray-900/60">
               <div className="flex items-center gap-2">
@@ -573,7 +576,7 @@ export function UserManagementPage() {
               </div>
             </form>
           </div>
-        </div>
+        </DialogOverlay>
       )}
     </div>
   );
