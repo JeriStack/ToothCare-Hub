@@ -462,3 +462,284 @@ dialog::backdrop {
   }
 }
 
+
+/* ==========================================================================
+   Responsive data tables (single-DOM): stacked, labelled cards below `md`
+   Usage: <table class="tch-responsive-table"> + <td data-label="Column name">.
+   The <thead> stays in the accessibility tree (visually hidden) and the
+   table/row/cell ARIA roles keep table semantics when `display` is changed.
+   ========================================================================== */
+@media (max-width: 47.99rem) {
+  .tch-responsive-table,
+  .tch-responsive-table tbody {
+    display: block;
+    inline-size: 100%;
+  }
+
+  .tch-responsive-table thead {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .tch-responsive-table tr {
+    display: block;
+    padding: 0.875rem 1rem;
+  }
+
+  .tch-responsive-table td {
+    display: block;
+    padding: 0.375rem 0;
+    border: 0;
+    text-align: start !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+    min-inline-size: 0;
+  }
+
+  .tch-responsive-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-block-end: 0.125rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+
+  .tch-responsive-table td[colspan] {
+    padding: 2rem 1rem;
+    text-align: center !important;
+  }
+
+  /* Trailing action cell: wrap buttons with comfortable, tappable spacing */
+  .tch-responsive-table td[data-label]:last-child {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding-block-start: 0.625rem;
+  }
+
+  .tch-responsive-table td[data-label]:last-child::before {
+    flex: 0 0 100%;
+    margin-block-end: 0;
+  }
+
+  .tch-responsive-table td[data-label]:last-child > * {
+    margin-inline-start: 0 !important;
+  }
+
+  .tch-responsive-table td[data-label]:last-child :is(button, a) {
+    min-block-size: 2.75rem;
+    min-inline-size: 2.75rem;
+  }
+
+  /* Responsive DRBAC matrix: capability + role toggle pills stacked cleanly below `md` */
+  .tch-matrix-table,
+  .tch-matrix-table tbody {
+    display: block;
+    inline-size: 100%;
+  }
+
+  .tch-matrix-table thead {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .tch-matrix-table tr.tch-matrix-group-row {
+    display: block;
+    padding: 0.625rem 1rem;
+  }
+
+  .tch-matrix-table tr.tch-matrix-group-row td {
+    display: block;
+    padding: 0;
+  }
+
+  .tch-matrix-table tr.tch-matrix-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.625rem;
+    padding: 0.875rem 1rem;
+  }
+
+  .tch-matrix-table tr.tch-matrix-row td:first-child {
+    grid-column: 1 / -1;
+    padding: 0 0 0.25rem;
+    text-align: start;
+  }
+
+  .tch-matrix-table tr.tch-matrix-row td[data-role] {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.375rem 0.5rem;
+    border-radius: 0.625rem;
+    background: var(--bg-muted);
+    text-align: start;
+    min-inline-size: 0;
+  }
+
+  .tch-matrix-table tr.tch-matrix-row td[data-role]::before {
+    content: attr(data-role);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow-wrap: anywhere;
+  }
+}
+
+/* Mobile-only sortable control that replaces clickable <th> headers inside card tables */
+.tch-mobile-sort {
+  display: flex;
+}
+
+@media (min-width: 48rem) {
+  .tch-mobile-sort {
+    display: none;
+  }
+}
+
+/* Long unbroken strings (emails, IDs, license numbers) must wrap instead of overflowing */
+.tch-wrap-anywhere {
+  overflow-wrap: anywhere;
+  min-inline-size: 0;
+}
+
+/* Safe-area & entrance utilities */
+.tch-safe-bottom {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+}
+
+.tch-safe-top {
+  padding-top: max(0px, env(safe-area-inset-top, 0px));
+}
+
+@keyframes tch-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tch-animate-fade-in {
+  animation: tch-fade-in 180ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tch-animate-fade-in {
+    animation: none;
+  }
+}
+
+/* ==========================================================================
+   Touch-target utilities (WCAG 2.2 SC 2.5.8 minimum 24x24 CSS px; ~44px on coarse pointers)
+   .tch-tap   text-link style buttons/anchors that were shorter than 24px
+   .tch-check native checkboxes/radios rendered at a usable size
+   ========================================================================== */
+.tch-tap {
+  min-block-size: 1.5rem;
+  min-inline-size: 1.5rem;
+}
+
+a.tch-tap {
+  display: inline-flex;
+  align-items: center;
+}
+
+@media (pointer: coarse) {
+  .tch-tap {
+    min-block-size: 2.75rem;
+  }
+}
+
+.tch-check {
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  flex-shrink: 0;
+  accent-color: var(--color-primary);
+}
+
+@media (pointer: coarse) {
+  .tch-check {
+    inline-size: 1.625rem;
+    block-size: 1.625rem;
+  }
+}
+
+/* Long placeholders must truncate with an ellipsis instead of being clipped mid-word */
+input::placeholder,
+textarea::placeholder {
+  text-overflow: ellipsis;
+}
+
+input:not([type="checkbox"]):not([type="radio"]) {
+  text-overflow: ellipsis;
+}
+
+/* ==========================================================================
+   Dialog ergonomics (applies to every aria-modal surface)
+   ========================================================================== */
+/* Icon-only buttons (close "X" etc.) meet the 24px minimum, ~44px on touch */
+[aria-modal="true"] :is(button, a[href]):has(> svg:only-child) {
+  min-inline-size: 1.5rem;
+  min-block-size: 1.5rem;
+}
+
+[aria-modal="true"] input:is([type="checkbox"], [type="radio"]) {
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  flex-shrink: 0;
+  accent-color: var(--color-primary);
+}
+
+@media (pointer: coarse) {
+  [aria-modal="true"] :is(button, a[href]):has(> svg:only-child) {
+    min-inline-size: 2.75rem;
+    min-block-size: 2.75rem;
+  }
+
+  [aria-modal="true"] input:is([type="checkbox"], [type="radio"]) {
+    inline-size: 1.5rem;
+    block-size: 1.5rem;
+  }
+}
+
+/* Phones: form fields at 16px so iOS Safari does not zoom the page on focus */
+@media (max-width: 39.99rem) {
+  :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]), select, textarea) {
+    font-size: 1rem;
+  }
+}
+
+/* Overlays scroll when the panel is taller than the screen (landscape phones, open keyboard).
+   `margin-block: auto` centres short panels without clipping the top of tall ones,
+   which plain `align-items: center` would do. */
+[data-dialog-overlay][data-dialog-overlay] {
+  align-items: flex-start;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+}
+
+[data-dialog-overlay] > :not([aria-hidden="true"]) {
+  margin-block: auto;
+  flex-shrink: 0;
+}

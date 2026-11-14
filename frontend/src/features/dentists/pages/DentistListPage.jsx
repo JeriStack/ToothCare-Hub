@@ -19,7 +19,9 @@ import {
 } from 'lucide-react';
 import { dentistsApi } from '../api';
 import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
-
+import { MobileSortControl } from '../../../components/ui/MobileSortControl';
+
+import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 const SPECIALIZATION_OPTIONS = [
   'General Dentistry',
   'Orthodontics',
@@ -295,16 +297,16 @@ export function DentistListPage() {
       {/* Filter and Search Bar */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-slate-200 dark:border-gray-700 shadow-sm space-y-3 sm:space-y-0 sm:flex sm:items-center sm:gap-4 transition-colors">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400 dark:text-slate-500" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none" aria-hidden="true" />
           <input
             type="text"
-            placeholder="Search by practitioner name, license number, or phone..."
+            placeholder="Search name, license, or phone"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="w-full pl-9 pr-4 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-400 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
+            className="w-full min-h-11 sm:min-h-0 pl-9 pr-4 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-400 rounded-lg text-base sm:text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
           />
         </div>
 
@@ -315,7 +317,7 @@ export function DentistListPage() {
               setSpecializationFilter(e.target.value);
               setPage(1);
             }}
-            className="px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-none"
+            className="flex-1 sm:flex-none min-w-[9rem] min-h-11 sm:min-h-0 px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg text-base sm:text-sm bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-none"
           >
             <option value="">All Specialties</option>
             {SPECIALIZATION_OPTIONS.map((spec) => (
@@ -331,7 +333,7 @@ export function DentistListPage() {
               setStatusFilter(e.target.value);
               setPage(1);
             }}
-            className="px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-none"
+            className="flex-1 sm:flex-none min-w-[9rem] min-h-11 sm:min-h-0 px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg text-base sm:text-sm bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-none"
           >
             <option value="">All Statuses</option>
             <option value="1">Active Practice</option>
@@ -340,8 +342,8 @@ export function DentistListPage() {
 
           <button
             onClick={fetchDentists}
-            title="Refresh Roster"
-            className="p-2 border border-slate-300 dark:border-gray-600 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors"
+            title="Refresh Roster" aria-label="Refresh roster"
+            className="inline-flex items-center justify-center min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 p-2 border border-slate-300 dark:border-gray-600 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -378,49 +380,51 @@ export function DentistListPage() {
             </p>
           </div>
         ) : (
+          <>
+          <MobileSortControl sortBy={sortBy} sortDir={sortDir} onSort={handleSort} options={[{ value: 'name', label: 'Practitioner name' }, { value: 'specialization', label: 'Specialization' }, { value: 'license_number', label: 'PRC license' }, { value: 'is_active', label: 'Status' }, { value: 'id', label: 'ID' }]} />
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 dark:bg-gray-900/50 border-b border-slate-200 dark:border-gray-700 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                  <th className="py-3.5 px-4 cursor-pointer" onClick={() => handleSort('id')}>
+            <table role="table" className="tch-responsive-table w-full text-left border-collapse">
+              <thead role="rowgroup">
+                <tr role="row" className="bg-slate-50/80 dark:bg-gray-900/50 border-b border-slate-200 dark:border-gray-700 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                  <th role="columnheader" tabIndex={0} aria-sort={sortBy === 'id' ? (sortDir === 'ASC' ? 'ascending' : 'descending') : 'none'} className="py-3.5 px-4 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]" onClick={() => handleSort('id')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('id'); } }}>
                     <div className="flex items-center gap-1.5">
                       ID
                       <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     </div>
                   </th>
-                  <th className="py-3.5 px-4 cursor-pointer" onClick={() => handleSort('name')}>
+                  <th role="columnheader" tabIndex={0} aria-sort={sortBy === 'name' ? (sortDir === 'ASC' ? 'ascending' : 'descending') : 'none'} className="py-3.5 px-4 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]" onClick={() => handleSort('name')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('name'); } }}>
                     <div className="flex items-center gap-1.5">
                       Practitioner Name
                       <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     </div>
                   </th>
-                  <th className="py-3.5 px-4 cursor-pointer" onClick={() => handleSort('specialization')}>
+                  <th role="columnheader" tabIndex={0} aria-sort={sortBy === 'specialization' ? (sortDir === 'ASC' ? 'ascending' : 'descending') : 'none'} className="py-3.5 px-4 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]" onClick={() => handleSort('specialization')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('specialization'); } }}>
                     <div className="flex items-center gap-1.5">
                       Specialization
                       <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     </div>
                   </th>
-                  <th className="py-3.5 px-4 cursor-pointer" onClick={() => handleSort('license_number')}>
+                  <th role="columnheader" tabIndex={0} aria-sort={sortBy === 'license_number' ? (sortDir === 'ASC' ? 'ascending' : 'descending') : 'none'} className="py-3.5 px-4 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]" onClick={() => handleSort('license_number')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('license_number'); } }}>
                     <div className="flex items-center gap-1.5">
                       PRC License
                       <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     </div>
                   </th>
-                  <th className="py-3.5 px-4">Operatory</th>
-                  <th className="py-3.5 px-4 cursor-pointer" onClick={() => handleSort('is_active')}>
+                  <th role="columnheader" className="py-3.5 px-4">Operatory</th>
+                  <th role="columnheader" tabIndex={0} aria-sort={sortBy === 'is_active' ? (sortDir === 'ASC' ? 'ascending' : 'descending') : 'none'} className="py-3.5 px-4 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]" onClick={() => handleSort('is_active')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('is_active'); } }}>
                     <div className="flex items-center gap-1.5">
                       Status
                       <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     </div>
                   </th>
-                  <th className="py-3.5 px-4 text-right">Actions</th>
+                  <th role="columnheader" className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-gray-700 text-sm">
+              <tbody role="rowgroup" className="divide-y divide-slate-100 dark:divide-gray-700 text-sm">
                 {dentists.map((dentist) => (
-                  <tr key={dentist.id} className="hover:bg-slate-50/60 dark:hover:bg-gray-700/40 transition-colors">
-                    <td className="py-3.5 px-4 font-mono text-xs text-slate-500 dark:text-slate-400">#{dentist.id}</td>
-                    <td className="py-3.5 px-4">
+                  <tr role="row" key={dentist.id} className="hover:bg-slate-50/60 dark:hover:bg-gray-700/40 transition-colors">
+                    <td role="cell" data-label="ID" className="py-3.5 px-4 font-mono text-xs text-slate-500 dark:text-slate-400">#{dentist.id}</td>
+                    <td role="cell" data-label="Practitioner Name" className="py-3.5 px-4">
                       <div className="font-medium text-slate-900 dark:text-slate-50">
                         Dr. {dentist.first_name} {dentist.last_name}
                       </div>
@@ -435,18 +439,18 @@ export function DentistListPage() {
                         </span>
                       </div>
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td role="cell" data-label="Specialization" className="py-3.5 px-4">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-50 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300">
                         {dentist.specialization}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 font-mono text-xs text-slate-700 dark:text-slate-300">
+                    <td role="cell" data-label="PRC License" className="py-3.5 px-4 font-mono text-xs text-slate-700 dark:text-slate-300">
                       {dentist.license_number}
                     </td>
-                    <td className="py-3.5 px-4 text-xs font-medium text-slate-600 dark:text-slate-300">
+                    <td role="cell" data-label="Operatory" className="py-3.5 px-4 text-xs font-medium text-slate-600 dark:text-slate-300">
                       {dentist.default_operatory_chair || 'Chair 1'}
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td role="cell" data-label="Status" className="py-3.5 px-4">
                       {dentist.is_active ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
                           <CheckCircle className="w-3 h-3" />
@@ -459,7 +463,7 @@ export function DentistListPage() {
                         </span>
                       )}
                     </td>
-                    <td className="py-3.5 px-4 text-right space-x-1">
+                    <td role="cell" data-label="Actions" className="py-3.5 px-4 text-right space-x-1">
                       <button
                         onClick={() => openEditModal(dentist)}
                         className="p-1.5 text-slate-600 dark:text-slate-300 hover:text-teal-600 dark:hover:text-teal-300 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
@@ -484,6 +488,7 @@ export function DentistListPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
 
         {/* Pagination Bar */}
@@ -522,8 +527,9 @@ export function DentistListPage() {
 
       {/* Dentist Modal (Create / Edit) */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-black/65 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col">
+        <DialogOverlay
+          onClose={() => setIsModalOpen(false)} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-black/65 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90dvh] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/50 dark:bg-gray-900/40">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
                 {editingDentist ? 'Edit Dentist Profile' : 'Register Licensed Dentist'}
@@ -754,12 +760,13 @@ export function DentistListPage() {
               </div>
             </form>
           </div>
-        </div>
+        </DialogOverlay>
       )}
 
       {/* Confirmation Modal */}
       {confirmModal.isOpen && confirmModal.dentist && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-black/65 backdrop-blur-sm">
+        <DialogOverlay
+          onClose={() => setConfirmModal({ isOpen: false, dentist: null, targetStatus: 0, submitting: false })} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-black/65 backdrop-blur-sm">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-150 space-y-4">
             <div className="flex items-center gap-3">
               <div
@@ -810,7 +817,7 @@ export function DentistListPage() {
               </button>
             </div>
           </div>
-        </div>
+        </DialogOverlay>
       )}
     </div>
   );

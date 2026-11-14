@@ -75,8 +75,12 @@ TableSkeleton.Rows = function TableSkeletonRows({ count = 5, columns = 6 }) {
       {Array.from({ length: count }).map((_, rIdx) => (
         <tr key={rIdx} className="hover:bg-slate-50/40 dark:hover:bg-slate-700/30 transition-colors">
           {Array.from({ length: columns }).map((_, cIdx) => (
-            <td key={cIdx} className="py-3.5 px-4">
+            <td key={cIdx} className="py-3.5 px-4 md:py-5">
               <Skeleton className="h-4 w-3/4" />
+              {/* Real rows stack two lines (name + detail) from md up; matching that height avoids a layout jump */}
+              <Skeleton className="hidden md:block h-3 w-1/2 mt-1.5" />
+              {/* Narrow columns (md to lg) wrap to a third line */}
+              <Skeleton className="hidden md:block lg:hidden h-3 w-2/5 mt-1.5" />
             </td>
           ))}
         </tr>

@@ -60,7 +60,7 @@ export const Input = forwardRef(function Input(
           aria-describedby={
             error ? errorId : helperText ? helperId : undefined
           }
-          className={`w-full rounded-xl border bg-white dark:bg-gray-800 text-sm text-[#12304A] dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-500 transition-colors py-2.5 focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400 focus:border-[#0D9488] dark:focus:border-teal-400 disabled:bg-slate-50 dark:disabled:bg-gray-900/60 disabled:text-slate-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed ${
+          className={`w-full min-w-0 rounded-xl border bg-white dark:bg-gray-800 text-base sm:text-sm text-[#12304A] dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-500 transition-colors py-2.5 [@media(pointer:coarse)]:min-h-11 focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400 focus:border-[#0D9488] dark:focus:border-teal-400 disabled:bg-slate-50 dark:disabled:bg-gray-900/60 disabled:text-slate-400 dark:disabled:text-gray-500 disabled:cursor-not-allowed ${
             iconLeft ? 'pl-10' : 'pl-3.5'
           } ${iconRight ? 'pr-10' : 'pr-3.5'} ${
             error

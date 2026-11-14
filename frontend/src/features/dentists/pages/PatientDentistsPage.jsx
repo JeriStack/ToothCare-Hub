@@ -16,6 +16,7 @@ import {
 import { dentistsApi } from '../api';
 import { CardSkeleton } from '../../../components/skeletons';
 
+import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 export function PatientDentistsPage({ onBookDentist }) {
   const [dentists, setDentists] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -101,7 +102,7 @@ export function PatientDentistsPage({ onBookDentist }) {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by dentist name, specialty, or clinical focus..."
+              placeholder="Search dentist or specialty"
               className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-gray-600 text-xs sm:text-sm bg-slate-50/50 dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:bg-white dark:focus:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-[#2DD4BF] focus:border-transparent transition-all"
             />
             {search && (
@@ -260,9 +261,8 @@ export function PatientDentistsPage({ onBookDentist }) {
 
       {/* Dentist Profile Dialog / Modal */}
       {detailDentist && (
-        <div
-          role="dialog"
-          aria-modal="true"
+        <DialogOverlay
+          onClose={() => setDetailDentist(null)}
           className="fixed inset-0 z-50 bg-slate-900/40 dark:bg-black/65 backdrop-blur-xs flex items-center justify-center p-4"
           onClick={() => setDetailDentist(null)}
         >
@@ -370,7 +370,7 @@ export function PatientDentistsPage({ onBookDentist }) {
               </button>
             </div>
           </div>
-        </div>
+        </DialogOverlay>
       )}
     </div>
   );

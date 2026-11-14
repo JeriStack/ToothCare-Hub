@@ -87,7 +87,7 @@ export function VerifyEmailPage({
 
       {/* 2. Success State */}
       {status === 'SUCCESS' && (
-        <div className="text-center py-4 space-y-5 animate-in fade-in duration-300">
+        <div className="text-center py-4 space-y-5 tch-animate-fade-in">
           <div className="w-14 h-14 mx-auto rounded-2xl bg-[#CCFBF1] dark:bg-teal-900/50 text-[#0D9488] dark:text-teal-300 flex items-center justify-center">
             <CheckCircle2 className="w-8 h-8" />
           </div>
@@ -176,7 +176,7 @@ export function VerifyEmailPage({
             <button
               type="button"
               onClick={onNavigateLogin}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded"
+              className="tch-tap inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back to sign in</span>

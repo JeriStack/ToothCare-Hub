@@ -659,7 +659,7 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
             <button
               type="button"
               onClick={() => onNavigateTab && onNavigateTab('appointments')}
-              className="text-xs font-semibold text-teal-700 dark:text-teal-400 hover:text-teal-900 dark:hover:text-teal-300 inline-flex items-center gap-1"
+              className="tch-tap text-xs font-semibold text-teal-700 dark:text-teal-400 hover:text-teal-900 dark:hover:text-teal-300 inline-flex items-center gap-1"
             >
               <span>View Full Workload</span>
               <ChevronRight className="w-3.5 h-3.5" />
@@ -672,7 +672,7 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
               <input
                 type="text"
-                placeholder="Search today's queue by patient, procedure, chair..."
+                placeholder="Search today's queue"
                 value={queueSearch}
                 onChange={(e) => setQueueSearch(e.target.value)}
                 className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-800 dark:text-slate-100 text-xs placeholder:text-slate-400 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
@@ -905,7 +905,7 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
                 <button
                   type="button"
                   onClick={() => setIsLeaveModalOpen(true)}
-                  className="w-full text-center pt-1 text-xs font-bold text-teal-700 dark:text-teal-400 hover:underline"
+                  className="tch-tap w-full text-center pt-1 text-xs font-bold text-teal-700 dark:text-teal-400 hover:underline"
                 >
                   + Request New Leave
                 </button>

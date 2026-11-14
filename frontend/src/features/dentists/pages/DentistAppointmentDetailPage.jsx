@@ -20,6 +20,7 @@ import { TreatmentRecordViewer } from '../../treatment-records/components/Treatm
 import { TreatmentRecordEditor } from '../../treatment-records/components/TreatmentRecordEditor';
 import { AppointmentDetailSkeleton } from '../../../components/skeletons';
 
+import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 export function DentistAppointmentDetailPage({ appointmentId, onBack }) {
   const [appointment, setAppointment] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -266,7 +267,7 @@ export function DentistAppointmentDetailPage({ appointmentId, onBack }) {
               <button
                 type="button"
                 onClick={() => setIsEditingRecord(false)}
-                className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100"
+                className="tch-tap text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100"
               >
                 Cancel
               </button>
@@ -313,9 +314,8 @@ export function DentistAppointmentDetailPage({ appointmentId, onBack }) {
 
       {/* Complete Appointment Modal */}
       {isCompletionModalOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
+        <DialogOverlay
+          onClose={() => setIsCompletionModalOpen(false)}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/70 backdrop-blur-xs"
         >
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-slate-200 dark:border-gray-700 shadow-xl max-w-md w-full p-5 space-y-4">
@@ -363,7 +363,7 @@ export function DentistAppointmentDetailPage({ appointmentId, onBack }) {
               </button>
             </div>
           </div>
-        </div>
+        </DialogOverlay>
       )}
     </div>
   );

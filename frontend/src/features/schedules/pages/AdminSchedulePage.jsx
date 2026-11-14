@@ -22,7 +22,8 @@ import { dentistsApi } from '../../dentists/api';
 import { servicesApi } from '../../services/api';
 import { AvailabilitySlotPicker } from '../components/AvailabilitySlotPicker';
 import { ScheduleCalendarSkeleton } from '../../../components/skeletons/ScheduleCalendarSkeleton';
-
+
+import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 const DAYS_OF_WEEK = [
   { id: 1, name: 'Monday' },
   { id: 2, name: 'Tuesday' },
@@ -410,7 +411,7 @@ export function AdminSchedulePage() {
                           onChange={(e) =>
                             handleClinicHourChange(day.id, 'is_closed', e.target.checked ? 1 : 0)
                           }
-                          className="rounded text-teal-600 focus:ring-teal-500"
+                          className="tch-check rounded text-teal-600 focus:ring-teal-500"
                         />
                         <span className={`text-xs font-medium ${isClosed ? 'text-amber-700 dark:text-amber-300' : 'text-slate-600 dark:text-slate-300'}`}>
                           {isClosed ? 'Closed All Day' : 'Open'}
@@ -765,7 +766,8 @@ export function AdminSchedulePage() {
       {/* MODAL: ADD / EDIT SHIFT */}
       {/* ========================================================= */}
       {isShiftModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40 dark:bg-black/65 backdrop-blur-xs flex items-center justify-center p-4">
+        <DialogOverlay
+          onClose={() => setIsShiftModalOpen(false)} className="fixed inset-0 z-50 bg-black/40 dark:bg-black/65 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 max-w-md w-full p-6 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-[#12304A] dark:text-slate-100">
@@ -847,14 +849,15 @@ export function AdminSchedulePage() {
               </div>
             </form>
           </div>
-        </div>
+        </DialogOverlay>
       )}
 
       {/* ========================================================= */}
       {/* MODAL: SCHEDULE CLINIC CLOSURE */}
       {/* ========================================================= */}
       {isClosureModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40 dark:bg-black/65 backdrop-blur-xs flex items-center justify-center p-4">
+        <DialogOverlay
+          onClose={() => setIsClosureModalOpen(false)} className="fixed inset-0 z-50 bg-black/40 dark:bg-black/65 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 max-w-md w-full p-6 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-[#12304A] dark:text-slate-100">Schedule Facility Closure</h3>
@@ -943,14 +946,15 @@ export function AdminSchedulePage() {
               </div>
             </form>
           </div>
-        </div>
+        </DialogOverlay>
       )}
 
       {/* ========================================================= */}
       {/* MODAL: DENTIST TIME-OFF */}
       {/* ========================================================= */}
       {isTimeOffModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40 dark:bg-black/65 backdrop-blur-xs flex items-center justify-center p-4">
+        <DialogOverlay
+          onClose={() => setIsTimeOffModalOpen(false)} className="fixed inset-0 z-50 bg-black/40 dark:bg-black/65 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 max-w-md w-full p-6 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-[#12304A] dark:text-slate-100">Schedule Practitioner Leave</h3>
@@ -1015,7 +1019,7 @@ export function AdminSchedulePage() {
               </div>
             </form>
           </div>
-        </div>
+        </DialogOverlay>
       )}
     </div>
   );

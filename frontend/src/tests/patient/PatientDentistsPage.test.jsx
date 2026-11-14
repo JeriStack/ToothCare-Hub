@@ -67,7 +67,7 @@ describe('PatientDentistsPage Component', () => {
       expect(screen.getByText(/Dr\. Maria Santos/i)).toBeDefined();
     });
 
-    const searchInput = screen.getByPlaceholderText(/Search by dentist name/i);
+    const searchInput = screen.getByPlaceholderText(/Search dentist or specialty/i);
     fireEvent.change(searchInput, { target: { value: 'Orthodontics' } });
 
     expect(screen.queryByText(/Dr\. Maria Santos/i)).toBeNull();

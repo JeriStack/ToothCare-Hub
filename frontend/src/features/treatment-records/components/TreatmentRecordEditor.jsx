@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   FileText,
   AlertTriangle,
@@ -35,6 +35,19 @@ export function TreatmentRecordEditor({
   const [formError, setFormError] = useState(null);
   const [formSuccess, setFormSuccess] = useState(null);
   const [hasInteracted, setHasInteracted] = useState(false);
+  const alertRef = useRef(null);
+
+  // The alert renders next to the Save button, which is far from the top of this long form.
+  // Show and announce it right where the user just tapped.
+  const showError = (message) => {
+    setFormError(message);
+    window.requestAnimationFrame?.(() => {
+      const el = alertRef.current;
+      if (!el) return;
+      el.scrollIntoView?.({ block: 'nearest' });
+      el.focus?.({ preventScroll: true });
+    });
+  };
 
   // 24-hour compliance lock calculation
   const isLocked = Boolean(initialRecord?.is_locked);
@@ -75,11 +88,11 @@ export function TreatmentRecordEditor({
     const cleanProcedure = procedureNotes.trim();
 
     if (cleanDiagnosis.length < 3) {
-      setFormError('Clinical diagnosis is required (minimum 3 characters).');
+      showError('Clinical diagnosis is required (minimum 3 characters).');
       return;
     }
     if (cleanProcedure.length < 5) {
-      setFormError('Detailed procedure notes are required (minimum 5 characters).');
+      showError('Detailed procedure notes are required (minimum 5 characters).');
       return;
     }
 
@@ -118,7 +131,7 @@ export function TreatmentRecordEditor({
         err.response?.data?.message ||
         err.message ||
         'Failed to save treatment record.';
-      setFormError(errMsg);
+      showError(errMsg);
     } finally {
       setSubmitting(false);
     }
@@ -161,27 +174,6 @@ export function TreatmentRecordEditor({
         </div>
       )}
 
-      {/* Error or Success Alerts */}
-      {formError && (
-        <div
-          role="alert"
-          className="flex items-center gap-2 p-3 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-medium"
-        >
-          <XCircle className="w-4 h-4 shrink-0" />
-          <span>{formError}</span>
-        </div>
-      )}
-
-      {formSuccess && (
-        <div
-          role="status"
-          className="flex items-center gap-2 p-3 rounded-lg bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-200 text-xs font-medium"
-        >
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
-          <span>{formSuccess}</span>
-        </div>
-      )}
-
       {/* FDI Teeth Notation Chart */}
       <div className="space-y-2">
         <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-gray-300">
@@ -196,14 +188,15 @@ export function TreatmentRecordEditor({
 
       {/* Diagnosis Field */}
       <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <label htmlFor="tr-diagnosis" className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-gray-200">
+        <div className="flex items-start justify-between gap-2">
+          <label htmlFor="tr-diagnosis" className="block min-w-0 text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-gray-200">
             Clinical Diagnosis <span className="text-rose-500 dark:text-rose-400">*</span>
           </label>
-          <span className="text-[11px] text-slate-400 dark:text-gray-400">{diagnosis.length}/2000 chars</span>
+          <span className="shrink-0 whitespace-nowrap text-[11px] text-slate-400 dark:text-gray-400">{diagnosis.length}/2000 chars</span>
         </div>
         <textarea
           id="tr-diagnosis"
+          aria-invalid={hasInteracted && diagnosis.trim().length < 3}
           name="diagnosis"
           rows={3}
           required
@@ -224,14 +217,15 @@ export function TreatmentRecordEditor({
 
       {/* Procedure Notes Field */}
       <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <label htmlFor="tr-procedure" className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-gray-200">
+        <div className="flex items-start justify-between gap-2">
+          <label htmlFor="tr-procedure" className="block min-w-0 text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-gray-200">
             Procedure Notes & Operative Details <span className="text-rose-500 dark:text-rose-400">*</span>
           </label>
-          <span className="text-[11px] text-slate-400 dark:text-gray-400">{procedureNotes.length}/5000 chars</span>
+          <span className="shrink-0 whitespace-nowrap text-[11px] text-slate-400 dark:text-gray-400">{procedureNotes.length}/5000 chars</span>
         </div>
         <textarea
           id="tr-procedure"
+          aria-invalid={hasInteracted && procedureNotes.trim().length < 5}
           name="procedure_notes"
           rows={5}
           required
@@ -252,11 +246,11 @@ export function TreatmentRecordEditor({
 
       {/* Prescription Notes */}
       <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <label htmlFor="tr-prescription" className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-gray-200">
+        <div className="flex items-start justify-between gap-2">
+          <label htmlFor="tr-prescription" className="block min-w-0 text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-gray-200">
             Prescriptions & Pharmacotherapy (Optional)
           </label>
-          <span className="text-[11px] text-slate-400 dark:text-gray-400">{prescriptionNotes.length}/2000 chars</span>
+          <span className="shrink-0 whitespace-nowrap text-[11px] text-slate-400 dark:text-gray-400">{prescriptionNotes.length}/2000 chars</span>
         </div>
         <textarea
           id="tr-prescription"
@@ -274,11 +268,11 @@ export function TreatmentRecordEditor({
 
       {/* Home Care Advice */}
       <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <label htmlFor="tr-homecare" className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-gray-200">
+        <div className="flex items-start justify-between gap-2">
+          <label htmlFor="tr-homecare" className="block min-w-0 text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-gray-200">
             Home Care & Patient Post-Op Advice (Optional)
           </label>
-          <span className="text-[11px] text-slate-400 dark:text-gray-400">{homeCareAdvice.length}/2000 chars</span>
+          <span className="shrink-0 whitespace-nowrap text-[11px] text-slate-400 dark:text-gray-400">{homeCareAdvice.length}/2000 chars</span>
         </div>
         <textarea
           id="tr-homecare"
@@ -294,8 +288,31 @@ export function TreatmentRecordEditor({
         />
       </div>
 
+      {/* Error or Success Alerts */}
+      {formError && (
+        <div
+          ref={alertRef}
+          tabIndex={-1}
+          role="alert"
+          className="flex items-center gap-2 p-3 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+        >
+          <XCircle className="w-4 h-4 shrink-0" />
+          <span>{formError}</span>
+        </div>
+      )}
+
+      {formSuccess && (
+        <div
+          role="status"
+          className="flex items-center gap-2 p-3 rounded-lg bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-200 text-xs font-medium"
+        >
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <span>{formSuccess}</span>
+        </div>
+      )}
+
       {/* Form Action Controls */}
-      <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-gray-700">
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3 pt-3 border-t border-slate-200 dark:border-gray-700 [&>button]:min-h-11 sm:[&>button]:min-h-10 [&>button]:w-full sm:[&>button]:w-auto [&>button]:justify-center">
         {onCancel && (
           <button
             type="button"

@@ -26,7 +26,7 @@ export const Button = forwardRef(function Button(
   ref
 ) {
   const baseClasses =
-    'inline-flex items-center justify-center font-semibold transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900 disabled:opacity-50 disabled:pointer-events-none select-none';
+    'inline-flex items-center justify-center font-semibold transition-all duration-150 motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900 disabled:opacity-50 disabled:pointer-events-none select-none cursor-pointer [@media(pointer:coarse)]:min-h-11';
 
   const sizeClasses = {
     sm: 'px-3 py-1.5 rounded-lg text-xs gap-1.5',

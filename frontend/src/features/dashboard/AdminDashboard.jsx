@@ -497,7 +497,7 @@ export function AdminDashboard({ onNavigateTab }) {
             {onNavigateTab && (
               <button
                 onClick={() => onNavigateTab('triage')}
-                className="text-xs font-semibold text-teal-700 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300"
+                className="tch-tap text-xs font-semibold text-teal-700 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300"
               >
                 Go to Triage
               </button>
@@ -528,7 +528,7 @@ export function AdminDashboard({ onNavigateTab }) {
                       {onNavigateTab && (
                         <button
                           onClick={() => onNavigateTab('triage')}
-                          className="text-[11px] font-semibold text-teal-700 dark:text-teal-400 hover:underline"
+                          className="tch-tap text-[11px] font-semibold text-teal-700 dark:text-teal-400 hover:underline"
                         >
                           Review
                         </button>
@@ -554,7 +554,7 @@ export function AdminDashboard({ onNavigateTab }) {
             {onNavigateTab && (
               <button
                 onClick={() => onNavigateTab('patients')}
-                className="text-xs font-semibold text-teal-700 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300"
+                className="tch-tap text-xs font-semibold text-teal-700 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300"
               >
                 View all
               </button>
@@ -593,7 +593,7 @@ export function AdminDashboard({ onNavigateTab }) {
             {onNavigateTab && (
               <button
                 onClick={() => onNavigateTab('services')}
-                className="text-xs font-semibold text-teal-700 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300"
+                className="tch-tap text-xs font-semibold text-teal-700 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300"
               >
                 View all
               </button>
@@ -641,7 +641,7 @@ export function AdminDashboard({ onNavigateTab }) {
             {onNavigateTab && (
               <button
                 onClick={() => onNavigateTab('audit')}
-                className="text-xs font-semibold text-teal-700 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300"
+                className="tch-tap text-xs font-semibold text-teal-700 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300"
               >
                 Full Log
               </button>
