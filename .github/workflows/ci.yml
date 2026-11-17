@@ -52,15 +52,66 @@ jobs:
 
       - name: PHP lint (syntax check)
         working-directory: backend
-        run: find src public config tests -name "*.php" -print0 | xargs -0 -n1 php -l
+        run: find src public config tests bin templates -name "*.php" -print0 | xargs -0 -n1 php -l
 
-      - name: Run PHPUnit
+      - name: Run PHPUnit (fake mail transport; no SMTP is ever contacted)
         working-directory: backend
+        env:
+          MAIL_ENABLED: "false"
+          MAIL_HOST: ""
+          EMAIL_PAYLOAD_KEY: ci-only-not-a-secret
         run: ./vendor/bin/phpunit
+
+      - name: Email worker and scheduler command validation
+        working-directory: backend
+        env:
+          MAIL_ENABLED: "false"
+        run: |
+          php bin/email-worker.php --help
+          php -r 'require "vendor/autoload.php"; $s = App\Services\Email\OutboxSettings::fromEnvironment(); if (!$s->isValid()) { fwrite(STDERR, implode("\n", $s->errors)); exit(1); } echo "worker settings valid\n";'
+          php -r 'require "vendor/autoload.php"; foreach (App\Services\Email\EmailTemplateRenderer::TEMPLATES as $t) { if (!(new App\Services\Email\EmailTemplateRenderer(App\Services\Email\EmailTemplateRenderer::defaultTemplateDir()))->has($t)) { fwrite(STDERR, "missing template $t\n"); exit(1); } } echo "all email templates present\n";'
 
       - name: Validate OpenAPI spec
         working-directory: backend
         run: php scripts/validate-openapi.php
+
+  migrations:
+    name: Database migrations (MySQL 8.0)
+    runs-on: ubuntu-26.04
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci_root_pass
+          MYSQL_DATABASE: toothcare_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci_root_pass"
+          --health-interval=5s --health-timeout=3s --health-retries=20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.5"
+          extensions: pdo, pdo_mysql, json
+          coverage: none
+
+      - name: Apply all migrations to an empty database
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: "3306"
+          DB_NAME: toothcare_ci
+          DB_USER: root
+          DB_PASSWORD: ci_root_pass
+        run: php database/migrate.php --no-backup
+
+      - name: Verify email outbox schema and permissions
+        run: |
+          mysql -h 127.0.0.1 -uroot -pci_root_pass toothcare_ci -e "SELECT event_key, locked_by, payload_json FROM email_outbox LIMIT 0"
+          test "$(mysql -h 127.0.0.1 -uroot -pci_root_pass toothcare_ci -N -e "SELECT COUNT(*) FROM permissions WHERE slug LIKE 'email_outbox.%'")" = "4"
 
   frontend:
     name: Frontend (Node ${{ matrix.node-version }})

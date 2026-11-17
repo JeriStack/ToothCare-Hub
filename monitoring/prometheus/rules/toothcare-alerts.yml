@@ -36,3 +36,29 @@ groups:
         annotations:
           summary: "Socket.IO real-time service unavailable"
           description: "Real-time notification engine is down. In-app notifications will fall back to REST."
+  - name: toothcare-email
+    rules:
+      - alert: EmailJobsExhausted
+        expr: toothcare_email_jobs_exhausted > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Email jobs exhausted all delivery attempts"
+          description: "{{ $value }} email job(s) failed permanently after all retries. Review them under System Health > Email Delivery."
+      - alert: EmailBacklogGrowing
+        expr: toothcare_email_jobs_pending > 50
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Email outbox backlog is growing"
+          description: "More than 50 emails have been waiting for 15 minutes. Check the email-worker container and SMTP availability."
+      - alert: EmailDeliveryStalled
+        expr: toothcare_email_jobs_pending > 0 and (time() - toothcare_email_last_success_timestamp_seconds) > 3600
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No email delivered for over an hour while jobs are waiting"
+          description: "The worker may be stopped, or SMTP may be unreachable or misconfigured."
