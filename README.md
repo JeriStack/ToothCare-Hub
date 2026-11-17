@@ -30,7 +30,7 @@ A responsive web-based dental appointment and clinic management system. ToothCar
 | **Frontend** | React, TypeScript/JSX, Vite, Tailwind CSS, shadcn/ui, Lucide React, React Router, Axios, React Hook Form, Zod | Phase 2 containerized SPA static bundle mounted at `/var/www/frontend/dist`; feature development in Phase 5+ |
 | **Backend API** | Native PHP (`^8.5`, pinned to `8.5.12-fpm-alpine3.24`), Composer, PDO | Phase 2 containerized image built; front controller responsive to `/api/v1/health` & `/api/v1/metrics`; feature routes in Phase 5+ |
 | **Database** | MySQL 8.x (`InnoDB`, `utf8mb4`) | Phase 2 containerized service active with persistent volume `toothcare_mysql_data` & `mysqladmin ping` readiness check |
-| **Email Worker** | PHPMailer (`^6.9`) over SMTP + `email_outbox` CLI worker | Phase 2 dedicated background worker daemon (`backend/src/Jobs/ProcessEmailOutbox.php`) reusing PHP image |
+| **Email Worker** | PHPMailer (`^6.9`) over SMTP + transactional `email_outbox` | Phase 13 worker `backend/bin/email-worker.php` and reminder scheduler `backend/bin/schedule-reminders.php`, both reusing the PHP image ([docs](docs/modules/email-notifications/email-architecture.md)) |
 | **Real-Time** | Node.js (`24-alpine`) + Socket.IO (`^4.8.1`) | Phase 2 containerized service active with non-root user, `/health`, `/metrics`, and `/socket.io/` proxying |
 | **Reverse Proxy** | Nginx (`1.27-alpine`) | Phase 2 primary edge entry point; SPA fallback, FastCGI `/api/` routing, WebSocket proxying, and security headers |
 | **Containerization** | Docker Compose v2 (`compose.yaml`, `compose.dev.yaml`, `compose.prod.yaml`) | Fully implemented and verified in Phase 2 |

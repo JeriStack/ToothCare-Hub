@@ -9,7 +9,7 @@
 | [`database/`](database/) | Data dictionary, ERD, schema design, concurrency, audits |
 | [`api/`](api/) | API contract, authentication and CSRF, CORS, error codes |
 | [`security/`](security/) | Security checklist and authentication documentation |
-| [`modules/`](modules/) | Admin, scheduling, booking, patient portal, dentist portal, administrator control center |
+| [`modules/`](modules/) | Admin, scheduling, booking, patient portal, dentist portal, administrator control center, email notifications (Phase 13) |
 | [`operations/`](operations/) | Database backup and disaster recovery, observability runbook |
 | [`implementation/`](implementation/) | Frontend stage implementation reports |
 
