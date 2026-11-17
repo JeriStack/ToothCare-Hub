@@ -15,6 +15,7 @@ use App\Repositories\PatientRepository;
 use App\Repositories\RateLimitRepository;
 use App\Repositories\RoleRepository;
 use App\Repositories\UserRepository;
+use App\Services\Email\EmailOutboxService;
 use App\Validators\AuthValidator;
 
 /**
@@ -30,7 +31,7 @@ class AuthService
     private AuditLogRepository $auditLogRepository;
     private RateLimitRepository $rateLimitRepository;
     private RoleRepository $roleRepository;
-    private EmailService $emailService;
+    private EmailOutboxService $emailService;
     private Database $database;
     private Config $config;
     private Logger $logger;
@@ -42,7 +43,7 @@ class AuthService
         ?AuthTokenRepository $tokenRepository = null,
         ?AuditLogRepository $auditLogRepository = null,
         ?RateLimitRepository $rateLimitRepository = null,
-        ?EmailService $emailService = null,
+        ?EmailOutboxService $emailService = null,
         ?Database $database = null,
         ?Config $config = null,
         ?Logger $logger = null,
@@ -58,7 +59,7 @@ class AuthService
         $this->auditLogRepository = $auditLogRepository ?? new AuditLogRepository($this->database);
         $this->rateLimitRepository = $rateLimitRepository ?? new RateLimitRepository($this->database);
         $this->roleRepository = $roleRepository ?? new RoleRepository($this->database);
-        $this->emailService = $emailService ?? new EmailService($this->database, $this->config, $this->logger);
+        $this->emailService = $emailService ?? new EmailOutboxService(null, null, null, $this->logger, null, $this->database);
     }
 
     /**
@@ -131,11 +132,12 @@ class AuthService
             $tokenHash = hash('sha256', $rawToken);
             $tokenTtl = $this->config->getInt('email_verification_token_ttl', 86400);
 
-            $this->tokenRepository->createToken($userId, $tokenHash, 'EMAIL_VERIFY', $tokenTtl);
+            $tokenId = $this->tokenRepository->createToken($userId, $tokenHash, 'EMAIL_VERIFY', $tokenTtl);
 
-            // 7. Enqueue verification email
+            // 7. Transactional outbox: queue the verification email atomically with the account.
+            //    A failure here throws and rolls back the registration (no account without a queued email).
             $recipientName = "{$validated['first_name']} {$validated['last_name']}";
-            $this->emailService->sendVerificationEmail($email, $rawToken, $recipientName, $userId);
+            $this->emailService->queueVerification($email, $recipientName, $userId, $rawToken, $tokenId, $tokenTtl);
 
             // 8. Audit log event
             $this->auditLogRepository->record(
@@ -528,22 +530,29 @@ class AuthService
             $tokenHash = hash('sha256', $rawToken);
             $tokenTtl = $this->config->getInt('email_verification_token_ttl', 86400);
 
-            $this->tokenRepository->createToken($userId, $tokenHash, 'EMAIL_VERIFY', $tokenTtl);
-
             $patient = $this->patientRepository->findByUserId($userId);
             $name = $patient ? "{$patient['first_name']} {$patient['last_name']}" : 'Valued Patient';
 
-            $this->emailService->sendVerificationEmail($normalizedEmail, $rawToken, $name, $userId);
-
-            $this->auditLogRepository->record(
-                'AUTH_VERIFICATION_RESENT',
-                'users',
-                $userId,
-                $userId,
-                $clientIp,
-                $userAgent,
-                ['email' => $normalizedEmail]
-            );
+            // Token and queued email commit together or not at all. The response stays generic
+            // either way to prevent account enumeration; failures are logged.
+            $this->database->beginTransaction();
+            try {
+                $tokenId = $this->tokenRepository->createToken($userId, $tokenHash, 'EMAIL_VERIFY', $tokenTtl);
+                $this->emailService->queueVerification($normalizedEmail, $name, $userId, $rawToken, $tokenId, $tokenTtl);
+                $this->auditLogRepository->record(
+                    'AUTH_VERIFICATION_RESENT',
+                    'users',
+                    $userId,
+                    $userId,
+                    $clientIp,
+                    $userAgent,
+                    ['email' => $normalizedEmail]
+                );
+                $this->database->commit();
+            } catch (\Throwable $e) {
+                $this->database->rollBack();
+                $this->logger->error('Verification resend failed; transaction rolled back', ['user_id' => $userId, 'error' => $e->getMessage()]);
+            }
         }
 
         // Always return generic response to prevent email enumeration
@@ -577,23 +586,28 @@ class AuthService
             $tokenHash = hash('sha256', $rawToken);
             $tokenTtl = $this->config->getInt('password_reset_token_ttl', 1800);
 
-            $this->tokenRepository->createToken($userId, $tokenHash, 'PASSWORD_RESET', $tokenTtl);
-
             $patient = $this->patientRepository->findByUserId($userId);
             $dentist = $patient ? null : $this->dentistRepository->findByUserId($userId);
             $name = $patient ? "{$patient['first_name']} {$patient['last_name']}" : ($dentist ? "Dr. {$dentist['last_name']}" : 'Clinic Member');
 
-            $this->emailService->sendPasswordResetEmail($normalizedEmail, $rawToken, $name, $userId);
-
-            $this->auditLogRepository->record(
-                'AUTH_PASSWORD_RESET_REQUESTED',
-                'users',
-                $userId,
-                $userId,
-                $clientIp,
-                $userAgent,
-                ['email' => $normalizedEmail]
-            );
+            $this->database->beginTransaction();
+            try {
+                $tokenId = $this->tokenRepository->createToken($userId, $tokenHash, 'PASSWORD_RESET', $tokenTtl);
+                $this->emailService->queuePasswordReset($normalizedEmail, $name, $userId, $rawToken, $tokenId, $tokenTtl);
+                $this->auditLogRepository->record(
+                    'AUTH_PASSWORD_RESET_REQUESTED',
+                    'users',
+                    $userId,
+                    $userId,
+                    $clientIp,
+                    $userAgent,
+                    ['email' => $normalizedEmail]
+                );
+                $this->database->commit();
+            } catch (\Throwable $e) {
+                $this->database->rollBack();
+                $this->logger->error('Password reset request failed; transaction rolled back', ['user_id' => $userId, 'error' => $e->getMessage()]);
+            }
         }
 
         // Generic response strictly prevents account enumeration
