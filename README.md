@@ -30,7 +30,7 @@ A responsive web-based dental appointment and clinic management system. ToothCar
 | **Frontend** | React, TypeScript/JSX, Vite, Tailwind CSS, shadcn/ui, Lucide React, React Router, Axios, React Hook Form, Zod | Phase 2 containerized SPA static bundle mounted at `/var/www/frontend/dist`; feature development in Phase 5+ |
 | **Backend API** | Native PHP (`^8.5`, pinned to `8.5.12-fpm-alpine3.24`), Composer, PDO | Phase 2 containerized image built; front controller responsive to `/api/v1/health` & `/api/v1/metrics`; feature routes in Phase 5+ |
 | **Database** | MySQL 8.x (`InnoDB`, `utf8mb4`) | Phase 2 containerized service active with persistent volume `toothcare_mysql_data` & `mysqladmin ping` readiness check |
-| **Email Worker** | PHPMailer (`^6.9`) over SMTP + `email_outbox` CLI worker | Phase 2 dedicated background worker daemon (`backend/src/Jobs/ProcessEmailOutbox.php`) reusing PHP image |
+| **Email Worker** | PHPMailer (`^6.9`) over SMTP + transactional `email_outbox` | Phase 13 worker `backend/bin/email-worker.php` and reminder scheduler `backend/bin/schedule-reminders.php`, both reusing the PHP image ([docs](docs/modules/email-notifications/email-architecture.md)) |
 | **Real-Time** | Node.js (`24-alpine`) + Socket.IO (`^4.8.1`) | Phase 2 containerized service active with non-root user, `/health`, `/metrics`, and `/socket.io/` proxying |
 | **Reverse Proxy** | Nginx (`1.27-alpine`) | Phase 2 primary edge entry point; SPA fallback, FastCGI `/api/` routing, WebSocket proxying, and security headers |
 | **Containerization** | Docker Compose v2 (`compose.yaml`, `compose.dev.yaml`, `compose.prod.yaml`) | Fully implemented and verified in Phase 2 |
@@ -52,7 +52,7 @@ A responsive web-based dental appointment and clinic management system. ToothCar
 | `monitoring/` | Prometheus scrape/alerting rules and Grafana datasource/dashboard provisioning |
 | `deployment/` | Deployment, rollback, health-check scripts, and Apache VirtualHost fallback example |
 | `scripts/` | Windows PowerShell helper scripts for local setup, testing, and OpenAPI generation |
-| `docs/` | Architecture, security, Phase 0 specs (`docs/phase-0/`), Phase 1 setup (`docs/phase-1/`), and Phase 2 runbook (`docs/phase-2-implementation.md`) |
+| `docs/` | Project documentation, organized by topic. Start at [`docs/README.md`](docs/README.md) |
 | `.github/` | GitHub Actions CI/CD workflows, issue templates, and PR template |
 
 ---
@@ -80,7 +80,7 @@ Copy-Item realtime/.env.example realtime/.env
 
 - Edit `.env`, `backend/.env`, `frontend/.env`, and `realtime/.env` with local development values.
 - **Security Rule:** Never commit real `.env` files, SMTP credentials, private keys, or patient data. Never place secrets in `frontend/.env` (`VITE_*` variables are bundled into browser code).
-- See [`docs/phase-1/environment-configuration.md`](docs/phase-1/environment-configuration.md) for full variable documentation.
+- See [`docs/setup/environment-configuration.md`](docs/setup/environment-configuration.md) for full variable documentation.
 
 ---
 
@@ -172,33 +172,33 @@ cd realtime; npm test; cd ..
 - **Branches:** `main` (stable/releasable), `development` / `develop` (integration), `feature/<short-description>`, `fix/<short-description>`, `docs/<short-description>`, `chore/<short-description>`.
 - **Commits:** Imperative conventional commits under ~70 characters (e.g., `feat(appointments): validate slot conflicts`, `fix(auth): reject invalid session`, `docs(phase-1): document local environment`).
 - **Pull Requests:** Must complete all checkboxes in [`.github/pull_request_template.md`](.github/pull_request_template.md) and pass CI checks.
-- See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/phase-1/git-workflow.md`](docs/phase-1/git-workflow.md) for complete rules.
+- See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/setup/git-workflow.md`](docs/setup/git-workflow.md) for complete rules.
 
 ---
 
 ## 11. Project Documentation Index
 
 - **Phase 0 — Project Initiation & Scope Freeze:**
-  - [`docs/phase-0/project-brief.md`](docs/phase-0/project-brief.md)
-  - [`docs/phase-0/mvp-scope.md`](docs/phase-0/mvp-scope.md)
-  - [`docs/phase-0/requirements-register.md`](docs/phase-0/requirements-register.md)
-  - [`docs/phase-0/role-permission-matrix.md`](docs/phase-0/role-permission-matrix.md)
-  - [`docs/phase-0/appointment-policy-decisions.md`](docs/phase-0/appointment-policy-decisions.md)
-  - [`docs/phase-0/runtime-compatibility.md`](docs/phase-0/runtime-compatibility.md)
-  - [`docs/phase-0/risk-and-assumptions-register.md`](docs/phase-0/risk-and-assumptions-register.md)
-  - [`docs/phase-0/phase-0-exit-checklist.md`](docs/phase-0/phase-0-exit-checklist.md)
+  - [`docs/planning/project-brief.md`](docs/planning/project-brief.md)
+  - [`docs/planning/mvp-scope.md`](docs/planning/mvp-scope.md)
+  - [`docs/planning/requirements-register.md`](docs/planning/requirements-register.md)
+  - [`docs/planning/role-permission-matrix.md`](docs/planning/role-permission-matrix.md)
+  - [`docs/planning/appointment-policy-decisions.md`](docs/planning/appointment-policy-decisions.md)
+  - [`docs/planning/runtime-compatibility.md`](docs/planning/runtime-compatibility.md)
+  - [`docs/planning/risk-and-assumptions-register.md`](docs/planning/risk-and-assumptions-register.md)
+  - [`docs/planning/phase-0-exit-checklist.md`](docs/planning/phase-0-exit-checklist.md)
 - **Phase 1 — Repository, Local Environment & Team Workflow:**
-  - [`docs/phase-1/environment-assessment.md`](docs/phase-1/environment-assessment.md)
-  - [`docs/phase-1/environment-configuration.md`](docs/phase-1/environment-configuration.md)
-  - [`docs/phase-1/docker-context-security.md`](docs/phase-1/docker-context-security.md)
-  - [`docs/phase-1/git-workflow.md`](docs/phase-1/git-workflow.md)
-  - [`docs/phase-1/local-development.md`](docs/phase-1/local-development.md)
-  - [`docs/phase-1/phase-1-exit-checklist.md`](docs/phase-1/phase-1-exit-checklist.md)
+  - [`docs/setup/environment-assessment.md`](docs/setup/environment-assessment.md)
+  - [`docs/setup/environment-configuration.md`](docs/setup/environment-configuration.md)
+  - [`docs/setup/docker-context-security.md`](docs/setup/docker-context-security.md)
+  - [`docs/setup/git-workflow.md`](docs/setup/git-workflow.md)
+  - [`docs/setup/local-development.md`](docs/setup/local-development.md)
+  - [`docs/setup/phase-1-exit-checklist.md`](docs/setup/phase-1-exit-checklist.md)
 - **Phase 2 — Dockerized Development Environment and Nginx Reverse Proxy:**
-  - [`docs/phase-2-implementation.md`](docs/phase-2-implementation.md)
+  - [`docs/setup/phase-2-implementation.md`](docs/setup/phase-2-implementation.md)
 - **Reference & Security Guides:**
-  - [`docs/directory-structure.md`](docs/directory-structure.md)
-  - [`docs/security-checklist.md`](docs/security-checklist.md)
+  - [`docs/architecture/directory-structure.md`](docs/architecture/directory-structure.md)
+  - [`docs/security/security-checklist.md`](docs/security/security-checklist.md)
   - [`CONTRIBUTING.md`](CONTRIBUTING.md)
 
 ---

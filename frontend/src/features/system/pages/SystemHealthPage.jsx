@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { systemApi } from '../api';
 import { SystemHealthSkeleton } from '../../../components/skeletons';
+import { EmailDeliveryPanel } from '../components/EmailDeliveryPanel';
 
 export function SystemHealthPage() {
   const [health, setHealth] = useState(null);
@@ -255,6 +256,9 @@ export function SystemHealthPage() {
           </div>
         </div>
       </div>
+
+      {/* Phase 13: Email outbox delivery health and failed-job recovery */}
+      <EmailDeliveryPanel />
 
       {/* Global Clinic Configuration Management */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-xs overflow-hidden">

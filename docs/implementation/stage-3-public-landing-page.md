@@ -18,22 +18,22 @@ The public landing page enforces pure light-mode styling adhering to the ToothCa
 
 ## 2. Component Audit & Inventory
 
-The landing page layout is structured in [`LandingPage.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/landing/LandingPage.jsx) with clean visual hierarchy:
+The landing page layout is structured in [`LandingPage.jsx`](../../frontend/src/features/landing/LandingPage.jsx) with clean visual hierarchy:
 
 | Section | Component File | Description & Behavior | API Integration |
 |---|---|---|---|
-| **Header Navigation** | [`LandingNavbar.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/landing/components/LandingNavbar.jsx) | Fixed top navigation with scroll detection, active pill indicators, mobile hamburger drawer, and role-aware CTA | `useAuth()` session state |
-| **Hero Section** | [`HeroSection.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/landing/components/HeroSection.jsx) | Clinical headline, value propositions, key metrics (12K smiles, 99% precision), hero imagery, and dual CTAs | Static UI + Booking CTA |
-| **Trust Metrics** | [`TrustSection.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/landing/components/TrustSection.jsx) | Accreditation metrics, PRC compliance, sanitization protocols, and patient guarantee indicators | Static UI |
-| **About Platform** | [`AboutSection.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/landing/components/AboutSection.jsx) | Clinic philosophy, state-of-the-art facilities, digital dentistry workflow, and chair management story | Static UI |
-| **Dental Services** | [`ServicesSection.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/landing/components/ServicesSection.jsx) | Comprehensive service catalog with procedure duration, pricing formatted in PHP (`₱`), and booking action | `GET /api/v1/services` |
-| **Dentist Roster** | [`DentistsSection.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/landing/components/DentistsSection.jsx) | Certified dentist profiles with specialization, operatory chair mapping, clinic days, and consultation CTA | `GET /api/v1/dentists` |
-| **How It Works** | [`HowItWorksSection.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/landing/components/HowItWorksSection.jsx) | 4-step appointment journey: Browse → Pick Slot → Instant Confirmation → Clinic Care | Static UI |
-| **Booking CTA** | [`BookingCTA.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/landing/components/BookingCTA.jsx) | High-converting mid-funnel banner with quick action buttons for booking and sign-in | Dynamic Routing |
-| **Benefits** | [`BenefitsSection.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/landing/components/BenefitsSection.jsx) | Patient care perks: zero wait times, digital dental records, transparent fees, SMS reminders | Static UI |
-| **FAQ** | [`FAQSection.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/landing/components/FAQSection.jsx) | Accessible accordion answering insurance, payment options, cancellation, and preparation policies | Static UI |
-| **Clinic Hours & Support** | [`ContactSection.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/landing/components/ContactSection.jsx) | Standard operating hours (Mon-Sat 8am-5pm), emergency medical advisory, clinic contact telephone and email | Static UI |
-| **Footer** | [`LandingFooter.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/landing/components/LandingFooter.jsx) | Site links, social badges, copyright, administrative portal access link, terms & privacy | Dynamic Routing |
+| **Header Navigation** | [`LandingNavbar.jsx`](../../frontend/src/features/landing/components/LandingNavbar.jsx) | Fixed top navigation with scroll detection, active pill indicators, mobile hamburger drawer, and role-aware CTA | `useAuth()` session state |
+| **Hero Section** | [`HeroSection.jsx`](../../frontend/src/features/landing/components/HeroSection.jsx) | Clinical headline, value propositions, key metrics (12K smiles, 99% precision), hero imagery, and dual CTAs | Static UI + Booking CTA |
+| **Trust Metrics** | [`TrustSection.jsx`](../../frontend/src/features/landing/components/TrustSection.jsx) | Accreditation metrics, PRC compliance, sanitization protocols, and patient guarantee indicators | Static UI |
+| **About Platform** | [`AboutSection.jsx`](../../frontend/src/features/landing/components/AboutSection.jsx) | Clinic philosophy, state-of-the-art facilities, digital dentistry workflow, and chair management story | Static UI |
+| **Dental Services** | [`ServicesSection.jsx`](../../frontend/src/features/landing/components/ServicesSection.jsx) | Comprehensive service catalog with procedure duration, pricing formatted in PHP (`₱`), and booking action | `GET /api/v1/services` |
+| **Dentist Roster** | [`DentistsSection.jsx`](../../frontend/src/features/landing/components/DentistsSection.jsx) | Certified dentist profiles with specialization, operatory chair mapping, clinic days, and consultation CTA | `GET /api/v1/dentists` |
+| **How It Works** | [`HowItWorksSection.jsx`](../../frontend/src/features/landing/components/HowItWorksSection.jsx) | 4-step appointment journey: Browse → Pick Slot → Instant Confirmation → Clinic Care | Static UI |
+| **Booking CTA** | [`BookingCTA.jsx`](../../frontend/src/features/landing/components/BookingCTA.jsx) | High-converting mid-funnel banner with quick action buttons for booking and sign-in | Dynamic Routing |
+| **Benefits** | [`BenefitsSection.jsx`](../../frontend/src/features/landing/components/BenefitsSection.jsx) | Patient care perks: zero wait times, digital dental records, transparent fees, SMS reminders | Static UI |
+| **FAQ** | [`FAQSection.jsx`](../../frontend/src/features/landing/components/FAQSection.jsx) | Accessible accordion answering insurance, payment options, cancellation, and preparation policies | Static UI |
+| **Clinic Hours & Support** | [`ContactSection.jsx`](../../frontend/src/features/landing/components/ContactSection.jsx) | Standard operating hours (Mon-Sat 8am-5pm), emergency medical advisory, clinic contact telephone and email | Static UI |
+| **Footer** | [`LandingFooter.jsx`](../../frontend/src/features/landing/components/LandingFooter.jsx) | Site links, social badges, copyright, administrative portal access link, terms & privacy | Dynamic Routing |
 
 ---
 

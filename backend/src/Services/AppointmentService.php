@@ -13,6 +13,7 @@ use App\Repositories\DentistRepository;
 use App\Repositories\PatientRepository;
 use App\Repositories\ServiceRepository;
 use App\Repositories\UserRepository;
+use App\Services\Email\EmailOutboxService;
 use App\Validators\AppointmentValidator;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -34,7 +35,7 @@ class AppointmentService
     private UserRepository $userRepo;
     private AvailabilityService $availabilityService;
     private AuditLogRepository $auditRepo;
-    private EmailService $emailService;
+    private EmailOutboxService $emailService;
     private NotificationService $notificationService;
     private Logger $logger;
     private DateTimeZone $timezone;
@@ -47,7 +48,7 @@ class AppointmentService
         ?UserRepository $userRepo = null,
         ?AvailabilityService $availabilityService = null,
         ?AuditLogRepository $auditRepo = null,
-        ?EmailService $emailService = null,
+        ?EmailOutboxService $emailService = null,
         ?Logger $logger = null,
         ?Database $database = null,
         ?NotificationService $notificationService = null
@@ -68,7 +69,7 @@ class AppointmentService
             $this->database
         );
         $this->auditRepo = $auditRepo ?? new AuditLogRepository($this->database);
-        $this->emailService = $emailService ?? new EmailService($this->database);
+        $this->emailService = $emailService ?? new EmailOutboxService(null, null, null, null, null, $this->database);
         $this->logger = $logger ?? Logger::getInstance();
         $this->notificationService = $notificationService ?? new NotificationService(
             new \App\Repositories\NotificationRepository($this->database),
@@ -191,7 +192,7 @@ class AppointmentService
             ], $pdo);
 
             // 9. Record Initial Status History
-            $this->appointmentRepo->recordStatusHistory(
+            $historyId = $this->appointmentRepo->recordStatusHistory(
                 $appointmentId,
                 null,
                 AppointmentValidator::STATUS_PENDING,
@@ -221,6 +222,12 @@ class AppointmentService
                 ]
             );
 
+            // 10b. Transactional outbox: queue the notification atomically with the booking
+            $txAppointment = $this->appointmentRepo->findById($appointmentId);
+            if ($txAppointment) {
+                $this->emailService->queueAppointmentEvent(EmailOutboxService::EVENT_REQUESTED, $txAppointment, $historyId);
+            }
+
             // 11. Commit Transaction
             $pdo->commit();
         } catch (Throwable $e) {
@@ -240,21 +247,6 @@ class AppointmentService
         // 12. Post-Commit Asynchronous / Outbox Notification
         $persisted = $this->appointmentRepo->findById($appointmentId);
         if ($persisted) {
-            $user = $this->userRepo->findById($userId);
-            if ($user && !empty($user['email'])) {
-                $this->emailService->sendAppointmentSubmittedEmail(
-                    (string) $user['email'],
-                    $patient['first_name'] . ' ' . $patient['last_name'],
-                    [
-                        'start_at' => $persisted['start_at'],
-                        'service_name' => $persisted['service_name'],
-                        'dentist_name' => $persisted['dentist_first_name'] . ' ' . $persisted['dentist_last_name'],
-                        'operatory_chair' => $persisted['operatory_chair'],
-                    ],
-                    $userId
-                );
-            }
-
             // In-app Notification
             $this->notificationService->createNotification(
                 $userId,
@@ -331,7 +323,7 @@ class AppointmentService
             );
 
             // Record status history
-            $this->appointmentRepo->recordStatusHistory(
+            $historyId = $this->appointmentRepo->recordStatusHistory(
                 $appointmentId,
                 $appointment['status'],
                 AppointmentValidator::STATUS_CONFIRMED,
@@ -352,6 +344,12 @@ class AppointmentService
                 ['previous_status' => $appointment['status']]
             );
 
+            // Transactional outbox: queue the notification atomically with the status change
+            $txAppointment = $this->appointmentRepo->findById($appointmentId);
+            if ($txAppointment) {
+                $this->emailService->queueAppointmentEvent(EmailOutboxService::EVENT_CONFIRMED, $txAppointment, $historyId);
+            }
+
             $pdo->commit();
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
@@ -370,20 +368,6 @@ class AppointmentService
         $updated = $this->appointmentRepo->findById($appointmentId);
 
         // Send confirmation email
-        if ($updated && !empty($updated['patient_email'])) {
-            $this->emailService->sendAppointmentConfirmedEmail(
-                (string) $updated['patient_email'],
-                $updated['patient_first_name'] . ' ' . $updated['patient_last_name'],
-                [
-                    'start_at' => $updated['start_at'],
-                    'service_name' => $updated['service_name'],
-                    'dentist_name' => $updated['dentist_first_name'] . ' ' . $updated['dentist_last_name'],
-                    'operatory_chair' => $updated['operatory_chair'],
-                ],
-                $adminUserId
-            );
-        }
-
         if ($updated && !empty($updated['patient_user_id'])) {
             $this->notificationService->createNotification(
                 (int) $updated['patient_user_id'],
@@ -434,7 +418,7 @@ class AppointmentService
                 $pdo
             );
 
-            $this->appointmentRepo->recordStatusHistory(
+            $historyId = $this->appointmentRepo->recordStatusHistory(
                 $appointmentId,
                 $appointment['status'],
                 AppointmentValidator::STATUS_REJECTED,
@@ -454,6 +438,12 @@ class AppointmentService
                 ['reason' => $validated['reason']]
             );
 
+            // Transactional outbox: queue the notification atomically with the status change
+            $txAppointment = $this->appointmentRepo->findById($appointmentId);
+            if ($txAppointment) {
+                $this->emailService->queueAppointmentEvent(EmailOutboxService::EVENT_REJECTED, $txAppointment, $historyId, ['reason' => $validated['reason']]);
+            }
+
             $pdo->commit();
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
@@ -470,19 +460,6 @@ class AppointmentService
         }
 
         $updated = $this->appointmentRepo->findById($appointmentId);
-
-        if ($updated && !empty($updated['patient_email'])) {
-            $this->emailService->sendAppointmentRejectedEmail(
-                (string) $updated['patient_email'],
-                $updated['patient_first_name'] . ' ' . $updated['patient_last_name'],
-                [
-                    'start_at' => $updated['start_at'],
-                    'service_name' => $updated['service_name'],
-                ],
-                $validated['reason'],
-                $adminUserId
-            );
-        }
 
         if ($updated && !empty($updated['patient_user_id'])) {
             $this->notificationService->createNotification(
@@ -543,7 +520,7 @@ class AppointmentService
                 $pdo
             );
 
-            $this->appointmentRepo->recordStatusHistory(
+            $historyId = $this->appointmentRepo->recordStatusHistory(
                 $appointmentId,
                 $appointment['status'],
                 AppointmentValidator::STATUS_CANCELLED,
@@ -563,6 +540,12 @@ class AppointmentService
                 ['cancelled_by_role' => $userRole, 'reason' => $validated['reason']]
             );
 
+            // Transactional outbox: queue the notification atomically with the status change
+            $txAppointment = $this->appointmentRepo->findById($appointmentId);
+            if ($txAppointment) {
+                $this->emailService->queueAppointmentEvent(EmailOutboxService::EVENT_CANCELLED, $txAppointment, $historyId, ['cancelled_by' => strtoupper($userRole) === 'PATIENT' ? 'patient' : 'clinic']);
+            }
+
             $pdo->commit();
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
@@ -579,19 +562,6 @@ class AppointmentService
         }
 
         $updated = $this->appointmentRepo->findById($appointmentId);
-
-        if ($updated && !empty($updated['patient_email'])) {
-            $this->emailService->sendAppointmentCancelledEmail(
-                (string) $updated['patient_email'],
-                $updated['patient_first_name'] . ' ' . $updated['patient_last_name'],
-                [
-                    'start_at' => $updated['start_at'],
-                    'service_name' => $updated['service_name'],
-                ],
-                $validated['reason'],
-                $userId
-            );
-        }
 
         if ($updated && !empty($updated['patient_user_id'])) {
             $this->notificationService->createNotification(
@@ -640,7 +610,7 @@ class AppointmentService
                 $pdo
             );
 
-            $this->appointmentRepo->recordStatusHistory(
+            $historyId = $this->appointmentRepo->recordStatusHistory(
                 $appointmentId,
                 $appointment['status'],
                 AppointmentValidator::STATUS_COMPLETED,
@@ -659,6 +629,12 @@ class AppointmentService
                 null
             );
 
+            // Transactional outbox: queue the notification atomically with the status change
+            $txAppointment = $this->appointmentRepo->findById($appointmentId);
+            if ($txAppointment) {
+                $this->emailService->queueAppointmentEvent(EmailOutboxService::EVENT_COMPLETED, $txAppointment, $historyId);
+            }
+
             $pdo->commit();
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
@@ -675,17 +651,6 @@ class AppointmentService
         }
 
         $updated = $this->appointmentRepo->findById($appointmentId);
-
-        if ($updated && !empty($updated['patient_email'])) {
-            $this->emailService->sendAppointmentCompletedEmail(
-                (string) $updated['patient_email'],
-                $updated['patient_first_name'] . ' ' . $updated['patient_last_name'],
-                [
-                    'service_name' => $updated['service_name'],
-                ],
-                $adminUserId
-            );
-        }
 
         if ($updated && !empty($updated['patient_user_id'])) {
             $this->notificationService->createNotification(
@@ -824,6 +789,9 @@ class AppointmentService
                 $pdo
             );
 
+            // The superseded appointment must not send a reminder.
+            $this->emailService->cancelObsoleteReminders($appointmentId);
+
             // 6. Create New Appointment Linked via rescheduled_from_id
             $chair = $dentist['default_operatory_chair'] ?? 'Chair 1';
             $newAppointmentId = $this->appointmentRepo->create([
@@ -840,7 +808,7 @@ class AppointmentService
                 'rescheduled_from_id' => $appointmentId,
             ], $pdo);
 
-            $this->appointmentRepo->recordStatusHistory(
+            $newHistoryId = $this->appointmentRepo->recordStatusHistory(
                 $newAppointmentId,
                 null,
                 AppointmentValidator::STATUS_PENDING,
@@ -849,6 +817,12 @@ class AppointmentService
                 ['rescheduled_from_id' => $appointmentId],
                 $pdo
             );
+
+            // Transactional outbox: the new request is acknowledged by email atomically.
+            $txNewAppointment = $this->appointmentRepo->findById($newAppointmentId);
+            if ($txNewAppointment) {
+                $this->emailService->queueAppointmentEvent(EmailOutboxService::EVENT_REQUESTED, $txNewAppointment, $newHistoryId);
+            }
 
             $this->auditRepo->record(
                 'APPOINTMENT_RESCHEDULED',
@@ -1112,7 +1086,7 @@ class AppointmentService
                 $pdo
             );
 
-            $this->appointmentRepo->recordStatusHistory(
+            $historyId = $this->appointmentRepo->recordStatusHistory(
                 $appointmentId,
                 $appointment['status'],
                 AppointmentValidator::STATUS_COMPLETED,
@@ -1150,6 +1124,12 @@ class AppointmentService
                 ['dentist_id' => (int) $dentist['id']]
             );
 
+            // Transactional outbox: queue the notification atomically with the status change
+            $txAppointment = $this->appointmentRepo->findById($appointmentId);
+            if ($txAppointment) {
+                $this->emailService->queueAppointmentEvent(EmailOutboxService::EVENT_COMPLETED, $txAppointment, $historyId);
+            }
+
             $pdo->commit();
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
@@ -1177,18 +1157,6 @@ class AppointmentService
                     "Your visit for {$updated['service_name']} on {$updated['start_at']} is complete. Thank you for visiting ToothCare Hub!",
                     'appointments',
                     $appointmentId
-                );
-            }
-
-            if (!empty($updated['patient_email'])) {
-                $this->emailService->sendAppointmentCompletedEmail(
-                    (string) $updated['patient_email'],
-                    $updated['patient_first_name'] . ' ' . $updated['patient_last_name'],
-                    [
-                        'service_name' => $updated['service_name'],
-                        'start_at' => $updated['start_at'],
-                    ],
-                    $userId
                 );
             }
         }

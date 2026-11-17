@@ -49,7 +49,7 @@ Key achievements:
 
 ## 3. Form Implementation Details
 
-### 3.1 Unified Login Form ([`LoginForm.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/auth/components/LoginForm.jsx))
+### 3.1 Unified Login Form ([`LoginForm.jsx`](../../frontend/src/features/auth/components/LoginForm.jsx))
 - **Roles Handled:** `PATIENT`, `DENTIST`, `ADMIN` (Unified Admin/Receptionist per `DEC-ROLE-001`).
 - **Inputs:** Email address, password, remember-me checkbox.
 - **Client Validation:** RFC-compliant email regex, non-empty password check.
@@ -57,7 +57,7 @@ Key achievements:
 - **Session Establishment:** `HttpOnly`, `SameSite=Lax` native PHP session cookie (`toothcare_session`).
 - **Error States:** Clear alert displaying server-provided messages (e.g., "Invalid credentials", "Account locked", "Email not verified").
 
-### 3.2 Patient Self-Registration ([`RegisterForm.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/auth/components/RegisterForm.jsx))
+### 3.2 Patient Self-Registration ([`RegisterForm.jsx`](../../frontend/src/features/auth/components/RegisterForm.jsx))
 - **Identity Fields:** First name, last name, email address, phone number (`+63 9xx...`).
 - **Demographics:** Date of birth (`YYYY-MM-DD` with age validity check), gender dropdown (`PREFER_NOT_TO_SAY`, `FEMALE`, `MALE`, `OTHER`).
 - **Additional Clinical Details (Expandable):**
@@ -72,13 +72,13 @@ Key achievements:
 - **Consents:** Mandatory Terms of Service and Privacy Policy checkbox.
 - **Role Enforcement:** Server-side strictly assigns `role = 'PATIENT'` regardless of client payload.
 
-### 3.3 Email Verification ([`VerifyEmailPage.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/auth/pages/VerifyEmailPage.jsx))
+### 3.3 Email Verification ([`VerifyEmailPage.jsx`](../../frontend/src/features/auth/pages/VerifyEmailPage.jsx))
 - Automatically extracts `?token=` parameter on page load.
 - Displays loading state while validating against backend.
 - Displays success state with "Sign In" button when verified.
 - Provides fallback email resend form if token is expired or invalid.
 
-### 3.4 Password Reset ([`ForgotPasswordPage.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/auth/pages/ForgotPasswordPage.jsx) & [`ResetPasswordPage.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/auth/pages/ResetPasswordPage.jsx))
+### 3.4 Password Reset ([`ForgotPasswordPage.jsx`](../../frontend/src/features/auth/pages/ForgotPasswordPage.jsx) & [`ResetPasswordPage.jsx`](../../frontend/src/features/auth/pages/ResetPasswordPage.jsx))
 - **Enumeration Prevention:** Forgot password form consistently displays instructions sent message, preventing account scraping.
 - **Token Reset:** Reset page parses token, requires new complex password, validates confirmation match, and posts to `/api/v1/auth/reset-password`.
 

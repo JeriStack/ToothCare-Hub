@@ -37,6 +37,11 @@ services:
       APP_DEBUG: "false"
       APP_ENV: "production"
     restart: always
+  reminder-scheduler:
+    environment:
+      APP_DEBUG: "false"
+      APP_ENV: "production"
+    restart: always
 
   db-backup:
     restart: always

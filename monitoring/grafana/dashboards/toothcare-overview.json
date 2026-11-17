@@ -25,6 +25,28 @@
           "legendFormat": "clients"
         }
       ]
+    },
+    {
+      "title": "Email outbox queue",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        { "expr": "toothcare_email_jobs_pending{job=\"toothcare-api\"}", "legendFormat": "pending" },
+        { "expr": "toothcare_email_worker_processing{job=\"toothcare-api\"}", "legendFormat": "processing" },
+        { "expr": "toothcare_email_jobs_exhausted{job=\"toothcare-api\"}", "legendFormat": "exhausted" }
+      ]
+    },
+    {
+      "title": "Email deliveries and failures (per 15m)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        { "expr": "sum(increase(toothcare_email_delivery_success_total{job=\"toothcare-api\"}[15m]))", "legendFormat": "delivered" },
+        { "expr": "sum by (category) (increase(toothcare_email_delivery_failure_total{job=\"toothcare-api\"}[15m]))", "legendFormat": "failed {{category}}" },
+        { "expr": "sum(increase(toothcare_email_retry_total{job=\"toothcare-api\"}[15m]))", "legendFormat": "retries" }
+      ]
     }
   ],
   "schemaVersion": 39,

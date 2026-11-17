@@ -18,7 +18,7 @@ Every module includes search, filtering, server-side pagination, accessible moda
 
 ## 2. Module Specifications & Endpoints
 
-### 2.1 Dental Services Management ([`ServicesPage.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/services/pages/ServicesPage.jsx))
+### 2.1 Dental Services Management ([`ServicesPage.jsx`](../../frontend/src/features/services/pages/ServicesPage.jsx))
 - **Primary Routes:** `GET /api/v1/admin/services`, `POST /api/v1/admin/services`, `PUT /api/v1/admin/services/{id}`, `PATCH /api/v1/admin/services/{id}/status`.
 - **Capabilities:**
   - Paginated procedure catalog with search by procedure name, category filter (General, Orthodontics, Endodontics, etc.), and status filter (Active/Inactive).
@@ -26,7 +26,7 @@ Every module includes search, filtering, server-side pagination, accessible moda
   - Edit Service Modal: Pre-fills existing values and updates procedure catalog.
   - Status Toggle: Soft-activation/deactivation with confirmation modal to prevent accidental archiving of active services.
 
-### 2.2 Dentist Roster Management ([`DentistListPage.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/dentists/pages/DentistListPage.jsx))
+### 2.2 Dentist Roster Management ([`DentistListPage.jsx`](../../frontend/src/features/dentists/pages/DentistListPage.jsx))
 - **Primary Routes:** `GET /api/v1/admin/dentists`, `POST /api/v1/admin/dentists`, `PUT /api/v1/admin/dentists/{id}`, `PATCH /api/v1/admin/dentists/{id}/status`.
 - **Capabilities:**
   - Paginated clinician roster with search by name/email/PRC license and filter by dental specialization.
@@ -34,7 +34,7 @@ Every module includes search, filtering, server-side pagination, accessible moda
   - Edit Clinician Profile: Update contact details, operatory chair mapping, and specialization.
   - Active/Inactive Account Toggle with status confirmation dialog.
 
-### 2.3 Dentist Schedule Management ([`AdminSchedulePage.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/schedules/pages/AdminSchedulePage.jsx))
+### 2.3 Dentist Schedule Management ([`AdminSchedulePage.jsx`](../../frontend/src/features/schedules/pages/AdminSchedulePage.jsx))
 - **Primary Routes:** `GET /api/v1/admin/clinic-hours`, `PUT /api/v1/admin/clinic-hours`, `GET/POST/DELETE /api/v1/admin/clinic-closures`, `GET/POST/PUT/DELETE /api/v1/dentists/{id}/schedules`, `GET/POST/DELETE /api/v1/dentists/{id}/time-off`.
 - **Capabilities:**
   - Tab 1: Global Clinic Operating Hours (Mon-Sat 8am-5pm) and Clinic Closures (holidays, deep sanitization).
@@ -42,7 +42,7 @@ Every module includes search, filtering, server-side pagination, accessible moda
   - Tab 3: Approved Clinician Leaves and Time-Off with date ranges and justification notes.
   - Tab 4: Interactive Availability Slot Tester verifying bookable appointment windows.
 
-### 2.4 Patient Registry Management ([`PatientListPage.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/patients/pages/PatientListPage.jsx))
+### 2.4 Patient Registry Management ([`PatientListPage.jsx`](../../frontend/src/features/patients/pages/PatientListPage.jsx))
 - **Primary Routes:** `GET /api/v1/admin/patients`, `GET /api/v1/admin/patients/{id}`, `PUT /api/v1/admin/patients/{id}`, `PATCH /api/v1/admin/patients/{id}/status`.
 - **Capabilities:**
   - Paginated registry of registered patients with search by name, email, or phone.
@@ -50,7 +50,7 @@ Every module includes search, filtering, server-side pagination, accessible moda
   - Edit Patient Record: Administrative correction of contact numbers or medical alerts.
   - Account Status Toggle: Suspend or restore patient portal access.
 
-### 2.5 Appointment Review & Triage ([`AdminAppointmentsPage.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/appointments/pages/AdminAppointmentsPage.jsx))
+### 2.5 Appointment Review & Triage ([`AdminAppointmentsPage.jsx`](../../frontend/src/features/appointments/pages/AdminAppointmentsPage.jsx))
 - **Primary Routes:** `GET /api/v1/admin/appointments`, `POST /api/v1/admin/appointments/{id}/confirm`, `POST /api/v1/admin/appointments/{id}/reject`, `POST /api/v1/admin/appointments/{id}/complete`, `POST /api/v1/admin/appointments/{id}/cancel`.
 - **Capabilities:**
   - Filter appointments by status (`PENDING`, `CONFIRMED`, `COMPLETED`, `CANCELLED`, `REJECTED`), dentist, date range, or patient name search.
