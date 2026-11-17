@@ -74,7 +74,7 @@ export function AvailabilitySlotPicker({
 
   if (!dentistId || !serviceId || !selectedDate) {
     return (
-      <div className="p-4 rounded-xl border border-dashed border-slate-200 text-center text-xs text-slate-500">
+      <div className="p-4 rounded-xl border border-dashed border-slate-200 dark:border-gray-700 text-center text-xs text-slate-500 dark:text-gray-400">
         Please select a practitioner, service, and appointment date to view available time slots.
       </div>
     );
@@ -86,11 +86,11 @@ export function AvailabilitySlotPicker({
 
   if (error) {
     return (
-      <div className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3">
-        <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+      <div className="p-4 rounded-xl bg-red-50 dark:bg-rose-950/50 border border-red-200 dark:border-rose-800 flex items-start gap-3">
+        <AlertCircle className="w-4 h-4 text-red-600 dark:text-rose-400 shrink-0 mt-0.5" />
         <div>
-          <h4 className="text-xs font-semibold text-red-800">Availability Check</h4>
-          <p className="text-xs text-red-700 mt-0.5">{error}</p>
+          <h4 className="text-xs font-semibold text-red-800 dark:text-rose-200">Availability Check</h4>
+          <p className="text-xs text-red-700 dark:text-rose-300 mt-0.5">{error}</p>
         </div>
       </div>
     );
@@ -98,10 +98,10 @@ export function AvailabilitySlotPicker({
 
   if (!isClinicOpen) {
     return (
-      <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-center">
-        <AlertCircle className="w-5 h-5 text-amber-600 mx-auto mb-1" />
-        <h4 className="text-xs font-bold text-amber-800">Clinic Facility Closed</h4>
-        <p className="text-xs text-amber-700 mt-0.5">
+      <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-center">
+        <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mx-auto mb-1" />
+        <h4 className="text-xs font-bold text-amber-800 dark:text-amber-200">Clinic Facility Closed</h4>
+        <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
           The clinic is closed on this day according to operating hours or facility holiday closures.
         </p>
       </div>
@@ -110,10 +110,10 @@ export function AvailabilitySlotPicker({
 
   if (slots.length === 0) {
     return (
-      <div className="p-5 rounded-xl border border-slate-200 bg-slate-50 text-center">
-        <Clock className="w-6 h-6 text-slate-400 mx-auto mb-1.5" />
-        <h4 className="text-xs font-bold text-slate-700">No Slots Available</h4>
-        <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+      <div className="p-5 rounded-xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800/80 text-center">
+        <Clock className="w-6 h-6 text-slate-400 dark:text-gray-400 mx-auto mb-1.5" />
+        <h4 className="text-xs font-bold text-slate-700 dark:text-gray-200">No Slots Available</h4>
+        <p className="text-xs text-slate-500 dark:text-gray-400 mt-1 max-w-sm mx-auto">
           No appointment slots match the selected date. The dentist might not have working shifts scheduled, is on leave, or all intervals are already booked.
         </p>
       </div>
@@ -122,17 +122,17 @@ export function AvailabilitySlotPicker({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-          <Clock className="w-3.5 h-3.5 text-teal-600" />
+      <div className="flex flex-wrap items-center justify-between gap-1.5">
+        <span className="text-xs font-semibold text-slate-700 dark:text-gray-200 flex items-center gap-1.5">
+          <Clock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
           Available Slots ({slots.length})
         </span>
-        <span className="text-[11px] text-slate-400">10m turnaround buffer included</span>
+        <span className="text-[11px] text-slate-400 dark:text-gray-400">10m turnaround buffer included</span>
       </div>
 
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 min-[420px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
         {slots.map((slot) => {
-          const isSelected = selectedSlot === slot.start_at;
+          const isSelected = selectedSlot?.start_at === slot.start_at || selectedSlot === slot.start_at;
           const displayTime = formatSlotTime(slot.start_at);
 
           return (
@@ -140,15 +140,16 @@ export function AvailabilitySlotPicker({
               key={slot.start_at}
               type="button"
               disabled={disabled}
+              aria-pressed={isSelected}
               onClick={() => onSelectSlot && onSelectSlot(slot)}
-              className={`p-2.5 rounded-lg text-xs font-semibold border transition-all text-center flex flex-col items-center justify-center gap-1 ${
+              className={`min-h-11 p-2.5 rounded-lg text-xs font-semibold border transition-all text-center flex flex-col items-center justify-center gap-0.5 ${
                 isSelected
-                  ? 'bg-teal-600 border-teal-600 text-white shadow-sm ring-2 ring-teal-200'
-                  : 'bg-white border-slate-200 text-slate-700 hover:border-teal-500 hover:bg-teal-50/50'
+                  ? 'bg-teal-600 dark:bg-[#0F766E] border-teal-600 dark:border-teal-400 text-white shadow-sm ring-2 ring-teal-200 dark:ring-teal-500/40'
+                  : 'bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 text-slate-700 dark:text-gray-200 hover:border-teal-500 dark:hover:border-teal-400 hover:bg-teal-50/50 dark:hover:bg-teal-950/40'
               } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
             >
               <span>{displayTime}</span>
-              <span className={`text-[10px] ${isSelected ? 'text-teal-100' : 'text-slate-400'}`}>
+              <span className={`text-[10px] ${isSelected ? 'text-teal-100' : 'text-slate-400 dark:text-gray-400'}`}>
                 {slot.duration_minutes}m
               </span>
             </button>

@@ -17,7 +17,9 @@ import {
 } from 'lucide-react';
 import { servicesApi } from '../api';
 import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
-
+import { MobileSortControl } from '../../../components/ui/MobileSortControl';
+
+import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 const DURATION_OPTIONS = [15, 30, 45, 60, 90, 120];
 const CATEGORY_OPTIONS = [
   'General',
@@ -242,14 +244,14 @@ export function ServicesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Dental Services Catalog</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Dental Services Catalog</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Configure clinical procedures, appointment duration blocks, treatment fees, and booking availability.
           </p>
         </div>
         <button
           onClick={openCreateModal}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-medium text-sm rounded-lg shadow-sm transition-colors focus:ring-2 focus:ring-teal-500 focus:outline-none"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 dark:bg-[#0F766E] hover:bg-teal-700 dark:hover:bg-[#0D9488] text-white font-medium text-sm rounded-lg shadow-sm transition-colors focus:ring-2 focus:ring-teal-500 focus:outline-none"
         >
           <Plus className="w-4 h-4" />
           Add Dental Service
@@ -257,29 +259,29 @@ export function ServicesPage() {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3 sm:space-y-0 sm:flex sm:items-center sm:gap-4">
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-slate-200 dark:border-gray-700 shadow-sm space-y-3 sm:space-y-0 sm:flex sm:items-center sm:gap-4">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none" aria-hidden="true" />
           <input
             type="text"
-            placeholder="Search by procedure name, category, or description..."
+            placeholder="Search service or category"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
+            className="w-full min-h-11 sm:min-h-0 pl-9 pr-4 py-2 bg-white dark:bg-gray-700 border border-slate-300 dark:border-gray-600 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 rounded-lg text-base sm:text-sm focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 focus:outline-none"
           />
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <select
             value={categoryFilter}
             onChange={(e) => {
               setCategoryFilter(e.target.value);
               setPage(1);
             }}
-            className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+            className="flex-1 sm:flex-none min-w-[9rem] min-h-11 sm:min-h-0 px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg text-base sm:text-sm bg-white dark:bg-gray-700 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 focus:outline-none"
           >
             <option value="">All Categories</option>
             {CATEGORY_OPTIONS.map((cat) => (
@@ -295,7 +297,7 @@ export function ServicesPage() {
               setStatusFilter(e.target.value);
               setPage(1);
             }}
-            className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+            className="flex-1 sm:flex-none min-w-[9rem] min-h-11 sm:min-h-0 px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-lg text-base sm:text-sm bg-white dark:bg-gray-700 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 focus:outline-none"
           >
             <option value="">All Statuses</option>
             <option value="1">Active Only</option>
@@ -304,8 +306,8 @@ export function ServicesPage() {
 
           <button
             onClick={fetchServices}
-            title="Refresh"
-            className="p-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors"
+            title="Refresh" aria-label="Refresh services"
+            className="inline-flex items-center justify-center min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 p-2 border border-slate-300 dark:border-gray-600 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -319,115 +321,117 @@ export function ServicesPage() {
           columns={['w-12', 'w-44', 'w-28', 'w-24', 'w-20', 'w-24', 'w-28']}
         />
       ) : (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-slate-200 dark:border-gray-700 shadow-sm overflow-hidden">
         {error ? (
           <div className="p-12 text-center">
-            <AlertTriangle className="w-8 h-8 text-rose-500 mx-auto mb-3" />
-            <p className="text-slate-800 font-medium">{error}</p>
+            <AlertTriangle className="w-8 h-8 text-rose-500 dark:text-rose-400 mx-auto mb-3" />
+            <p className="text-slate-800 dark:text-slate-100 font-medium">{error}</p>
             <button
               onClick={fetchServices}
-              className="mt-4 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors"
+              className="mt-4 px-4 py-2 bg-slate-100 dark:bg-gray-700 hover:bg-slate-200 dark:hover:bg-gray-600 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-lg transition-colors"
             >
               Try Again
             </button>
           </div>
         ) : services.length === 0 ? (
           <div className="p-12 text-center">
-            <FileText className="w-8 h-8 text-slate-400 mx-auto mb-3" />
-            <h3 className="text-slate-800 font-medium">No dental services found</h3>
-            <p className="text-slate-500 text-sm mt-1">
+            <FileText className="w-8 h-8 text-slate-400 dark:text-slate-500 mx-auto mb-3" />
+            <h3 className="text-slate-800 dark:text-slate-100 font-medium">No dental services found</h3>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
               {search || categoryFilter || statusFilter !== ''
                 ? 'Try adjusting your filters or search terms.'
                 : 'Get started by creating your clinic’s first procedure.'}
             </p>
           </div>
         ) : (
+          <>
+          <MobileSortControl sortBy={sortBy} sortDir={sortDir} onSort={handleSort} options={[{ value: 'name', label: 'Service name' }, { value: 'category', label: 'Category' }, { value: 'price', label: 'Fee' }, { value: 'duration_minutes', label: 'Duration' }, { value: 'is_active', label: 'Status' }, { value: 'id', label: 'ID' }]} />
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                  <th className="py-3.5 px-4 cursor-pointer" onClick={() => handleSort('id')}>
+            <table role="table" className="tch-responsive-table w-full text-left border-collapse">
+              <thead role="rowgroup">
+                <tr role="row" className="bg-slate-50/80 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-700 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                  <th role="columnheader" tabIndex={0} aria-sort={sortBy === 'id' ? (sortDir === 'ASC' ? 'ascending' : 'descending') : 'none'} className="py-3.5 px-4 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]" onClick={() => handleSort('id')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('id'); } }}>
                     <div className="flex items-center gap-1.5">
                       ID
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     </div>
                   </th>
-                  <th className="py-3.5 px-4 cursor-pointer" onClick={() => handleSort('name')}>
+                  <th role="columnheader" tabIndex={0} aria-sort={sortBy === 'name' ? (sortDir === 'ASC' ? 'ascending' : 'descending') : 'none'} className="py-3.5 px-4 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]" onClick={() => handleSort('name')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('name'); } }}>
                     <div className="flex items-center gap-1.5">
                       Service Name
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     </div>
                   </th>
-                  <th className="py-3.5 px-4 cursor-pointer" onClick={() => handleSort('category')}>
+                  <th role="columnheader" tabIndex={0} aria-sort={sortBy === 'category' ? (sortDir === 'ASC' ? 'ascending' : 'descending') : 'none'} className="py-3.5 px-4 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]" onClick={() => handleSort('category')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('category'); } }}>
                     <div className="flex items-center gap-1.5">
                       Category
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     </div>
                   </th>
-                  <th className="py-3.5 px-4 cursor-pointer" onClick={() => handleSort('price')}>
+                  <th role="columnheader" tabIndex={0} aria-sort={sortBy === 'price' ? (sortDir === 'ASC' ? 'ascending' : 'descending') : 'none'} className="py-3.5 px-4 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]" onClick={() => handleSort('price')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('price'); } }}>
                     <div className="flex items-center gap-1.5">
                       Fee (PHP)
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     </div>
                   </th>
-                  <th className="py-3.5 px-4 cursor-pointer" onClick={() => handleSort('duration_minutes')}>
+                  <th role="columnheader" tabIndex={0} aria-sort={sortBy === 'duration_minutes' ? (sortDir === 'ASC' ? 'ascending' : 'descending') : 'none'} className="py-3.5 px-4 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]" onClick={() => handleSort('duration_minutes')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('duration_minutes'); } }}>
                     <div className="flex items-center gap-1.5">
                       Duration
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     </div>
                   </th>
-                  <th className="py-3.5 px-4 cursor-pointer" onClick={() => handleSort('is_active')}>
+                  <th role="columnheader" tabIndex={0} aria-sort={sortBy === 'is_active' ? (sortDir === 'ASC' ? 'ascending' : 'descending') : 'none'} className="py-3.5 px-4 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]" onClick={() => handleSort('is_active')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('is_active'); } }}>
                     <div className="flex items-center gap-1.5">
                       Status
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                     </div>
                   </th>
-                  <th className="py-3.5 px-4 text-right">Actions</th>
+                  <th role="columnheader" className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-sm">
+              <tbody role="rowgroup" className="divide-y divide-slate-100 dark:divide-gray-700/70 text-sm">
                 {services.map((service) => (
-                  <tr key={service.id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="py-3.5 px-4 font-mono text-xs text-slate-500">#{service.id}</td>
-                    <td className="py-3.5 px-4">
-                      <div className="font-medium text-slate-900">{service.name}</div>
+                  <tr role="row" key={service.id} className="hover:bg-slate-50/60 dark:hover:bg-gray-700/40 transition-colors">
+                    <td role="cell" data-label="ID" className="py-3.5 px-4 font-mono text-xs text-slate-500 dark:text-slate-400">#{service.id}</td>
+                    <td role="cell" data-label="Service Name" className="py-3.5 px-4">
+                      <div className="font-medium text-slate-900 dark:text-slate-100">{service.name}</div>
                       {service.description && (
-                        <div className="text-xs text-slate-500 line-clamp-1 max-w-sm">
+                        <div className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 max-w-sm">
                           {service.description}
                         </div>
                       )}
                     </td>
-                    <td className="py-3.5 px-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                    <td role="cell" data-label="Category" className="py-3.5 px-4">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-slate-200">
                         {service.category || 'General'}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 font-semibold text-slate-900">
+                    <td role="cell" data-label="Fee (PHP)" className="py-3.5 px-4 font-semibold text-slate-900 dark:text-slate-100">
                       ₱{Number(service.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </td>
-                    <td className="py-3.5 px-4">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-medium bg-teal-50 text-teal-700">
+                    <td role="cell" data-label="Duration" className="py-3.5 px-4">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-medium bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300">
                         <Clock className="w-3 h-3" />
                         {service.duration_minutes} min
                       </span>
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td role="cell" data-label="Status" className="py-3.5 px-4">
                       {service.is_active ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
                           <CheckCircle className="w-3 h-3" />
                           Active
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300">
                           <XCircle className="w-3 h-3" />
                           Inactive
                         </span>
                       )}
                     </td>
-                    <td className="py-3.5 px-4 text-right space-x-1">
+                    <td role="cell" data-label="Actions" className="py-3.5 px-4 text-right space-x-1">
                       <button
                         onClick={() => openEditModal(service)}
-                        className="p-1.5 text-slate-600 hover:text-teal-600 hover:bg-slate-100 rounded-lg transition-colors"
+                        className="p-1.5 text-slate-600 dark:text-slate-300 hover:text-teal-600 dark:hover:text-teal-300 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                         title="Edit Service"
                       >
                         <Edit2 className="w-4 h-4" />
@@ -436,8 +440,8 @@ export function ServicesPage() {
                         onClick={() => handleStatusToggleClick(service)}
                         className={`p-1.5 rounded-lg transition-colors ${
                           service.is_active
-                            ? 'text-rose-600 hover:bg-rose-50'
-                            : 'text-emerald-600 hover:bg-emerald-50'
+                            ? 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50'
+                            : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
                         }`}
                         title={service.is_active ? 'Deactivate Service' : 'Activate Service'}
                       >
@@ -449,33 +453,34 @@ export function ServicesPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
 
         {/* Pagination Bar */}
         {meta.total > 0 && (
-          <div className="px-4 py-3 border-t border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-slate-500">
+          <div className="px-4 py-3 border-t border-slate-200 dark:border-gray-700 bg-slate-50/50 dark:bg-gray-900/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
             <div>
-              Showing <span className="font-medium text-slate-700">{(meta.page - 1) * meta.per_page + 1}</span> to{' '}
-              <span className="font-medium text-slate-700">
+              Showing <span className="font-medium text-slate-700 dark:text-slate-200">{(meta.page - 1) * meta.per_page + 1}</span> to{' '}
+              <span className="font-medium text-slate-700 dark:text-slate-200">
                 {Math.min(meta.page * meta.per_page, meta.total)}
               </span>{' '}
-              of <span className="font-medium text-slate-700">{meta.total}</span> procedures
+              of <span className="font-medium text-slate-700 dark:text-slate-200">{meta.total}</span> procedures
             </div>
             <div className="flex items-center gap-2">
               <button
                 disabled={meta.page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="px-3 py-1.5 border border-slate-300 rounded bg-white text-slate-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50"
+                className="px-3 py-1.5 border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-gray-700"
               >
                 Previous
               </button>
-              <span className="font-medium text-slate-700">
+              <span className="font-medium text-slate-700 dark:text-slate-200">
                 Page {meta.page} of {meta.last_page}
               </span>
               <button
                 disabled={meta.page >= meta.last_page}
                 onClick={() => setPage((p) => p + 1)}
-                className="px-3 py-1.5 border border-slate-300 rounded bg-white text-slate-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50"
+                className="px-3 py-1.5 border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-gray-700"
               >
                 Next
               </button>
@@ -487,15 +492,16 @@ export function ServicesPage() {
 
       {/* Service Create / Edit Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-              <h2 className="text-lg font-semibold text-slate-900">
+        <DialogOverlay
+          onClose={() => setIsModalOpen(false)} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-black/65 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/50 dark:bg-gray-900/60">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 {editingService ? 'Edit Dental Service' : 'Add New Dental Service'}
               </h2>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 rounded-lg p-1"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg p-1"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -503,15 +509,15 @@ export function ServicesPage() {
 
             <form onSubmit={handleFormSubmit} className="p-6 space-y-4">
               {formErrors.general && (
-                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-lg">
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/70 text-rose-700 dark:text-rose-200 text-sm rounded-lg">
                   {formErrors.general}
                 </div>
               )}
 
               {/* Service Name */}
               <div>
-                <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
-                  Procedure Name <span className="text-rose-500">*</span>
+                <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
+                  Procedure Name <span className="text-rose-500 dark:text-rose-400">*</span>
                 </label>
                 <input
                   type="text"
@@ -519,23 +525,23 @@ export function ServicesPage() {
                   placeholder="e.g., Comprehensive Oral Prophylaxis"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className={`w-full px-3.5 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none ${
-                    formErrors.name ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
+                  className={`w-full px-3.5 py-2 border rounded-lg text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 focus:outline-none ${
+                    formErrors.name ? 'border-rose-400 bg-rose-50/30 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700'
                   }`}
                 />
-                {formErrors.name && <p className="text-xs text-rose-600 mt-1">{formErrors.name}</p>}
+                {formErrors.name && <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{formErrors.name}</p>}
               </div>
 
               {/* Category & Duration */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
+                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
                     Category
                   </label>
                   <select
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                    className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 focus:outline-none"
                   >
                     {CATEGORY_OPTIONS.map((cat) => (
                       <option key={cat} value={cat}>
@@ -546,13 +552,13 @@ export function ServicesPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
-                    Duration (Minutes) <span className="text-rose-500">*</span>
+                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
+                    Duration (Minutes) <span className="text-rose-500 dark:text-rose-400">*</span>
                   </label>
                   <select
                     value={formData.duration_minutes}
                     onChange={(e) => setFormData({ ...formData, duration_minutes: Number(e.target.value) })}
-                    className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                    className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 focus:outline-none"
                   >
                     {DURATION_OPTIONS.map((mins) => (
                       <option key={mins} value={mins}>
@@ -565,11 +571,11 @@ export function ServicesPage() {
 
               {/* Price */}
               <div>
-                <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
-                  Treatment Fee (PHP ₱) <span className="text-rose-500">*</span>
+                <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
+                  Treatment Fee (PHP ₱) <span className="text-rose-500 dark:text-rose-400">*</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-2.5 text-slate-400 font-semibold text-sm">₱</span>
+                  <span className="absolute left-3.5 top-2.5 text-slate-400 dark:text-slate-400 font-semibold text-sm">₱</span>
                   <input
                     type="number"
                     step="0.01"
@@ -578,17 +584,17 @@ export function ServicesPage() {
                     placeholder="1500.00"
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    className={`w-full pl-8 pr-3.5 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none ${
-                      formErrors.price ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
+                    className={`w-full pl-8 pr-3.5 py-2 border rounded-lg text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 focus:outline-none ${
+                      formErrors.price ? 'border-rose-400 bg-rose-50/30 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700'
                     }`}
                   />
                 </div>
-                {formErrors.price && <p className="text-xs text-rose-600 mt-1">{formErrors.price}</p>}
+                {formErrors.price && <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{formErrors.price}</p>}
               </div>
 
               {/* Description */}
               <div>
-                <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
+                <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
                   Clinical Description
                 </label>
                 <textarea
@@ -596,7 +602,7 @@ export function ServicesPage() {
                   placeholder="Detail instructions, scope, or patient notes..."
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="w-full px-3.5 py-2 bg-white dark:bg-gray-700 border border-slate-300 dark:border-gray-600 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 rounded-lg text-base sm:text-sm focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 focus:outline-none"
                 />
               </div>
 
@@ -607,26 +613,26 @@ export function ServicesPage() {
                   id="service-active"
                   checked={formData.is_active === 1}
                   onChange={(e) => setFormData({ ...formData, is_active: e.target.checked ? 1 : 0 })}
-                  className="w-4 h-4 text-teal-600 rounded border-slate-300 focus:ring-teal-500"
+                  className="w-4 h-4 text-teal-600 rounded border-slate-300 dark:border-gray-600 focus:ring-teal-500"
                 />
-                <label htmlFor="service-active" className="text-sm font-medium text-slate-700 cursor-pointer">
+                <label htmlFor="service-active" className="text-sm font-medium text-slate-700 dark:text-slate-200 cursor-pointer">
                   Enable active booking availability for this service
                 </label>
               </div>
 
               {/* Actions */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-gray-700">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-slate-300 text-slate-700 font-medium text-sm rounded-lg hover:bg-slate-50 transition-colors"
+                  className="px-4 py-2 border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 font-medium text-sm rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={formSubmitting}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-medium text-sm rounded-lg shadow-sm transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 dark:bg-[#0F766E] hover:bg-teal-700 dark:hover:bg-[#0D9488] text-white font-medium text-sm rounded-lg shadow-sm transition-colors disabled:opacity-50"
                 >
                   {formSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
                   {editingService ? 'Save Changes' : 'Create Service'}
@@ -634,30 +640,31 @@ export function ServicesPage() {
               </div>
             </form>
           </div>
-        </div>
+        </DialogOverlay>
       )}
 
       {/* Deactivation / Activation Confirmation Dialog */}
       {confirmModal.isOpen && confirmModal.service && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-150 space-y-4">
+        <DialogOverlay
+          onClose={() => setConfirmModal({ isOpen: false, service: null, targetStatus: 0, submitting: false })} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-black/65 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-150 space-y-4">
             <div className="flex items-center gap-3">
               <div
                 className={`p-3 rounded-full ${
-                  confirmModal.targetStatus === 0 ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'
+                  confirmModal.targetStatus === 0 ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400' : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
                 }`}
               >
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-base font-semibold text-slate-900">
+                <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
                   {confirmModal.targetStatus === 0 ? 'Deactivate Service?' : 'Activate Service?'}
                 </h3>
-                <p className="text-xs text-slate-500 font-medium">{confirmModal.service.name}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{confirmModal.service.name}</p>
               </div>
             </div>
 
-            <p className="text-sm text-slate-600 leading-relaxed">
+            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
               {confirmModal.targetStatus === 0
                 ? 'Deactivating this service will remove it from future appointment bookings. All past patient appointments, treatments, and billing records referencing this service will remain securely preserved.'
                 : 'Activating this service will immediately make it selectable for patients and receptionists when booking new dental appointments.'}
@@ -669,7 +676,7 @@ export function ServicesPage() {
                 onClick={() =>
                   setConfirmModal({ isOpen: false, service: null, targetStatus: 0, submitting: false })
                 }
-                className="px-4 py-2 border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors"
+                className="px-4 py-2 border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors"
               >
                 Cancel
               </button>
@@ -680,7 +687,7 @@ export function ServicesPage() {
                 className={`inline-flex items-center gap-2 px-4 py-2 font-medium text-sm text-white rounded-lg transition-colors ${
                   confirmModal.targetStatus === 0
                     ? 'bg-amber-600 hover:bg-amber-700'
-                    : 'bg-teal-600 hover:bg-teal-700'
+                    : 'bg-teal-600 dark:bg-[#0F766E] hover:bg-teal-700 dark:hover:bg-[#0D9488]'
                 }`}
               >
                 {confirmModal.submitting && <RefreshCw className="w-4 h-4 animate-spin" />}
@@ -688,7 +695,7 @@ export function ServicesPage() {
               </button>
             </div>
           </div>
-        </div>
+        </DialogOverlay>
       )}
     </div>
   );

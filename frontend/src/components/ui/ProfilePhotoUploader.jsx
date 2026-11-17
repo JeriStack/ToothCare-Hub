@@ -116,7 +116,7 @@ export function ProfilePhotoUploader({
   return (
     <div className="flex flex-col items-center text-center">
       <div className="relative">
-        <div className="w-24 h-24 rounded-2xl border-4 border-white shadow-md bg-[#CCFBF1] text-[#0F766E] flex items-center justify-center font-bold text-2xl overflow-hidden">
+        <div className="w-24 h-24 rounded-2xl border-4 border-white dark:border-gray-700 shadow-md bg-[#CCFBF1] dark:bg-teal-900/60 text-[#0F766E] dark:text-teal-200 flex items-center justify-center font-bold text-2xl overflow-hidden">
           {activeAvatarSrc ? (
             <img
               src={activeAvatarSrc}
@@ -133,7 +133,7 @@ export function ProfilePhotoUploader({
           onClick={() => fileInputRef.current?.click()}
           disabled={isUploadingAvatar}
           aria-label="Choose profile photo"
-          className="absolute -bottom-1.5 -right-1.5 w-8 h-8 rounded-full bg-[#12304A] hover:bg-[#0D9488] text-white border-2 border-white shadow-sm flex items-center justify-center transition-colors disabled:opacity-60 cursor-pointer"
+          className="absolute -bottom-1.5 -right-1.5 w-8 h-8 rounded-full bg-[#12304A] dark:bg-teal-600 hover:bg-[#0D9488] dark:hover:bg-teal-500 text-white border-2 border-white dark:border-gray-800 shadow-sm flex items-center justify-center transition-colors disabled:opacity-60 cursor-pointer"
         >
           {isUploadingAvatar ? (
             <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -143,16 +143,16 @@ export function ProfilePhotoUploader({
         </button>
       </div>
 
-      <h2 className="mt-3 text-base font-bold text-[#12304A] leading-tight">
+      <h2 className="mt-3 text-base font-bold text-[#12304A] dark:text-gray-100 leading-tight">
         {fullName}
       </h2>
       {badgeText ? (
-        <p className="text-xs font-medium text-[#0F766E] mt-0.5">
+        <p className="text-xs font-medium text-[#0F766E] dark:text-teal-300 mt-0.5">
           {badgeText}
         </p>
       ) : null}
       {subtitle ? (
-        <p className="text-xs text-slate-600 mt-0.5 truncate max-w-full">
+        <p className="text-xs text-slate-600 dark:text-gray-400 mt-0.5 truncate max-w-full">
           {subtitle}
         </p>
       ) : null}
@@ -171,7 +171,7 @@ export function ProfilePhotoUploader({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={isUploadingAvatar}
-          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-semibold bg-[#0D9488] hover:bg-[#0F766E] text-white transition-colors disabled:opacity-60 cursor-pointer"
+          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-semibold bg-[#0D9488] hover:bg-[#0F766E] dark:bg-[#0F766E] dark:hover:bg-[#0D9488] text-white transition-colors disabled:opacity-60 cursor-pointer"
         >
           {isUploadingAvatar ? (
             <>
@@ -191,7 +191,7 @@ export function ProfilePhotoUploader({
             type="button"
             onClick={handleRemoveAvatar}
             disabled={isUploadingAvatar}
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 min-h-[40px] rounded-xl text-xs font-semibold bg-white border border-slate-200 text-red-600 hover:bg-red-50 hover:border-red-200 transition-colors disabled:opacity-60 cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 min-h-[40px] rounded-xl text-xs font-semibold bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 text-red-600 dark:text-rose-400 hover:bg-red-50 dark:hover:bg-rose-950/50 hover:border-red-200 dark:hover:border-rose-800 transition-colors disabled:opacity-60 cursor-pointer"
           >
             <Trash2 className="w-3.5 h-3.5" />
             Remove
@@ -199,14 +199,14 @@ export function ProfilePhotoUploader({
         )}
       </div>
 
-      <p className="mt-2.5 text-[11px] text-slate-600">
+      <p className="mt-2.5 text-[11px] text-slate-600 dark:text-gray-400">
         JPG, PNG, or WebP up to 2 MB.
       </p>
 
       {avatarError && (
         <div
           role="alert"
-          className="mt-3 w-full p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-start gap-2 text-left"
+          className="mt-3 w-full p-2.5 rounded-xl bg-red-50 dark:bg-rose-950/50 border border-red-200 dark:border-rose-800 text-red-700 dark:text-rose-300 text-xs flex items-start gap-2 text-left"
         >
           <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
           <span>{avatarError}</span>
@@ -216,9 +216,9 @@ export function ProfilePhotoUploader({
       {avatarSuccess && (
         <div
           role="status"
-          className="mt-3 w-full p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-start gap-2 text-left"
+          className="mt-3 w-full p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs flex items-start gap-2 text-left"
         >
-          <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" />
+          <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
           <span>{avatarSuccess}</span>
         </div>
       )}

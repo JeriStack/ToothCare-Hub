@@ -24,7 +24,12 @@ database/
 │   ├── 011_create_notifications.sql
 │   ├── 012_create_email_outbox.sql
 │   ├── 013_create_auth_tokens.sql
-│   └── 014_create_audit_logs.sql
+│   ├── 014_create_audit_logs.sql
+│   ├── …                                 # 015 to 028: later phases
+│   ├── 029_extend_email_outbox.sql       # Phase 13: transactional outbox columns, keys, indexes
+│   ├── 030_email_outbox_permissions_and_reminder_setting.sql  # Phase 13: DRBAC + reminder_lead_hours
+│   └── rollback/                         # Manual down scripts (not run by migrate.php)
+│       └── 029_extend_email_outbox.down.sql
 ├── seeds/                                # Synthetic development seed dataset
 │   └── development_seed.sql
 ├── queries/                              # Representative production sample queries
@@ -152,7 +157,7 @@ LIMIT 1;
 6. If free: `INSERT INTO appointments (...)` and record transition in `appointment_status_history`.
 7. `COMMIT;` (Releases locks).
 
-See [concurrency-and-locking.md](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/docs/phase-4/concurrency-and-locking.md) for full architectural documentation.
+See [concurrency-and-locking.md](../docs/database/schema/concurrency-and-locking.md) for full architectural documentation.
 
 ---
 

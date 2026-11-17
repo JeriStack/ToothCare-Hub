@@ -2,6 +2,69 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import authApi from '../api';
 
 const AuthContext = createContext(null);
+const USER_STORAGE_KEY = 'toothcare_user';
+
+function readStoredAuthUser() {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  for (const storage of [window.localStorage, window.sessionStorage]) {
+    try {
+      const raw = storage?.getItem(USER_STORAGE_KEY);
+      if (raw) {
+        return JSON.parse(raw);
+      }
+    } catch {
+      // Ignore corrupt or unavailable storage
+    }
+  }
+  return null;
+}
+
+function hasPersistentAuthUser() {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  try {
+    return Boolean(window.localStorage.getItem(USER_STORAGE_KEY));
+  } catch {
+    return false;
+  }
+}
+
+function writeStoredAuthUser(userData, persistent = hasPersistentAuthUser()) {
+  if (typeof window === 'undefined' || !userData) {
+    return;
+  }
+
+  const serialized = JSON.stringify(userData);
+  try {
+    if (persistent) {
+      window.localStorage.setItem(USER_STORAGE_KEY, serialized);
+      window.sessionStorage?.removeItem(USER_STORAGE_KEY);
+    } else {
+      window.sessionStorage?.setItem(USER_STORAGE_KEY, serialized);
+      window.localStorage.removeItem(USER_STORAGE_KEY);
+    }
+  } catch {
+    // Safe fallback when storage is unavailable
+  }
+}
+
+function clearStoredAuthUser() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.removeItem(USER_STORAGE_KEY);
+  } catch {}
+  try {
+    window.sessionStorage?.removeItem(USER_STORAGE_KEY);
+  } catch {}
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -12,16 +75,14 @@ export function AuthProvider({ children }) {
     if (!updatedUser) return;
     setUser((prev) => {
       const next = typeof updatedUser === 'function' ? updatedUser(prev) : { ...prev, ...updatedUser };
-      try {
-        localStorage.setItem('toothcare_user', JSON.stringify(next));
-      } catch {}
+      writeStoredAuthUser(next, hasPersistentAuthUser());
       return next;
     });
   }, []);
 
   const fetchCurrentUser = useCallback(async (options = {}) => {
     const isSilent = Boolean(options?.silent);
-    if (!isSilent && !localStorage.getItem('toothcare_user')) {
+    if (!isSilent && !readStoredAuthUser()) {
       setIsLoading(true);
     }
     setError(null);
@@ -33,21 +94,19 @@ export function AuthProvider({ children }) {
       const data = await authApi.getMe(requestOptions);
       if (data) {
         setUser(data);
-        try {
-          localStorage.setItem('toothcare_user', JSON.stringify(data));
-        } catch {}
+        writeStoredAuthUser(
+          data,
+          typeof data.remember_me === 'boolean' ? data.remember_me : hasPersistentAuthUser()
+        );
         return data;
       }
     } catch {
-      // Offline fallback: check localStorage
-      try {
-        const saved = localStorage.getItem('toothcare_user');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          setUser(parsed);
-          return parsed;
-        }
-      } catch {}
+      // Offline fallback: check stored user profile
+      const saved = readStoredAuthUser();
+      if (saved) {
+        setUser(saved);
+        return saved;
+      }
       setUser(null);
       return null;
     } finally {
@@ -59,9 +118,7 @@ export function AuthProvider({ children }) {
     fetchCurrentUser();
 
     const handleUnauthorized = () => {
-      try {
-        localStorage.removeItem('toothcare_user');
-      } catch {}
+      clearStoredAuthUser();
       setUser(null);
     };
 
@@ -76,13 +133,16 @@ export function AuthProvider({ children }) {
     setError(null);
     const normalizedEmail = (credentials?.email || '').trim().toLowerCase();
     const password = credentials?.password || '';
+    const rememberMe = Boolean(credentials?.remember_me);
 
     try {
-      const userData = await authApi.login({ email: normalizedEmail, password });
+      const userData = await authApi.login({
+        email: normalizedEmail,
+        password,
+        remember_me: rememberMe,
+      });
       setUser(userData);
-      try {
-        localStorage.setItem('toothcare_user', JSON.stringify(userData));
-      } catch {}
+      writeStoredAuthUser(userData, rememberMe);
       return { success: true, user: userData };
     } catch (err) {
       const message =
@@ -123,9 +183,7 @@ export function AuthProvider({ children }) {
     } catch {
       // Continue clearing local state even if server logout errored
     } finally {
-      try {
-        localStorage.removeItem('toothcare_user');
-      } catch {}
+      clearStoredAuthUser();
       setUser(null);
       setIsLoading(false);
     }

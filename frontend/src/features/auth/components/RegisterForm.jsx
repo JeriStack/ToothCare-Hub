@@ -151,14 +151,14 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
   if (registeredSuccessEmail) {
     return (
       <div className="text-center py-4 space-y-5 animate-in fade-in duration-300">
-        <div className="w-14 h-14 mx-auto rounded-2xl bg-[#CCFBF1] text-[#0D9488] flex items-center justify-center">
+        <div className="w-14 h-14 mx-auto rounded-2xl bg-[#CCFBF1] dark:bg-teal-900/50 text-[#0D9488] dark:text-teal-300 flex items-center justify-center">
           <CheckCircle2 className="w-8 h-8" />
         </div>
 
         <div>
-          <h2 className="text-xl font-bold text-[#12304A]">Account Created Successfully</h2>
-          <p className="mt-2 text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
-            We sent a verification link to <strong className="text-slate-800">{registeredSuccessEmail}</strong>.
+          <h2 className="text-xl font-bold text-[#12304A] dark:text-gray-50">Account Created Successfully</h2>
+          <p className="mt-2 text-xs text-slate-600 dark:text-gray-300 leading-relaxed max-w-sm mx-auto">
+            We sent a verification link to <strong className="text-slate-800 dark:text-white">{registeredSuccessEmail}</strong>.
             Please verify your email address to confirm your account and book dental appointments.
           </p>
         </div>
@@ -167,20 +167,20 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
           <button
             type="button"
             onClick={onNavigateLogin}
-            className="w-full py-3 px-4 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] text-white font-semibold text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+            className="w-full py-3 px-4 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] dark:bg-[#0F766E] dark:hover:bg-[#0D9488] text-white font-semibold text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
           >
             Sign In to Your Account
           </button>
 
           <div className="pt-2">
             {resendStatus === 'sent' ? (
-              <p className="text-xs text-[#0D9488] font-medium">Verification link resent! Check your inbox.</p>
+              <p className="text-xs text-[#0D9488] dark:text-teal-400 font-medium">Verification link resent! Check your inbox.</p>
             ) : (
               <button
                 type="button"
                 disabled={resendStatus === 'loading'}
                 onClick={handleResend}
-                className="text-xs text-slate-500 hover:text-slate-800 transition-colors underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded"
+                className="text-xs text-slate-500 dark:text-gray-400 hover:text-slate-800 dark:hover:text-gray-200 transition-colors underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded"
               >
                 {resendStatus === 'loading' ? 'Sending link...' : "Didn't receive an email? Resend verification"}
               </button>
@@ -197,12 +197,12 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
       {formError && (
         <div
           role="alert"
-          className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-start gap-2.5"
+          className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-sm flex items-start gap-2.5"
         >
-          <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+          <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
           <div className="flex-1">
             <p className="font-semibold">Registration failed</p>
-            <p className="text-xs text-rose-700 mt-0.5">{formError}</p>
+            <p className="text-xs text-rose-700 dark:text-rose-300 mt-0.5">{formError}</p>
           </div>
         </div>
       )}
@@ -210,11 +210,11 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
       {/* Name Fields (First & Last) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label htmlFor="reg-first-name" className="block text-xs font-bold text-[#12304A] mb-1.5">
+          <label htmlFor="reg-first-name" className="block text-xs font-bold text-[#12304A] dark:text-gray-200 mb-1.5">
             First name
           </label>
           <div className="relative">
-            <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] flex items-center justify-center text-[#0D9488] pointer-events-none">
+            <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] dark:bg-teal-900/50 flex items-center justify-center text-[#0D9488] dark:text-teal-300 pointer-events-none">
               <User className="w-4 h-4 stroke-[2.2]" />
             </div>
             <input
@@ -226,22 +226,22 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
               onChange={(e) => handleChange('firstName', e.target.value)}
               placeholder="e.g. Maria"
               aria-invalid={Boolean(fieldErrors.firstName)}
-              className={`w-full pl-12 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 placeholder:text-slate-400 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
-                fieldErrors.firstName ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
+              className={`w-full pl-12 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
+                fieldErrors.firstName ? 'border-rose-400 dark:border-rose-500 bg-rose-50/20 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600 hover:border-slate-400 dark:hover:border-gray-500'
               }`}
             />
           </div>
           {fieldErrors.firstName && (
-            <p className="mt-1 text-xs text-rose-600 font-medium">{fieldErrors.firstName}</p>
+            <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.firstName}</p>
           )}
         </div>
 
         <div>
-          <label htmlFor="reg-last-name" className="block text-xs font-bold text-[#12304A] mb-1.5">
+          <label htmlFor="reg-last-name" className="block text-xs font-bold text-[#12304A] dark:text-gray-200 mb-1.5">
             Last name
           </label>
           <div className="relative">
-            <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] flex items-center justify-center text-[#0D9488] pointer-events-none">
+            <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] dark:bg-teal-900/50 flex items-center justify-center text-[#0D9488] dark:text-teal-300 pointer-events-none">
               <User className="w-4 h-4 stroke-[2.2]" />
             </div>
             <input
@@ -253,24 +253,24 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
               onChange={(e) => handleChange('lastName', e.target.value)}
               placeholder="e.g. Santos"
               aria-invalid={Boolean(fieldErrors.lastName)}
-              className={`w-full pl-12 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 placeholder:text-slate-400 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
-                fieldErrors.lastName ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
+              className={`w-full pl-12 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
+                fieldErrors.lastName ? 'border-rose-400 dark:border-rose-500 bg-rose-50/20 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600 hover:border-slate-400 dark:hover:border-gray-500'
               }`}
             />
           </div>
           {fieldErrors.lastName && (
-            <p className="mt-1 text-xs text-rose-600 font-medium">{fieldErrors.lastName}</p>
+            <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.lastName}</p>
           )}
         </div>
       </div>
 
       {/* Email Address */}
       <div>
-        <label htmlFor="reg-email" className="block text-xs font-bold text-[#12304A] mb-1.5">
+        <label htmlFor="reg-email" className="block text-xs font-bold text-[#12304A] dark:text-gray-200 mb-1.5">
           Email address
         </label>
         <div className="relative">
-          <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] flex items-center justify-center text-[#0D9488] pointer-events-none">
+          <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] dark:bg-teal-900/50 flex items-center justify-center text-[#0D9488] dark:text-teal-300 pointer-events-none">
             <Mail className="w-4 h-4 stroke-[2.2]" />
           </div>
           <input
@@ -283,23 +283,23 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
             onChange={(e) => handleChange('email', e.target.value)}
             placeholder="maria.santos@example.com"
             aria-invalid={Boolean(fieldErrors.email)}
-            className={`w-full pl-12 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 placeholder:text-slate-400 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
-              fieldErrors.email ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
+            className={`w-full pl-12 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
+              fieldErrors.email ? 'border-rose-400 dark:border-rose-500 bg-rose-50/20 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600 hover:border-slate-400 dark:hover:border-gray-500'
             }`}
           />
         </div>
         {fieldErrors.email && (
-          <p className="mt-1 text-xs text-rose-600 font-medium">{fieldErrors.email}</p>
+          <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.email}</p>
         )}
       </div>
 
       {/* Phone Number */}
       <div>
-        <label htmlFor="reg-phone" className="block text-xs font-bold text-[#12304A] mb-1.5">
+        <label htmlFor="reg-phone" className="block text-xs font-bold text-[#12304A] dark:text-gray-200 mb-1.5">
           Phone number
         </label>
         <div className="relative">
-          <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] flex items-center justify-center text-[#0D9488] pointer-events-none">
+          <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] dark:bg-teal-900/50 flex items-center justify-center text-[#0D9488] dark:text-teal-300 pointer-events-none">
             <Phone className="w-4 h-4 stroke-[2.2]" />
           </div>
           <input
@@ -312,24 +312,24 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
             onChange={(e) => handleChange('phone', e.target.value)}
             placeholder="+63 917 123 4567"
             aria-invalid={Boolean(fieldErrors.phone)}
-            className={`w-full pl-12 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 placeholder:text-slate-400 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
-              fieldErrors.phone ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
+            className={`w-full pl-12 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
+              fieldErrors.phone ? 'border-rose-400 dark:border-rose-500 bg-rose-50/20 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600 hover:border-slate-400 dark:hover:border-gray-500'
             }`}
           />
         </div>
         {fieldErrors.phone && (
-          <p className="mt-1 text-xs text-rose-600 font-medium">{fieldErrors.phone}</p>
+          <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.phone}</p>
         )}
       </div>
 
       {/* DOB and Gender */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label htmlFor="reg-dob" className="block text-xs font-bold text-[#12304A] mb-1.5">
+          <label htmlFor="reg-dob" className="block text-xs font-bold text-[#12304A] dark:text-gray-200 mb-1.5">
             Date of birth
           </label>
           <div className="relative">
-            <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] flex items-center justify-center text-[#0D9488] pointer-events-none">
+            <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] dark:bg-teal-900/50 flex items-center justify-center text-[#0D9488] dark:text-teal-300 pointer-events-none">
               <Calendar className="w-4 h-4 stroke-[2.2]" />
             </div>
             <input
@@ -345,18 +345,18 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
               onChange={(e) => handleChange('dateOfBirth', e.target.value)}
               placeholder="yyyy-mm-dd"
               aria-invalid={Boolean(fieldErrors.dateOfBirth)}
-              className={`w-full pl-12 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 placeholder:text-slate-400 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer ${
-                fieldErrors.dateOfBirth ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
+              className={`w-full pl-12 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer ${
+                fieldErrors.dateOfBirth ? 'border-rose-400 dark:border-rose-500 bg-rose-50/20 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600 hover:border-slate-400 dark:hover:border-gray-500'
               }`}
             />
           </div>
           {fieldErrors.dateOfBirth && (
-            <p className="mt-1 text-xs text-rose-600 font-medium">{fieldErrors.dateOfBirth}</p>
+            <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.dateOfBirth}</p>
           )}
         </div>
 
         <div>
-          <label htmlFor="reg-gender" className="block text-xs font-bold text-[#12304A] mb-1.5">
+          <label htmlFor="reg-gender" className="block text-xs font-bold text-[#12304A] dark:text-gray-200 mb-1.5">
             Gender
           </label>
           <div className="relative">
@@ -365,7 +365,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
               name="gender"
               value={formData.gender}
               onChange={(e) => handleChange('gender', e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-sm text-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] hover:border-slate-400 appearance-none pr-10"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm text-slate-800 dark:text-gray-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 hover:border-slate-400 dark:hover:border-gray-500 appearance-none pr-10"
             >
               <option value="">Select</option>
               <option value="FEMALE">Female</option>
@@ -373,7 +373,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
               <option value="OTHER">Other</option>
               <option value="PREFER_NOT_TO_SAY">Prefer not to say</option>
             </select>
-            <ChevronDown className="w-5 h-5 text-[#12304A] absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none stroke-[2.2]" />
+            <ChevronDown className="w-5 h-5 text-[#12304A] dark:text-gray-300 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none stroke-[2.2]" />
           </div>
         </div>
       </div>
@@ -383,24 +383,24 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
         <button
           type="button"
           onClick={() => setShowOptionalFields(!showOptionalFields)}
-          className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200/90 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+          className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-gray-900/60 border border-slate-200/90 dark:border-gray-700 text-xs font-semibold text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
         >
           <span className="flex items-center gap-2">
-            <HeartPulse className="w-4 h-4 text-[#0D9488]" />
+            <HeartPulse className="w-4 h-4 text-[#0D9488] dark:text-teal-400" />
             Address, Medical History & Emergency Contact (Optional)
           </span>
           {showOptionalFields ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
 
         {showOptionalFields && (
-          <div className="mt-3 p-4 rounded-2xl bg-[#F8FAFC] border border-slate-200/80 space-y-3.5 animate-in fade-in duration-200">
+          <div className="mt-3 p-4 rounded-2xl bg-[#F8FAFC] dark:bg-gray-900/70 border border-slate-200/80 dark:border-gray-700 space-y-3.5 tch-animate-fade-in">
             {/* Address */}
             <div>
-              <label htmlFor="reg-address" className="block text-[11px] font-bold text-[#12304A] mb-1">
+              <label htmlFor="reg-address" className="block text-[11px] font-bold text-[#12304A] dark:text-gray-200 mb-1">
                 Complete address
               </label>
               <div className="relative">
-                <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg bg-white flex items-center justify-center text-slate-400 pointer-events-none border border-slate-200">
+                <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg bg-white dark:bg-gray-800 flex items-center justify-center text-slate-400 dark:text-gray-400 pointer-events-none border border-slate-200 dark:border-gray-700">
                   <MapPin className="w-3.5 h-3.5" />
                 </div>
                 <input
@@ -410,7 +410,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
                   value={formData.address}
                   onChange={(e) => handleChange('address', e.target.value)}
                   placeholder="Unit, Street, Barangay, City / Municipality"
-                  className="w-full pl-11 pr-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-800 bg-white placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                  className="w-full pl-11 pr-3 py-2 rounded-xl border border-slate-300 dark:border-gray-600 text-xs text-slate-800 dark:text-gray-100 bg-white dark:bg-gray-800 placeholder:text-slate-400 dark:placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
                 />
               </div>
             </div>
@@ -418,7 +418,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
             {/* Emergency Contact Name & Phone */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label htmlFor="reg-emergency-name" className="block text-[11px] font-bold text-[#12304A] mb-1">
+                <label htmlFor="reg-emergency-name" className="block text-[11px] font-bold text-[#12304A] dark:text-gray-200 mb-1">
                   Emergency contact name
                 </label>
                 <input
@@ -428,12 +428,12 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
                   value={formData.emergencyContactName}
                   onChange={(e) => handleChange('emergencyContactName', e.target.value)}
                   placeholder="e.g. Juan Santos (Spouse)"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-800 bg-white placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-gray-600 text-xs text-slate-800 dark:text-gray-100 bg-white dark:bg-gray-800 placeholder:text-slate-400 dark:placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
                 />
               </div>
 
               <div>
-                <label htmlFor="reg-emergency-phone" className="block text-[11px] font-bold text-[#12304A] mb-1">
+                <label htmlFor="reg-emergency-phone" className="block text-[11px] font-bold text-[#12304A] dark:text-gray-200 mb-1">
                   Emergency contact phone
                 </label>
                 <input
@@ -443,17 +443,17 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
                   value={formData.emergencyContactPhone}
                   onChange={(e) => handleChange('emergencyContactPhone', e.target.value)}
                   placeholder="+63 918 765 4321"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-800 bg-white placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-gray-600 text-xs text-slate-800 dark:text-gray-100 bg-white dark:bg-gray-800 placeholder:text-slate-400 dark:placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
                 />
                 {fieldErrors.emergencyContactPhone && (
-                  <p className="mt-1 text-[11px] text-rose-600">{fieldErrors.emergencyContactPhone}</p>
+                  <p className="mt-1 text-[11px] text-rose-600 dark:text-rose-400">{fieldErrors.emergencyContactPhone}</p>
                 )}
               </div>
             </div>
 
             {/* Medical History & Alerts */}
             <div>
-              <label htmlFor="reg-medical-alerts" className="block text-[11px] font-bold text-[#12304A] mb-1">
+              <label htmlFor="reg-medical-alerts" className="block text-[11px] font-bold text-[#12304A] dark:text-gray-200 mb-1">
                 Medical history & allergies disclosure
               </label>
               <textarea
@@ -463,7 +463,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
                 value={formData.medicalAlerts}
                 onChange={(e) => handleChange('medicalAlerts', e.target.value)}
                 placeholder="List any drug allergies (e.g. Penicillin), medical conditions (hypertension, diabetes), bleeding disorders, or current medications."
-                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-800 bg-white placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] resize-none text-justify placeholder:text-justify"
+                className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-gray-600 text-xs text-slate-800 dark:text-gray-100 bg-white dark:bg-gray-800 placeholder:text-slate-400 dark:placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] resize-none text-justify placeholder:text-justify"
               />
             </div>
           </div>
@@ -472,11 +472,11 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
 
       {/* Password Fields */}
       <div>
-        <label htmlFor="reg-password" className="block text-xs font-bold text-[#12304A] mb-1.5">
+        <label htmlFor="reg-password" className="block text-xs font-bold text-[#12304A] dark:text-gray-200 mb-1.5">
           Password
         </label>
         <div className="relative">
-          <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] flex items-center justify-center text-[#0D9488] pointer-events-none">
+          <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] dark:bg-teal-900/50 flex items-center justify-center text-[#0D9488] dark:text-teal-300 pointer-events-none">
             <Lock className="w-4 h-4 stroke-[2.2]" />
           </div>
           <input
@@ -489,15 +489,15 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
             onChange={(e) => handleChange('password', e.target.value)}
             placeholder="At least 8 characters"
             aria-invalid={Boolean(fieldErrors.password)}
-            className={`w-full pl-12 pr-11 py-2.5 rounded-xl border text-sm text-slate-800 placeholder:text-slate-400 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
-              fieldErrors.password ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
+            className={`w-full min-w-0 pl-12 pr-12 py-2.5 rounded-xl border text-base sm:text-sm text-slate-800 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
+              fieldErrors.password ? 'border-rose-400 dark:border-rose-500 bg-rose-50/20 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600 hover:border-slate-400 dark:hover:border-gray-500'
             }`}
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
             aria-label={showPassword ? 'Hide password' : 'Show password'}
-            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded p-0.5"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 w-10 h-10 inline-flex items-center justify-center text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded-lg"
           >
             {showPassword ? <EyeOff className="w-4 h-4 stroke-[2]" /> : <Eye className="w-4 h-4 stroke-[2]" />}
           </button>
@@ -518,32 +518,32 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
                 key={i}
                 className={`h-1 flex-1 rounded-full transition-all duration-300 ${
                   i < passwordAnalysis.strengthScore
-                    ? 'bg-emerald-600'
-                    : 'bg-slate-200'
+                    ? 'bg-emerald-600 dark:bg-emerald-500'
+                    : 'bg-slate-200 dark:bg-gray-700'
                 }`}
               />
             ))}
           </div>
           <p
             className={`text-[11px] text-justify leading-relaxed transition-colors ${
-              passwordAnalysis.isValid ? 'text-emerald-700 font-medium' : 'text-rose-500'
+              passwordAnalysis.isValid ? 'text-emerald-700 dark:text-emerald-400 font-medium' : 'text-rose-500 dark:text-rose-400'
             }`}
           >
             Min. 8 characters, 1 lowercase, 1 uppercase and 1 number. ONLY the following special characters are allowed: !@#$%^&*
           </p>
         </div>
         {fieldErrors.password && (
-          <p className="mt-1 text-xs text-rose-600 font-medium">{fieldErrors.password}</p>
+          <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.password}</p>
         )}
       </div>
 
       {/* Confirm Password */}
       <div>
-        <label htmlFor="reg-confirm-password" className="block text-xs font-bold text-[#12304A] mb-1.5">
+        <label htmlFor="reg-confirm-password" className="block text-xs font-bold text-[#12304A] dark:text-gray-200 mb-1.5">
           Confirm password
         </label>
         <div className="relative">
-          <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] flex items-center justify-center text-[#0D9488] pointer-events-none">
+          <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#E6F7F5] dark:bg-teal-900/50 flex items-center justify-center text-[#0D9488] dark:text-teal-300 pointer-events-none">
             <Lock className="w-4 h-4 stroke-[2.2]" />
           </div>
           <input
@@ -556,42 +556,42 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
             onChange={(e) => handleChange('confirmPassword', e.target.value)}
             placeholder="Repeat your password"
             aria-invalid={Boolean(fieldErrors.confirmPassword)}
-            className={`w-full pl-12 pr-11 py-2.5 rounded-xl border text-sm text-slate-800 placeholder:text-slate-400 bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
-              fieldErrors.confirmPassword ? 'border-rose-400 bg-rose-50/20' : 'border-slate-300 hover:border-slate-400'
+            className={`w-full min-w-0 pl-12 pr-12 py-2.5 rounded-xl border text-base sm:text-sm text-slate-800 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
+              fieldErrors.confirmPassword ? 'border-rose-400 dark:border-rose-500 bg-rose-50/20 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600 hover:border-slate-400 dark:hover:border-gray-500'
             }`}
           />
           <button
             type="button"
             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
             aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded p-0.5"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 w-10 h-10 inline-flex items-center justify-center text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded-lg"
           >
             {showConfirmPassword ? <EyeOff className="w-4 h-4 stroke-[2]" /> : <Eye className="w-4 h-4 stroke-[2]" />}
           </button>
         </div>
         {fieldErrors.confirmPassword && (
-          <p className="mt-1 text-xs text-rose-600 font-medium">{fieldErrors.confirmPassword}</p>
+          <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.confirmPassword}</p>
         )}
       </div>
 
       {/* Terms and Privacy Checkbox */}
       <div>
-        <label className="flex items-start gap-2 cursor-pointer text-xs text-slate-600 select-none">
+        <label className="flex items-start gap-2 cursor-pointer text-xs text-slate-600 dark:text-gray-300 select-none">
           <input
             type="checkbox"
             checked={formData.agreeTerms}
             onChange={(e) => handleChange('agreeTerms', e.target.checked)}
-            className="mt-0.5 w-4 h-4 rounded border-slate-300 text-[#0D9488] focus:ring-[#0D9488]"
+            className="tch-check mt-0.5 rounded border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-[#0D9488] focus:ring-[#0D9488]"
           />
           <span>
             I agree to the ToothCare Hub{' '}
-            <a href="#terms" className="text-[#0D9488] underline hover:text-[#0F766E]">Terms of Service</a>{' '}
+            <a href="#terms" className="tch-tap text-[#0D9488] dark:text-teal-400 underline hover:text-[#0F766E] dark:hover:text-teal-300">Terms of Service</a>{' '}
             and{' '}
-            <a href="#privacy" className="text-[#0D9488] underline hover:text-[#0F766E]">Privacy Policy</a>.
+            <a href="#privacy" className="tch-tap text-[#0D9488] dark:text-teal-400 underline hover:text-[#0F766E] dark:hover:text-teal-300">Privacy Policy</a>.
           </span>
         </label>
         {fieldErrors.agreeTerms && (
-          <p className="mt-1 text-xs text-rose-600 font-medium">{fieldErrors.agreeTerms}</p>
+          <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.agreeTerms}</p>
         )}
       </div>
 
@@ -599,7 +599,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full py-3 px-4 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] active:bg-[#115E59] text-white font-semibold text-sm shadow-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full py-3 px-4 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] dark:bg-[#0F766E] dark:hover:bg-[#0D9488] active:bg-[#115E59] text-white font-semibold text-sm shadow-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-800 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {isLoading ? (
           <>
@@ -612,12 +612,12 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
       </button>
 
       {/* Link to Login */}
-      <p className="text-center text-xs text-slate-600 pt-2">
+      <p className="text-center text-xs text-slate-600 dark:text-gray-400 pt-2">
         Already have an account?{' '}
         <button
           type="button"
           onClick={onNavigateLogin}
-          className="font-semibold text-[#0D9488] hover:text-[#0F766E] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded"
+          className="tch-tap font-semibold text-[#0D9488] dark:text-teal-400 hover:text-[#0F766E] dark:hover:text-teal-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded"
         >
           Sign in
         </button>

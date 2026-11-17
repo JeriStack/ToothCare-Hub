@@ -25,7 +25,8 @@ import { appointmentsApi } from '../api';
 import { dentistsApi } from '../../dentists/api';
 import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
 import { STATUS_STYLES } from '../components/AppointmentCard';
-
+
+import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 export function AdminAppointmentsPage() {
   // State
   const [appointments, setAppointments] = useState([]);
@@ -226,15 +227,15 @@ export function AdminAppointmentsPage() {
     <div className="space-y-6">
       {/* Top Banner / Notification */}
       {notification && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl flex items-center justify-between text-sm shadow-sm animate-fade-in">
+        <div className="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/70 text-emerald-800 dark:text-emerald-200 px-4 py-3 rounded-xl flex items-center justify-between text-sm shadow-sm animate-fade-in">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <span>{notification.message}</span>
           </div>
           <button
             type="button"
             onClick={() => setNotification(null)}
-            className="text-emerald-700 hover:text-emerald-900"
+            className="text-emerald-700 dark:text-emerald-300 hover:text-emerald-900 dark:hover:text-emerald-100"
           >
             <X className="w-4 h-4" />
           </button>
@@ -242,10 +243,10 @@ export function AdminAppointmentsPage() {
       )}
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white dark:bg-gray-800 p-6 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-sm">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-[#12304A]">Appointment Triage & Management</h2>
-          <p className="text-sm text-slate-500 mt-1">
+          <h2 className="text-xl sm:text-2xl font-bold text-[#12304A] dark:text-slate-100">Appointment Triage & Management</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Review incoming requests, manage confirmed bookings, and oversee clinic schedule flow.
           </p>
         </div>
@@ -254,7 +255,7 @@ export function AdminAppointmentsPage() {
             type="button"
             onClick={() => setRefreshKey((k) => k + 1)}
             disabled={loading}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh Queue
@@ -263,9 +264,9 @@ export function AdminAppointmentsPage() {
       </div>
 
       {/* Filter and Triage Bar */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+      <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-sm space-y-4">
         {/* Status Filter Chips */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-100">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-100 dark:border-gray-700">
           {[
             { id: '', label: 'All Statuses' },
             { id: 'PENDING', label: 'Pending Review' },
@@ -283,8 +284,8 @@ export function AdminAppointmentsPage() {
               }}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
                 statusFilter === tab.id
-                  ? 'bg-[#CCFBF1] text-[#0F766E] shadow-xs'
-                  : 'text-slate-600 hover:bg-slate-100'
+                  ? 'bg-[#CCFBF1] dark:bg-teal-950/70 text-[#0F766E] dark:text-teal-300 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-gray-700/70'
               }`}
             >
               {tab.label}
@@ -296,7 +297,7 @@ export function AdminAppointmentsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
           {/* Search Input */}
           <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={search}
@@ -305,7 +306,7 @@ export function AdminAppointmentsPage() {
                 setPage(1);
               }}
               placeholder="Search patient, email, ref #..."
-              className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
+              className="w-full pl-9 pr-3 py-2 bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400"
             />
           </div>
 
@@ -317,7 +318,7 @@ export function AdminAppointmentsPage() {
                 setDentistId(e.target.value);
                 setPage(1);
               }}
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] bg-white text-slate-700"
+              className="w-full px-3 py-2 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400 bg-white dark:bg-gray-700 text-slate-700 dark:text-slate-100"
             >
               <option value="">All Dentists</option>
               {dentists.map((d) => (
@@ -337,7 +338,7 @@ export function AdminAppointmentsPage() {
                 setDateFrom(e.target.value);
                 setPage(1);
               }}
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] text-slate-700"
+              className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400 text-slate-700 dark:text-slate-100"
               placeholder="From Date"
             />
           </div>
@@ -351,7 +352,7 @@ export function AdminAppointmentsPage() {
                 setDateTo(e.target.value);
                 setPage(1);
               }}
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] text-slate-700"
+              className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400 text-slate-700 dark:text-slate-100"
               placeholder="To Date"
             />
           </div>
@@ -359,12 +360,12 @@ export function AdminAppointmentsPage() {
 
         {/* Clear Filters CTA if active */}
         {(statusFilter || search || dentistId || dateFrom || dateTo) && (
-          <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-1">
             <span>Filters currently applied</span>
             <button
               type="button"
               onClick={resetFilters}
-              className="text-[#0D9488] font-semibold hover:underline"
+              className="text-[#0D9488] dark:text-teal-400 font-semibold hover:underline"
             >
               Reset all filters
             </button>
@@ -374,15 +375,15 @@ export function AdminAppointmentsPage() {
 
       {/* Error State */}
       {error && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl flex items-center justify-between text-sm">
+        <div className="bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/70 text-rose-800 dark:text-rose-200 p-4 rounded-xl flex items-center justify-between text-sm">
           <div className="flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+            <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
             <span>{error}</span>
           </div>
           <button
             type="button"
             onClick={fetchAppointments}
-            className="text-xs font-semibold text-rose-700 underline hover:text-rose-900"
+            className="text-xs font-semibold text-rose-700 dark:text-rose-300 underline hover:text-rose-900 dark:hover:text-rose-100"
           >
             Retry
           </button>
@@ -390,26 +391,26 @@ export function AdminAppointmentsPage() {
       )}
 
       {/* Table List View */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold">
+          <table role="table" className="tch-responsive-table w-full text-left text-xs">
+            <thead role="rowgroup" className="bg-slate-50 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-700 text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">
               <tr>
-                <th className="py-3.5 px-4">Ref #</th>
-                <th className="py-3.5 px-4">Patient Details</th>
-                <th className="py-3.5 px-4">Service & Fee</th>
-                <th className="py-3.5 px-4">Dentist & Room</th>
-                <th className="py-3.5 px-4">Date & Time</th>
-                <th className="py-3.5 px-4">Status</th>
-                <th className="py-3.5 px-4 text-right">Actions</th>
+                <th role="columnheader" className="py-3.5 px-4">Ref #</th>
+                <th role="columnheader" className="py-3.5 px-4">Patient Details</th>
+                <th role="columnheader" className="py-3.5 px-4">Service & Fee</th>
+                <th role="columnheader" className="py-3.5 px-4">Dentist & Room</th>
+                <th role="columnheader" className="py-3.5 px-4">Date & Time</th>
+                <th role="columnheader" className="py-3.5 px-4">Status</th>
+                <th role="columnheader" className="py-3.5 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody role="rowgroup" className="divide-y divide-slate-100 dark:divide-gray-700/70">
               {loading ? (
-                <TableSkeleton.Rows count={6} columns={7} />
+                <TableSkeleton.Rows count={9} columns={7} />
               ) : (!Array.isArray(appointments) || appointments.length === 0) ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-500">
+                  <td role="cell" colSpan={7} className="py-12 text-center text-slate-500 dark:text-slate-400">
                     No appointments matched the current filter criteria.
                   </td>
                 </tr>
@@ -418,51 +419,51 @@ export function AdminAppointmentsPage() {
                   const sInfo = STATUS_STYLES[appt?.status] || STATUS_STYLES.PENDING;
                   const SIcon = sInfo?.icon || AlertCircle;
                   return (
-                    <tr key={appt.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3 px-4 font-mono font-bold text-slate-800">
+                    <tr role="row" key={appt.id} className="hover:bg-slate-50/80 dark:hover:bg-gray-700/40 transition-colors">
+                      <td role="cell" data-label="Ref #" className="py-3 px-4 font-mono font-bold text-slate-800 dark:text-slate-200">
                         #{appt.id}
                         {appt.rescheduled_from_id && (
-                          <span className="block text-[10px] text-sky-600 font-normal">
+                          <span className="block text-[10px] text-sky-600 dark:text-sky-400 font-normal">
                             from #{appt.rescheduled_from_id}
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-4">
-                        <div className="font-bold text-slate-900">
+                      <td role="cell" data-label="Patient Details" className="py-3 px-4">
+                        <div className="font-bold text-slate-900 dark:text-slate-100">
                           {appt.patient_first_name} {appt.patient_last_name}
                         </div>
-                        <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5">
                           {appt.patient_phone && <span>📞 {appt.patient_phone}</span>}
                           {appt.patient_email && <span>✉️ {appt.patient_email}</span>}
                         </div>
                       </td>
-                      <td className="py-3 px-4">
-                        <div className="font-semibold text-slate-800">{appt.service_name}</div>
-                        <div className="text-[11px] text-[#0D9488] font-bold mt-0.5">
+                      <td role="cell" data-label="Service & Fee" className="py-3 px-4">
+                        <div className="font-semibold text-slate-800 dark:text-slate-200">{appt.service_name}</div>
+                        <div className="text-[11px] text-[#0D9488] dark:text-teal-400 font-bold mt-0.5">
                           ₱{Number(appt.price_snapshot || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                          <span className="text-slate-400 font-normal ml-1">
+                          <span className="text-slate-400 dark:text-slate-500 font-normal ml-1">
                             ({appt.duration_snapshot || 30}m)
                           </span>
                         </div>
                       </td>
-                      <td className="py-3 px-4">
-                        <div className="font-semibold text-slate-800">
+                      <td role="cell" data-label="Dentist & Room" className="py-3 px-4">
+                        <div className="font-semibold text-slate-800 dark:text-slate-200">
                           Dr. {appt.dentist_first_name} {appt.dentist_last_name}
                         </div>
-                        <div className="text-[11px] text-slate-400">
+                        <div className="text-[11px] text-slate-400 dark:text-slate-500">
                           {appt.dentist_room_number || 'Chair 1'}
                         </div>
                       </td>
-                      <td className="py-3 px-4">
-                        <div className="font-semibold text-slate-800">
+                      <td role="cell" data-label="Date & Time" className="py-3 px-4">
+                        <div className="font-semibold text-slate-800 dark:text-slate-200">
                           {appt.start_at ? appt.start_at.substring(0, 10) : 'N/A'}
                         </div>
-                        <div className="text-[11px] text-slate-500">
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400">
                           {appt.start_at ? appt.start_at.substring(11, 16) : ''} –{' '}
                           {appt.end_at ? appt.end_at.substring(11, 16) : ''}
                         </div>
                       </td>
-                      <td className="py-3 px-4">
+                      <td role="cell" data-label="Status" className="py-3 px-4">
                         <span
                           className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${sInfo.bg} ${sInfo.text} ${sInfo.border}`}
                         >
@@ -470,13 +471,13 @@ export function AdminAppointmentsPage() {
                           {sInfo.label}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-right">
+                      <td role="cell" data-label="Actions" className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           {/* Details Button */}
                           <button
                             type="button"
                             onClick={() => handleOpenDetails(appt)}
-                            className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg"
+                            className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg"
                             title="View Full Details & History"
                           >
                             <Eye className="w-3.5 h-3.5" />
@@ -491,7 +492,7 @@ export function AdminAppointmentsPage() {
                                   setConfirmModalAppt(appt);
                                   setConfirmError(null);
                                 }}
-                                className="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 font-semibold text-[11px] flex items-center gap-1"
+                                className="px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/70 border border-emerald-200 dark:border-emerald-800/70 font-semibold text-[11px] flex items-center gap-1"
                                 title="Approve Appointment"
                               >
                                 <Check className="w-3 h-3" /> Confirm
@@ -503,7 +504,7 @@ export function AdminAppointmentsPage() {
                                   setRejectReason('');
                                   setRejectError(null);
                                 }}
-                                className="px-2 py-1 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 font-semibold text-[11px] flex items-center gap-1"
+                                className="px-2 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/70 border border-rose-200 dark:border-rose-800/70 font-semibold text-[11px] flex items-center gap-1"
                                 title="Decline Appointment"
                               >
                                 <X className="w-3 h-3" /> Reject
@@ -520,7 +521,7 @@ export function AdminAppointmentsPage() {
                                   setCompleteModalAppt(appt);
                                   setCompleteError(null);
                                 }}
-                                className="px-2 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 font-semibold text-[11px] flex items-center gap-1"
+                                className="px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/70 border border-blue-200 dark:border-blue-800/70 font-semibold text-[11px] flex items-center gap-1"
                                 title="Mark as Completed"
                               >
                                 <CheckCircle2 className="w-3 h-3" /> Complete
@@ -532,7 +533,7 @@ export function AdminAppointmentsPage() {
                                   setCancelReason('');
                                   setCancelError(null);
                                 }}
-                                className="px-2 py-1 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 font-semibold text-[11px]"
+                                className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-gray-600 border border-slate-200 dark:border-gray-600 font-semibold text-[11px]"
                                 title="Cancel Appointment"
                               >
                                 Cancel
@@ -550,24 +551,24 @@ export function AdminAppointmentsPage() {
         </div>
 
         {/* Server-Side Pagination Footer */}
-        <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-600">
+        <div className="p-4 border-t border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-900/50 flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
           <div>
             Showing{' '}
-            <span className="font-semibold text-slate-900">
+            <span className="font-semibold text-slate-900 dark:text-slate-100">
               {appointments.length > 0 ? (meta.page - 1) * meta.per_page + 1 : 0}
             </span>{' '}
             to{' '}
-            <span className="font-semibold text-slate-900">
+            <span className="font-semibold text-slate-900 dark:text-slate-100">
               {Math.min(meta.page * meta.per_page, meta.total)}
             </span>{' '}
-            of <span className="font-semibold text-slate-900">{meta.total}</span> records
+            of <span className="font-semibold text-slate-900 dark:text-slate-100">{meta.total}</span> records
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
               disabled={meta.page <= 1 || loading}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 text-slate-600"
+              className="p-1.5 rounded-lg border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-slate-50 dark:hover:bg-gray-700 disabled:opacity-50 text-slate-600 dark:text-slate-300"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -578,7 +579,7 @@ export function AdminAppointmentsPage() {
               type="button"
               disabled={meta.page >= (meta.last_page || 1) || loading}
               onClick={() => setPage((p) => p + 1)}
-              className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 text-slate-600"
+              className="p-1.5 rounded-lg border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-slate-50 dark:hover:bg-gray-700 disabled:opacity-50 text-slate-600 dark:text-slate-300"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -588,21 +589,22 @@ export function AdminAppointmentsPage() {
 
       {/* DETAIL / AUDIT DRAWER MODAL */}
       {detailModalAppt && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-scale-up">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+        <DialogOverlay
+          onClose={() => setDetailModalAppt(null)} className="fixed inset-0 z-50 bg-slate-900/40 dark:bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-2xl max-w-xl w-full max-h-[90dvh] flex flex-col overflow-hidden animate-scale-up">
+            <div className="p-5 border-b border-slate-100 dark:border-gray-700 flex items-center justify-between">
               <div>
-                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                   Admin Audit & Triage
                 </span>
-                <h3 className="text-lg font-bold text-slate-900">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
                   Appointment #{detailModalAppt.id} — {detailModalAppt.service_name}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setDetailModalAppt(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-gray-700"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -610,50 +612,50 @@ export function AdminAppointmentsPage() {
 
             <div className="p-6 overflow-y-auto space-y-5 text-xs">
               {/* Patient Info */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <span className="text-[11px] font-bold text-slate-400 uppercase">Patient Information</span>
-                <div className="font-bold text-slate-900 text-sm mt-1">
+              <div className="bg-slate-50 dark:bg-gray-900/50 p-4 rounded-xl border border-slate-200 dark:border-gray-700">
+                <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase">Patient Information</span>
+                <div className="font-bold text-slate-900 dark:text-slate-100 text-sm mt-1">
                   {detailModalAppt.patient_first_name} {detailModalAppt.patient_last_name}
                 </div>
-                <div className="mt-1 text-slate-600 flex flex-wrap gap-4">
+                <div className="mt-1 text-slate-600 dark:text-slate-300 flex flex-wrap gap-4">
                   {detailModalAppt.patient_phone && <span>📞 {detailModalAppt.patient_phone}</span>}
                   {detailModalAppt.patient_email && <span>✉️ {detailModalAppt.patient_email}</span>}
                 </div>
               </div>
 
               {/* Consultation Info */}
-              <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <div className="grid grid-cols-2 gap-4 bg-slate-50 dark:bg-gray-900/50 p-4 rounded-xl border border-slate-200 dark:border-gray-700">
                 <div>
-                  <span className="text-slate-400 font-medium">Attending Dentist</span>
-                  <p className="font-bold text-slate-800 mt-0.5">
+                  <span className="text-slate-400 dark:text-slate-500 font-medium">Attending Dentist</span>
+                  <p className="font-bold text-slate-800 dark:text-slate-100 mt-0.5">
                     Dr. {detailModalAppt.dentist_first_name} {detailModalAppt.dentist_last_name}
                   </p>
-                  <p className="text-slate-500">{detailModalAppt.dentist_room_number || 'Chair 1'}</p>
+                  <p className="text-slate-500 dark:text-slate-400">{detailModalAppt.dentist_room_number || 'Chair 1'}</p>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium">Price Snapshot</span>
-                  <p className="font-bold text-[#0D9488] mt-0.5">
+                  <span className="text-slate-400 dark:text-slate-500 font-medium">Price Snapshot</span>
+                  <p className="font-bold text-[#0D9488] dark:text-teal-400 mt-0.5">
                     ₱{Number(detailModalAppt.price_snapshot || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </p>
-                  <p className="text-slate-400">{detailModalAppt.duration_snapshot || 30} minutes</p>
+                  <p className="text-slate-400 dark:text-slate-500">{detailModalAppt.duration_snapshot || 30} minutes</p>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium">Start Time</span>
-                  <p className="font-bold text-slate-800 mt-0.5">{detailModalAppt.start_at}</p>
+                  <span className="text-slate-400 dark:text-slate-500 font-medium">Start Time</span>
+                  <p className="font-bold text-slate-800 dark:text-slate-100 mt-0.5">{detailModalAppt.start_at}</p>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium">End Time</span>
-                  <p className="font-bold text-slate-800 mt-0.5">{detailModalAppt.end_at}</p>
+                  <span className="text-slate-400 dark:text-slate-500 font-medium">End Time</span>
+                  <p className="font-bold text-slate-800 dark:text-slate-100 mt-0.5">{detailModalAppt.end_at}</p>
                 </div>
               </div>
 
               {/* Chief Complaint */}
               {detailModalAppt.chief_complaint && (
                 <div>
-                  <span className="font-bold text-slate-500 uppercase tracking-wider">
+                  <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Chief Complaint / Notes
                   </span>
-                  <p className="mt-1 text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-200 italic">
+                  <p className="mt-1 text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-gray-900/50 p-3 rounded-lg border border-slate-200 dark:border-gray-700 italic">
                     "{detailModalAppt.chief_complaint}"
                   </p>
                 </div>
@@ -661,67 +663,69 @@ export function AdminAppointmentsPage() {
 
               {/* Immutable Status History Timeline */}
               <div>
-                <h4 className="font-bold uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
+                <h4 className="font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">
                   <History className="w-3.5 h-3.5" />
                   Audit Trail & Status Transitions
                 </h4>
                 {loadingDetails ? (
-                  <div className="text-slate-400 animate-pulse">Loading transition log...</div>
+                  <div className="text-slate-400 dark:text-slate-500 animate-pulse">Loading transition log...</div>
                 ) : detailModalAppt.status_history && detailModalAppt.status_history.length > 0 ? (
-                  <div className="relative pl-6 space-y-3 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
+                  <div className="relative pl-6 space-y-3 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200 dark:before:bg-gray-700">
                     {detailModalAppt.status_history.map((h, idx) => (
                       <div key={idx} className="relative">
-                        <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-[#0D9488] ring-4 ring-white" />
-                        <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 space-y-1">
-                          <div className="flex items-center justify-between font-bold text-slate-800">
+                        <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-[#0D9488] dark:bg-teal-400 ring-4 ring-white dark:ring-gray-800" />
+                        <div className="bg-slate-50 dark:bg-gray-900/50 p-2.5 rounded-lg border border-slate-200 dark:border-gray-700 space-y-1">
+                          <div className="flex items-center justify-between font-bold text-slate-800 dark:text-slate-100">
                             <span>
                               {h.from_status ? `${h.from_status} → ` : ''}
                               {h.to_status}
                             </span>
-                            <span className="text-slate-400 text-[10px]">{h.created_at}</span>
+                            <span className="text-slate-400 dark:text-slate-500 text-[10px]">{h.created_at}</span>
                           </div>
-                          {h.reason && <p className="text-slate-600 italic">"{h.reason}"</p>}
+                          {h.reason && <p className="text-slate-600 dark:text-slate-300 italic">"{h.reason}"</p>}
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-slate-400 italic">No transition history recorded yet.</p>
+                  <p className="text-slate-400 dark:text-slate-500 italic">No transition history recorded yet.</p>
                 )}
               </div>
             </div>
 
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end">
+            <div className="p-4 border-t border-slate-100 dark:border-gray-700 bg-slate-50 dark:bg-gray-900/50 flex items-center justify-end">
               <button
                 type="button"
                 onClick={() => setDetailModalAppt(null)}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-gray-700"
               >
                 Close Audit Drawer
               </button>
             </div>
           </div>
-        </div>
+        </DialogOverlay>
       )}
 
       {/* CONFIRM MODAL */}
       {confirmModalAppt && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4 animate-scale-up">
+        <DialogOverlay
+          onClose={() => setConfirmModalAppt(null)}
+          dismissible={!(confirming)} className="fixed inset-0 z-50 bg-slate-900/40 dark:bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-2xl max-w-md w-full p-6 space-y-4 animate-scale-up">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                 <CheckCircle2 className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 text-base">Approve Appointment #{confirmModalAppt.id}</h3>
-                <p className="text-xs text-slate-500 mt-1">
-                  Confirm booking for <strong>{confirmModalAppt.patient_first_name} {confirmModalAppt.patient_last_name}</strong> with Dr. {confirmModalAppt.dentist_last_name} on {confirmModalAppt.start_at}?
+                <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base">Approve Appointment #{confirmModalAppt.id}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Confirm booking for <strong className="text-slate-700 dark:text-slate-200">{confirmModalAppt.patient_first_name} {confirmModalAppt.patient_last_name}</strong> with Dr. {confirmModalAppt.dentist_last_name} on {confirmModalAppt.start_at}?
                 </p>
               </div>
             </div>
 
             {confirmError && (
-              <div className="bg-rose-50 border border-rose-200 text-rose-700 p-3 rounded-lg text-xs">
+              <div className="bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/70 text-rose-700 dark:text-rose-200 p-3 rounded-lg text-xs">
                 {confirmError}
               </div>
             )}
@@ -731,7 +735,7 @@ export function AdminAppointmentsPage() {
                 type="button"
                 onClick={() => setConfirmModalAppt(null)}
                 disabled={confirming}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-gray-600 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-gray-700"
               >
                 Cancel
               </button>
@@ -747,41 +751,43 @@ export function AdminAppointmentsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </DialogOverlay>
       )}
 
       {/* REJECT MODAL */}
       {rejectModalAppt && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4 animate-scale-up">
+        <DialogOverlay
+          onClose={() => setRejectModalAppt(null)}
+          dismissible={!(rejecting)} className="fixed inset-0 z-50 bg-slate-900/40 dark:bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-2xl max-w-md w-full p-6 space-y-4 animate-scale-up">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
                 <XCircle className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 text-base">Decline Appointment #{rejectModalAppt.id}</h3>
-                <p className="text-xs text-slate-500 mt-1">
+                <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base">Decline Appointment #{rejectModalAppt.id}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   Specify a reason for declining this appointment request. The patient will be notified.
                 </p>
               </div>
             </div>
 
             {rejectError && (
-              <div className="bg-rose-50 border border-rose-200 text-rose-700 p-3 rounded-lg text-xs">
+              <div className="bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/70 text-rose-700 dark:text-rose-200 p-3 rounded-lg text-xs">
                 {rejectError}
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Decline Reason <span className="text-rose-500">*</span>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">
+                Decline Reason <span className="text-rose-500 dark:text-rose-400">*</span>
               </label>
               <textarea
                 rows={3}
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
                 placeholder="e.g., Dentist called in for emergency surgery, clinic closure..."
-                className="w-full text-xs p-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500"
+                className="w-full text-xs p-3 bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500"
               />
             </div>
 
@@ -790,7 +796,7 @@ export function AdminAppointmentsPage() {
                 type="button"
                 onClick={() => setRejectModalAppt(null)}
                 disabled={rejecting}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-gray-600 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-gray-700"
               >
                 Back
               </button>
@@ -806,27 +812,29 @@ export function AdminAppointmentsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </DialogOverlay>
       )}
 
       {/* COMPLETE MODAL */}
       {completeModalAppt && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4 animate-scale-up">
+        <DialogOverlay
+          onClose={() => setCompleteModalAppt(null)}
+          dismissible={!(completing)} className="fixed inset-0 z-50 bg-slate-900/40 dark:bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-2xl max-w-md w-full p-6 space-y-4 animate-scale-up">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
                 <CheckCircle2 className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 text-base">Complete Appointment #{completeModalAppt.id}</h3>
-                <p className="text-xs text-slate-500 mt-1">
-                  Mark consultation for <strong>{completeModalAppt.patient_first_name} {completeModalAppt.patient_last_name}</strong> as completed?
+                <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base">Complete Appointment #{completeModalAppt.id}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Mark consultation for <strong className="text-slate-700 dark:text-slate-200">{completeModalAppt.patient_first_name} {completeModalAppt.patient_last_name}</strong> as completed?
                 </p>
               </div>
             </div>
 
             {completeError && (
-              <div className="bg-rose-50 border border-rose-200 text-rose-700 p-3 rounded-lg text-xs">
+              <div className="bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/70 text-rose-700 dark:text-rose-200 p-3 rounded-lg text-xs">
                 {completeError}
               </div>
             )}
@@ -836,7 +844,7 @@ export function AdminAppointmentsPage() {
                 type="button"
                 onClick={() => setCompleteModalAppt(null)}
                 disabled={completing}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-gray-600 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-gray-700"
               >
                 Cancel
               </button>
@@ -852,33 +860,35 @@ export function AdminAppointmentsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </DialogOverlay>
       )}
 
       {/* ADMIN CANCEL MODAL */}
       {cancelModalAppt && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4 animate-scale-up">
+        <DialogOverlay
+          onClose={() => setCancelModalAppt(null)}
+          dismissible={!(cancelling)} className="fixed inset-0 z-50 bg-slate-900/40 dark:bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-2xl max-w-md w-full p-6 space-y-4 animate-scale-up">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-5 h-5 text-amber-500" />
+              <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-amber-500 dark:text-amber-400" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 text-base">Admin Cancel #{cancelModalAppt.id}</h3>
-                <p className="text-xs text-slate-500 mt-1">
+                <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base">Admin Cancel #{cancelModalAppt.id}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   Cancel confirmed visit for {cancelModalAppt.patient_first_name} {cancelModalAppt.patient_last_name}?
                 </p>
               </div>
             </div>
 
             {cancelError && (
-              <div className="bg-rose-50 border border-rose-200 text-rose-700 p-3 rounded-lg text-xs">
+              <div className="bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/70 text-rose-700 dark:text-rose-200 p-3 rounded-lg text-xs">
                 {cancelError}
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">
                 Cancellation Reason
               </label>
               <textarea
@@ -886,7 +896,7 @@ export function AdminAppointmentsPage() {
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
                 placeholder="Reason for administrative cancellation..."
-                className="w-full text-xs p-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
+                className="w-full text-xs p-3 bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400"
               />
             </div>
 
@@ -895,7 +905,7 @@ export function AdminAppointmentsPage() {
                 type="button"
                 onClick={() => setCancelModalAppt(null)}
                 disabled={cancelling}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-gray-600 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-gray-700"
               >
                 Back
               </button>
@@ -904,14 +914,14 @@ export function AdminAppointmentsPage() {
                 onClick={handleCancelAction}
                 disabled={cancelling}
                 aria-busy={cancelling}
-                className="px-4 py-2 rounded-xl bg-slate-700 text-white text-xs font-semibold hover:bg-slate-800 shadow-sm transition-all disabled:opacity-50 inline-flex items-center gap-1.5"
+                className="px-4 py-2 rounded-xl bg-slate-700 dark:bg-gray-600 text-white text-xs font-semibold hover:bg-slate-800 dark:hover:bg-gray-500 shadow-sm transition-all disabled:opacity-50 inline-flex items-center gap-1.5"
               >
                 {cancelling && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
                 {cancelling ? 'Cancelling...' : 'Confirm Cancellation'}
               </button>
             </div>
           </div>
-        </div>
+        </DialogOverlay>
       )}
     </div>
   );

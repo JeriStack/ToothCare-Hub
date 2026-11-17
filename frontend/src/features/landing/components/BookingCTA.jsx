@@ -3,13 +3,13 @@ import { Calendar, User, ArrowRight, ShieldCheck } from 'lucide-react';
 
 export function BookingCTA({ onBookAppointment, onLogin }) {
   return (
-    <section className="py-20 bg-slate-50/70">
+    <section className="py-20 bg-slate-50/70 dark:bg-gray-950/70">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="relative rounded-3xl bg-gradient-to-br from-[#12304A] via-[#0B1D2D] to-[#12304A] text-white p-8 sm:p-14 overflow-hidden shadow-2xl shadow-slate-900/10 border border-slate-800 text-center space-y-8">
+        <div className="landing-reveal relative rounded-3xl bg-gradient-to-br from-[#12304A] via-[#0B1D2D] to-[#12304A] dark:from-slate-900 dark:via-[#0B1D2D] dark:to-slate-900 text-white p-8 sm:p-14 overflow-hidden shadow-2xl shadow-slate-900/10 dark:shadow-slate-950/60 border border-slate-800 text-center space-y-8">
           
           {/* Subtle Decorative Background Ring */}
-          <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full border border-white/5 pointer-events-none" />
-          <div className="absolute -bottom-24 -left-24 w-96 h-96 rounded-full border border-teal-500/10 pointer-events-none" />
+          <div className="landing-ambient-float absolute -top-24 -right-24 w-96 h-96 rounded-full border border-white/5 pointer-events-none" aria-hidden="true" />
+          <div className="landing-ambient-float absolute -bottom-24 -left-24 w-96 h-96 rounded-full border border-teal-500/10 pointer-events-none" style={{ '--float-delay': '2s' }} aria-hidden="true" />
 
           {/* Content */}
           <div className="max-w-2xl mx-auto space-y-4 relative z-10">
@@ -24,11 +24,11 @@ export function BookingCTA({ onBookAppointment, onLogin }) {
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 relative z-10 pt-2">
-            <button
-              type="button"
-              onClick={onBookAppointment}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-[#0D9488] text-white font-semibold text-sm hover:bg-[#0F766E] shadow-lg shadow-teal-900/30 transition-all transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#12304A]"
-            >
+              <button
+                type="button"
+                onClick={onBookAppointment}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-[#0D9488] text-white font-semibold text-sm hover:bg-[#0F766E] shadow-lg shadow-teal-900/30 transition-all transform hover:-translate-y-0.5 motion-reduce:transform-none cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#12304A]"
+              >
               <Calendar className="w-4 h-4" />
               Book Your Appointment
             </button>

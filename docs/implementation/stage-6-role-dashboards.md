@@ -18,7 +18,7 @@ Each dashboard features accessible loading skeletons, resilient error boundaries
 
 ## 2. Dashboard Inventory & Functional Specifications
 
-### 2.1 Patient Dashboard ([`PatientDashboard.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/dashboard/PatientDashboard.jsx))
+### 2.1 Patient Dashboard ([`PatientDashboard.jsx`](../../frontend/src/features/dashboard/PatientDashboard.jsx))
 - **Primary Objective:** Provide self-service appointment oversight and streamlined rebooking.
 - **Data Source:** `GET /api/v1/appointments` (filtered by authenticated patient context).
 - **Key Modules:**
@@ -28,7 +28,7 @@ Each dashboard features accessible loading skeletons, resilient error boundaries
   4. **Recent Appointments Table:** Chronological record of patient visits with standardized status badges (`PENDING`, `CONFIRMED`, `COMPLETED`, `CANCELLED`, `REJECTED`).
   5. **Resilience:** Retry button on failed API requests.
 
-### 2.2 Dentist Clinical Dashboard ([`DentistDashboard.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/dashboard/DentistDashboard.jsx))
+### 2.2 Dentist Clinical Dashboard ([`DentistDashboard.jsx`](../../frontend/src/features/dashboard/DentistDashboard.jsx))
 - **Primary Objective:** Present the clinician's weekly schedule, scheduled time-off, and assigned appointments.
 - **Data Sources:**
   - `GET /api/v1/dentists/{id}/schedules` (recurring weekly operatory shifts).
@@ -39,7 +39,7 @@ Each dashboard features accessible loading skeletons, resilient error boundaries
   2. **Approved Leaves Card:** Chronological list of scheduled vacations and sanitization days.
   3. **Assigned Patients Table:** Real-time list of appointments, patient names, service types, start times, and recorded chief complaints.
 
-### 2.3 Administrative Executive Dashboard ([`AdminDashboard.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/dashboard/AdminDashboard.jsx))
+### 2.3 Administrative Executive Dashboard ([`AdminDashboard.jsx`](../../frontend/src/features/dashboard/AdminDashboard.jsx))
 - **Primary Objective:** Deliver real-time operational intelligence for clinic operations and appointment triage.
 - **Data Source:** `GET /api/v1/admin/dashboard` (computed by `DashboardRepository.php`).
 - **Key Modules:**

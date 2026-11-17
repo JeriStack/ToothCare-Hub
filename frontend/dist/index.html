@@ -2,14 +2,39 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="light" />
+    <script>
+      (function () {
+        try {
+          var saved = window.localStorage.getItem('toothcare_theme');
+          var root = document.documentElement;
+          var meta = document.querySelector('meta[name="color-scheme"]');
+          if (saved === 'dark') {
+            root.classList.add('dark');
+            root.dataset.theme = 'dark';
+            root.style.colorScheme = 'dark';
+            if (meta) meta.setAttribute('content', 'dark');
+          } else {
+            root.classList.remove('dark');
+            root.dataset.theme = 'light';
+            root.style.colorScheme = 'light';
+            if (meta) meta.setAttribute('content', 'light');
+          }
+        } catch (e) {
+          document.documentElement.classList.remove('dark');
+          document.documentElement.dataset.theme = 'light';
+          document.documentElement.style.colorScheme = 'light';
+        }
+      })();
+    </script>
     <title>ToothCare Hub — Dental Appointment and Clinic Management</title>
     <link rel="icon" type="image/png" href="/images/logo-icon.png" />
     <link rel="alternate icon" type="image/svg+xml" href="/favicon.svg" />
-    <script type="module" crossorigin src="/assets/index-C-66jlzJ.js"></script>
-    <link rel="modulepreload" crossorigin href="/assets/vendor-icons-CcL9KibG.js">
-    <link rel="modulepreload" crossorigin href="/assets/vendor-react-CPhojvti.js">
-    <link rel="stylesheet" crossorigin href="/assets/index-iP5R5Tpd.css">
+    <script type="module" crossorigin src="/assets/index-C5ba32wK.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/vendor-icons-w8etBEEX.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-react-DNjT8c61.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-DwpVV6Ps.css">
   </head>
   <body>
     <div id="root"></div>

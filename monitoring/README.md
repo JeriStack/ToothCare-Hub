@@ -14,8 +14,8 @@ This directory is part of the approved ToothCare Hub root layout for operational
 
 The active container mount files referenced by `docker-compose.yml` are located at:
 
-- [`docker/prometheus/prometheus.yml`](../docker/prometheus/prometheus.yml)
-- [`docker/grafana/provisioning/datasources/datasource.yml`](../docker/grafana/provisioning/datasources/datasource.yml)
-- [`docker/grafana/provisioning/dashboards/dashboards.yml`](../docker/grafana/provisioning/dashboards/dashboards.yml)
-- [`docker/grafana/dashboards/toothcare-overview.json`](../docker/grafana/dashboards/toothcare-overview.json)
+- [`monitoring/prometheus/prometheus.yml`](prometheus/prometheus.yml)
+- [`monitoring/grafana/provisioning/datasources/prometheus.yml`](grafana/provisioning/datasources/prometheus.yml)
+- [`monitoring/grafana/provisioning/dashboards/dashboards.yml`](grafana/provisioning/dashboards/dashboards.yml)
+- [`monitoring/grafana/dashboards/toothcare-overview.json`](grafana/dashboards/toothcare-overview.json)
 

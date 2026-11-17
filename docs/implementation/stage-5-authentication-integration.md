@@ -51,7 +51,7 @@ All authenticated API requests automatically carry `credentials: 'include'`, tra
 ## 3. Key Implementation Specifications
 
 ### 3.1 Session Cookie Transmission
-- In [`frontend/src/lib/apiClient.js`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/lib/apiClient.js), `credentials: 'include'` is explicitly configured on all fetch calls.
+- In [`frontend/src/lib/apiClient.js`](../../frontend/src/lib/apiClient.js), `credentials: 'include'` is explicitly configured on all fetch calls.
 - Preserves native PHP sessions across page refreshes and browser tab reloads without storing sensitive auth tokens in `localStorage`.
 
 ### 3.2 Automated CSRF Protection
@@ -60,7 +60,7 @@ All authenticated API requests automatically carry `credentials: 'include'`, tra
 - **Cache Invalidation:** On session termination (`POST /api/v1/auth/logout`) or `CSRF_TOKEN_INVALID` (403), `clearCsrfToken()` immediately clears the cached token.
 
 ### 3.3 Route Guards & Role-Based Redirection
-In [`frontend/src/app/App.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/app/App.jsx):
+In [`frontend/src/app/App.jsx`](../../frontend/src/app/App.jsx):
 - **Unauthenticated Users:** Attempting to access protected paths (`/patient`, `/dentist`, `/admin`) immediately redirects to `/login` with a clear user prompt: *"Please sign in to access your portal."*
 - **Cross-Role Enforcers:**
   - A user with role `PATIENT` attempting to load `/admin` or `/dentist` is redirected to `/patient` with a notification: *"Access restricted: Administrative/Dentist authorization required."*

@@ -34,6 +34,10 @@ services:
     volumes:
       - ./backend:/var/www/backend
 
+  reminder-scheduler:
+    volumes:
+      - ./backend:/var/www/backend
+
   db-backup:
     volumes:
       - ./backups:/var/www/backups

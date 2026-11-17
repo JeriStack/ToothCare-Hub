@@ -345,4 +345,33 @@ class AuthServiceTest extends TestCase
         $this->assertStringNotContainsString('CSRF_SECRET_XYZ', (string) $log['sanitized_payload']);
         $this->assertStringContainsString('[REDACTED]', (string) $log['sanitized_payload']);
     }
+
+    public function testLoginWithRememberMeSetsSessionMetadataAndDetectsExpiration(): void
+    {
+        $this->authService->register([
+            'email' => 'remember.patient@example.com',
+            'password' => 'SecureP@ssw0rd999!',
+            'first_name' => 'Elena',
+            'last_name' => 'Mendoza',
+            'phone' => '+639171112244',
+            'date_of_birth' => '1991-04-12',
+        ]);
+
+        $loginResult = $this->authService->login([
+            'email' => 'remember.patient@example.com',
+            'password' => 'SecureP@ssw0rd999!',
+            'remember_me' => true,
+        ], '127.0.0.1');
+
+        $this->assertTrue($loginResult['remember_me']);
+
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $this->assertTrue($_SESSION['remember_me']);
+            $this->assertGreaterThan(time() + 86400, (int) $_SESSION['session_expires_at']);
+            $this->assertFalse($this->authService->isCurrentSessionExpired());
+
+            $_SESSION['session_expires_at'] = time() - 10;
+            $this->assertTrue($this->authService->isCurrentSessionExpired());
+        }
+    }
 }

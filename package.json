@@ -1,0 +1,30 @@
+{
+  "name": "toothcare-hub",
+  "version": "1.0.0",
+  "description": "**Brand Tagline:** *Healthier Smiles. Brighter Futures.*",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "npm --prefix frontend run test:e2e:local",
+    "test:e2e": "npm --prefix frontend run test:e2e",
+    "test:e2e:local": "npm --prefix frontend run test:e2e:local",
+    "test:e2e:remote": "npm --prefix frontend run test:e2e:remote",
+    "test:e2e:ui": "npm --prefix frontend run test:e2e:ui"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Palinje/ToothCare-Hub.git"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Palinje/ToothCare-Hub/issues"
+  },
+  "homepage": "https://github.com/Palinje/ToothCare-Hub#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.65.0",
+    "@types/node": "^26.6.6"
+  }
+}

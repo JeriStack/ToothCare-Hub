@@ -66,7 +66,7 @@ describe('PatientServicesPage Component', () => {
       expect(screen.getByText('Dental Cleaning (Prophylaxis)')).toBeDefined();
     });
 
-    const searchInput = screen.getByPlaceholderText(/Search procedure name/i);
+    const searchInput = screen.getByPlaceholderText(/Search procedure or treatment/i);
     fireEvent.change(searchInput, { target: { value: 'Filling' } });
 
     expect(screen.queryByText('Dental Cleaning (Prophylaxis)')).toBeNull();

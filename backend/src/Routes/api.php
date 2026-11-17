@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Controllers\AppointmentController;
 use App\Controllers\AuditLogController;
+use App\Controllers\EmailOutboxController;
 use App\Controllers\AuthController;
 use App\Controllers\AvailabilityController;
 use App\Controllers\ClinicScheduleController;
@@ -176,6 +177,12 @@ $router->group('/api/v1', function (Router $r): void {
     // Forensic Audit Logs & Security Events (Administrator Only)
     $r->get('/admin/audit-logs', [AuditLogController::class, 'index'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('audit_logs.view', ['ADMIN'])]);
     $r->get('/admin/audit-logs/export', [AuditLogController::class, 'export'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('audit_logs.export', ['ADMIN'])]);
+    // Email outbox operations (explicit DRBAC permissions, no role fallback)
+    $r->get('/admin/email-outbox/stats', [EmailOutboxController::class, 'stats'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('email_outbox.view')]);
+    $r->get('/admin/email-outbox/jobs', [EmailOutboxController::class, 'index'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('email_outbox.view_failures')]);
+    $r->get('/admin/email-outbox/jobs/{id}', [EmailOutboxController::class, 'show'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('email_outbox.view_failures')]);
+    $r->post('/admin/email-outbox/jobs/{id}/retry', [EmailOutboxController::class, 'retry'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('email_outbox.retry')]);
+    $r->post('/admin/email-outbox/jobs/{id}/abandon', [EmailOutboxController::class, 'abandon'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('email_outbox.manage')]);
     $r->get('/admin/security/events', [AuditLogController::class, 'securityEvents'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('audit_logs.view', ['ADMIN'])]);
 
     // Clinic Settings Configuration (Administrator Only)

@@ -135,4 +135,32 @@ describe('TreatmentRecordEditor Component', () => {
     expect(screen.getByLabelText(/Clinical Diagnosis/i).hasAttribute('disabled')).toBe(true);
     expect(screen.queryByRole('button', { name: /Update Treatment Record/i })).toBeNull();
   });
+
+  it('announces validation errors next to the Save button and moves focus to them', async () => {
+    render(<TreatmentRecordEditor appointmentId={50} initialRecord={null} onSaved={vi.fn()} />);
+
+    const diagnosis = screen.getByLabelText(/Clinical Diagnosis/i);
+    const save = screen.getByRole('button', { name: /Save Treatment Record/i });
+    fireEvent.click(save);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toMatch(/Clinical diagnosis is required/i);
+
+    // The form is very long on phones: the alert must sit between the fields and the Save button,
+    // not above the odontogram where a user who just tapped Save cannot see it.
+    expect(diagnosis.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(alert.compareDocumentPosition(save) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    expect(diagnosis.getAttribute('aria-invalid')).toBe('true');
+    await waitFor(() => expect(document.activeElement).toBe(alert));
+  });
+
+  it('stacks full-width action buttons on phones with 44px touch height', () => {
+    render(<TreatmentRecordEditor appointmentId={50} initialRecord={null} onSaved={vi.fn()} onCancel={vi.fn()} />);
+
+    const row = screen.getByRole('button', { name: /Save Treatment Record/i }).parentElement;
+    expect(row.className).toMatch(/flex-col-reverse/);
+    expect(row.className).toMatch(/\[&>button\]:min-h-11/);
+    expect(row.className).toMatch(/\[&>button\]:w-full/);
+  });
 });

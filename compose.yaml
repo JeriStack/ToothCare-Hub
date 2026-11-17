@@ -154,7 +154,9 @@ services:
   email-worker:
     image: toothcare-php-fpm:latest
     container_name: toothcare-email-worker
-    command: ["php", "src/Jobs/ProcessEmailOutbox.php"]
+    command: ["php", "bin/email-worker.php"]
+    stop_signal: SIGTERM
+    stop_grace_period: 30s
     env_file:
       - path: .env
         required: false
@@ -167,8 +169,9 @@ services:
       DB_USER: ${DB_USER:-toothcare_user}
       DB_USERNAME: ${DB_USER:-toothcare_user}
       DB_PASSWORD: ${DB_PASSWORD:-toothcare_secure_pass}
-      WORKER_POLL_INTERVAL_SECONDS: ${WORKER_POLL_INTERVAL_SECONDS:-5}
       APP_ENV: ${APP_ENV:-development}
+      # SMTP and worker settings come from backend/.env (env_file) or the deployment's secret store.
+      LOG_PATH: /var/www/backend/storage/logs/email-worker.log
     volumes:
       - ./backend:/var/www/backend
     depends_on:
@@ -179,9 +182,73 @@ services:
     networks:
       - app
     healthcheck:
-      disable: true
+      # Validates configuration and database access, and prints queue statistics.
+      test: ["CMD", "php", "bin/email-worker.php", "--status"]
+      interval: 60s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+    restart: unless-stopped
+  # ---------------------------------------------------------------------------
+  # 5b. Appointment Reminder Scheduler (reuses the PHP image; runs the idempotent
+  #     scheduler every REMINDER_SCHEDULER_INTERVAL_SECONDS. Run exactly one instance.)
+  # ---------------------------------------------------------------------------
+  reminder-scheduler:
+    image: toothcare-php-fpm:latest
+    container_name: toothcare-reminder-scheduler
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        echo "ToothCare Hub reminder scheduler started."
+        while true; do
+          php bin/schedule-reminders.php || true
+          sleep "$${REMINDER_SCHEDULER_INTERVAL_SECONDS:-300}"
+        done
+    stop_grace_period: 10s
+    env_file:
+      - path: .env
+        required: false
+      - path: ./backend/.env
+        required: false
+    environment:
+      DB_HOST: ${DB_HOST:-mysql}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME:-toothcare_hub}
+      DB_USER: ${DB_USER:-toothcare_user}
+      DB_USERNAME: ${DB_USER:-toothcare_user}
+      DB_PASSWORD: ${DB_PASSWORD:-toothcare_secure_pass}
+      APP_ENV: ${APP_ENV:-development}
+      LOG_PATH: /var/www/backend/storage/logs/reminder-scheduler.log
+    volumes:
+      - ./backend:/var/www/backend
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - app
+    healthcheck:
+      # Read-only probe: configuration and database reachability (no scheduling side effects).
+      test: ["CMD", "php", "bin/email-worker.php", "--status"]
+      interval: 60s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
     restart: unless-stopped
 
+  # ---------------------------------------------------------------------------
+  # 5c. Local SMTP sink (development only, opt-in: docker compose --profile mail up -d mailpit)
+  #     Captures all mail; nothing leaves the machine. Web UI: http://127.0.0.1:8025
+  #     Point MAIL_HOST=mailpit, MAIL_PORT=1025, MAIL_ENCRYPTION=none at it.
+  # ---------------------------------------------------------------------------
+  mailpit:
+    image: axllent/mailpit:v1.22
+    container_name: toothcare-mailpit
+    profiles: ["mail"]
+    ports:
+      - "127.0.0.1:8025:8025"
+    networks:
+      - app
+    restart: unless-stopped
   # ---------------------------------------------------------------------------
   # 6. Database Automated Backup Daemon (2:00 AM Daily Full Backup + Retention)
   # ---------------------------------------------------------------------------

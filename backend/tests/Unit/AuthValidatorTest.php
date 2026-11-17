@@ -149,6 +149,30 @@ class AuthValidatorTest extends TestCase
 
         $this->assertSame('patient.juan@example.com', $result['email']);
         $this->assertSame('Password123!', $result['password']);
+        $this->assertFalse($result['remember_me']);
+    }
+
+    public function testLoginParsesRememberMeBooleanFlag(): void
+    {
+        $truthy = AuthValidator::validateLogin([
+            'email' => 'patient.juan@example.com',
+            'password' => 'Password123!',
+            'remember_me' => true,
+        ]);
+        $stringTruthy = AuthValidator::validateLogin([
+            'email' => 'patient.juan@example.com',
+            'password' => 'Password123!',
+            'remember_me' => 'true',
+        ]);
+        $falsy = AuthValidator::validateLogin([
+            'email' => 'patient.juan@example.com',
+            'password' => 'Password123!',
+            'remember_me' => 'false',
+        ]);
+
+        $this->assertTrue($truthy['remember_me']);
+        $this->assertTrue($stringTruthy['remember_me']);
+        $this->assertFalse($falsy['remember_me']);
     }
 
     public function testLoginRejectsMissingCredentials(): void

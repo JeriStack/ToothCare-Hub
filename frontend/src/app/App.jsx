@@ -60,7 +60,9 @@ import { SystemHealthPage } from '../features/system/pages/SystemHealthPage';
 import { StaffProfilePage } from '../features/staff/pages/StaffProfilePage';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { LoadingProvider, useRouteLoading } from '../contexts/LoadingContext';
+import { ThemeProvider } from '../contexts/ThemeContext';
 import { GlobalLoadingBar } from '../components/ui/GlobalLoadingBar';
+import { ThemeToggle } from '../components/ui/ThemeToggle';
 
 function getInitialRoute() {
   if (typeof window === 'undefined') return 'LANDING';
@@ -316,6 +318,9 @@ function AppContent() {
   const [selectedDentistAppointmentId, setSelectedDentistAppointmentId] = useState(null);
   const userMenuRef = useRef(null);
   const userMenuTriggerRef = useRef(null);
+  const mobileMenuTriggerRef = useRef(null);
+  const mobileDrawerRef = useRef(null);
+  const mobileDrawerCloseRef = useRef(null);
   const { triggerRouteTransition } = useRouteLoading();
   const prevNavKeyRef = useRef(null);
 
@@ -416,6 +421,61 @@ function AppContent() {
     };
   }, [isUserMenuOpen]);
 
+  // Mobile navigation drawer: Escape to close, focus trap + restore, body scroll lock,
+  // and automatic dismissal once the viewport grows into the persistent desktop sidebar.
+  useEffect(() => {
+    if (!isMobileMenuOpen) return undefined;
+
+    const trigger = mobileMenuTriggerRef.current;
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    mobileDrawerCloseRef.current?.focus();
+
+    const getFocusable = () =>
+      Array.from(
+        mobileDrawerRef.current?.querySelectorAll(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        ) || []
+      ).filter((el) => !el.hasAttribute('disabled') && el.offsetParent !== null);
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.stopPropagation();
+        setIsMobileMenuOpen(false);
+        return;
+      }
+      if (event.key !== 'Tab') return;
+
+      const focusable = getFocusable();
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    const desktopQuery =
+      typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 1024px)') : null;
+    const handleDesktopChange = (event) => {
+      if (event.matches) setIsMobileMenuOpen(false);
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    desktopQuery?.addEventListener?.('change', handleDesktopChange);
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+      desktopQuery?.removeEventListener?.('change', handleDesktopChange);
+      trigger?.focus?.();
+    };
+  }, [isMobileMenuOpen]);
+
   // Popstate & Global Auth Event Listeners
   useEffect(() => {
     const handlePopState = () => {
@@ -479,10 +539,10 @@ function AppContent() {
     (currentRoute === 'PATIENT' || currentRoute === 'ADMIN' || currentRoute === 'DENTIST')
   ) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center transition-colors">
         <div className="flex flex-col items-center gap-3">
-          <RefreshCw className="w-6 h-6 text-[#0D9488] animate-spin" />
-          <p className="text-xs text-slate-500 font-medium">Verifying authenticated session...</p>
+          <RefreshCw className="w-6 h-6 text-[#0D9488] dark:text-[#2DD4BF] animate-spin" />
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Verifying authenticated session...</p>
         </div>
       </div>
     );
@@ -648,67 +708,73 @@ function AppContent() {
   });
 
   return (
-    <div className="min-h-dvh bg-[#F5F8FA] text-[#334155] flex flex-col font-sans overflow-x-clip selection:bg-[#CCFBF1] selection:text-[#0F766E]">
+    <div className="min-h-dvh bg-[#F5F8FA] dark:bg-gray-900 text-[#334155] dark:text-slate-200 flex flex-col font-sans overflow-x-clip selection:bg-[#CCFBF1] selection:text-[#0F766E] dark:selection:bg-teal-900/70 dark:selection:text-teal-100">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[#12304A] focus:text-white focus:text-xs focus:font-semibold focus:shadow-lg"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[#12304A] dark:focus:bg-teal-700 focus:text-white focus:text-xs focus:font-semibold focus:shadow-lg"
       >
         Skip to main content
       </a>
       
       {/* MAIN APPLICATION TOPBAR */}
-      <header className="bg-[#12304A] text-white sticky top-0 z-40 shadow-md">
+      <header className="bg-[#12304A] dark:bg-slate-950/95 dark:border-b dark:border-slate-800 text-white sticky top-0 z-40 shadow-md">
         <div className="w-full px-3 sm:px-5 lg:px-6 xl:px-8 h-16 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
             <button
+              ref={mobileMenuTriggerRef}
               type="button"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              onClick={() => setIsMobileMenuOpen((prev) => !prev)}
               aria-expanded={isMobileMenuOpen}
               aria-controls="portal-sidebar"
-              className="lg:hidden min-h-10 min-w-10 inline-flex items-center justify-center p-1.5 text-slate-300 hover:text-white rounded-lg hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400"
+              className="lg:hidden min-h-11 min-w-11 inline-flex items-center justify-center p-1.5 text-slate-300 hover:text-white rounded-lg hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 cursor-pointer"
               aria-label="Navigation menu"
             >
               {isMobileMenuOpen ? <X className="w-5 h-5" aria-hidden="true" /> : <Menu className="w-5 h-5" aria-hidden="true" />}
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('dashboard')}
-              className="flex items-center gap-2.5 group text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 rounded-lg"
+              onClick={() => {
+                setActiveTab('dashboard');
+                setIsMobileMenuOpen(false);
+              }}
+              className="flex items-center gap-2.5 group text-left cursor-pointer min-w-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 rounded-lg"
             >
-              <div className="w-10 h-10 group-hover:scale-105 transition-transform flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 group-hover:scale-105 motion-reduce:transform-none transition-transform flex items-center justify-center shrink-0">
                 <img
                   src="/images/logo-icon.png"
                   alt="ToothCare Hub Logo"
                   className="w-full h-full object-contain"
                 />
               </div>
-              <div className="flex flex-col text-left">
-                <h1 className="font-bold text-xl tracking-tight leading-tight text-white">
+              <div className="hidden min-[420px]:flex flex-col text-left min-w-0">
+                <h1 className="font-bold text-lg sm:text-xl tracking-tight leading-tight text-white truncate">
                   Tooth<span className="text-[#14B8A6]">Care</span> Hub
                 </h1>
-                <span className="hidden sm:block text-[10px] tracking-wide text-teal-400 font-medium">
+                <span className="hidden sm:block text-[10px] tracking-wide text-teal-400 font-medium truncate">
                   Healthier Smiles. Brighter Futures.
                 </span>
               </div>
             </button>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 sm:gap-3 shrink-0">
+            <ThemeToggle variant="header" />
+
             {/* In-App Notifications Dropdown */}
             {(currentRole === 'PATIENT' || currentRole === 'DENTIST') && (
               <NotificationCenter
-                onNavigateAll={() => {
+                onViewAllNotifications={() => {
                   if (currentRole === 'PATIENT') {
                     handlePatientNav('notifications');
                   } else {
-                    setActiveTab('appointments');
+                    handleDentistNav('appointments');
                   }
                 }}
               />
             )}
 
             {/* User Profile Account Dropdown */}
-            <div className="relative pl-2 border-l border-white/10" ref={userMenuRef}>
+            <div className="relative pl-1.5 sm:pl-2 border-l border-white/10" ref={userMenuRef}>
               <button
                 ref={userMenuTriggerRef}
                 type="button"
@@ -716,7 +782,7 @@ function AppContent() {
                 aria-expanded={isUserMenuOpen}
                 aria-controls="user-account-menu"
                 aria-label={`${userDisplayName} account menu`}
-                className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 cursor-pointer"
+                className="flex items-center gap-2.5 min-h-11 px-1.5 sm:px-2 py-1.5 rounded-xl hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 cursor-pointer"
               >
                 <div className="w-8 h-8 rounded-full bg-[#0D9488]/30 border border-[#14B8A6] text-teal-200 flex items-center justify-center font-semibold text-xs shrink-0 overflow-hidden">
                   {showUserAvatar ? (
@@ -739,7 +805,8 @@ function AppContent() {
                   </p>
                 </div>
                 <ChevronDown
-                  className={`w-4 h-4 text-teal-200/80 transition-transform duration-150 ${
+                  aria-hidden="true"
+                  className={`hidden sm:block w-4 h-4 text-teal-200/80 transition-transform duration-150 motion-reduce:transition-none ${
                     isUserMenuOpen ? 'rotate-180' : ''
                   }`}
                 />
@@ -748,11 +815,11 @@ function AppContent() {
               {isUserMenuOpen && (
                 <div
                   id="user-account-menu"
-                  className="absolute right-0 mt-2 w-64 max-w-[calc(100dvw-2rem)] rounded-2xl bg-white shadow-2xl border border-slate-200/90 z-50 overflow-hidden text-slate-800 animate-in fade-in zoom-in-95 duration-150"
+                  className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-1.5rem)] rounded-2xl bg-white dark:bg-gray-800 shadow-2xl border border-slate-200/90 dark:border-gray-700 z-50 overflow-hidden text-slate-800 dark:text-gray-100"
                 >
-                  <div className="px-4 py-3 bg-slate-50/90 border-b border-slate-100">
+                  <div className="px-4 py-3 bg-slate-50/90 dark:bg-gray-900/70 border-b border-slate-100 dark:border-gray-700">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-full bg-[#CCFBF1] border border-teal-200 text-[#0F766E] flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden">
+                      <div className="w-9 h-9 rounded-full bg-[#CCFBF1] dark:bg-teal-900/60 border border-teal-200 dark:border-teal-700 text-[#0F766E] dark:text-teal-200 flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden">
                         {showUserAvatar ? (
                           <img
                             src={userAvatarUrl}
@@ -765,10 +832,10 @@ function AppContent() {
                         )}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs font-bold text-[#12304A] truncate">
+                        <p className="text-xs font-bold text-[#12304A] dark:text-gray-50 truncate">
                           {userDisplayName}
                         </p>
-                        <p className="text-[11px] font-medium text-[#0F766E] truncate">
+                        <p className="text-[11px] font-medium text-[#0F766E] dark:text-teal-300 truncate">
                           {userRoleLabel}
                         </p>
                       </div>
@@ -788,18 +855,18 @@ function AppContent() {
                           handleAdminNav('profile');
                         }
                       }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-[#12304A] transition-colors text-left"
+                      className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-gray-700/70 hover:text-[#12304A] dark:hover:text-white transition-colors text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400"
                     >
-                      <User className="w-4 h-4 text-[#0D9488]" />
+                      <User className="w-4 h-4 text-[#0D9488] dark:text-teal-400" />
                       <span>My Profile</span>
                     </button>
 
-                    <div className="my-1 border-t border-slate-100" />
+                    <div className="my-1 border-t border-slate-100 dark:border-gray-700" />
 
                     <button
                       type="button"
                       onClick={handleSignOut}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors text-left"
+                      className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
                     >
                       <LogOut className="w-4 h-4" />
                       <span>Sign Out</span>
@@ -815,28 +882,61 @@ function AppContent() {
       {/* APP BODY CONTAINER */}
       <div className="flex-1 w-full px-3 sm:px-5 lg:px-6 xl:px-8 py-4 sm:py-6 flex flex-col lg:flex-row gap-4 lg:gap-6">
         
-        {/* Navigation Sidebar */}
+        {/* Mobile drawer backdrop */}
+        {isMobileMenuOpen && (
+          <div
+            data-testid="portal-drawer-backdrop"
+            className="fixed inset-0 z-[45] bg-slate-950/55 lg:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
+        {/* Navigation Sidebar (off-canvas drawer below lg, persistent sidebar at lg+) */}
         <aside
           id="portal-sidebar"
+          ref={mobileDrawerRef}
           data-collapsed={isSidebarCollapsed ? 'true' : 'false'}
-          className={`shrink-0 transition-[width] duration-200 ease-out motion-reduce:transition-none ${
-            isSidebarCollapsed ? 'w-full lg:w-[4.5rem]' : 'w-full lg:w-60'
-          } ${isMobileMenuOpen ? 'block' : 'hidden lg:block'}`}
+          data-mobile-open={isMobileMenuOpen ? 'true' : 'false'}
+          className={`fixed inset-y-0 left-0 z-50 w-[min(20rem,calc(100vw-2.5rem))] overflow-y-auto overscroll-contain bg-white dark:bg-gray-800 shadow-2xl duration-200 ease-out motion-reduce:transition-none ${
+            /* Open: visible immediately so focus can move in. Closed: visibility flips only after the slide-out. */
+            isMobileMenuOpen
+              ? 'translate-x-0 visible transition-transform'
+              : '-translate-x-full invisible transition-[transform,visibility]'
+          } lg:static lg:inset-auto lg:z-auto lg:shrink-0 lg:translate-x-0 lg:visible lg:overflow-visible lg:bg-transparent lg:dark:bg-transparent lg:shadow-none lg:transition-[width] ${
+            isSidebarCollapsed ? 'lg:w-[4.5rem]' : 'lg:w-60'
+          }`}
         >
           <div
-            className={`bg-white rounded-xl border border-slate-200/80 shadow-sm lg:sticky lg:top-20 ${
+            className={`lg:bg-white lg:dark:bg-gray-800 lg:rounded-xl lg:border lg:border-slate-200/80 lg:dark:border-gray-700 lg:shadow-sm lg:sticky lg:top-20 ${
               isSidebarCollapsed ? 'p-3 lg:p-2' : 'p-3'
             }`}
           >
+            {/* Drawer header (mobile / tablet only) */}
+            <div className="lg:hidden flex items-center justify-between gap-3 pl-3 pr-1 pb-3 mb-2 border-b border-slate-100 dark:border-gray-700">
+              <span className="text-sm font-bold text-[#12304A] dark:text-gray-50 truncate">
+                {userRoleLabel} Menu
+              </span>
+              <button
+                ref={mobileDrawerCloseRef}
+                type="button"
+                onClick={() => setIsMobileMenuOpen(false)}
+                aria-label="Close navigation menu"
+                className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg text-slate-500 dark:text-gray-300 hover:text-[#12304A] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-gray-700/70 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400"
+              >
+                <X className="w-5 h-5" aria-hidden="true" />
+              </button>
+            </div>
+
             <div
-              className={`flex items-center ${
+              className={`hidden lg:flex items-center ${
                 isSidebarCollapsed
-                  ? 'justify-between lg:justify-center pb-2 mb-1.5 lg:border-b lg:border-slate-100'
+                  ? 'justify-center pb-2 mb-1.5 border-b border-slate-100 dark:border-gray-700'
                   : 'justify-between pl-3 pr-1 py-1 mb-1'
               }`}
             >
               <span
-                className={`text-[11px] font-semibold uppercase text-slate-400 tracking-wider ${
+                className={`text-[11px] font-semibold uppercase text-slate-400 dark:text-gray-400 tracking-wider ${
                   isSidebarCollapsed ? 'lg:hidden' : ''
                 }`}
               >
@@ -849,7 +949,7 @@ function AppContent() {
                 aria-controls="portal-sidebar-nav"
                 aria-label="Toggle sidebar"
                 title={isSidebarCollapsed ? 'Expand sidebar' : 'Minimize sidebar'}
-                className="hidden lg:inline-flex items-center justify-center min-h-9 min-w-9 rounded-lg text-slate-400 hover:text-[#12304A] hover:bg-slate-100 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                className="inline-flex items-center justify-center min-h-9 min-w-9 rounded-lg text-slate-400 dark:text-gray-400 hover:text-[#12304A] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-gray-700/70 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400"
               >
                 {isSidebarCollapsed ? (
                   <PanelLeftOpen className="w-4 h-4" aria-hidden="true" />
@@ -866,12 +966,12 @@ function AppContent() {
                       <div
                         className={`pt-3 pb-1 px-3 ${isSidebarCollapsed ? 'lg:hidden' : ''}`}
                       >
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400">
                           {section.heading}
                         </span>
                       </div>
                       {isSidebarCollapsed && (
-                        <div className="hidden lg:block my-2 border-t border-slate-100" aria-hidden="true" />
+                        <div className="hidden lg:block my-2 border-t border-slate-100 dark:border-gray-700" aria-hidden="true" />
                       )}
                     </>
                   )}
@@ -884,12 +984,12 @@ function AppContent() {
                         onClick={onSelect}
                         title={isSidebarCollapsed ? label : undefined}
                         aria-current={isActive ? 'page' : undefined}
-                        className={`w-full min-h-10 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                        className={`w-full min-h-11 lg:min-h-10 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
                           isSidebarCollapsed ? 'lg:justify-center lg:px-2' : ''
                         } ${
                           isActive
-                            ? 'bg-[#CCFBF1] text-[#0F766E]'
-                            : 'text-slate-600 hover:bg-slate-50'
+                            ? 'bg-[#CCFBF1] text-[#0F766E] dark:bg-teal-500/20 dark:text-teal-300'
+                            : 'text-slate-600 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-700/60 dark:hover:text-white'
                         }`}
                       >
                         <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -1137,14 +1237,18 @@ function AppContent() {
 
       {/* Floating Toast Feedback */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#12304A] text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 border border-slate-700 text-xs animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <Sparkles className="w-4 h-4 text-teal-400" />
-          <span>{toastMessage}</span>
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-4 left-4 right-4 sm:left-auto sm:bottom-6 sm:right-6 sm:max-w-sm z-[60] bg-[#12304A] text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 border border-slate-700 text-xs"
+        >
+          <Sparkles className="w-4 h-4 text-teal-400 shrink-0" aria-hidden="true" />
+          <span className="min-w-0 break-words">{toastMessage}</span>
         </div>
       )}
 
       {/* FOOTER */}
-      <footer className="bg-white border-t border-slate-200 mt-auto py-4 text-center text-xs text-slate-400">
+      <footer className="bg-white dark:bg-gray-900 border-t border-slate-200 dark:border-gray-800 mt-auto py-4 text-center text-xs text-slate-400 dark:text-gray-400">
         ToothCare Hub &copy; 2026. Real-Time Clinical Management System.
       </footer>
     </div>
@@ -1154,12 +1258,14 @@ function AppContent() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <LoadingProvider>
-        <GlobalLoadingBar />
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
-      </LoadingProvider>
+      <ThemeProvider>
+        <LoadingProvider>
+          <GlobalLoadingBar />
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
+        </LoadingProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

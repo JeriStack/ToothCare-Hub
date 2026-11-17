@@ -10,7 +10,7 @@ FROM php:8.5.12-fpm-alpine3.24
 # - pdo_mysql provides MySQL PDO driver using built-in mysqlnd
 # - mbstring, openssl, json, and curl are already built-in
 RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
-    && docker-php-ext-install pdo_mysql \
+    && docker-php-ext-install pdo_mysql pcntl \
     && apk del .build-deps
 
 # Install official Composer binary

@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
@@ -17,6 +18,51 @@ export default {
         },
         slate: {
           body: '#334155',
+        },
+        canvas: 'var(--bg-canvas)',
+        surface: {
+          DEFAULT: 'var(--bg-card)',
+          elevated: 'var(--bg-elevated)',
+          muted: 'var(--bg-muted)',
+          input: 'var(--bg-input)',
+        },
+        foreground: {
+          DEFAULT: 'var(--text-primary)',
+          secondary: 'var(--text-secondary)',
+          muted: 'var(--text-muted)',
+        },
+        popover: {
+          DEFAULT: 'var(--bg-popover)',
+          foreground: 'var(--text-popover)',
+        },
+        sidebar: {
+          DEFAULT: 'var(--bg-sidebar)',
+          foreground: 'var(--text-sidebar)',
+          border: 'var(--border-sidebar)',
+        },
+        primary: {
+          DEFAULT: 'var(--color-primary)',
+          foreground: 'var(--color-primary-foreground)',
+        },
+        accent: {
+          DEFAULT: 'var(--color-accent)',
+          foreground: 'var(--color-accent-foreground)',
+        },
+        destructive: {
+          DEFAULT: 'var(--color-destructive)',
+          foreground: 'var(--color-destructive-foreground)',
+        },
+        line: {
+          DEFAULT: 'var(--border-default)',
+          input: 'var(--border-input)',
+        },
+        chart: {
+          1: 'var(--chart-1)',
+          2: 'var(--chart-2)',
+          3: 'var(--chart-3)',
+          4: 'var(--chart-4)',
+          5: 'var(--chart-5)',
+          grid: 'var(--chart-grid)',
         },
       },
       fontFamily: {

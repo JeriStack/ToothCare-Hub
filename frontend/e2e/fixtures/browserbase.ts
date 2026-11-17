@@ -9,8 +9,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Load environment variables safely
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../.env'), quiet: true });
+dotenv.config({ path: path.resolve(__dirname, '../../../.env'), quiet: true });
 
 export interface BrowserbaseTestFixtures {
   browserbaseSessionId: string | null;
@@ -53,13 +53,17 @@ export const test = base.extend<BrowserbaseTestFixtures>({
     }
 
     const apiKey = process.env.BROWSERBASE_API_KEY;
-    if (!apiKey) {
+    if (!apiKey || apiKey === 'your_browserbase_api_key_placeholder') {
       throw new Error(
         'Missing BROWSERBASE_API_KEY. Please provide a valid Browserbase API key in your .env file.'
       );
     }
 
-    const projectId = process.env.BROWSERBASE_PROJECT_ID || undefined;
+    const rawProjectId = process.env.BROWSERBASE_PROJECT_ID;
+    const projectId =
+      rawProjectId && rawProjectId !== 'your_browserbase_project_id_placeholder'
+        ? rawProjectId
+        : undefined;
     const bb = new Browserbase({ apiKey });
 
     // 1. Create remote Browserbase session
