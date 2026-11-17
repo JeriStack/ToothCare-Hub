@@ -48,17 +48,17 @@ The booking system coordinates:
 
 ## 3. Key Implementation Specifications
 
-### 3.1 5-Step Guided Wizard ([`BookAppointmentPage.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/appointments/pages/BookAppointmentPage.jsx))
+### 3.1 5-Step Guided Wizard ([`BookAppointmentPage.jsx`](../../frontend/src/features/appointments/pages/BookAppointmentPage.jsx))
 - **Step 1 (Service):** Card-based catalog selection highlighting standard fee in PHP (`₱`) and duration in minutes.
 - **Step 2 (Dentist):** Doctor profile cards showing clinical specialization and default operatory chair.
-- **Step 3 (Slot Picker):** Powered by [`AvailabilitySlotPicker.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/schedules/components/AvailabilitySlotPicker.jsx). Calendar date input triggers slot computation. Inactive/closed days or off-duty dates display informative alerts.
+- **Step 3 (Slot Picker):** Powered by [`AvailabilitySlotPicker.jsx`](../../frontend/src/features/schedules/components/AvailabilitySlotPicker.jsx). Calendar date input triggers slot computation. Inactive/closed days or off-duty dates display informative alerts.
 - **Step 4 (Review & Disclosures):** Comprehensive visit summary, patient notes/chief complaints input, and mandatory cancellation policy acknowledgment.
 - **Step 5 (Confirmed Receipt):** Renders appointment reference ID, clinical procedure, assigned clinician, appointment date/time, and front-desk triage guidance.
 
 ### 3.2 Landing Page Pre-Fill Integration
-- In [`frontend/src/features/landing/components/ServicesSection.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/landing/components/ServicesSection.jsx): "Book Service" passes the selected procedure object.
-- In [`frontend/src/features/landing/components/DentistsSection.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/features/landing/components/DentistsSection.jsx): "Consult with Doctor" passes the selected dentist object.
-- In [`frontend/src/app/App.jsx`](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/frontend/src/app/App.jsx): Preserves `bookingPrefill` state through authentication redirects and delivers `initialService` and `initialDentist` props to `BookAppointmentPage`.
+- In [`frontend/src/features/landing/components/ServicesSection.jsx`](../../frontend/src/features/landing/components/ServicesSection.jsx): "Book Service" passes the selected procedure object.
+- In [`frontend/src/features/landing/components/DentistsSection.jsx`](../../frontend/src/features/landing/components/DentistsSection.jsx): "Consult with Doctor" passes the selected dentist object.
+- In [`frontend/src/app/App.jsx`](../../frontend/src/app/App.jsx): Preserves `bookingPrefill` state through authentication redirects and delivers `initialService` and `initialDentist` props to `BookAppointmentPage`.
 
 ### 3.3 Pessimistic Concurrency & Double-Booking Protection
 - When submitting `POST /api/v1/appointments`, if another patient claims the exact slot concurrently, the backend responds with HTTP 409 (`SLOT_CONFLICT`).

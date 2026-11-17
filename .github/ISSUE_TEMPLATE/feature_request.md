@@ -6,7 +6,7 @@ labels: enhancement
 assignees: ''
 ---
 
-> **Scope Note:** Verify against `docs/phase-0/mvp-scope.md` whether this request belongs to the MVP or the post-MVP deferred backlog.
+> **Scope Note:** Verify against `docs/planning/mvp-scope.md` whether this request belongs to the MVP or the post-MVP deferred backlog.
 
 ## Problem Statement
 

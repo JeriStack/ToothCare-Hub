@@ -1,0 +1,16 @@
+# ToothCare Hub Documentation
+
+| Folder | Contents |
+|---|---|
+| [`architecture/`](architecture/) | Repository and directory structure |
+| [`planning/`](planning/) | Project brief, MVP scope, requirements, role matrix, appointment policies, risks |
+| [`setup/`](setup/) | Environment configuration, local development, Docker, Git workflow |
+| [`design/`](design/) | Design system, wireframes, user journeys, route map, UI/UX guidelines |
+| [`database/`](database/) | Data dictionary, ERD, schema design, concurrency, audits |
+| [`api/`](api/) | API contract, authentication and CSRF, CORS, error codes |
+| [`security/`](security/) | Security checklist and authentication documentation |
+| [`modules/`](modules/) | Admin, scheduling, booking, patient portal, dentist portal, administrator control center |
+| [`operations/`](operations/) | Database backup and disaster recovery, observability runbook |
+| [`implementation/`](implementation/) | Frontend stage implementation reports |
+
+Other documentation lives next to the code: [`backend/docs/`](../backend/docs/) (OpenAPI), [`database/README.md`](../database/README.md), [`docker/README.md`](../docker/README.md), [`monitoring/README.md`](../monitoring/README.md), [`nginx/README.md`](../nginx/README.md), [`deployment/README.md`](../deployment/README.md).

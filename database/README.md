@@ -152,7 +152,7 @@ LIMIT 1;
 6. If free: `INSERT INTO appointments (...)` and record transition in `appointment_status_history`.
 7. `COMMIT;` (Releases locks).
 
-See [concurrency-and-locking.md](file:///c:/xampp/htdocs/GitHub_Clone_File_Projects/ToothCare-Hub/docs/phase-4/concurrency-and-locking.md) for full architectural documentation.
+See [concurrency-and-locking.md](../docs/database/schema/concurrency-and-locking.md) for full architectural documentation.
 
 ---
 
