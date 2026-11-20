@@ -1,6 +1,6 @@
 # Multi-stage build for ToothCare Hub Nginx edge reverse proxy
 # Stage 1: Build React frontend production bundle
-FROM node:24-alpine AS frontend-builder
+FROM node:26-alpine AS frontend-builder
 WORKDIR /app
 COPY frontend/package*.json ./
 RUN npm ci
