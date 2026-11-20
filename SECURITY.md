@@ -51,6 +51,7 @@ Key security controls enforced across ToothCare Hub:
 - **Authorization (RBAC / DRBAC):** Server-side role and granular permission checks (`AuthorizationMiddleware`) plus strict resource ownership enforcement (IDOR protection) across patients, dentists, receptionists, and administrators.
 - **Database Integrity:** PDO prepared statements only, InnoDB transactional row locking (`SELECT ... FOR UPDATE`) for booking concurrency, and encrypted backup support.
 - **Real-Time Service (`realtime/`):** Short-lived single-use hashed Socket.IO connection tickets (`realtime_tickets`), HMAC-SHA256 signed service-to-service calls with timestamp/nonce replay protection, server-controlled rooms, default-deny client event blocking, session/role revocation, Nginx edge blocking of `/api/v1/internal/*`, and minimal non-clinical event payloads.
+- **Dashboards, Search, & Operational Views:** Server-side role-scoped search (`/api/v1/appointments/search`), strict filter allowlists and date validation (`422`), global max-100 pagination bounds across all list endpoints, and automatic redaction of stack traces, filesystem paths, and secrets from operational error feeds (`/api/v1/admin/operations/*`).
 - **Secrets & Privacy:** `.env` files, production credentials, private keys, raw tickets, and real patient data must never be committed to Git or written to logs.
 
 ---
@@ -72,3 +73,4 @@ We welcome good-faith security research. Please:
 - [Authorization Matrix](docs/security/authentication/authorization-matrix.md)
 - [CSRF Protection](docs/security/authentication/csrf-protection.md)
 - [Real-Time Authentication & Security (Phase 14)](docs/phase-14/authentication-and-security.md)
+- [Operational Visibility & Error Redaction (Phase 15)](docs/phase-15/operational-views.md)
