@@ -1,0 +1,156 @@
+# Dependabot v2 configuration for ToothCare Hub
+# Keeps PHP (Composer), Node.js/React/Socket.IO (npm), Docker images,
+# Docker Compose services, and GitHub Actions up to date with minimal PR noise.
+
+version: 2
+updates:
+  # 1. GitHub Actions workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "Asia/Manila"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(ci)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "ci"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # 2. Backend PHP dependencies (Composer)
+  - package-ecosystem: "composer"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "Asia/Manila"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(backend)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "backend"
+    groups:
+      php-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # 3. Frontend React + Vite dependencies (npm)
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "Asia/Manila"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(frontend)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "frontend"
+    groups:
+      frontend-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # 4. Real-Time Node.js + Socket.IO dependencies (npm)
+  - package-ecosystem: "npm"
+    directory: "/realtime"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "Asia/Manila"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(realtime)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "realtime"
+    groups:
+      realtime-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # 5. Root workspace tooling (Playwright / Node types)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "Asia/Manila"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "testing"
+    groups:
+      root-tooling:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # 6. Docker base images across all service Dockerfiles
+  - package-ecosystem: "docker"
+    directories:
+      - "/docker/php"
+      - "/docker/nginx"
+      - "/frontend"
+      - "/realtime"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "Asia/Manila"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(docker)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "docker"
+
+  # 7. Docker Compose service images (compose.yaml, compose.dev.yaml, compose.prod.yaml)
+  - package-ecosystem: "docker-compose"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "Asia/Manila"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(docker)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "docker"

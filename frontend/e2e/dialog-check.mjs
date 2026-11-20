@@ -122,7 +122,7 @@ for (const vp of VIEWPORTS) {
         await page.goto(route, { waitUntil: 'networkidle' });
         await page.waitForTimeout(250);
         const trigger = page.locator('main button, footer button').filter({ hasText: label }).first();
-        const byAria = page.locator(`main button[aria-label="${label.replace(/"/g, '\\"')}"]`).first();
+        const byAria = page.locator('main').getByRole('button', { name: label, exact: true }).first();
         const target = (await trigger.count()) ? trigger : byAria;
         if (!(await target.count())) continue;
         try { await target.scrollIntoViewIfNeeded(); await target.click({ timeout: 3000 }); } catch { continue; }

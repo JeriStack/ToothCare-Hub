@@ -64,7 +64,7 @@ describe('Landing Page Animations', () => {
     const unobserveMock = vi.fn();
 
     globalThis.CSS = { supports: vi.fn(() => false) };
-    globalThis.IntersectionObserver = vi.fn((cb) => {
+    globalThis.IntersectionObserver = vi.fn(function (cb) {
       observerCallback = cb;
       return {
         observe: observeMock,
