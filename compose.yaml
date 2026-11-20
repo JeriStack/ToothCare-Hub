@@ -291,7 +291,7 @@ services:
   #     Point MAIL_HOST=mailpit, MAIL_PORT=1025, MAIL_ENCRYPTION=none at it.
   # ---------------------------------------------------------------------------
   mailpit:
-    image: axllent/mailpit:v1.22
+    image: axllent/mailpit:v1.34
     container_name: toothcare-mailpit
     profiles:
       - mail
