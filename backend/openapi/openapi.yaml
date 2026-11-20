@@ -2034,6 +2034,128 @@ paths:
         '200':
           description: Leave record deleted successfully.
 
+  /realtime/ticket:
+    post:
+      summary: Issue Short-Lived Real-Time Connection Ticket
+      description: Issues a single-use, session-bound Socket.IO handshake ticket for the authenticated user. Tickets are never returned in URLs and expire after REALTIME_TICKET_TTL_SECONDS.
+      operationId: issueRealtimeTicket
+      tags:
+        - Realtime
+      security:
+        - CookieAuth: []
+          CsrfToken: []
+      responses:
+        '200':
+          description: Short-lived Socket.IO connection ticket issued.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required:
+                          - ticket
+                          - expires_at
+                          - expires_in
+                          - socket_path
+                        properties:
+                          ticket:
+                            type: string
+                            description: Cryptographically random 64-char hex single-use ticket.
+                          expires_at:
+                            type: string
+                            format: date-time
+                          expires_in:
+                            type: integer
+                            example: 60
+                          socket_path:
+                            type: string
+                            example: /socket.io/
+        '401':
+          description: Unauthenticated or inactive user account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /notifications:
+    get:
+      summary: List Authenticated User Notifications
+      description: Returns paginated persistent notifications and authoritative unread count for the authenticated user.
+      operationId: listNotifications
+      tags:
+        - Notifications
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Paginated notification list retrieved.
+
+  /notifications/unread-count:
+    get:
+      summary: Get Unread Notification Count
+      operationId: getUnreadNotificationCount
+      tags:
+        - Notifications
+      security:
+        - CookieAuth: []
+      responses:
+        '200':
+          description: Current unread notification count retrieved.
+
+  /notifications/{id}/read:
+    patch:
+      summary: Mark Single Notification As Read
+      description: Marks a notification as read after enforcing strict recipient ownership.
+      operationId: markNotificationRead
+      tags:
+        - Notifications
+      security:
+        - CookieAuth: []
+          CsrfToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Notification marked as read.
+        '403':
+          description: Attempted access to another user's notification.
+        '404':
+          description: Notification not found.
+
+  /notifications/read-all:
+    post:
+      summary: Mark All Notifications As Read
+      operationId: markAllNotificationsRead
+      tags:
+        - Notifications
+      security:
+        - CookieAuth: []
+          CsrfToken: []
+      responses:
+        '200':
+          description: All unread notifications marked as read.
+
 components:
   securitySchemes:
     CookieAuth:

@@ -62,3 +62,32 @@ groups:
         annotations:
           summary: "No email delivered for over an hour while jobs are waiting"
           description: "The worker may be stopped, or SMTP may be unreachable or misconfigured."
+
+  - name: toothcare-realtime
+    rules:
+      - alert: RealtimeOutboxBacklogGrowing
+        expr: toothcare_realtime_outbox_pending > 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Real-time notification outbox backlog is growing"
+          description: "More than 50 real-time events have been waiting for 5 minutes. Check realtime-worker and realtime containers."
+
+      - alert: RealtimeOutboxPermanentFailures
+        expr: toothcare_realtime_outbox_failed_total > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Real-time outbox events exhausted retries"
+          description: "{{ $value }} real-time event(s) failed permanently. Persistent notifications remain available via REST."
+
+      - alert: RealtimeHighAuthFailures
+        expr: rate(toothcare_realtime_auth_failures_total[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Elevated Socket.IO handshake authentication failures"
+          description: "Investigate expired tickets, secret drift, or unauthorized connection attempts."

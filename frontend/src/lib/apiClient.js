@@ -11,6 +11,7 @@ const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 const EXCLUDED_GLOBAL_LOADING_PATHS = [
   /\/auth\/csrf-token$/i,
   /\/notifications\/unread-count$/i,
+  /\/realtime\/ticket$/i,
   /\/user\/profile\/avatar$/i,
 ];
 

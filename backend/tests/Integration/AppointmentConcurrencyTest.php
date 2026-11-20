@@ -270,6 +270,37 @@ class AppointmentConcurrencyTest extends TestCase
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
+            CREATE TABLE IF NOT EXISTS notifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                role TEXT NOT NULL DEFAULT "PATIENT",
+                type TEXT NOT NULL,
+                title TEXT NOT NULL,
+                message TEXT NOT NULL,
+                reference_type TEXT DEFAULT "appointments",
+                reference_id INTEGER NULL,
+                read_at TEXT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS realtime_outbox (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_id TEXT NOT NULL UNIQUE,
+                event_type TEXT NOT NULL,
+                notification_id INTEGER NULL,
+                recipient_user_id INTEGER NOT NULL,
+                payload TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT "PENDING",
+                attempt_count INTEGER NOT NULL DEFAULT 0,
+                max_attempts INTEGER NOT NULL DEFAULT 5,
+                available_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                locked_at TEXT NULL,
+                locked_by TEXT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                published_at TEXT NULL,
+                last_error TEXT NULL
+            );
+
             INSERT INTO clinic_operating_hours (day_of_week, opening_time, closing_time, is_closed) VALUES
             (1, "08:00:00", "17:00:00", 0),
             (2, "08:00:00", "17:00:00", 0),

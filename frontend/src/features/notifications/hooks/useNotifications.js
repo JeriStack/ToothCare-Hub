@@ -1,20 +1,35 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import notificationsApi from '../api';
+import { useRealtimeNotifications } from '../../../hooks/useRealtimeNotifications';
 
 /**
- * Custom React Hook for Managing User Notifications
+ * Custom React Hook for Managing User Notifications.
+ * Combines authoritative MySQL/PHP REST persistence with live Socket.IO event synchronization,
+ * duplicate suppression, and automatic REST recovery upon reconnect.
  */
 export function useNotifications(pollIntervalMs = 30000) {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const seenNotificationIdsRef = useRef(new Set());
 
   const fetchNotifications = useCallback(async () => {
     try {
       setError(null);
       const data = await notificationsApi.getNotifications({ per_page: 20 }, { background: true });
-      setNotifications(data.items || []);
+      const items = data.items || [];
+      // Deduplicate by notification ID while preserving server order
+      const unique = [];
+      const seen = new Set();
+      for (const item of items) {
+        if (!seen.has(item.id)) {
+          seen.add(item.id);
+          unique.push(item);
+        }
+      }
+      seenNotificationIdsRef.current = seen;
+      setNotifications(unique);
       setUnreadCount(data.unread_count || 0);
     } catch (err) {
       setError(err.response?.data?.error?.message || err.message || 'Unable to load notifications.');
@@ -23,14 +38,35 @@ export function useNotifications(pollIntervalMs = 30000) {
     }
   }, []);
 
+  const { status: realtimeStatus, isConnected } = useRealtimeNotifications({
+    onEvent: (_eventType, payload) => {
+      // Reconcile against authoritative PHP REST API so full notification details & unread counts stay exact
+      const notifId = payload?.notificationId;
+      if (notifId && seenNotificationIdsRef.current.has(notifId)) {
+        return;
+      }
+      void fetchNotifications();
+    },
+    onReconnect: () => {
+      // Recover any notifications missed while disconnected
+      void fetchNotifications();
+    },
+  });
+
   useEffect(() => {
     fetchNotifications();
+  }, [fetchNotifications]);
 
+  useEffect(() => {
     if (pollIntervalMs > 0) {
-      const interval = setInterval(fetchNotifications, pollIntervalMs);
+      // When live Socket.IO is connected, widen fallback polling to reduce redundant traffic;
+      // when disconnected, poll normally so notifications remain functional during realtime outages.
+      const effectiveInterval = isConnected ? Math.max(pollIntervalMs * 2, 60000) : pollIntervalMs;
+      const interval = setInterval(fetchNotifications, effectiveInterval);
       return () => clearInterval(interval);
     }
-  }, [fetchNotifications, pollIntervalMs]);
+    return undefined;
+  }, [fetchNotifications, pollIntervalMs, isConnected]);
 
   const markAsRead = async (id) => {
     try {
@@ -40,7 +76,6 @@ export function useNotifications(pollIntervalMs = 30000) {
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch {
-      // Refresh on error to re-sync
       fetchNotifications();
     }
   };
@@ -61,6 +96,7 @@ export function useNotifications(pollIntervalMs = 30000) {
     unreadCount,
     loading,
     error,
+    realtimeStatus,
     refresh: fetchNotifications,
     markAsRead,
     markAllAsRead,
