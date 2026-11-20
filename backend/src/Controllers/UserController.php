@@ -183,6 +183,21 @@ class UserController
 
         $this->userRepository->updateStatus($userId, $isActive);
 
+        if ($isActive === 0) {
+            try {
+                $ticketService = new \App\Services\Realtime\RealtimeTicketService();
+                $ticketService->revokeAllUserTickets($userId);
+
+                $outboxService = new \App\Services\Realtime\RealtimeOutboxService();
+                $outboxService->notifyRevocationBestEffort([
+                    'userId' => $userId,
+                    'reason' => 'ACCOUNT_DEACTIVATED',
+                ]);
+            } catch (\Throwable) {
+                // Never block user management when realtime service is unavailable
+            }
+        }
+
         $action = $isActive === 1 ? 'USER_ACTIVATED' : 'USER_DEACTIVATED';
         $this->auditLogRepository->record(
             $action,
@@ -234,6 +249,19 @@ class UserController
 
         $this->userRepository->updateRole($userId, $newRole);
         $this->userRepository->assignUserRole($userId, strtolower($newRole));
+
+        try {
+            $ticketService = new \App\Services\Realtime\RealtimeTicketService();
+            $ticketService->revokeAllUserTickets($userId);
+
+            $outboxService = new \App\Services\Realtime\RealtimeOutboxService();
+            $outboxService->notifyRevocationBestEffort([
+                'userId' => $userId,
+                'reason' => 'ROLE_CHANGED',
+            ]);
+        } catch (\Throwable) {
+            // Never block role updates when realtime service is unavailable
+        }
 
         $this->auditLogRepository->record(
             'USER_ROLE_UPDATED',

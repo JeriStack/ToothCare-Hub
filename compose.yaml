@@ -59,6 +59,9 @@ services:
       APP_ENV: ${APP_ENV:-development}
       APP_DEBUG: ${APP_DEBUG:-true}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8080,http://127.0.0.1:5173,http://127.0.0.1:8080,http://localhost:3000,http://127.0.0.1:3000}
+      REALTIME_ENABLED: ${REALTIME_ENABLED:-true}
+      REALTIME_INTERNAL_URL: ${REALTIME_INTERNAL_URL:-http://realtime:4000}
+      REALTIME_INTERNAL_SECRET: ${REALTIME_INTERNAL_SECRET:-dev_realtime_secret_change_in_prod_32chars}
     volumes:
       - ./backend:/var/www/backend
     depends_on:
@@ -136,7 +139,9 @@ services:
         required: false
     environment:
       PORT: ${REALTIME_PORT:-4000}
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8080}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8080,http://127.0.0.1:5173,http://127.0.0.1:8080}
+      BACKEND_INTERNAL_API_URL: ${BACKEND_INTERNAL_API_URL:-http://nginx:8081}
+      REALTIME_INTERNAL_SECRET: ${REALTIME_INTERNAL_SECRET:-dev_realtime_secret_change_in_prod_32chars}
       NODE_ENV: ${NODE_ENV:-development}
     networks:
       - app
@@ -145,6 +150,51 @@ services:
       interval: 15s
       timeout: 3s
       start_period: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # 4b. Background Real-Time Outbox Worker (Publishes committed MySQL outbox events)
+  # ---------------------------------------------------------------------------
+  realtime-worker:
+    image: toothcare-php-fpm:latest
+    container_name: toothcare-realtime-worker
+    command: ["php", "bin/realtime-worker.php"]
+    stop_signal: SIGTERM
+    stop_grace_period: 30s
+    env_file:
+      - path: .env
+        required: false
+      - path: ./backend/.env
+        required: false
+    environment:
+      DB_HOST: ${DB_HOST:-mysql}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME:-toothcare_hub}
+      DB_USER: ${DB_USER:-toothcare_user}
+      DB_USERNAME: ${DB_USER:-toothcare_user}
+      DB_PASSWORD: ${DB_PASSWORD:-toothcare_secure_pass}
+      APP_ENV: ${APP_ENV:-development}
+      REALTIME_ENABLED: ${REALTIME_ENABLED:-true}
+      REALTIME_INTERNAL_URL: ${REALTIME_INTERNAL_URL:-http://realtime:4000}
+      REALTIME_INTERNAL_SECRET: ${REALTIME_INTERNAL_SECRET:-dev_realtime_secret_change_in_prod_32chars}
+      LOG_PATH: /var/www/backend/storage/logs/realtime-worker.log
+    volumes:
+      - ./backend:/var/www/backend
+    depends_on:
+      php-fpm:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      realtime:
+        condition: service_healthy
+    networks:
+      - app
+    healthcheck:
+      test: ["CMD", "php", "bin/realtime-worker.php", "--status"]
+      interval: 60s
+      timeout: 10s
+      start_period: 15s
       retries: 3
     restart: unless-stopped
 
@@ -243,11 +293,21 @@ services:
   mailpit:
     image: axllent/mailpit:v1.22
     container_name: toothcare-mailpit
-    profiles: ["mail"]
+    profiles:
+      - mail
+      - dev
+      - local
     ports:
-      - "127.0.0.1:8025:8025"
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "127.0.0.1:${MAILPIT_WEB_PORT:-8025}:8025"
     networks:
       - app
+    healthcheck:
+      test: ["CMD-SHELL", "/mailpit readyz || exit 1"]
+      interval: 10s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
     restart: unless-stopped
   # ---------------------------------------------------------------------------
   # 6. Database Automated Backup Daemon (2:00 AM Daily Full Backup + Retention)

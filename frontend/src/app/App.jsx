@@ -61,6 +61,7 @@ import { StaffProfilePage } from '../features/staff/pages/StaffProfilePage';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { LoadingProvider, useRouteLoading } from '../contexts/LoadingContext';
 import { ThemeProvider } from '../contexts/ThemeContext';
+import { RealtimeProvider } from '../contexts/RealtimeProvider';
 import { GlobalLoadingBar } from '../components/ui/GlobalLoadingBar';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
 
@@ -1262,7 +1263,9 @@ export default function App() {
         <LoadingProvider>
           <GlobalLoadingBar />
           <AuthProvider>
-            <AppContent />
+            <RealtimeProvider>
+              <AppContent />
+            </RealtimeProvider>
           </AuthProvider>
         </LoadingProvider>
       </ThemeProvider>

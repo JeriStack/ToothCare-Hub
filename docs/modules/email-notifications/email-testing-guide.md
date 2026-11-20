@@ -33,7 +33,10 @@ cd ../frontend && npx vitest run src/tests/admin/EmailDeliveryPanel.test.jsx
 ## Manual end-to-end (performed during Phase 13)
 
 1. `docker compose --profile mail up -d mailpit email-worker reminder-scheduler`
-2. Log in as the demo patient, book through the API, and confirm as the admin.
+2. Run automated end-to-end verification across all seeded roles:
+   `docker exec toothcare-php-fpm php scripts/verify-mailpit.php`
+   (See [Mailpit Local Development Guide](../../phase-13/mailpit-local-development-guide.md) for full scenario matrix).
+3. Log in as the demo patient, book through the API, and confirm as the admin.
 3. Check Mailpit for "We received your appointment request" and "Your appointment is confirmed". Confirm the body has the reference, service, dentist and Manila time, and no chief complaint.
 4. `docker stop toothcare-mailpit`, cancel the appointment: the API returns `CANCELLED`, and the job becomes `FAILED_RETRYABLE / SMTP_CONNECTION_FAILED` with a retry about 60 s later.
 5. `docker start toothcare-mailpit`: the job is `SENT` on attempt 2.

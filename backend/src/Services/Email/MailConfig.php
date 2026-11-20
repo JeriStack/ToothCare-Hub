@@ -86,8 +86,12 @@ final class MailConfig
             if ($timeout < 1 || $timeout > 120) {
                 $errors[] = 'MAIL_TIMEOUT must be between 1 and 120 seconds.';
             }
-            if (!$verifyPeer && strtolower($env['APP_ENV'] ?? (string) ($_ENV['APP_ENV'] ?? '')) === 'production') {
+            $appEnv = strtolower($env['APP_ENV'] ?? (string) ($_ENV['APP_ENV'] ?? ''));
+            if (!$verifyPeer && $appEnv === 'production') {
                 $errors[] = 'MAIL_VERIFY_PEER=false is not permitted in production.';
+            }
+            if ($appEnv === 'production' && in_array(strtolower($host), ['mailpit', '127.0.0.1', 'localhost'], true)) {
+                $errors[] = 'Local test sink (' . $host . ') cannot be used as MAIL_HOST in production.';
             }
         }
         return new self(
@@ -122,6 +126,10 @@ final class MailConfig
     {
         return $this->username !== '';
     }
+    public function isLocalSink(): bool
+    {
+        return in_array(strtolower($this->host), ['mailpit', 'localhost', '127.0.0.1'], true);
+    }
     /**
      * Safe description for logs and diagnostics. Never includes the password or username.
      *
@@ -138,6 +146,7 @@ final class MailConfig
             'timeout' => $this->timeout,
             'verify_peer' => $this->verifyPeer,
             'authenticated' => $this->hasCredentials(),
+            'is_local_sink' => $this->isLocalSink(),
             'valid' => $this->isValid(),
         ];
     }

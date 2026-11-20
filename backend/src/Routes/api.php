@@ -17,6 +17,7 @@ use App\Controllers\HealthController;
 use App\Controllers\MetricsController;
 use App\Controllers\NotificationController;
 use App\Controllers\PatientController;
+use App\Controllers\RealtimeController;
 use App\Controllers\ReceptionistController;
 use App\Controllers\ReportController;
 use App\Controllers\RolePermissionController;
@@ -248,6 +249,8 @@ $router->group('/api/v1', function (Router $r): void {
     $r->get('/reports/overview', $notImplemented('GET /api/v1/reports/overview'));
     $r->get('/reports/appointments', $notImplemented('GET /api/v1/reports/appointments'));
 
-    // Realtime Ticket Group
-    $r->post('/realtime/ticket', $notImplemented('POST /api/v1/realtime/ticket'));
+    // Realtime Ticket & Internal Service-to-Service Verification Group (Phase 14)
+    $r->post('/realtime/ticket', [RealtimeController::class, 'issueTicket'], [AuthenticationMiddleware::class]);
+    $r->post('/internal/realtime/tickets/verify', [RealtimeController::class, 'verifyTicket']);
+    $r->post('/internal/realtime/sessions/verify', [RealtimeController::class, 'verifySession']);
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Bell,
   Check,
@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import notificationsApi from '../api';
 import { NotificationSkeleton } from '../../../components/skeletons';
+import { ConnectionStatus } from '../../../components/notifications/ConnectionStatus';
+import { useRealtimeNotifications } from '../../../hooks/useRealtimeNotifications';
 
 function getNotificationIcon(type) {
   switch (type) {
@@ -45,11 +47,16 @@ export function PatientNotificationsPage({ onNavigateToAppointments }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchList = async (pageNum = 1) => {
-    setLoading(true);
+  const fetchList = useCallback(async (pageNum = 1, silent = false) => {
+    if (!silent) {
+      setLoading(true);
+    }
     setError(null);
     try {
-      const res = await notificationsApi.getNotifications({ page: pageNum, per_page: 15 });
+      const res = await notificationsApi.getNotifications(
+        { page: pageNum, per_page: 15 },
+        silent ? { background: true } : undefined
+      );
       setNotifications(res.items || []);
       setTotal(res.total || 0);
       setUnreadCount(res.unread_count || 0);
@@ -58,13 +65,24 @@ export function PatientNotificationsPage({ onNavigateToAppointments }) {
     } catch (err) {
       setError(err.response?.data?.error?.message || err.message || 'Failed to load notifications.');
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchList(page);
-  }, [page]);
+  }, [fetchList, page]);
+
+  useRealtimeNotifications({
+    onEvent: () => {
+      void fetchList(page, true);
+    },
+    onReconnect: () => {
+      void fetchList(page, true);
+    },
+  });
 
   const handleMarkAsRead = async (id) => {
     try {
@@ -97,7 +115,10 @@ export function PatientNotificationsPage({ onNavigateToAppointments }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-[#12304A] dark:text-slate-50">Notifications</h2>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h2 className="text-xl sm:text-2xl font-bold text-[#12304A] dark:text-slate-50">Notifications</h2>
+            <ConnectionStatus />
+          </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Real-time status updates and appointment alerts for your clinical visits.
           </p>
@@ -106,7 +127,7 @@ export function PatientNotificationsPage({ onNavigateToAppointments }) {
           <button
             type="button"
             onClick={handleMarkAllAsRead}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 text-slate-700 dark:text-slate-200 hover:text-[#0D9488] dark:hover:text-[#2DD4BF] hover:border-teal-200 dark:hover:border-teal-700 text-xs font-semibold shadow-2xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 text-slate-700 dark:text-slate-200 hover:text-[#0D9488] dark:hover:text-[#2DD4BF] hover:border-teal-200 dark:hover:border-teal-700 text-xs font-semibold shadow-sm transition-colors"
           >
             <CheckCheck className="w-4 h-4 text-[#0D9488] dark:text-[#2DD4BF]" />
             <span>Mark all as read</span>

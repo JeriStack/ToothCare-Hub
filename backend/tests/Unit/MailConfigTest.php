@@ -54,6 +54,20 @@ class MailConfigTest extends TestCase
         $this->assertFalse($c->isValid());
         $this->assertTrue(MailConfig::fromArray($this->valid(['MAIL_VERIFY_PEER' => 'false', 'APP_ENV' => 'development']))->isValid());
     }
+    public function testLocalTestSinkRejectedInProduction(): void
+    {
+        $c1 = MailConfig::fromArray($this->valid(['MAIL_HOST' => 'mailpit', 'APP_ENV' => 'production']));
+        $this->assertFalse($c1->isValid());
+        $this->assertNotEmpty(array_filter($c1->errors, fn($e) => str_contains($e, 'cannot be used as MAIL_HOST in production')));
+
+        $c2 = MailConfig::fromArray($this->valid(['MAIL_HOST' => 'localhost', 'APP_ENV' => 'production']));
+        $this->assertFalse($c2->isValid());
+
+        $dev = MailConfig::fromArray($this->valid(['MAIL_HOST' => 'mailpit', 'APP_ENV' => 'development']));
+        $this->assertTrue($dev->isValid());
+        $this->assertTrue($dev->isLocalSink());
+        $this->assertTrue($dev->describe()['is_local_sink']);
+    }
     public function testDescribeAndDebugOutputNeverExposeCredentials(): void
     {
         $c = MailConfig::fromArray($this->valid());

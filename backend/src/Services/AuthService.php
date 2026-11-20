@@ -322,6 +322,7 @@ class AuthService
     public function logout(?int $userId = null, ?string $clientIp = null, ?string $userAgent = null): bool
     {
         if ($userId !== null) {
+            $sessionId = session_status() === PHP_SESSION_ACTIVE ? session_id() : '';
             $this->auditLogRepository->record(
                 'AUTH_LOGOUT',
                 'users',
@@ -331,6 +332,18 @@ class AuthService
                 $userAgent,
                 []
             );
+            try {
+                $ticketService = new \App\Services\Realtime\RealtimeTicketService(null, null, null, null, null, $this->database);
+                $ticketService->revokeSessionTickets($userId, $sessionId !== '' ? $sessionId : null);
+                $outboxService = new \App\Services\Realtime\RealtimeOutboxService(null, null, null, $this->logger, $this->database);
+                $outboxService->notifyRevocationBestEffort([
+                    'userId' => $userId,
+                    'sessionIdHash' => $sessionId !== '' ? hash('sha256', $sessionId) : null,
+                    'reason' => 'LOGOUT',
+                ]);
+            } catch (\Throwable) {
+                // Never block logout when realtime service is unavailable
+            }
         }
 
         if (session_status() === PHP_SESSION_ACTIVE) {

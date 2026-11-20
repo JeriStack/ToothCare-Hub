@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useNotifications } from '../hooks/useNotifications';
 import { NotificationSkeleton } from '../../../components/skeletons';
+import { ConnectionStatus } from '../../../components/notifications/ConnectionStatus';
 
 function getNotificationIcon(type) {
   switch (type) {
@@ -118,9 +119,10 @@ export function NotificationCenter({ onNavigateToAppointments, onViewAllNotifica
           className="fixed left-3 right-3 top-[4.25rem] sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-96 rounded-2xl bg-white dark:bg-gray-800 shadow-2xl border border-slate-200/90 dark:border-gray-700 z-50 overflow-hidden text-slate-800 dark:text-gray-100"
         >
           {/* Header */}
-          <div className="p-3.5 px-4 bg-slate-50/80 dark:bg-gray-900/70 border-b border-slate-200/80 dark:border-gray-700 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <div className="p-3.5 px-4 bg-slate-50/80 dark:bg-gray-900/70 border-b border-slate-200/80 dark:border-gray-700 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
             <div className="flex items-center gap-2 min-w-0">
               <h3 className="text-sm font-bold text-[#12304A] dark:text-gray-50">Notifications</h3>
+              <ConnectionStatus />
               {unreadCount > 0 && (
                 <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#CCFBF1] dark:bg-teal-900/60 text-[#0F766E] dark:text-teal-200 whitespace-nowrap">
                   {unreadCount} unread

@@ -35,7 +35,7 @@ class AppointmentRepository
                    u_p.id AS patient_user_id, u_p.email AS patient_email,
                    d.license_number, d.specialization,
                    d.first_name AS dentist_first_name, d.last_name AS dentist_last_name,
-                   u_d.email AS dentist_email,
+                   u_d.id AS dentist_user_id, u_d.email AS dentist_email,
                    s.name AS service_name, s.duration_minutes AS service_duration, s.category AS service_category
             FROM appointments a
             JOIN patients p ON a.patient_id = p.id
