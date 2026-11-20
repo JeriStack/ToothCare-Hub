@@ -8,7 +8,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # Stage 2: Final Nginx runtime
-FROM nginx:1.27-alpine
+FROM nginx:1.29-alpine
 COPY --from=frontend-builder /app/dist /var/www/frontend/dist
 COPY docker/nginx/conf.d/toothcare.conf /etc/nginx/conf.d/toothcare.conf
 EXPOSE 80 443
