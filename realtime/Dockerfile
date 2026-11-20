@@ -5,7 +5,6 @@ WORKDIR /app
 COPY package.json package-lock.json* tsconfig.json ./
 RUN npm install
 COPY src ./src
-COPY tests ./tests
 RUN npm run build
 
 FROM node:24-alpine AS runtime
