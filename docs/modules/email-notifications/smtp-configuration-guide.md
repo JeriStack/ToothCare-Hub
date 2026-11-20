@@ -25,11 +25,13 @@ Validation runs when the worker starts and on each stats request. An invalid con
 
 ## Development (Mailpit sink)
 
-```
+```bash
 docker compose --profile mail up -d mailpit
+# Or automatically with default profile:
+docker compose up -d
 ```
 
-In `backend/.env`: `MAIL_HOST=mailpit`, `MAIL_PORT=1025`, `MAIL_ENCRYPTION=none`, empty username and password. Captured mail is at http://127.0.0.1:8025. Nothing leaves the machine.
+In `backend/.env`: `MAIL_HOST=mailpit`, `MAIL_PORT=1025`, `MAIL_ENCRYPTION=none`, `MAIL_FROM_ADDRESS=no-reply@toothcarehub.local`. Captured mail is at http://127.0.0.1:8025 (SMTP at localhost:1025). Nothing leaves the machine. See [Mailpit Local Development Guide](../../phase-13/mailpit-local-development-guide.md) for detailed workflows.
 
 ## Production
 
