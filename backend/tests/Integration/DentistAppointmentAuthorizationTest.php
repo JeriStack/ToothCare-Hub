@@ -120,14 +120,18 @@ class DentistAppointmentAuthorizationTest extends TestCase
             'is_active' => 1,
         ]);
 
-        // 5. Appointments
+        // 5. Appointments (relative future dates in clinic timezone so tests stay deterministic over time)
+        $tz = new \DateTimeZone('Asia/Manila');
+        $confirmedDay = (new \DateTimeImmutable('now', $tz))->modify('+2 days')->format('Y-m-d');
+        $pendingDay = (new \DateTimeImmutable('now', $tz))->modify('+3 days')->format('Y-m-d');
+
         // Confirmed Appointment for Dentist A
         $this->aptAId = $this->appointmentRepo->create([
             'patient_id' => $this->patientId,
             'dentist_id' => $this->dentistAId,
             'service_id' => $this->serviceId,
-            'start_at' => '2026-11-20 09:00:00',
-            'end_at' => '2026-11-20 10:30:00',
+            'start_at' => "{$confirmedDay} 09:00:00",
+            'end_at' => "{$confirmedDay} 10:30:00",
             'duration_snapshot' => 90,
             'price_snapshot' => 7500.00,
             'status' => 'CONFIRMED',
@@ -140,8 +144,8 @@ class DentistAppointmentAuthorizationTest extends TestCase
             'patient_id' => $this->patientId,
             'dentist_id' => $this->dentistBId,
             'service_id' => $this->serviceId,
-            'start_at' => '2026-11-20 11:00:00',
-            'end_at' => '2026-11-20 12:30:00',
+            'start_at' => "{$confirmedDay} 11:00:00",
+            'end_at' => "{$confirmedDay} 12:30:00",
             'duration_snapshot' => 90,
             'price_snapshot' => 7500.00,
             'status' => 'CONFIRMED',
@@ -154,8 +158,8 @@ class DentistAppointmentAuthorizationTest extends TestCase
             'patient_id' => $this->patientId,
             'dentist_id' => $this->dentistAId,
             'service_id' => $this->serviceId,
-            'start_at' => '2026-11-21 14:00:00',
-            'end_at' => '2026-11-21 15:30:00',
+            'start_at' => "{$pendingDay} 14:00:00",
+            'end_at' => "{$pendingDay} 15:30:00",
             'duration_snapshot' => 90,
             'price_snapshot' => 7500.00,
             'status' => 'PENDING',
