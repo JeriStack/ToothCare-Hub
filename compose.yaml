@@ -361,7 +361,7 @@ services:
   # 6. Observability Stack (Optional Monitoring Profile)
   # ---------------------------------------------------------------------------
   prometheus:
-    image: prom/prometheus:v2.53.1
+    image: prom/prometheus:v3.16.0
     container_name: toothcare-prometheus
     profiles:
       - monitoring
