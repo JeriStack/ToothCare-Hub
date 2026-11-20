@@ -10,10 +10,10 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '.env'), quiet: true });
 dotenv.config({ path: path.resolve(__dirname, '../.env'), quiet: true });
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173';
-const isLocalTarget = /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?(\/.*)?$/i.test(
-  baseURL.replace(/\/+$/, '')
-);
+const explicitBaseURL = process.env.PLAYWRIGHT_BASE_URL?.trim();
+const e2ePort = Number(process.env.PLAYWRIGHT_PORT || 5174);
+const baseURL = explicitBaseURL || `http://localhost:${e2ePort}`;
+const shouldStartManagedWebServer = !explicitBaseURL;
 
 export default defineConfig({
   testDir: './e2e',
@@ -49,12 +49,13 @@ export default defineConfig({
       },
     },
   ],
-  // Automatically spin up Vite dev server when testing against localhost
-  webServer: isLocalTarget
+  // Automatically spin up a fresh Vite dev server on a dedicated E2E port
+  // when PLAYWRIGHT_BASE_URL is not explicitly set (avoids reusing stale servers on :5173)
+  webServer: shouldStartManagedWebServer
     ? {
-        command: 'npm run dev -- --port 5173 --strictPort',
-        url: 'http://localhost:5173',
-        reuseExistingServer: !process.env.CI,
+        command: `node ./node_modules/vite/bin/vite.js --port ${e2ePort} --strictPort`,
+        port: e2ePort,
+        reuseExistingServer: false,
         timeout: 60000,
       }
     : undefined,

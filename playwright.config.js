@@ -9,10 +9,10 @@ import { defineConfig, devices } from '@playwright/test';
 // import path from 'path';
 // dotenv.config({ path: path.resolve(__dirname, '.env') });
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173';
-const isLocalTarget = /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?(\/.*)?$/i.test(
-  baseURL.replace(/\/+$/, '')
-);
+const explicitBaseURL = process.env.PLAYWRIGHT_BASE_URL?.trim();
+const e2ePort = Number(process.env.PLAYWRIGHT_PORT || 5174);
+const baseURL = explicitBaseURL || `http://localhost:${e2ePort}`;
+const shouldStartManagedWebServer = !explicitBaseURL;
 
 /**
  * @see https://playwright.dev/docs/test-configuration
@@ -77,11 +77,11 @@ export default defineConfig({
   ],
 
   /* Run your local dev server before starting the tests */
-  webServer: isLocalTarget
+  webServer: shouldStartManagedWebServer
     ? {
-        command: 'npm --prefix frontend run dev -- --port 5173 --strictPort',
-        url: 'http://localhost:5173',
-        reuseExistingServer: !process.env.CI,
+        command: `node ./frontend/node_modules/vite/bin/vite.js ./frontend --port ${e2ePort} --strictPort`,
+        port: e2ePort,
+        reuseExistingServer: false,
         timeout: 60000,
       }
     : undefined,
