@@ -32,6 +32,12 @@ services:
       NODE_ENV: "production"
     restart: always
 
+  realtime-worker:
+    environment:
+      APP_DEBUG: "false"
+      APP_ENV: "production"
+    restart: always
+
   email-worker:
     environment:
       APP_DEBUG: "false"

@@ -14,6 +14,7 @@ use App\Repositories\PatientRepository;
 use App\Repositories\ServiceRepository;
 use App\Repositories\UserRepository;
 use App\Services\Email\EmailOutboxService;
+use App\Services\Realtime\RealtimeOutboxService;
 use App\Validators\AppointmentValidator;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -37,6 +38,7 @@ class AppointmentService
     private AuditLogRepository $auditRepo;
     private EmailOutboxService $emailService;
     private NotificationService $notificationService;
+    private RealtimeOutboxService $realtimeOutbox;
     private Logger $logger;
     private DateTimeZone $timezone;
 
@@ -51,7 +53,8 @@ class AppointmentService
         ?EmailOutboxService $emailService = null,
         ?Logger $logger = null,
         ?Database $database = null,
-        ?NotificationService $notificationService = null
+        ?NotificationService $notificationService = null,
+        ?RealtimeOutboxService $realtimeOutbox = null
     ) {
         $this->database = $database ?? Database::getInstance();
         $this->appointmentRepo = $appointmentRepo ?? new AppointmentRepository($this->database);
@@ -75,6 +78,7 @@ class AppointmentService
             new \App\Repositories\NotificationRepository($this->database),
             $this->logger
         );
+        $this->realtimeOutbox = $realtimeOutbox ?? new RealtimeOutboxService(null, null, null, $this->logger, $this->database);
         $this->timezone = $this->availabilityService->getTimezone();
     }
 
@@ -222,10 +226,16 @@ class AppointmentService
                 ]
             );
 
-            // 10b. Transactional outbox: queue the notification atomically with the booking
+            // 10b. Transactional outbox: queue email, persistent notifications, and realtime outbox atomically
             $txAppointment = $this->appointmentRepo->findById($appointmentId);
             if ($txAppointment) {
                 $this->emailService->queueAppointmentEvent(EmailOutboxService::EVENT_REQUESTED, $txAppointment, $historyId);
+                $this->persistAndQueueAppointmentNotifications(
+                    RealtimeOutboxService::EVENT_APPOINTMENT_REQUESTED,
+                    $txAppointment,
+                    'PENDING',
+                    $pdo
+                );
             }
 
             // 11. Commit Transaction
@@ -244,20 +254,9 @@ class AppointmentService
             throw HttpException::badRequest('Failed to create appointment. Please try again.');
         }
 
-        // 12. Post-Commit Asynchronous / Outbox Notification
+        // 12. Post-Commit Best-Effort Real-Time Dispatch (outages never affect committed booking)
+        $this->realtimeOutbox->dispatchPendingBestEffort();
         $persisted = $this->appointmentRepo->findById($appointmentId);
-        if ($persisted) {
-            // In-app Notification
-            $this->notificationService->createNotification(
-                $userId,
-                'PATIENT',
-                'APPOINTMENT_REQUESTED',
-                'Appointment Request Submitted',
-                "Your appointment request for {$persisted['service_name']} on {$persisted['start_at']} has been received.",
-                'appointments',
-                $appointmentId
-            );
-        }
 
         return $persisted ?? [];
     }
@@ -344,10 +343,16 @@ class AppointmentService
                 ['previous_status' => $appointment['status']]
             );
 
-            // Transactional outbox: queue the notification atomically with the status change
+            // Transactional outbox: queue email, persistent notifications, and realtime outbox atomically
             $txAppointment = $this->appointmentRepo->findById($appointmentId);
             if ($txAppointment) {
                 $this->emailService->queueAppointmentEvent(EmailOutboxService::EVENT_CONFIRMED, $txAppointment, $historyId);
+                $this->persistAndQueueAppointmentNotifications(
+                    RealtimeOutboxService::EVENT_APPOINTMENT_CONFIRMED,
+                    $txAppointment,
+                    'CONFIRMED',
+                    $pdo
+                );
             }
 
             $pdo->commit();
@@ -365,20 +370,8 @@ class AppointmentService
             throw HttpException::badRequest('Failed to confirm appointment.');
         }
 
+        $this->realtimeOutbox->dispatchPendingBestEffort();
         $updated = $this->appointmentRepo->findById($appointmentId);
-
-        // Send confirmation email
-        if ($updated && !empty($updated['patient_user_id'])) {
-            $this->notificationService->createNotification(
-                (int) $updated['patient_user_id'],
-                'PATIENT',
-                'APPOINTMENT_CONFIRMED',
-                'Appointment Confirmed',
-                "Your appointment for {$updated['service_name']} on {$updated['start_at']} has been confirmed.",
-                'appointments',
-                $appointmentId
-            );
-        }
 
         return $updated ?? [];
     }
@@ -438,10 +431,16 @@ class AppointmentService
                 ['reason' => $validated['reason']]
             );
 
-            // Transactional outbox: queue the notification atomically with the status change
+            // Transactional outbox: queue email, persistent notifications, and realtime outbox atomically
             $txAppointment = $this->appointmentRepo->findById($appointmentId);
             if ($txAppointment) {
                 $this->emailService->queueAppointmentEvent(EmailOutboxService::EVENT_REJECTED, $txAppointment, $historyId, ['reason' => $validated['reason']]);
+                $this->persistAndQueueAppointmentNotifications(
+                    RealtimeOutboxService::EVENT_APPOINTMENT_REJECTED,
+                    $txAppointment,
+                    'REJECTED',
+                    $pdo
+                );
             }
 
             $pdo->commit();
@@ -459,19 +458,8 @@ class AppointmentService
             throw HttpException::badRequest('Failed to reject appointment.');
         }
 
+        $this->realtimeOutbox->dispatchPendingBestEffort();
         $updated = $this->appointmentRepo->findById($appointmentId);
-
-        if ($updated && !empty($updated['patient_user_id'])) {
-            $this->notificationService->createNotification(
-                (int) $updated['patient_user_id'],
-                'PATIENT',
-                'APPOINTMENT_REJECTED',
-                'Appointment Request Declined',
-                "Your appointment request for {$updated['service_name']} could not be approved.",
-                'appointments',
-                $appointmentId
-            );
-        }
 
         return $updated ?? [];
     }
@@ -540,10 +528,17 @@ class AppointmentService
                 ['cancelled_by_role' => $userRole, 'reason' => $validated['reason']]
             );
 
-            // Transactional outbox: queue the notification atomically with the status change
+            // Transactional outbox: queue email, persistent notifications, and realtime outbox atomically
             $txAppointment = $this->appointmentRepo->findById($appointmentId);
             if ($txAppointment) {
                 $this->emailService->queueAppointmentEvent(EmailOutboxService::EVENT_CANCELLED, $txAppointment, $historyId, ['cancelled_by' => strtoupper($userRole) === 'PATIENT' ? 'patient' : 'clinic']);
+                $this->persistAndQueueAppointmentNotifications(
+                    RealtimeOutboxService::EVENT_APPOINTMENT_CANCELLED,
+                    $txAppointment,
+                    'CANCELLED',
+                    $pdo,
+                    strtoupper($userRole)
+                );
             }
 
             $pdo->commit();
@@ -561,19 +556,8 @@ class AppointmentService
             throw HttpException::badRequest('Failed to cancel appointment.');
         }
 
+        $this->realtimeOutbox->dispatchPendingBestEffort();
         $updated = $this->appointmentRepo->findById($appointmentId);
-
-        if ($updated && !empty($updated['patient_user_id'])) {
-            $this->notificationService->createNotification(
-                (int) $updated['patient_user_id'],
-                'PATIENT',
-                'APPOINTMENT_CANCELLED',
-                'Appointment Cancelled',
-                "Your appointment for {$updated['service_name']} on {$updated['start_at']} has been cancelled.",
-                'appointments',
-                $appointmentId
-            );
-        }
 
         return $updated ?? [];
     }
@@ -629,10 +613,16 @@ class AppointmentService
                 null
             );
 
-            // Transactional outbox: queue the notification atomically with the status change
+            // Transactional outbox: queue email, persistent notifications, and realtime outbox atomically
             $txAppointment = $this->appointmentRepo->findById($appointmentId);
             if ($txAppointment) {
                 $this->emailService->queueAppointmentEvent(EmailOutboxService::EVENT_COMPLETED, $txAppointment, $historyId);
+                $this->persistAndQueueAppointmentNotifications(
+                    RealtimeOutboxService::EVENT_NOTIFICATION_CREATED,
+                    $txAppointment,
+                    'COMPLETED',
+                    $pdo
+                );
             }
 
             $pdo->commit();
@@ -650,19 +640,8 @@ class AppointmentService
             throw HttpException::badRequest('Failed to complete appointment.');
         }
 
+        $this->realtimeOutbox->dispatchPendingBestEffort();
         $updated = $this->appointmentRepo->findById($appointmentId);
-
-        if ($updated && !empty($updated['patient_user_id'])) {
-            $this->notificationService->createNotification(
-                (int) $updated['patient_user_id'],
-                'PATIENT',
-                'APPOINTMENT_COMPLETED',
-                'Appointment Completed',
-                "Your visit for {$updated['service_name']} on {$updated['start_at']} is complete. Thank you for visiting ToothCare Hub!",
-                'appointments',
-                $appointmentId
-            );
-        }
 
         return $updated ?? [];
     }
@@ -818,10 +797,18 @@ class AppointmentService
                 $pdo
             );
 
-            // Transactional outbox: the new request is acknowledged by email atomically.
+            // Transactional outbox: queue email, persistent notifications, and realtime outbox atomically.
             $txNewAppointment = $this->appointmentRepo->findById($newAppointmentId);
             if ($txNewAppointment) {
                 $this->emailService->queueAppointmentEvent(EmailOutboxService::EVENT_REQUESTED, $txNewAppointment, $newHistoryId);
+                $this->persistAndQueueAppointmentNotifications(
+                    RealtimeOutboxService::EVENT_APPOINTMENT_REQUESTED,
+                    $txNewAppointment,
+                    'PENDING',
+                    $pdo,
+                    null,
+                    true
+                );
             }
 
             $this->auditRepo->record(
@@ -849,18 +836,8 @@ class AppointmentService
             throw HttpException::badRequest('Failed to reschedule appointment.');
         }
 
+        $this->realtimeOutbox->dispatchPendingBestEffort();
         $rescheduled = $this->appointmentRepo->findById($newAppointmentId);
-        if ($rescheduled && !empty($rescheduled['patient_user_id'])) {
-            $this->notificationService->createNotification(
-                (int) $rescheduled['patient_user_id'],
-                'PATIENT',
-                'APPOINTMENT_RESCHEDULED',
-                'Appointment Rescheduled',
-                "Your appointment has been rescheduled to {$rescheduled['start_at']}.",
-                'appointments',
-                $newAppointmentId
-            );
-        }
 
         return $rescheduled ?? [];
     }
@@ -1124,10 +1101,16 @@ class AppointmentService
                 ['dentist_id' => (int) $dentist['id']]
             );
 
-            // Transactional outbox: queue the notification atomically with the status change
+            // Transactional outbox: queue email, persistent notifications, and realtime outbox atomically
             $txAppointment = $this->appointmentRepo->findById($appointmentId);
             if ($txAppointment) {
                 $this->emailService->queueAppointmentEvent(EmailOutboxService::EVENT_COMPLETED, $txAppointment, $historyId);
+                $this->persistAndQueueAppointmentNotifications(
+                    RealtimeOutboxService::EVENT_NOTIFICATION_CREATED,
+                    $txAppointment,
+                    'COMPLETED',
+                    $pdo
+                );
             }
 
             $pdo->commit();
@@ -1145,21 +1128,8 @@ class AppointmentService
             throw HttpException::badRequest('Failed to complete appointment.');
         }
 
+        $this->realtimeOutbox->dispatchPendingBestEffort();
         $updated = $this->appointmentRepo->findById($appointmentId);
-
-        if ($updated) {
-            if (!empty($updated['patient_user_id'])) {
-                $this->notificationService->createNotification(
-                    (int) $updated['patient_user_id'],
-                    'PATIENT',
-                    'APPOINTMENT_COMPLETED',
-                    'Appointment Completed',
-                    "Your visit for {$updated['service_name']} on {$updated['start_at']} is complete. Thank you for visiting ToothCare Hub!",
-                    'appointments',
-                    $appointmentId
-                );
-            }
-        }
 
         return $updated ?? [];
     }
@@ -1417,5 +1387,227 @@ class AppointmentService
             'pending_requests' => $pendingRequests,
             'recent_activity' => $recentActivity,
         ];
+    }
+
+    /**
+     * Atomically persist in-app notifications and enqueue corresponding real-time outbox events
+     * for all authorized recipients INSIDE the active appointment transaction.
+     *
+     * @param string $eventType One of RealtimeOutboxService::ALLOWED_EVENTS
+     * @param array<string, mixed> $appointment
+     * @param string $status Uppercase lifecycle status
+     * @param PDO $pdo Active transactional PDO connection
+     */
+    private function persistAndQueueAppointmentNotifications(
+        string $eventType,
+        array $appointment,
+        string $status,
+        PDO $pdo,
+        ?string $cancelledByRole = null,
+        bool $isRescheduled = false
+    ): void {
+        $appointmentId = (int) ($appointment['id'] ?? 0);
+        if ($appointmentId <= 0) {
+            return;
+        }
+
+        $serviceName = (string) ($appointment['service_name'] ?? 'Dental Consultation');
+        $startAt = (string) ($appointment['start_at'] ?? '');
+        $patientUserId = !empty($appointment['patient_user_id']) ? (int) $appointment['patient_user_id'] : 0;
+        $dentistUserId = !empty($appointment['dentist_user_id']) ? (int) $appointment['dentist_user_id'] : 0;
+
+        /** @var list<array{user_id: int, role: string, type: string, title: string, message: string}> $targets */
+        $targets = [];
+
+        if ($eventType === RealtimeOutboxService::EVENT_APPOINTMENT_REQUESTED) {
+            if ($patientUserId > 0) {
+                $targets[] = [
+                    'user_id' => $patientUserId,
+                    'role' => 'PATIENT',
+                    'type' => $isRescheduled ? 'APPOINTMENT_RESCHEDULED' : 'APPOINTMENT_REQUESTED',
+                    'title' => $isRescheduled ? 'Appointment Rescheduled' : 'Appointment Request Submitted',
+                    'message' => $isRescheduled
+                        ? "Your appointment has been rescheduled to {$startAt}."
+                        : "Your appointment request for {$serviceName} on {$startAt} has been received.",
+                ];
+            }
+            if ($dentistUserId > 0) {
+                $targets[] = [
+                    'user_id' => $dentistUserId,
+                    'role' => 'DENTIST',
+                    'type' => 'APPOINTMENT_REQUESTED',
+                    'title' => 'New Appointment Request',
+                    'message' => "A new appointment request for {$serviceName} on {$startAt} has been assigned.",
+                ];
+            }
+            foreach ($this->findActiveOperationalStaffRecipients($pdo, ['RECEPTIONIST', 'ADMIN']) as $staff) {
+                $targets[] = [
+                    'user_id' => $staff['id'],
+                    'role' => $staff['role'],
+                    'type' => 'APPOINTMENT_REQUESTED',
+                    'title' => 'New Appointment Pending Review',
+                    'message' => "Appointment request #{$appointmentId} ({$serviceName}) for {$startAt} requires front-desk review.",
+                ];
+            }
+        } elseif ($eventType === RealtimeOutboxService::EVENT_APPOINTMENT_CONFIRMED) {
+            if ($patientUserId > 0) {
+                $targets[] = [
+                    'user_id' => $patientUserId,
+                    'role' => 'PATIENT',
+                    'type' => 'APPOINTMENT_CONFIRMED',
+                    'title' => 'Appointment Confirmed',
+                    'message' => "Your appointment for {$serviceName} on {$startAt} has been confirmed.",
+                ];
+            }
+            if ($dentistUserId > 0) {
+                $targets[] = [
+                    'user_id' => $dentistUserId,
+                    'role' => 'DENTIST',
+                    'type' => 'APPOINTMENT_CONFIRMED',
+                    'title' => 'Appointment Confirmed',
+                    'message' => "Appointment #{$appointmentId} ({$serviceName}) on {$startAt} has been confirmed.",
+                ];
+            }
+        } elseif ($eventType === RealtimeOutboxService::EVENT_APPOINTMENT_REJECTED) {
+            if ($patientUserId > 0) {
+                $targets[] = [
+                    'user_id' => $patientUserId,
+                    'role' => 'PATIENT',
+                    'type' => 'APPOINTMENT_REJECTED',
+                    'title' => 'Appointment Request Declined',
+                    'message' => "Your appointment request for {$serviceName} could not be approved.",
+                ];
+            }
+        } elseif ($eventType === RealtimeOutboxService::EVENT_APPOINTMENT_CANCELLED) {
+            if ($patientUserId > 0) {
+                $targets[] = [
+                    'user_id' => $patientUserId,
+                    'role' => 'PATIENT',
+                    'type' => 'APPOINTMENT_CANCELLED',
+                    'title' => 'Appointment Cancelled',
+                    'message' => "Your appointment for {$serviceName} on {$startAt} has been cancelled.",
+                ];
+            }
+            if ($dentistUserId > 0) {
+                $targets[] = [
+                    'user_id' => $dentistUserId,
+                    'role' => 'DENTIST',
+                    'type' => 'APPOINTMENT_CANCELLED',
+                    'title' => 'Appointment Cancelled',
+                    'message' => "Appointment #{$appointmentId} ({$serviceName}) on {$startAt} was cancelled.",
+                ];
+            }
+            if ($cancelledByRole === 'PATIENT') {
+                foreach ($this->findActiveOperationalStaffRecipients($pdo, ['RECEPTIONIST']) as $staff) {
+                    $targets[] = [
+                        'user_id' => $staff['id'],
+                        'role' => $staff['role'],
+                        'type' => 'APPOINTMENT_CANCELLED',
+                        'title' => 'Patient Cancelled Appointment',
+                        'message' => "Appointment #{$appointmentId} ({$serviceName}) on {$startAt} was cancelled by the patient.",
+                    ];
+                }
+            }
+        } elseif ($eventType === RealtimeOutboxService::EVENT_NOTIFICATION_CREATED) {
+            if ($patientUserId > 0) {
+                $targets[] = [
+                    'user_id' => $patientUserId,
+                    'role' => 'PATIENT',
+                    'type' => 'APPOINTMENT_COMPLETED',
+                    'title' => 'Appointment Completed',
+                    'message' => "Your visit for {$serviceName} on {$startAt} is complete. Thank you for visiting ToothCare Hub!",
+                ];
+            }
+        }
+
+        $seenUsers = [];
+        foreach ($targets as $target) {
+            $uid = (int) $target['user_id'];
+            if ($uid <= 0 || isset($seenUsers[$uid])) {
+                continue;
+            }
+            $seenUsers[$uid] = true;
+
+            $notificationId = $this->notificationService->createNotification(
+                $uid,
+                $target['role'],
+                $target['type'],
+                $target['title'],
+                $target['message'],
+                'appointments',
+                $appointmentId,
+                $pdo
+            );
+
+            $this->realtimeOutbox->enqueue(
+                $eventType,
+                $uid,
+                $notificationId > 0 ? $notificationId : null,
+                [
+                    'appointmentId' => $appointmentId,
+                    'status' => strtolower($status),
+                ],
+                $pdo
+            );
+        }
+    }
+
+    /**
+     * Query active staff users by role who hold the required DRBAC permission (`appointments.view`).
+     * Falls back cleanly if RBAC tables are absent in minimal isolated unit test schemas.
+     *
+     * @param list<string> $roles
+     * @return list<array{id: int, role: string}>
+     */
+    private function findActiveOperationalStaffRecipients(PDO $pdo, array $roles): array
+    {
+        if ($roles === []) {
+            return [];
+        }
+
+        $placeholders = implode(', ', array_fill(0, count($roles), '?'));
+
+        try {
+            // Check whether DRBAC role_permissions grants appointments.view for each target role
+            $permStmt = $pdo->prepare("
+                SELECT DISTINCT u.id, u.role
+                FROM users u
+                INNER JOIN roles r ON LOWER(r.slug) = LOWER(u.role)
+                INNER JOIN role_permissions rp ON rp.role_id = r.id
+                INNER JOIN permissions p ON p.id = rp.permission_id
+                WHERE u.is_active = 1
+                  AND u.role IN ({$placeholders})
+                  AND p.slug = 'appointments.view'
+            ");
+            $permStmt->execute($roles);
+            $rows = $permStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $result = [];
+            foreach ($rows as $row) {
+                $result[] = [
+                    'id' => (int) $row['id'],
+                    'role' => strtoupper((string) $row['role']),
+                ];
+            }
+            return $result;
+        } catch (Throwable) {
+            // Minimal schema fallback when DRBAC tables do not exist in isolated tests
+            try {
+                $stmt = $pdo->prepare("SELECT id, role FROM users WHERE is_active = 1 AND role IN ({$placeholders})");
+                $stmt->execute($roles);
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                $result = [];
+                foreach ($rows as $row) {
+                    $result[] = [
+                        'id' => (int) $row['id'],
+                        'role' => strtoupper((string) $row['role']),
+                    ];
+                }
+                return $result;
+            } catch (Throwable) {
+                return [];
+            }
+        }
     }
 }

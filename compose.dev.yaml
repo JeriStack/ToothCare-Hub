@@ -29,6 +29,11 @@ services:
     volumes:
       - ./realtime:/app
       - /app/node_modules
+      - /app/dist
+
+  realtime-worker:
+    volumes:
+      - ./backend:/var/www/backend
 
   email-worker:
     volumes:

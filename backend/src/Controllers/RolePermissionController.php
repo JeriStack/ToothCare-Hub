@@ -90,6 +90,16 @@ class RolePermissionController
         $this->roleRepository->syncRolePermissions($roleId, $permissionSlugs);
         $updatedPermissions = $this->roleRepository->getRolePermissions($roleId);
 
+        try {
+            $outboxService = new \App\Services\Realtime\RealtimeOutboxService();
+            $outboxService->notifyRevocationBestEffort([
+                'role' => strtoupper((string) ($role['slug'] ?? $role['name'] ?? '')),
+                'reason' => 'PERMISSIONS_CHANGED',
+            ]);
+        } catch (\Throwable) {
+            // Never block DRBAC updates when realtime service is unavailable
+        }
+
         $this->auditLogRepository->record(
             'ROLE_PERMISSIONS_UPDATED',
             'roles',

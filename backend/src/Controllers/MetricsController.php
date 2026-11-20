@@ -4,6 +4,7 @@ namespace App\Controllers;
 use App\Core\Request;
 use App\Core\Response;
 use App\Repositories\EmailOutboxRepository;
+use App\Repositories\RealtimeOutboxRepository;
 /**
  * Controller for internal-only application metrics.
  * Exposes Prometheus-compatible text format metrics on protected internal network.
@@ -65,6 +66,29 @@ class MetricsController
         } catch (\Throwable) {
             $lines[] = '# email metrics unavailable';
         }
+
+        try {
+            $rtRepo = new RealtimeOutboxRepository();
+            $rtStats = $rtRepo->stats();
+            $lines[] = '# HELP toothcare_realtime_outbox_pending Realtime outbox events waiting for delivery (pending or retryable).';
+            $lines[] = '# TYPE toothcare_realtime_outbox_pending gauge';
+            $lines[] = 'toothcare_realtime_outbox_pending ' . ($rtStats['pending'] + $rtStats['failed_retryable']);
+            $lines[] = '# HELP toothcare_realtime_outbox_processing Realtime outbox events currently claimed by a worker.';
+            $lines[] = '# TYPE toothcare_realtime_outbox_processing gauge';
+            $lines[] = 'toothcare_realtime_outbox_processing ' . $rtStats['processing'];
+            $lines[] = '# HELP toothcare_realtime_outbox_published_total Realtime outbox events successfully published to Socket.IO.';
+            $lines[] = '# TYPE toothcare_realtime_outbox_published_total counter';
+            $lines[] = 'toothcare_realtime_outbox_published_total ' . $rtStats['published'];
+            $lines[] = '# HELP toothcare_realtime_outbox_failed_total Realtime outbox events that exhausted all retry attempts.';
+            $lines[] = '# TYPE toothcare_realtime_outbox_failed_total counter';
+            $lines[] = 'toothcare_realtime_outbox_failed_total ' . $rtStats['failed_permanent'];
+            $lines[] = '# HELP toothcare_realtime_outbox_retries_total Realtime outbox delivery retries performed.';
+            $lines[] = '# TYPE toothcare_realtime_outbox_retries_total counter';
+            $lines[] = 'toothcare_realtime_outbox_retries_total ' . $rtStats['retries'];
+        } catch (\Throwable) {
+            $lines[] = '# realtime outbox metrics unavailable';
+        }
+
         return Response::plainText(implode("\n", $lines) . "\n");
     }
     private function label(string $v): string
