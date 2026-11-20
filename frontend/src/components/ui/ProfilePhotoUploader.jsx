@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   AlertCircle,
   Camera,
@@ -23,7 +23,7 @@ function sanitizeAvatarUrl(rawUrl) {
 
   try {
     const parsed = new URL(trimmed);
-    if (parsed.protocol === 'blob:' || parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
       return parsed.href;
     }
   } catch {
@@ -51,21 +51,13 @@ export function ProfilePhotoUploader({
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState('');
   const [avatarSuccess, setAvatarSuccess] = useState('');
-  const [previewObjectUrl, setPreviewObjectUrl] = useState('');
   const [failedAvatarUrl, setFailedAvatarUrl] = useState(null);
   const fileInputRef = useRef(null);
 
-  useEffect(() => {
-    return () => {
-      if (previewObjectUrl && typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
-        URL.revokeObjectURL(previewObjectUrl);
-      }
-    };
-  }, [previewObjectUrl]);
-
-  const rawAvatarSrc =
-    previewObjectUrl || (serverAvatarUrl && failedAvatarUrl !== serverAvatarUrl ? serverAvatarUrl : null);
-  const activeAvatarSrc = sanitizeAvatarUrl(rawAvatarSrc);
+  const activeAvatarSrc =
+    serverAvatarUrl && failedAvatarUrl !== serverAvatarUrl
+      ? sanitizeAvatarUrl(serverAvatarUrl)
+      : null;
 
   const handleAvatarFileChange = async (e) => {
     const file = e.target.files?.[0];
@@ -85,12 +77,6 @@ export function ProfilePhotoUploader({
       return;
     }
 
-    let nextObjectUrl = '';
-    if (typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
-      nextObjectUrl = URL.createObjectURL(file);
-      setPreviewObjectUrl(nextObjectUrl);
-    }
-
     setIsUploadingAvatar(true);
     try {
       const updated = await onUploadFile(file);
@@ -107,10 +93,6 @@ export function ProfilePhotoUploader({
       );
     } finally {
       setIsUploadingAvatar(false);
-      if (nextObjectUrl && typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
-        URL.revokeObjectURL(nextObjectUrl);
-      }
-      setPreviewObjectUrl('');
     }
   };
 
@@ -121,7 +103,6 @@ export function ProfilePhotoUploader({
 
     try {
       const updated = await onRemoveFile();
-      setPreviewObjectUrl('');
       setFailedAvatarUrl(null);
       setAvatarSuccess('Profile photo removed.');
       await onSuccess?.('Profile photo removed.', updated);
