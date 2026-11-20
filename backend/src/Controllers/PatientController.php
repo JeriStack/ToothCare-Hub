@@ -56,8 +56,8 @@ class PatientController
         $gender = $request->getQuery('gender');
         $sortBy = (string) ($request->getQuery('sort_by') ?? 'created_at');
         $sortDir = (string) ($request->getQuery('sort_dir') ?? 'DESC');
-        $page = (int) ($request->getQuery('page') ?? 1);
-        $perPage = (int) ($request->getQuery('per_page') ?? 15);
+        $page = max(1, (int) ($request->getQuery('page') ?? 1));
+        $perPage = max(1, min(100, (int) ($request->getQuery('per_page') ?? $request->getQuery('limit') ?? 15)));
 
         $filters = [
             'search' => $search,

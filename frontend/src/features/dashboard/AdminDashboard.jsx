@@ -25,38 +25,19 @@ import {
 import { dashboardApi } from './api';
 import { DashboardSkeleton } from '../../components/skeletons/DashboardSkeleton';
 
-const FALLBACK_ADMIN_METRICS = {
-  counts: {
-    patients: { total: 4, active: 4, inactive: 0 },
-    dentists: { total: 3, active: 3, inactive: 0 },
-    services: { total: 5, active: 5, inactive: 0 },
-    appointments: {
-      total: 8,
-      pending: 2,
-      confirmed: 3,
-      completed: 2,
-      cancelled: 1,
-      today: 3,
-    },
-  },
-  recent: {
-    patients: [
-      { id: 1, first_name: 'Juan', last_name: 'Dela Cruz', email: 'patient.juan@example.com', created_at: '2026-11-01' },
-      { id: 2, first_name: 'Maria', last_name: 'Santos', email: 'patient.maria@example.com', created_at: '2026-11-02' },
-    ],
-    services: [
-      { id: 1, name: 'Dental Prophylaxis (Cleaning)', price: 1500, category: 'Preventive', duration_minutes: 30, is_active: 1 },
-      { id: 2, name: 'Composite Tooth Filling', price: 1800, category: 'Restorative', duration_minutes: 45, is_active: 1 },
-    ],
-  },
-  today_schedule: [],
-  review_queue_peek: [],
-  recent_activity: [],
-  system_alerts: {
-    pending_triage: 2,
-    unverified_users: 0,
-    recent_security_events: 0,
-    active_rate_limits: 0,
+const EMPTY_ADMIN_COUNTS = {
+  patients: { total: 0, active: 0, inactive: 0 },
+  dentists: { total: 0, active: 0, inactive: 0 },
+  services: { total: 0, active: 0, inactive: 0 },
+  appointments: {
+    total: 0,
+    pending: 0,
+    confirmed: 0,
+    upcoming: 0,
+    completed: 0,
+    cancelled: 0,
+    rejected: 0,
+    today: 0,
   },
 };
 
@@ -98,10 +79,14 @@ export function AdminDashboard({ onNavigateTab }) {
       if (data && data.counts) {
         setMetrics(data);
       } else {
-        setMetrics(FALLBACK_ADMIN_METRICS);
+        setError('Dashboard metrics response was empty. Please retry.');
       }
-    } catch {
-      setMetrics(FALLBACK_ADMIN_METRICS);
+    } catch (err) {
+      setError(
+        err?.response?.data?.error?.message ||
+          err?.message ||
+          'Unable to load live clinic metrics from the database.'
+      );
     } finally {
       setLoading(false);
     }
@@ -111,20 +96,51 @@ export function AdminDashboard({ onNavigateTab }) {
     fetchMetrics();
   }, [fetchMetrics]);
 
-  const counts = metrics?.counts || FALLBACK_ADMIN_METRICS.counts;
-  const recent = metrics?.recent || FALLBACK_ADMIN_METRICS.recent;
+  const counts = metrics?.counts || EMPTY_ADMIN_COUNTS;
+  const recent = metrics?.recent || { patients: [], services: [] };
   const todaySchedule = metrics?.today_schedule || [];
   const reviewQueue = metrics?.review_queue_peek || [];
   const recentActivity = metrics?.recent_activity || [];
+  const appointmentTrends = metrics?.appointment_trends || [];
+  const outboxSummary = metrics?.outbox_summary || {
+    email_outbox: { pending: 0, processing: 0, sent: 0, retry_scheduled: 0, failed: 0, abandoned: 0 },
+    realtime_outbox: { pending: 0, processing: 0, published: 0, failed_retryable: 0, failed_permanent: 0 },
+    totals: { pending: 0, processing: 0, completed: 0, failed: 0 },
+  };
+  const recentErrors = metrics?.recent_errors || [];
   const systemAlerts = metrics?.system_alerts || {
     pending_triage: 0,
     unverified_users: 0,
     recent_security_events: 0,
     active_rate_limits: 0,
+    failed_outbox_jobs: 0,
   };
 
   if (loading && !metrics) {
     return <DashboardSkeleton role="admin" />;
+  }
+
+  if (error && !metrics) {
+    return (
+      <div
+        role="alert"
+        className="bg-rose-50 dark:bg-rose-950/45 border border-rose-200 dark:border-rose-800 rounded-2xl p-8 text-center space-y-3"
+      >
+        <AlertCircle className="w-8 h-8 text-rose-600 dark:text-rose-400 mx-auto" />
+        <h2 className="text-base font-bold text-rose-900 dark:text-rose-100">
+          Failed to Load Clinic Dashboard
+        </h2>
+        <p className="text-sm text-rose-700 dark:text-rose-300 max-w-md mx-auto">{error}</p>
+        <button
+          type="button"
+          onClick={fetchMetrics}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-rose-600 hover:bg-rose-700 text-white transition-colors"
+        >
+          <RefreshCw className="w-4 h-4" />
+          Retry
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -302,23 +318,23 @@ export function AdminDashboard({ onNavigateTab }) {
           )}
         </div>
 
-        {/* Metric 3 & 4: Dentists (Total & Active) */}
+        {/* Metric 2: Active Dentists */}
         <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-xs relative overflow-hidden group hover:border-teal-300 dark:hover:border-teal-600 transition-all">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Licensed Dentists
+              Active Dentists
             </span>
             <div className="p-2 bg-teal-50 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300 rounded-xl group-hover:scale-110 transition-transform">
               <Stethoscope className="w-5 h-5" />
             </div>
           </div>
           <div className="text-3xl font-extrabold text-slate-900 dark:text-slate-100 font-sans tracking-tight">
-            {counts.dentists.total}
+            {counts.dentists.active}
           </div>
           <div className="flex items-center gap-2 mt-3 text-xs text-slate-500 dark:text-slate-400">
             <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/50 px-2 py-0.5 rounded-md">
               <CheckCircle className="w-3 h-3" />
-              {counts.dentists.active} in active practice
+              {counts.dentists.total} total licensed
             </span>
             {counts.dentists.inactive > 0 && (
               <span className="text-slate-400 dark:text-slate-500">({counts.dentists.inactive} inactive)</span>
@@ -335,23 +351,23 @@ export function AdminDashboard({ onNavigateTab }) {
           )}
         </div>
 
-        {/* Metric 5: Active Dental Services */}
+        {/* Metric 3: Active Dental Services */}
         <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-xs relative overflow-hidden group hover:border-teal-300 dark:hover:border-teal-600 transition-all">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Dental Services
+              Active Services
             </span>
             <div className="p-2 bg-teal-50 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300 rounded-xl group-hover:scale-110 transition-transform">
               <FileText className="w-5 h-5" />
             </div>
           </div>
           <div className="text-3xl font-extrabold text-slate-900 dark:text-slate-100 font-sans tracking-tight">
-            {counts.services.total}
+            {counts.services.active}
           </div>
           <div className="flex items-center gap-2 mt-3 text-xs text-slate-500 dark:text-slate-400">
             <span className="inline-flex items-center gap-1 font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/50 px-2 py-0.5 rounded-md">
               <Sparkles className="w-3 h-3" />
-              {counts.services.active} bookable online
+              {counts.services.total} total catalog
             </span>
             {counts.services.inactive > 0 && (
               <span className="text-slate-400 dark:text-slate-500">({counts.services.inactive} archived)</span>
@@ -409,10 +425,14 @@ export function AdminDashboard({ onNavigateTab }) {
           </h3>
           <span className="text-xs text-slate-400 dark:text-slate-500">Real-time status metrics</span>
         </div>
-        <div className="portal-grid-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <div className="p-4 rounded-xl bg-teal-700 text-white text-center shadow-xs">
             <span className="text-xs font-medium text-teal-100 block mb-1">Today's Appointments</span>
             <span className="text-2xl font-extrabold">{counts.appointments.today}</span>
+          </div>
+          <div className="p-4 rounded-xl bg-sky-50/90 dark:bg-sky-950/40 border border-sky-200/80 dark:border-sky-800/70 text-center">
+            <span className="text-xs font-semibold text-sky-800 dark:text-sky-300 block mb-1">Upcoming Appointments</span>
+            <span className="text-2xl font-bold text-sky-900 dark:text-sky-200">{counts.appointments.upcoming ?? 0}</span>
           </div>
           <div className="p-4 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/70 text-center">
             <span className="text-xs font-semibold text-amber-800 dark:text-amber-300 block mb-1">Pending Requests</span>
@@ -430,6 +450,120 @@ export function AdminDashboard({ onNavigateTab }) {
             <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">Cancelled Appointments</span>
             <span className="text-2xl font-bold text-slate-800 dark:text-slate-100">{counts.appointments.cancelled}</span>
           </div>
+        </div>
+      </div>
+
+      {/* Operational Visibility: 14-Day Trend + Outbox & Safe Error Panels */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* 14-Day Appointment Trend */}
+        <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              14-Day Appointment Trend
+            </h3>
+            <span className="text-[11px] text-slate-400 dark:text-slate-500">Asia/Manila</span>
+          </div>
+          {appointmentTrends.length === 0 ? (
+            <p className="text-xs text-slate-400 dark:text-slate-500 py-6 text-center">
+              No appointment history recorded in the last 14 days.
+            </p>
+          ) : (
+            (() => {
+              const maxDay = Math.max(1, ...appointmentTrends.map((d) => d.total || 0));
+              return (
+                <div className="flex items-end gap-1.5 h-28 pt-2" role="img" aria-label="14-day daily appointment volume bar chart">
+                  {appointmentTrends.map((day) => {
+                    const pct = Math.max(6, Math.round(((day.total || 0) / maxDay) * 100));
+                    return (
+                      <div key={day.date} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+                        <div
+                          className="w-full rounded-t-md bg-teal-500/80 dark:bg-teal-400/80 transition-all"
+                          style={{ height: `${day.total > 0 ? pct : 4}%` }}
+                          title={`${day.date}: ${day.total} appointment(s)`}
+                        />
+                        <span className="text-[9px] font-mono text-slate-400 dark:text-slate-500 truncate">
+                          {day.date.slice(8)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()
+          )}
+        </div>
+
+        {/* Outbox Delivery Health */}
+        <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <Server className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              Outbox Delivery Health
+            </h3>
+            {onNavigateTab && (
+              <button
+                type="button"
+                onClick={() => onNavigateTab('system')}
+                className="text-xs font-semibold text-teal-700 dark:text-teal-400 hover:underline"
+              >
+                Inspect
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-2.5 text-xs">
+            <div className="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/50">
+              <span className="text-amber-700 dark:text-amber-300 block">Pending / Retry</span>
+              <strong className="text-lg text-amber-900 dark:text-amber-200">{outboxSummary.totals.pending}</strong>
+            </div>
+            <div className="p-3 rounded-xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200/60 dark:border-sky-800/50">
+              <span className="text-sky-700 dark:text-sky-300 block">Processing</span>
+              <strong className="text-lg text-sky-900 dark:text-sky-200">{outboxSummary.totals.processing}</strong>
+            </div>
+            <div className="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/50">
+              <span className="text-emerald-700 dark:text-emerald-300 block">Delivered</span>
+              <strong className="text-lg text-emerald-900 dark:text-emerald-200">{outboxSummary.totals.completed}</strong>
+            </div>
+            <div className="p-3 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-800/50">
+              <span className="text-rose-700 dark:text-rose-300 block">Failed</span>
+              <strong className="text-lg text-rose-900 dark:text-rose-200">{outboxSummary.totals.failed}</strong>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Safe Operational Errors */}
+        <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <Shield className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+              Operational Errors
+            </h3>
+            <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500">
+              {recentErrors.length} recent
+            </span>
+          </div>
+          {recentErrors.length === 0 ? (
+            <div className="py-6 text-center text-xs text-emerald-700 dark:text-emerald-300">
+              <ShieldCheck className="w-6 h-6 mx-auto mb-1.5 text-emerald-600 dark:text-emerald-400" />
+              No recent delivery or security errors recorded.
+            </div>
+          ) : (
+            <ul className="divide-y divide-slate-100 dark:divide-gray-700 text-xs">
+              {recentErrors.slice(0, 4).map((errItem) => (
+                <li key={errItem.id} className="py-2 space-y-0.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-rose-700 dark:text-rose-300 uppercase text-[10px]">
+                      {errItem.module} • {errItem.severity}
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500">
+                      {errItem.timestamp}
+                    </span>
+                  </div>
+                  <p className="text-slate-700 dark:text-slate-300 truncate">{errItem.summary}</p>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 

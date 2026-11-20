@@ -114,8 +114,11 @@ $router->group('/api/v1', function (Router $r): void {
     $r->post('/receptionist/patients', [ReceptionistController::class, 'registerPatient'], [AuthenticationMiddleware::class, $frontDeskGuard, AuthorizationMiddleware::hasPermission('patients.manage', ['RECEPTIONIST', 'ADMIN'])]);
     $r->post('/receptionist/appointments', [ReceptionistController::class, 'createAppointment'], [AuthenticationMiddleware::class, $frontDeskGuard, AuthorizationMiddleware::hasPermission('appointments.book', ['RECEPTIONIST', 'ADMIN'])]);
 
-    // Admin Dashboard Aggregates
+    // Admin Dashboard Aggregates & Operational Visibility (Phase 15)
     $r->get('/admin/dashboard', [DashboardController::class, 'metrics'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('dashboard.view', ['ADMIN'])]);
+    $r->get('/admin/dashboard/summary', [DashboardController::class, 'metrics'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('dashboard.view', ['ADMIN'])]);
+    $r->get('/admin/operations/outbox', [DashboardController::class, 'outboxOperations'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('system.health', ['ADMIN'])]);
+    $r->get('/admin/operations/errors', [DashboardController::class, 'operationalErrors'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('system.health', ['ADMIN'])]);
 
     // Dental Services (Viewing for front desk scheduling; creation/updates restricted by DRBAC)
     $r->get('/admin/services', [ServiceController::class, 'index'], [AuthenticationMiddleware::class, $staffPortalGuard, AuthorizationMiddleware::hasPermission('services.view', ['RECEPTIONIST', 'ADMIN'])]);
@@ -192,6 +195,8 @@ $router->group('/api/v1', function (Router $r): void {
 
     // Reports & Analytics (Administrator Only)
     $r->get('/admin/reports/appointments', [ReportController::class, 'appointments'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('reports.view', ['ADMIN'])]);
+    $r->get('/admin/reports/services', [ReportController::class, 'services'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('reports.view', ['ADMIN'])]);
+    $r->get('/admin/reports/patients', [ReportController::class, 'patients'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('reports.view', ['ADMIN'])]);
     $r->get('/admin/reports/revenue', [ReportController::class, 'revenue'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('reports.view', ['ADMIN'])]);
     $r->get('/admin/reports/dentists', [ReportController::class, 'dentists'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('reports.view', ['ADMIN'])]);
 
@@ -203,6 +208,7 @@ $router->group('/api/v1', function (Router $r): void {
     $r->get('/patient/dashboard', [AppointmentController::class, 'patientDashboard'], $patientAuth);
     $r->post('/appointments', [AppointmentController::class, 'book'], $patientAuth);
     $r->get('/appointments', [AppointmentController::class, 'index'], $patientAuth);
+    $r->get('/appointments/search', [AppointmentController::class, 'search'], $patientAuth);
     $r->get('/appointments/{id}', [AppointmentController::class, 'show'], $patientAuth);
     $r->post('/appointments/{id}/cancel', [AppointmentController::class, 'cancel'], $patientAuth);
     $r->post('/appointments/{id}/reschedule', [AppointmentController::class, 'reschedule'], $patientAuth);

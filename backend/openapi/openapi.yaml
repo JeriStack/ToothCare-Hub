@@ -2156,6 +2156,209 @@ paths:
         '200':
           description: All unread notifications marked as read.
 
+  /admin/dashboard/summary:
+    get:
+      summary: Administrator Dashboard Summary Metrics
+      description: Returns database-driven administrator dashboard metrics (Total Patients, Active Dentists, Active Services, Pending Requests, Upcoming, Completed, Cancelled), 14-day trends, outbox summary, and safe recent operational errors.
+      operationId: getAdminDashboardSummary
+      tags:
+        - Dashboard
+      security:
+        - CookieAuth: []
+      responses:
+        '200':
+          description: Aggregated administrator dashboard summary retrieved.
+        '403':
+          description: Forbidden for non-admin users.
+
+  /admin/operations/outbox:
+    get:
+      summary: Unified Outbox Delivery Monitoring
+      description: Read-only paginated status and redacted job listing across email_outbox and realtime_outbox queues.
+      operationId: getAdminOutboxOperations
+      tags:
+        - Operations
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: channel
+          in: query
+          schema:
+            type: string
+            enum: [email, realtime]
+            default: email
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Outbox summary and paginated job list retrieved.
+        '403':
+          description: Forbidden without system.health permission.
+        '422':
+          description: Invalid outbox channel specified.
+
+  /admin/operations/errors:
+    get:
+      summary: Safe Operational Errors Feed
+      description: Returns paginated, redacted operational delivery and security error events without exposing stack traces, credentials, or clinical notes.
+      operationId: getAdminOperationalErrors
+      tags:
+        - Operations
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Redacted operational errors retrieved.
+        '403':
+          description: Forbidden without system.health permission.
+
+  /admin/reports/services:
+    get:
+      summary: Dental Service Utilization Report
+      description: Database-driven appointment volume and utilization share by dental service within an inclusive Asia/Manila date range.
+      operationId: getAdminServiceUtilizationReport
+      tags:
+        - Reports
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Service utilization report generated.
+        '403':
+          description: Forbidden without reports.view permission.
+        '422':
+          description: Invalid date format or end_date earlier than start_date.
+
+  /admin/reports/patients:
+    get:
+      summary: Patient Directory & Registration Trend Report
+      description: Returns total, active, and inactive patient counts along with daily registration totals within the selected Asia/Manila date range.
+      operationId: getAdminPatientRegistrationReport
+      tags:
+        - Reports
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Patient registration report generated.
+        '403':
+          description: Forbidden without reports.view permission.
+        '422':
+          description: Invalid date format or end_date earlier than start_date.
+
+  /appointments/search:
+    get:
+      summary: Role-Scoped Appointment Search
+      description: Searches and filters appointments with strict server-side authorization scoping (Admin/Receptionist clinic-wide, Dentist own assignments, Patient own bookings) and bounded pagination.
+      operationId: searchAppointments
+      tags:
+        - Appointments
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dentist_id
+          in: query
+          schema:
+            type: integer
+        - name: patient_id
+          in: query
+          schema:
+            type: integer
+        - name: service_id
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, CONFIRMED, REJECTED, CANCELLED, COMPLETED]
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Paginated search results returned.
+        '401':
+          description: Unauthenticated.
+        '422':
+          description: Invalid filter parameter or date range.
+
 components:
   securitySchemes:
     CookieAuth:

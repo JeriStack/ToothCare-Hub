@@ -129,7 +129,7 @@ class TreatmentRecordRepository
             JOIN services s ON a.service_id = s.id
             JOIN patients p ON tr.patient_id = p.id
             WHERE tr.dentist_id = ?
-            ORDER BY tr.created_at DESC
+            ORDER BY tr.created_at DESC, tr.id DESC
             LIMIT ? OFFSET ?
         ');
         $stmt->bindValue(1, $dentistId, PDO::PARAM_INT);

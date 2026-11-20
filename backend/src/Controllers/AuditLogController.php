@@ -39,8 +39,9 @@ class AuditLogController
             'date_to' => $request->getQuery('date_to'),
         ];
 
-        $page = (int) ($request->getQuery('page') ?? 1);
-        $perPage = (int) ($request->getQuery('per_page') ?? 25);
+        $page = max(1, (int) ($request->getQuery('page') ?? 1));
+        $rawPerPage = $request->getQuery('per_page') ?? $request->getQuery('limit') ?? 25;
+        $perPage = max(1, min(100, (int) $rawPerPage));
         $sortBy = (string) ($request->getQuery('sort_by') ?? 'created_at');
         $sortDir = (string) ($request->getQuery('sort_dir') ?? 'DESC');
 
@@ -122,14 +123,18 @@ class AuditLogController
             'ADMIN_LOCKOUT_PREVENTED',
         ];
 
+        $page = max(1, (int) ($request->getQuery('page') ?? 1));
+        $rawPerPage = $request->getQuery('per_page') ?? $request->getQuery('limit') ?? 25;
+        $perPage = max(1, min(100, (int) $rawPerPage));
+
         $result = $this->auditLogRepository->list(
             [...$filters, 'actions' => $securityActions],
             'created_at',
             'DESC',
-            1,
-            50
+            $page,
+            $perPage
         );
 
-        return Response::success($result['data']);
+        return Response::paginated($result['data'], $result['meta']);
     }
 }

@@ -186,7 +186,7 @@ class ServiceRepository
         $sql = "
             SELECT * FROM services
             {$whereSql}
-            ORDER BY {$sortColumn} {$direction}
+            ORDER BY {$sortColumn} {$direction}, id {$direction}
             LIMIT {$perPage} OFFSET {$offset}
         ";
 

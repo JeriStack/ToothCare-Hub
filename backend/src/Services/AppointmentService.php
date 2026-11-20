@@ -879,6 +879,122 @@ class AppointmentService
      * @return array<string, mixed>
      * @throws HttpException
      */
+    /**
+     * Validate and normalize appointment search filters (date bounds, status allowlist, IDs).
+     * Enforces role-based filter scope: callers disable dentist/patient filters for restricted roles.
+     *
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     * @throws HttpException
+     */
+    private function normalizeSearchFilters(
+        array $params,
+        bool $allowDentistFilter = true,
+        bool $allowPatientFilter = true
+    ): array {
+        $validStatuses = ['PENDING', 'CONFIRMED', 'REJECTED', 'CANCELLED', 'COMPLETED'];
+        $filters = [];
+
+        if (isset($params['status']) && trim((string) $params['status']) !== '') {
+            $status = strtoupper(trim((string) $params['status']));
+            if ($status !== 'ALL') {
+                if (!in_array($status, $validStatuses, true)) {
+                    throw HttpException::unprocessableEntity(
+                        'Invalid appointment status filter.',
+                        ['status' => ['Status must be one of: ' . implode(', ', $validStatuses)]]
+                    );
+                }
+                $filters['status'] = $status;
+            }
+        }
+
+        // Date range: support start_date / date_from / from and end_date / date_to / to
+        $rawFrom = $params['start_date'] ?? $params['date_from'] ?? $params['from'] ?? null;
+        $rawTo = $params['end_date'] ?? $params['date_to'] ?? $params['to'] ?? null;
+
+        $fromBound = null;
+        $toBound = null;
+
+        if ($rawFrom !== null && trim((string) $rawFrom) !== '') {
+            $fromBound = $this->parseDateFilterBound(trim((string) $rawFrom), false, 'start_date');
+            $filters['from'] = $fromBound['sql'];
+        }
+        if ($rawTo !== null && trim((string) $rawTo) !== '') {
+            $toBound = $this->parseDateFilterBound(trim((string) $rawTo), true, 'end_date');
+            $filters['to'] = $toBound['sql'];
+        }
+        if ($fromBound !== null && $toBound !== null && $toBound['dt'] < $fromBound['dt']) {
+            throw HttpException::unprocessableEntity(
+                'end_date cannot be earlier than start_date.',
+                ['end_date' => ['end_date must be on or after start_date.']]
+            );
+        }
+
+        if (isset($params['service_id']) && trim((string) $params['service_id']) !== '') {
+            $serviceId = $this->parsePositiveId($params['service_id'], 'service_id');
+            $filters['service_id'] = $serviceId;
+        }
+
+        if ($allowDentistFilter && isset($params['dentist_id']) && trim((string) $params['dentist_id']) !== '') {
+            $filters['dentist_id'] = $this->parsePositiveId($params['dentist_id'], 'dentist_id');
+        }
+
+        if ($allowPatientFilter && isset($params['patient_id']) && trim((string) $params['patient_id']) !== '') {
+            $filters['patient_id'] = $this->parsePositiveId($params['patient_id'], 'patient_id');
+        }
+
+        if (isset($params['search']) && is_string($params['search']) && trim($params['search']) !== '') {
+            $filters['search'] = mb_substr(trim($params['search']), 0, 120);
+        }
+
+        return $filters;
+    }
+
+    /**
+     * @return array{dt: DateTimeImmutable, sql: string}
+     */
+    private function parseDateFilterBound(string $raw, bool $isEnd, string $field): array
+    {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw) === 1) {
+            $dt = DateTimeImmutable::createFromFormat('!Y-m-d', $raw, $this->timezone);
+            if ($dt === false || $dt->format('Y-m-d') !== $raw) {
+                throw HttpException::unprocessableEntity("Invalid {$field} value.", [
+                    $field => ["{$field} must be a valid calendar date (YYYY-MM-DD)."],
+                ]);
+            }
+            $sql = $raw . ($isEnd ? ' 23:59:59' : ' 00:00:00');
+            $boundDt = $isEnd ? $dt->setTime(23, 59, 59) : $dt->setTime(0, 0, 0);
+            return ['dt' => $boundDt, 'sql' => $sql];
+        }
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}$/', $raw) === 1) {
+            $normalized = str_replace('T', ' ', $raw);
+            $dt = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', $normalized, $this->timezone);
+            if ($dt === false || $dt->format('Y-m-d H:i:s') !== $normalized) {
+                throw HttpException::unprocessableEntity("Invalid {$field} datetime.", [
+                    $field => ["{$field} must be a valid datetime (YYYY-MM-DD HH:MM:SS)."],
+                ]);
+            }
+            return ['dt' => $dt, 'sql' => $normalized];
+        }
+
+        throw HttpException::unprocessableEntity("Invalid {$field} format.", [
+            $field => ["{$field} must be formatted as YYYY-MM-DD."],
+        ]);
+    }
+
+    private function parsePositiveId(mixed $value, string $field): int
+    {
+        $str = trim((string) $value);
+        if (!ctype_digit($str) || (int) $str <= 0) {
+            throw HttpException::unprocessableEntity("Invalid {$field}.", [
+                $field => ["{$field} must be a positive integer."],
+            ]);
+        }
+
+        return (int) $str;
+    }
+
     public function listPatientAppointments(int $userId, array $params): array
     {
         $patient = $this->patientRepo->findByUserId($userId);
@@ -892,19 +1008,21 @@ class AppointmentService
             ];
         }
 
-        $status = isset($params['status']) ? (string) $params['status'] : null;
-        $from = isset($params['from']) ? (string) $params['from'] : null;
-        $to = isset($params['to']) ? (string) $params['to'] : null;
+        // Patients may filter by date, status, dentist, or service, NEVER by another patient_id
+        $filters = $this->normalizeSearchFilters($params, true, false);
         $page = isset($params['page']) ? max(1, (int) $params['page']) : 1;
-        $perPage = isset($params['per_page']) ? max(1, min(100, (int) $params['per_page'])) : 20;
+        $rawPerPage = $params['per_page'] ?? $params['limit'] ?? 20;
+        $perPage = max(1, min(100, (int) $rawPerPage));
 
         return $this->appointmentRepo->findByPatient(
             (int) $patient['id'],
-            $status,
-            $from,
-            $to,
+            $filters['status'] ?? null,
+            $filters['from'] ?? null,
+            $filters['to'] ?? null,
             $page,
-            $perPage
+            $perPage,
+            $filters['dentist_id'] ?? null,
+            $filters['service_id'] ?? null
         );
     }
 
@@ -918,11 +1036,15 @@ class AppointmentService
      */
     public function listAdminAppointments(array $filters = [], int $page = 1, int $perPage = 20): array
     {
-        return $this->appointmentRepo->findAllFiltered($filters, $page, $perPage);
+        $normalized = $this->normalizeSearchFilters($filters, true, true);
+        $page = max(1, $page);
+        $perPage = max(1, min(100, $perPage));
+
+        return $this->appointmentRepo->findAllFiltered($normalized, $page, $perPage);
     }
 
     /**
-     * List appointments assigned to the authenticated dentist.
+     * List appointments assigned to the authenticated dentist using SQL pagination.
      *
      * @param int $userId
      * @param array<string, mixed> $params
@@ -943,27 +1065,30 @@ class AppointmentService
             ];
         }
 
-        $from = isset($params['from']) && is_string($params['from']) ? $params['from'] : null;
-        $to = isset($params['to']) && is_string($params['to']) ? $params['to'] : null;
-        $status = isset($params['status']) && is_string($params['status']) ? strtoupper($params['status']) : null;
-        $search = isset($params['search']) && is_string($params['search']) ? $params['search'] : null;
-
-        $items = $this->appointmentRepo->findByDentist((int) $dentist['id'], $from, $to, $status, $search);
-
+        // Dentists are strictly scoped to their own dentist_id (ignore client-supplied dentist_id)
+        $filters = $this->normalizeSearchFilters($params, false, false);
         $page = isset($params['page']) ? max(1, (int) $params['page']) : 1;
-        $perPage = isset($params['per_page']) ? max(1, min(100, (int) $params['per_page'])) : 20;
-        $total = count($items);
-        $offset = ($page - 1) * $perPage;
-        $pagedItems = array_slice($items, $offset, $perPage);
-        $totalPages = $total > 0 ? (int) ceil($total / $perPage) : 1;
+        $rawPerPage = $params['per_page'] ?? $params['limit'] ?? 20;
+        $perPage = max(1, min(100, (int) $rawPerPage));
+
+        $result = $this->appointmentRepo->findByDentistPaginated(
+            (int) $dentist['id'],
+            $filters['from'] ?? null,
+            $filters['to'] ?? null,
+            $filters['status'] ?? null,
+            $filters['search'] ?? null,
+            $filters['service_id'] ?? null,
+            $page,
+            $perPage
+        );
 
         return [
-            'items' => $pagedItems,
+            'items' => $result['items'],
             'meta' => [
-                'total' => $total,
-                'page' => $page,
-                'per_page' => $perPage,
-                'last_page' => $totalPages,
+                'total' => $result['total'],
+                'page' => $result['page'],
+                'per_page' => $result['per_page'],
+                'last_page' => $result['total_pages'],
             ],
         ];
     }
@@ -1167,71 +1292,82 @@ class AppointmentService
         $dentistId = (int) $dentist['id'];
         $todayStart = $now->format('Y-m-d 00:00:00');
         $todayEnd = $now->format('Y-m-d 23:59:59');
-
-        $todayAppts = $this->appointmentRepo->findByDentist($dentistId, $todayStart, $todayEnd);
-        $all = $this->appointmentRepo->findByDentist($dentistId);
-
-        $upcomingCount = 0;
-        $pendingCount = 0;
-        $completedCount = 0;
-
         $weekStart = $now->modify('monday this week')->format('Y-m-d 00:00:00');
         $weekEnd = $now->modify('sunday this week')->format('Y-m-d 23:59:59');
-
-        $completedThisWeek = 0;
-        $upcomingThisWeek = 0;
-        $cancelledThisWeek = 0;
-
-        $futureAppts = [];
         $nowStr = $now->format('Y-m-d H:i:s');
 
-        foreach ($all as $a) {
-            $status = strtoupper((string) $a['status']);
-            $startAt = (string) $a['start_at'];
-            $endAt = (string) ($a['end_at'] ?? $startAt);
+        $todayAppts = $this->appointmentRepo->findByDentist($dentistId, $todayStart, $todayEnd);
 
-            if ($status === 'CONFIRMED') {
-                if ($startAt >= $nowStr) {
-                    $upcomingCount++;
-                    if ($startAt <= $weekEnd) {
-                        $upcomingThisWeek++;
-                    }
-                }
-            } elseif ($status === 'PENDING') {
-                $pendingCount++;
-            } elseif ($status === 'COMPLETED') {
-                $completedCount++;
-                if ($startAt >= $weekStart && $startAt <= $weekEnd) {
-                    $completedThisWeek++;
-                }
-            } elseif ($status === 'CANCELLED') {
-                if ($startAt >= $weekStart && $startAt <= $weekEnd) {
-                    $cancelledThisWeek++;
-                }
-            }
+        // Single SQL aggregate query for all dentist KPIs (avoids loading unbounded appointment history into PHP)
+        $pdo = $this->database->getConnection();
+        $aggStmt = $pdo->prepare("
+            SELECT
+                COALESCE(SUM(CASE WHEN status = 'CONFIRMED' AND start_at >= :now1 THEN 1 ELSE 0 END), 0) AS upcoming_count,
+                COALESCE(SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END), 0) AS pending_count,
+                COALESCE(SUM(CASE WHEN status = 'CONFIRMED' THEN 1 ELSE 0 END), 0) AS confirmed_count,
+                COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END), 0) AS completed_count,
+                COALESCE(SUM(CASE WHEN status = 'CANCELLED' THEN 1 ELSE 0 END), 0) AS cancelled_count,
+                COALESCE(SUM(CASE WHEN status = 'REJECTED' THEN 1 ELSE 0 END), 0) AS rejected_count,
+                COALESCE(SUM(CASE WHEN status = 'COMPLETED' AND start_at >= :ws1 AND start_at <= :we1 THEN 1 ELSE 0 END), 0) AS completed_this_week,
+                COALESCE(SUM(CASE WHEN status = 'CONFIRMED' AND start_at >= :now2 AND start_at <= :we2 THEN 1 ELSE 0 END), 0) AS upcoming_this_week,
+                COALESCE(SUM(CASE WHEN status = 'CANCELLED' AND start_at >= :ws2 AND start_at <= :we3 THEN 1 ELSE 0 END), 0) AS cancelled_this_week
+            FROM appointments
+            WHERE dentist_id = :dentist_id
+        ");
+        $aggStmt->execute([
+            ':now1' => $nowStr,
+            ':now2' => $nowStr,
+            ':ws1' => $weekStart,
+            ':we1' => $weekEnd,
+            ':we2' => $weekEnd,
+            ':ws2' => $weekStart,
+            ':we3' => $weekEnd,
+            ':dentist_id' => $dentistId,
+        ]);
+        $agg = $aggStmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
-            // Eligible upcoming appointment candidate for next patient
-            if (in_array($status, ['CONFIRMED', 'PENDING'], true) && ($endAt >= $nowStr || $startAt >= $nowStr)) {
-                $futureAppts[] = $a;
-            }
-        }
+        $upcomingCount = (int) ($agg['upcoming_count'] ?? 0);
+        $pendingCount = (int) ($agg['pending_count'] ?? 0);
+        $confirmedCount = (int) ($agg['confirmed_count'] ?? 0);
+        $completedCount = (int) ($agg['completed_count'] ?? 0);
+        $cancelledCount = (int) ($agg['cancelled_count'] ?? 0);
+        $rejectedCount = (int) ($agg['rejected_count'] ?? 0);
+        $completedThisWeek = (int) ($agg['completed_this_week'] ?? 0);
+        $upcomingThisWeek = (int) ($agg['upcoming_this_week'] ?? 0);
+        $cancelledThisWeek = (int) ($agg['cancelled_this_week'] ?? 0);
 
-        // Sort upcoming appointments chronologically
-        usort($futureAppts, static function (array $a, array $b): int {
-            return strcmp((string) $a['start_at'], (string) $b['start_at']);
-        });
-
-        $nextAppointment = $futureAppts[0] ?? null;
+        // Next eligible upcoming appointment (bounded LIMIT 1)
+        $nextStmt = $pdo->prepare("
+            SELECT a.*,
+                   p.first_name AS patient_first_name, p.last_name AS patient_last_name,
+                   p.phone AS patient_phone, p.medical_alerts AS patient_medical_alerts,
+                   p.date_of_birth AS patient_date_of_birth, p.gender AS patient_gender,
+                   s.name AS service_name, s.duration_minutes AS service_duration
+            FROM appointments a
+            JOIN patients p ON a.patient_id = p.id
+            JOIN services s ON a.service_id = s.id
+            WHERE a.dentist_id = :dentist_id
+              AND a.status IN ('CONFIRMED', 'PENDING')
+              AND (a.end_at >= :now1 OR a.start_at >= :now2)
+            ORDER BY a.start_at ASC, a.id ASC
+            LIMIT 1
+        ");
+        $nextStmt->execute([
+            ':dentist_id' => $dentistId,
+            ':now1' => $nowStr,
+            ':now2' => $nowStr,
+        ]);
+        $nextAppointment = $nextStmt->fetch(PDO::FETCH_ASSOC) ?: null;
 
         // Calculate pending clinical documentation (completed visits missing treatment records)
-        $pendingDocStmt = $this->database->getConnection()->prepare('
+        $pendingDocStmt = $pdo->prepare("
             SELECT COUNT(*)
             FROM appointments a
             LEFT JOIN treatment_records tr ON tr.appointment_id = a.id
             WHERE a.dentist_id = ?
-              AND a.status = "COMPLETED"
+              AND a.status = 'COMPLETED'
               AND tr.id IS NULL
-        ');
+        ");
         $pendingDocStmt->execute([$dentistId]);
         $pendingDocCount = (int) $pendingDocStmt->fetchColumn();
 
@@ -1249,6 +1385,14 @@ class AppointmentService
             'upcoming_count' => $upcomingCount,
             'pending_count' => $pendingCount,
             'completed_count' => $completedCount,
+            'cancelled_count' => $cancelledCount,
+            'status_distribution' => [
+                'PENDING' => $pendingCount,
+                'CONFIRMED' => $confirmedCount,
+                'COMPLETED' => $completedCount,
+                'CANCELLED' => $cancelledCount,
+                'REJECTED' => $rejectedCount,
+            ],
             'today_appointments' => $todayAppts,
             'next_appointment' => $nextAppointment,
             'activity_summary' => [
@@ -1364,6 +1508,16 @@ class AppointmentService
         $activityStmt->execute([':patient_id' => $patientId]);
         $recentActivity = $activityStmt->fetchAll(PDO::FETCH_ASSOC);
 
+        // 5. Unread notifications count scoped strictly to authenticated patient user
+        $unreadNotifications = 0;
+        try {
+            $unreadStmt = $pdo->prepare('SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0');
+            $unreadStmt->execute([$userId]);
+            $unreadNotifications = (int) $unreadStmt->fetchColumn();
+        } catch (\Throwable $e) {
+            $unreadNotifications = 0;
+        }
+
         return [
             'patient' => [
                 'id' => $patientId,
@@ -1382,6 +1536,7 @@ class AppointmentService
             'pending_count' => (int) ($stats['pending_count'] ?? 0),
             'completed_count' => (int) ($stats['completed_count'] ?? 0),
             'cancelled_count' => (int) ($stats['cancelled_count'] ?? 0),
+            'unread_notifications_count' => $unreadNotifications,
             'next_appointment' => $nextAppointment,
             'additional_upcoming' => $additionalUpcoming,
             'pending_requests' => $pendingRequests,
