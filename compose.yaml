@@ -397,7 +397,7 @@ services:
     restart: unless-stopped
 
   mysqld-exporter:
-    image: prom/mysqld-exporter:v0.15.1
+    image: prom/mysqld-exporter:v0.21.0
     container_name: toothcare-mysqld-exporter
     profiles:
       - monitoring
