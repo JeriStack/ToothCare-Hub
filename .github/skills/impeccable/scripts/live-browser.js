@@ -8501,7 +8501,8 @@
     if (msLoadPromise) return msLoadPromise;
     msLoadPromise = new Promise((resolve, reject) => {
       const s = document.createElement('script');
-      s.src = 'http://localhost:' + PORT + '/modern-screenshot.js';
+      const localOrigin = `${window.location.protocol === 'https:' ? 'https:' : 'http:'}//localhost:${PORT}`;
+      s.src = new URL('/modern-screenshot.js', localOrigin).href;
       s.onload = () => resolve(window.modernScreenshot);
       s.onerror = () => { msLoadPromise = null; reject(new Error('modern-screenshot failed to load')); };
       uiAppendStyle(s);
@@ -12307,7 +12308,8 @@ void main() {
     if (detectScriptLoaded) return;
     detectScriptLoaded = true;
     const s = document.createElement('script');
-    s.src = 'http://localhost:' + PORT + '/detect.js';
+    const localOrigin = `${window.location.protocol === 'https:' ? 'https:' : 'http:'}//localhost:${PORT}`;
+    s.src = new URL('/detect.js', localOrigin).href;
     s.dataset.impeccableExtension = 'true';
     document.head.appendChild(s);
   }

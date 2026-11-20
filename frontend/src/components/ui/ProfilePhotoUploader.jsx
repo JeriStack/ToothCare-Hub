@@ -11,6 +11,28 @@ import {
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 const ALLOWED_AVATAR_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
+function sanitizeAvatarUrl(rawUrl) {
+  if (typeof rawUrl !== 'string') return null;
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return null;
+
+  // Permit safe relative app paths (e.g. /api/v1/patients/me/avatar) but reject protocol-relative //
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//')) {
+    return trimmed;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === 'blob:' || parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+      return parsed.href;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
 /**
  * Reusable profile photo header, uploader, preview, and validation block
  * shared across patient and practitioner profile summary cards.
@@ -41,8 +63,9 @@ export function ProfilePhotoUploader({
     };
   }, [previewObjectUrl]);
 
-  const activeAvatarSrc =
+  const rawAvatarSrc =
     previewObjectUrl || (serverAvatarUrl && failedAvatarUrl !== serverAvatarUrl ? serverAvatarUrl : null);
+  const activeAvatarSrc = sanitizeAvatarUrl(rawAvatarSrc);
 
   const handleAvatarFileChange = async (e) => {
     const file = e.target.files?.[0];

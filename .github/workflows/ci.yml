@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main, develop, development]
 
+permissions:
+  contents: read
+
 jobs:
   infrastructure:
     name: Infrastructure & Compose Validation
