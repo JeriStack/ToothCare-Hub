@@ -1,45 +1,174 @@
 # Contributing to ToothCare Hub
 
-Thanks for contributing. This guide covers branch naming, commit conventions, and the
-pull-request process.
+Thank you for contributing to **ToothCare Hub** (*Healthier Smiles. Brighter Futures.*).
 
-## Branch naming
+This guide explains the repository workflow, local setup, coding and architectural standards, testing gates, and pull-request expectations across the PHP API, React frontend, Node.js Socket.IO real-time service, MySQL migrations, and Docker infrastructure.
 
-Use a short, descriptive, kebab-case branch name prefixed by type:
+---
 
-- `feature/<name>` - new functionality
-- `fix/<name>` - bug fixes
-- `chore/<name>` - tooling, config, non-code changes
-- `docs/<name>` - documentation only
+## 1. Core Architectural Rules
 
-## Commit conventions
+Every contribution must preserve these system-wide invariants:
 
-Write commits in the imperative mood and keep the subject under ~70 characters:
+- **PHP + MySQL are the authoritative sources of truth.** Enforce authentication, DRBAC permissions, resource ownership, and appointment lifecycle rules server-side in native PHP (`backend/`).
+- **Real-time and email delivery are post-commit side effects.** Persist in-app notifications, `email_outbox`, and `realtime_outbox` rows inside the MySQL transaction; never publish Socket.IO events or send SMTP mail before commit, and never let external outages roll back a committed appointment.
+- **No sensitive data in logs, URLs, browser storage, or Socket.IO payloads.** Never expose passwords, session cookies, raw connection tickets, clinical diagnoses, or patient PII in logs, query strings, `localStorage`/`sessionStorage`, or real-time event payloads.
+- **Theme & Responsive UI Parity.** Keep **Light Mode** as the default theme and **Dark Mode** as an explicit user-selected preference (`toothcare_theme`). Do not introduce an unapproved System/Auto theme mode. All UI changes must work cleanly across Light/Dark themes and mobile (`320px–430px`), tablet (`768px–1024px`), and desktop (`1280px–1920px`) viewports without horizontal overflow.
 
+---
+
+## 2. Local Development Setup
+
+### Prerequisites
+- **PHP 8.5+** (`pdo`, `pdo_mysql`, `pdo_sqlite`, `json`, `openssl`, `mbstring`, `fileinfo`) and **Composer 2.x**
+- **Node.js 24 LTS** and **npm 10+**
+- **Docker Engine / Docker Desktop** with Compose v2 (for MySQL 8.0, Nginx, Mailpit, Prometheus/Grafana)
+
+### Environment Bootstrap
+Copy the safe placeholder templates (never commit `.env` files or real secrets):
+
+```bash
+cp .env.example .env
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+cp realtime/.env.example realtime/.env
 ```
-feat(appointments): add availability picker
+
+On Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+Copy-Item backend/.env.example backend/.env
+Copy-Item frontend/.env.example frontend/.env
+Copy-Item realtime/.env.example realtime/.env
+```
+
+Generate a shared 32+ character secret for `REALTIME_INTERNAL_SECRET` and set it identically in `.env`, `backend/.env`, and `realtime/.env`.
+
+### Install Dependencies & Apply Migrations
+
+```bash
+composer --working-dir=backend install
+npm --prefix frontend install
+npm --prefix realtime install
+php database/migrate.php
+```
+
+---
+
+## 3. Branching & Commit Conventions
+
+### Branch Naming
+Use short, descriptive, kebab-case branch names prefixed by type:
+
+- `feature/<name>` — new functionality
+- `fix/<name>` — bug fixes
+- `refactor/<name>` — behavior-preserving structural improvements
+- `chore/<name>` — tooling, dependencies, CI, or infrastructure changes
+- `docs/<name>` — documentation updates only
+- `test/<name>` — test-only additions or fixes
+
+### Commit Messages
+Follow [Conventional Commits](https://www.conventionalcommits.org/) in the imperative mood, keeping the subject line under 72 characters:
+
+```text
+feat(appointments): add real-time slot conflict locking
 fix(auth): reject expired verification tokens
-docs: document api error envelope
+feat(realtime): add HMAC-SHA256 replay protection for internal publisher
+test(backend): use relative future dates in DentistAppointmentAuthorizationTest
+docs(phase-14): document Socket.IO ticket lifecycle and recovery
 ```
 
-## Pull-request checklist
+Common scopes: `appointments`, `auth`, `backend`, `db`, `docker`, `email`, `frontend`, `realtime`, `security`, `ui`.
 
-Before requesting review, confirm:
+---
 
-- [ ] Tests added or updated and passing (PHPUnit / Vitest)
-- [ ] Database migrations included and reversible where applicable
-- [ ] API changes reflected in `backend/docs/openapi.yaml`
-- [ ] Screenshots attached for UI changes
-- [ ] Security reviewed (authz, ownership, validation, secrets)
-- [ ] No real `.env` values, credentials, or patient data committed
+## 4. Coding & Engineering Standards
 
-## Review process
+- **Backend (Native PHP 8.5):**
+  - `declare(strict_types=1);`, PSR-12 formatting, 4-space indentation.
+  - PDO prepared statements only — never interpolate untrusted input into SQL.
+  - Keep controllers thin; place business logic and transactions in `backend/src/Services/` and SQL queries in `backend/src/Repositories/`.
+  - Use explicit DRBAC permissions (`AuthorizationMiddleware::hasPermission(...)`) and strict ownership checks on all protected endpoints.
+  - Use relative dates in tests (e.g., `DateTimeImmutable` in `Asia/Manila`) instead of hardcoded future dates that expire over time.
 
-At least one approving review is required before merge. Keep PRs focused and small where
-possible. CI must pass (lint, tests, OpenAPI validation, frontend build).
+- **Real-Time Service (Node.js + TypeScript + Socket.IO in `realtime/`):**
+  - Strict TypeScript (`"strict": true`, 2-space indentation).
+  - Never trust client-supplied user IDs, roles, or room names; compute rooms server-side from PHP-verified identities.
+  - Keep internal endpoints (`/internal/publish`, `/internal/revoke`) protected with HMAC-SHA256 signatures and replay protection, bound to the private Docker network.
 
-## Coding standards
+- **Frontend (React + Vite + Tailwind CSS in `frontend/`):**
+  - 2-space indentation, functional components, semantic HTML, and accessible keyboard/focus management.
+  - Reuse shared UI primitives (`frontend/src/components/ui/`), skeleton screens (`frontend/src/components/skeletons/`), and semantic theme tokens from `frontend/src/styles/global.css`.
+  - Clean up all timers, event listeners, and real-time subscriptions on component unmount and logout.
 
-- **PHP:** PSR-12, 4-space indentation, PDO prepared statements only.
-- **JavaScript/React:** ESLint config in `frontend/eslint.config.js`, 2-space indentation.
-- Keep the backend authoritative: enforce authentication, roles, and ownership server-side.
+- **Database Migrations (`database/migrations/`):**
+  - Migrations must be numbered sequentially (`NNN_description.sql`), idempotent where safe, and paired with a reversible rollback script in `database/migrations/rollback/NNN_description.down.sql`.
+  - Whenever you add or alter tables/columns, update `backend/tests/Support/TestDb.php` so the in-memory SQLite PHPUnit suite stays aligned with MySQL 8.0.
+
+- **API Contract (`backend/openapi/openapi.yaml`):**
+  - Document all public `/api/v1/*` routes, request/response schemas, and error envelopes in `backend/openapi/openapi.yaml`.
+  - Do **not** expose internal service-to-service routes (`/api/v1/internal/*`) as public OpenAPI endpoints.
+
+---
+
+## 5. Verification Commands (Before Opening a PR)
+
+Run the relevant checks locally before requesting review. These mirror `.github/workflows/ci.yml`:
+
+### Backend (PHP)
+```bash
+composer --working-dir=backend validate --strict
+php backend/vendor/bin/phpunit -c backend/phpunit.xml
+php backend/scripts/validate-openapi.php
+php backend/bin/email-worker.php --help
+php backend/bin/realtime-worker.php --help
+```
+
+### Real-Time Service (Node.js + Socket.IO)
+```bash
+npm --prefix realtime run typecheck
+npm --prefix realtime run build
+npm --prefix realtime test
+```
+
+### Frontend (React + Vite)
+```bash
+npm --prefix frontend test -- --run
+npm --prefix frontend run build
+npx --prefix frontend vitest run src/tests/components/ResponsiveContracts.test.jsx
+```
+
+Optional browser E2E verification (requires Playwright Chromium):
+```bash
+npm --prefix frontend run test:e2e:local
+```
+
+### Infrastructure (Docker Compose)
+```bash
+docker compose -f compose.yaml -f compose.dev.yaml config -q
+docker compose -f compose.yaml -f compose.prod.yaml config -q
+```
+
+---
+
+## 6. Pull Request Checklist
+
+Keep pull requests focused, small, and linked to an issue or roadmap phase using `.github/pull_request_template.md`. Before requesting review, confirm:
+
+- [ ] Scope, root cause, and architectural impact are clearly described.
+- [ ] Unit and integration tests were added or updated and pass (`PHPUnit`, `realtime` tests, `Vitest`).
+- [ ] Database migrations (and rollbacks) are included and `TestDb.php` is updated where applicable.
+- [ ] Public API changes are documented in `backend/openapi/openapi.yaml` and pass `validate-openapi.php`.
+- [ ] UI changes include desktop/mobile screenshots in both Light Mode and Dark Mode.
+- [ ] Security and privacy reviewed (authentication, DRBAC permissions, ownership, input validation, no PII/clinical leaks).
+- [ ] No real `.env` files, secrets, credentials, or patient data are committed.
+- [ ] All CI checks pass (Infrastructure, Backend, Migrations, Realtime, Frontend).
+
+---
+
+## 7. Review Process & Documentation
+
+- At least **one approving review** and a **green CI pipeline** are required before merging into `main`, `develop`, or `development`.
+- Update relevant documentation in [`docs/`](docs/README.md) when changing architecture, environment variables, deployment topology, or operational runbooks.
+- For security vulnerabilities or sensitive findings, avoid posting exploit details publicly in issues; coordinate directly with the project maintainers.
