@@ -4,7 +4,7 @@
 #
 # NOTE: the Docker build context is ./backend (see compose.yaml),
 # so COPY paths are relative to the backend/ directory.
-FROM php:8.5.12-fpm-alpine3.24
+FROM php:8.6.0RC5-fpm-alpine3.24
 
 # System dependencies and PHP extensions:
 # - pdo_mysql provides MySQL PDO driver using built-in mysqlnd
