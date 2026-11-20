@@ -4,6 +4,10 @@ on:
     branches: [ main, master, develop, development ]
   pull_request:
     branches: [ main, master, develop, development ]
+
+permissions:
+  contents: read
+
 jobs:
   test:
     timeout-minutes: 60
