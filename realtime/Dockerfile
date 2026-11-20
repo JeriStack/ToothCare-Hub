@@ -1,5 +1,5 @@
 # ToothCare Hub Real-Time Notification Service (Node.js + TypeScript + Socket.IO)
-FROM node:24-alpine AS builder
+FROM node:26-alpine AS builder
 
 WORKDIR /app
 COPY package.json package-lock.json* tsconfig.json ./
@@ -8,7 +8,7 @@ COPY src ./src
 COPY tests ./tests
 RUN npm run build
 
-FROM node:24-alpine AS runtime
+FROM node:26-alpine AS runtime
 
 WORKDIR /app
 RUN chown -R node:node /app
