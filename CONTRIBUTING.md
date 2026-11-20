@@ -171,4 +171,5 @@ Keep pull requests focused, small, and linked to an issue or roadmap phase using
 
 - At least **one approving review** and a **green CI pipeline** are required before merging into `main`, `develop`, or `development`.
 - Update relevant documentation in [`docs/`](docs/README.md) when changing architecture, environment variables, deployment topology, or operational runbooks.
-- For security vulnerabilities or sensitive findings, avoid posting exploit details publicly in issues; coordinate directly with the project maintainers.
+- All participants must follow our [Code of Conduct](CODE_OF_CONDUCT.md).
+- For security vulnerabilities or sensitive findings, please follow our [Security Policy](SECURITY.md) rather than opening a public issue.
