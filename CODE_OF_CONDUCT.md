@@ -15,13 +15,15 @@ Examples of behavior that contributes to a positive environment for our communit
 - Giving and gracefully accepting constructive feedback
 - Accepting responsibility and apologizing to those affected by our mistakes, and learning from the experience
 - Focusing on what is best not just for us as individuals, but for the overall community and the patients and clinics relying on ToothCare Hub
+- Practicing responsible stewardship of healthcare privacy by using only synthetic test data in issues, pull requests, screenshots, and logs
 
 Examples of unacceptable behavior include:
 
 - The use of sexualized language or imagery, and sexual attention or advances of any kind
 - Trolling, insulting or derogatory comments, and personal or political attacks
 - Public or private harassment
-- Publishing others' private information, such as a physical or email address, or any real patient/clinical data, without explicit permission
+- Publishing others' private information, such as a physical or email address, credentials, or any real patient/clinical data, without explicit permission
+- Disclosing unpatched security vulnerabilities in public issues or discussions instead of following [`SECURITY.md`](SECURITY.md)
 - Other conduct which could reasonably be considered inappropriate in a professional setting
 
 ## Enforcement Responsibilities

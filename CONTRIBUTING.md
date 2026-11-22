@@ -60,7 +60,7 @@ php database/migrate.php
 
 ### Branching Strategy
 - `main` — stable, release-ready branch protected by CI checks.
-- `development` (and `develop`) — active integration branch for ongoing phase work; open feature/fix PRs here before promoting to `main`.
+- `development` (and `develop`) — active integration branches for ongoing work; open feature/fix PRs here before promoting to `main`. Automated Dependabot updates target `development` (`.github/dependabot.yml`).
 
 ### Branch Naming
 Use short, descriptive, kebab-case branch names prefixed by type:
@@ -111,9 +111,14 @@ Common scopes: `appointments`, `auth`, `backend`, `db`, `docker`, `email`, `fron
   - Migrations must be numbered sequentially (`NNN_description.sql`), idempotent where safe, and paired with a reversible rollback script in `database/migrations/rollback/NNN_description.down.sql`.
   - Whenever you add or alter tables/columns, update `backend/tests/Support/TestDb.php` so the in-memory SQLite PHPUnit suite stays aligned with MySQL 8.0.
 
-- **API Contract (`backend/openapi/openapi.yaml`):**
-  - Document all public `/api/v1/*` routes, request/response schemas, and error envelopes in `backend/openapi/openapi.yaml`.
-  - Do **not** expose internal service-to-service routes (`/api/v1/internal/*`) as public OpenAPI endpoints.
+- **API Contract (`backend/src/OpenApi/` → `docs/openapi.yaml`):**
+  - The implemented PHP backend (`backend/src/Routes/api.php`) is the source of truth. Document every released public `/api/v1/*` route using PHP 8 `zircote/swagger-php` attributes in `backend/src/OpenApi/` and regenerate specs via `composer --working-dir=backend openapi:generate`.
+  - Never hand-edit `docs/openapi.yaml` or `backend/openapi/openapi.yaml` directly; CI enforces zero drift (`openapi:check`) and 100% released route coverage (`openapi:validate`).
+  - Do **not** expose internal service-to-service routes (`/api/v1/internal/*`) or unimplemented `501` placeholders in the public OpenAPI spec.
+
+- **Observability & Containers (`monitoring/`, `docker/`, `compose*.yaml`):**
+  - Keep Prometheus metric labels strictly bounded (no patient IDs, user IDs, emails, or clinical notes).
+  - Never add host source bind mounts, public MySQL ports, or development-only services (`mailpit`, `phpmyadmin`) to `compose.prod.yaml`.
 
 ---
 
@@ -121,17 +126,21 @@ Common scopes: `appointments`, `auth`, `backend`, `db`, `docker`, `email`, `fron
 
 Run the relevant checks locally before requesting review. These mirror `.github/workflows/ci.yml`:
 
-### Backend (PHP)
+### Backend (PHP) & OpenAPI
 ```bash
 composer --working-dir=backend validate --strict
-php backend/vendor/bin/phpunit -c backend/phpunit.xml
-php backend/scripts/validate-openapi.php
+composer --working-dir=backend audit --no-interaction
+composer --working-dir=backend test:unit
+composer --working-dir=backend test:integration
+composer --working-dir=backend openapi:check
+composer --working-dir=backend openapi:validate
 php backend/bin/email-worker.php --help
 php backend/bin/realtime-worker.php --help
 ```
 
 ### Real-Time Service (Node.js + Socket.IO)
 ```bash
+npm --prefix realtime audit --audit-level=high
 npm --prefix realtime run typecheck
 npm --prefix realtime run build
 npm --prefix realtime test
@@ -139,6 +148,7 @@ npm --prefix realtime test
 
 ### Frontend (React + Vite)
 ```bash
+npm --prefix frontend audit --audit-level=high
 npm --prefix frontend test -- --run
 npm --prefix frontend run build
 npx --prefix frontend vitest run src/tests/components/ResponsiveContracts.test.jsx
@@ -149,10 +159,11 @@ Optional browser E2E verification (requires Playwright Chromium):
 npm --prefix frontend run test:e2e:local
 ```
 
-### Infrastructure (Docker Compose)
+### Infrastructure, Nginx & Monitoring
 ```bash
 docker compose -f compose.yaml -f compose.dev.yaml config -q
 docker compose -f compose.yaml -f compose.prod.yaml config -q
+docker compose --profile monitoring -f compose.yaml -f compose.dev.yaml config -q
 ```
 
 ---
@@ -164,11 +175,11 @@ Keep pull requests focused, small, and linked to an issue or roadmap phase using
 - [ ] Scope, root cause, and architectural impact are clearly described.
 - [ ] Unit and integration tests were added or updated and pass (`PHPUnit`, `realtime` tests, `Vitest`).
 - [ ] Database migrations (and rollbacks) are included and `TestDb.php` is updated where applicable.
-- [ ] Public API changes are documented in `backend/openapi/openapi.yaml` and pass `validate-openapi.php`.
-- [ ] UI changes include desktop/mobile screenshots in both Light Mode and Dark Mode.
-- [ ] Security and privacy reviewed (authentication, DRBAC permissions, ownership, input validation, no PII/clinical leaks).
+- [ ] Public API changes are documented in `backend/src/OpenApi/`, regenerated into `docs/openapi.yaml`, and pass `openapi:check` + `openapi:validate`.
+- [ ] UI changes include desktop/mobile verification in both Light Mode and Dark Mode and preserve accessibility/responsive contracts.
+- [ ] Security and privacy reviewed (CSRF, DRBAC permissions, ownership/IDOR, input validation, structured log redaction, no PII/clinical leaks in logs or metrics).
 - [ ] No real `.env` files, secrets, credentials, or patient data are committed.
-- [ ] All CI checks pass (Infrastructure, Backend, Migrations, Realtime, Frontend).
+- [ ] All CI checks pass (Infrastructure & Monitoring, Backend, Migrations, Realtime, Frontend, and Production Container Build / `nginx -t` / Trivy Scan).
 
 ---
 

@@ -28,15 +28,15 @@ A responsive web-based dental appointment and clinic management system. ToothCar
 
 | Layer | Technology | Implementation Status |
 |---|---|---|
-| **Frontend** | React 18, Vite 8 (Rolldown), Tailwind CSS 3, Lucide React, React Router 7, Socket.IO Client | Full SPA with Light/Dark theme system, role-based portals, appointment search/filtering, operational reports, and live real-time notifications |
-| **Backend API** | Native PHP (`^8.5`, `8.5.12-fpm-alpine3.24`), Composer, PDO, `zircote/swagger-php` | 105 OpenAPI 3.0.3-documented `/api/v1/*` paths (138 operations) generated from PHP 8 attributes (`docs/openapi.yaml`), local/dev Swagger UI (`/api/v1/docs`, `/api-docs`), and full API guides (`docs/api/README.md`) |
-| **Database** | MySQL 8.x (`InnoDB`, `utf8mb4`) | 32 ordered SQL migrations (`001`–`032`), transaction-safe row locking, persistent `toothcare_mysql_data` volume, and composite reporting/search indexes |
-| **Email Worker** | PHPMailer (`^6.9`) over SMTP + transactional `email_outbox` | Outbox worker (`backend/bin/email-worker.php`) & reminder scheduler (`backend/bin/schedule-reminders.php`) with encrypted payloads and retry policy |
-| **Real-Time** | Node.js (`24-alpine`) + TypeScript + Socket.IO (`^4.8.1`) | Authenticated WebSocket service (`realtime/`) with short-lived hashed tickets, HMAC-SHA256 internal publisher/revocation, and `realtime_outbox` worker |
-| **Reverse Proxy** | Nginx (`1.27-alpine`) | SPA fallback, FastCGI `/api/` routing, WebSocket `/socket.io/` proxying, internal route blocking, and security headers |
-| **Containerization** | Docker Compose v2 (`compose.yaml`, `compose.dev.yaml`, `compose.prod.yaml`) | Multi-stage builds with non-root containers, health checks, and private internal networking |
-| **Observability** | Prometheus (`v2.53.1`) + Grafana (`11.1.0`) + `mysqld-exporter` | Optional Compose profile `monitoring` scraping `/api/v1/metrics` and `realtime` `/metrics` |
-| **Testing & CI/CD** | PHPUnit 11, Vitest 5, Node `node:test`, Playwright, GitHub Actions, CodeQL, Dependabot | Automated lint, OpenAPI validation, MySQL 8 migration verification, unit/integration suites, E2E browser checks, and security scanning on `main`, `develop`, `development` |
+| **Frontend** | React 18, Vite 8 (Rolldown), Tailwind CSS 3, Lucide React, React Router 7, Socket.IO Client | Full SPA with Light/Dark theme system, route/role-level `React.lazy` code splitting (`299.92 kB` / `64.88 kB` gzip main chunk), role portals, appointment search, reports, and live real-time notifications |
+| **Backend API** | Native PHP (`^8.5`, `8.5.12-fpm-alpine3.24`), Composer, PDO, `zircote/swagger-php` | 105 OpenAPI 3.0.3-documented `/api/v1/*` paths (138 operations) generated from PHP 8 attributes (`docs/openapi.yaml`), local/dev Swagger UI (`/api/v1/docs`, `/api-docs`, `404` in prod), and API guides (`docs/api/README.md`) |
+| **Database** | MySQL 8.0 (`InnoDB`, `utf8mb4`) | 32 ordered SQL migrations (`001`–`032`), transaction-safe row locking, persistent `toothcare_mysql_data` volume, AES-256-GCM encrypted backups, and composite reporting/search indexes |
+| **Email Worker** | PHPMailer (`^7.2`) over SMTP + transactional `email_outbox` | Outbox worker (`backend/bin/email-worker.php`) & reminder scheduler (`backend/bin/schedule-reminders.php`) with encrypted payloads, retry policy, and Prometheus backlog/age metrics |
+| **Real-Time** | Node.js (`24-alpine`) + TypeScript + Socket.IO (`^4.8.1`) | Authenticated WebSocket service (`realtime/`) with short-lived hashed tickets, HMAC-SHA256 internal publisher/revocation, non-root `read_only` runtime, and `realtime_outbox` worker |
+| **Reverse Proxy** | Nginx (`stable-alpine3.24`) | Hardened `docker/nginx/production.conf` & TLS/WSS template (`production-tls.conf.example`), immutable `/assets/` caching, privacy-safe `$uri` access logs, internal-only port `8081` (`/internal/`, `/metrics`, `/stub_status`), and security headers |
+| **Containerization** | Docker Compose v2 (`compose.yaml`, `compose.dev.yaml`, `compose.prod.yaml`) | Multi-stage locked Dockerfiles with `apk upgrade --no-cache`, zero host source mounts or public MySQL in prod, non-root workers, `no-new-privileges`, `cap_drop: [ALL]`, health checks, and resource limits |
+| **Observability** | Prometheus + Grafana + `mysqld-exporter` + `nginx-exporter` + `cadvisor` (+ Linux `node-exporter`) | Optional Compose profile `monitoring` (`--profile monitoring`), 15 alert rules, provisioned Application & Infrastructure dashboards, least-privilege MySQL exporter, and `15d` retention |
+| **Testing & CI/CD** | PHPUnit, Vitest 5, Node `node:test`, Playwright, Trivy `v0.36.0`, `promtool`, GitHub Actions, CodeQL, Dependabot | Automated lint, Composer/npm audits, OpenAPI drift & 100% route-coverage checks, MySQL 8 migration verification, unit/integration suites, responsive contracts, multi-stage Docker builds, `nginx -t`, and Trivy `CRITICAL` scans |
 
 ---
 
@@ -116,17 +116,20 @@ docker compose down
 
 ### 7.3 Optional Observability Stack
 ```powershell
-# Start services with Prometheus, Grafana, and MySQL exporter enabled
-docker compose --profile monitoring up -d
+# Start services with Prometheus, Grafana, Nginx/MySQL exporters, and cAdvisor enabled
+docker compose --profile monitoring -f compose.yaml -f compose.dev.yaml up -d
 
 # Stop monitoring profile
-docker compose --profile monitoring down
+docker compose --profile monitoring -f compose.yaml -f compose.dev.yaml down
 ```
 
 ### 7.4 Service Management & Verification
 ```powershell
 # Validate Nginx configuration syntax inside container
 docker compose exec nginx nginx -t
+
+# Validate hardened production Compose stack (immutable images, zero dev bind mounts)
+docker compose -f compose.yaml -f compose.prod.yaml config -q
 
 # Rebuild an individual service without stopping others
 docker compose build php-fpm
@@ -139,31 +142,40 @@ docker compose up -d --no-deps php-fpm
 
 | Service | Local URL / Port | Exposure Policy | Expected Response |
 |---|---|---|---|
-| **App & Landing via Nginx** | `http://localhost:8080/` | Public entry point | Interactive ToothCare Hub dashboard & diagnostics |
+| **App & Landing via Nginx** | `http://localhost:8080/` | Public entry point | Interactive ToothCare Hub SPA & role portals |
 | **Nginx Health Check** | `http://localhost:8080/health` | Public entry point | `{"status":"healthy","service":"toothcare-nginx"}` |
-| **REST API Health Check** | `http://localhost:8080/api/v1/health` | Routed via Nginx FastCGI | `{"status":"healthy","service":"toothcare-backend","database":"connected"}` |
-| **Prometheus Metrics** | `http://localhost:8080/api/v1/metrics` | Routed via Nginx FastCGI | Prometheus text format exporter metrics |
-| **Socket.IO Realtime Service** | `http://localhost:8080/socket.io/` | Proxied via Nginx WebSocket | Handshake / `system:connected` event |
-| **MySQL Database** | `127.0.0.1:3306` (dev only) | Private internal network | MySQL 8.0 server (no external exposure) |
-| **Prometheus UI** | `http://127.0.0.1:9090` | Monitoring profile only | Prometheus metrics query interface |
-| **Grafana UI** | `http://127.0.0.1:3001` | Monitoring profile only | Grafana dashboard (default admin/admin) |
+| **REST API Health Check** | `http://localhost:8080/api/v1/health` | Routed via Nginx FastCGI | `{"data":{"status":"healthy",...},"meta":{...},"error":null}` |
+| **Swagger UI (Local/Dev Only)** | `http://localhost:8080/api/v1/docs` (or `/api-docs`) | Dev/Testing only (`404` in production) | Interactive OpenAPI 3.0.3 documentation |
+| **Socket.IO Realtime Service** | `http://localhost:8080/socket.io/` | Proxied via Nginx WebSocket | Authenticated Socket.IO handshake |
+| **Prometheus Metrics & Stub Status** | `http://nginx:8081/api/v1/metrics`, `/stub_status` | **Internal Docker network only (`403` publicly)** | Prometheus text format metrics |
+| **MySQL Database** | `127.0.0.1:3306` (`compose.dev.yaml` only) | Private internal network (unpublished in prod) | MySQL 8.0 server |
+| **Mailpit Web UI** | `http://127.0.0.1:8025` (`--profile mail` dev only) | Loopback only | Local captured SMTP test emails |
+| **Prometheus UI** | `http://127.0.0.1:9090` (`--profile monitoring`) | Loopback only (VPN/proxy in prod) | Prometheus targets, PromQL & alerts |
+| **Grafana UI** | `http://127.0.0.1:3001` (`--profile monitoring`) | Loopback only (anonymous disabled) | Provisioned Application & Infrastructure dashboards |
 
 ---
 
-## 9. Testing Commands
+## 9. Testing & Verification Commands
 
 ```powershell
-# Backend unit & integration tests (PHPUnit)
-composer --working-dir=backend test
+# Backend unit & integration tests (PHPUnit) + Composer security audit
+composer --working-dir=backend validate --strict
+composer --working-dir=backend audit --no-interaction
+composer --working-dir=backend test:unit
+composer --working-dir=backend test:integration
 
-# OpenAPI 3 specification validation
-php backend/scripts/validate-openapi.php
+# OpenAPI 3.0.3 generation, drift check, and 100% route-coverage validation
+composer --working-dir=backend openapi:generate
+composer --working-dir=backend openapi:check
+composer --working-dir=backend openapi:validate
 
-# Frontend unit/component tests & production build (Vitest 5 + Vite 8)
+# Frontend dependency audit, Vitest suite, and Vite production build
+npm --prefix frontend audit
 npm --prefix frontend test -- --run
 npm --prefix frontend run build
 
-# Real-time Socket.IO service typecheck, build, and tests
+# Real-time Socket.IO dependency audit, typecheck, build, and tests
+npm --prefix realtime audit
 npm --prefix realtime run typecheck
 npm --prefix realtime test
 
@@ -175,24 +187,28 @@ npm run test:e2e:local
 
 ## 10. Git Branch, Commit, and Contribution Conventions
 
-- **Branches:** `main` (stable/releasable), `development` / `develop` (active integration), `feature/<short-description>`, `fix/<short-description>`, `docs/<short-description>`, `chore/<short-description>`.
-- **Commits:** Imperative [Conventional Commits](https://www.conventionalcommits.org/) under 72 characters (e.g., `feat(appointments): validate slot conflicts`, `fix(auth): reject expired session`, `docs(phase-15): document dashboard metrics`).
+- **Branches:** `main` (stable/releasable), `development` / `develop` (active integration; Dependabot targets `development`), `feature/<short-description>`, `fix/<short-description>`, `docs/<short-description>`, `chore/<short-description>`.
+- **Commits:** Imperative [Conventional Commits](https://www.conventionalcommits.org/) under 72 characters (e.g., `feat(appointments): validate slot conflicts`, `fix(auth): reject expired session`, `security(docker): upgrade Nginx base to stable-alpine3.24`).
 - **Community & Governance:**
   - [`CONTRIBUTING.md`](CONTRIBUTING.md) — development setup, coding standards, verification gates, and PR checklist
-  - [`SECURITY.md`](SECURITY.md) — supported branches, private vulnerability reporting, and disclosure policy
-  - [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) — community standards and enforcement guidelines
+  - [`SECURITY.md`](SECURITY.md) — supported branches, security architecture, private vulnerability reporting, and disclosure policy
+  - [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) — community standards, clinical data ethics, and enforcement guidelines
   - [`LICENSE`](LICENSE) — MIT License terms
 
 ---
 
 ## 11. Project Documentation Index
 
-- **Planning & Setup (Phases 0–2):** [`docs/README.md`](docs/README.md), [`docs/setup/local-development.md`](docs/setup/local-development.md), [`docs/setup/environment-configuration.md`](docs/setup/environment-configuration.md)
-- **Architecture & Security:** [`docs/architecture/directory-structure.md`](docs/architecture/directory-structure.md), [`docs/security/security-checklist.md`](docs/security/security-checklist.md)
+- **Master Documentation Index:** [`docs/README.md`](docs/README.md)
+- **Planning, Setup & Architecture (Phases 0–2):** [`docs/setup/local-development.md`](docs/setup/local-development.md), [`docs/setup/environment-configuration.md`](docs/setup/environment-configuration.md), [`docs/architecture/directory-structure.md`](docs/architecture/directory-structure.md)
 - **Phase 13 — Email Outbox Notifications:** [`docs/modules/email-notifications/email-architecture.md`](docs/modules/email-notifications/email-architecture.md)
 - **Phase 14 — Real-Time Notifications (Node.js + Socket.IO):** [`docs/phase-14/`](docs/phase-14/architecture.md)
 - **Phase 15 — Dashboards, Search, Reports, & Operational Views:** [`docs/phase-15/`](docs/phase-15/dashboard-metrics.md)
 - **Phase 16 — Testing Strategy & Regression Coverage:** [`docs/phase-16/`](docs/phase-16/testing-strategy.md)
+- **Phase 17 — API Documentation & OpenAPI 3.0.3:** [`docs/api/README.md`](docs/api/README.md), [`docs/openapi.yaml`](docs/openapi.yaml)
+- **Phase 18 — Security, Privacy, Accessibility, & Performance Hardening:** [`docs/phase-18/security-audit.md`](docs/phase-18/security-audit.md), [`docs/phase-18/production-readiness-checklist.md`](docs/phase-18/production-readiness-checklist.md)
+- **Phase 19 — Observability with Prometheus & Grafana:** [`docs/phase-19/monitoring-architecture.md`](docs/phase-19/monitoring-architecture.md), [`docs/phase-19/observability-runbook.md`](docs/phase-19/observability-runbook.md)
+- **Phase 20 — Production Container Hardening & Nginx Release Config:** [`docs/phase-20/production-container-architecture.md`](docs/phase-20/production-container-architecture.md), [`docs/phase-20/rollback-procedure.md`](docs/phase-20/rollback-procedure.md)
 
 ---
 
