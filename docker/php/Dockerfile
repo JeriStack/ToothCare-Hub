@@ -16,7 +16,7 @@ RUN composer install \
 
 # Stage 2: Minimal PHP-FPM 8.5.12 Alpine runtime
 # Pinned to PHP 8.5.12 (fixes CVE-2026-109618 / CVE-2026-109619)
-FROM php:8.5.12-fpm-alpine3.24 AS runtime
+FROM php:8.6.0RC7-fpm-alpine3.24 AS runtime
 
 RUN set -eu; \
     for attempt in 1 2 3 4 5; do \
