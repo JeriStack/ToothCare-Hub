@@ -542,7 +542,7 @@ export function HelpCenterPage({
             <div
               role="group"
               aria-label="Filter FAQs by category"
-              className="flex flex-wrap items-center gap-2"
+              className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:items-center gap-2 w-full"
             >
               {FAQ_FILTER_TABS.map((tab) => {
                 const isSelected = selectedCategory === tab.id;
@@ -557,7 +557,7 @@ export function HelpCenterPage({
                     type="button"
                     aria-pressed={isSelected}
                     onClick={() => setSelectedCategory(tab.id)}
-                    className={`min-h-10 px-4 py-2 rounded-full text-xs font-semibold border transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
+                    className={`w-full lg:w-auto lg:flex-auto inline-flex items-center justify-center text-center leading-tight min-h-10 px-3 sm:px-3.5 py-2 rounded-full text-xs font-semibold border transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
                       isSelected
                         ? 'bg-[#CCFBF1] dark:bg-teal-500/20 border-[#0D9488]/45 dark:border-teal-400/55 text-[#0F766E] dark:text-teal-200 shadow-2xs'
                         : 'bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 text-slate-600 dark:text-gray-300 hover:text-[#12304A] dark:hover:text-white hover:border-slate-300 dark:hover:border-gray-600'
