@@ -433,7 +433,7 @@ services:
 
   # Linux staging/production host exporter only (Windows Docker Desktop does not expose native Windows host metrics)
   node-exporter:
-    image: prom/node-exporter:v1.8.2
+    image: prom/node-exporter:v1.12.1
     container_name: toothcare-node-exporter
     profiles:
       - monitoring-linux
