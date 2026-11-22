@@ -32,10 +32,10 @@ import {
   VerifyEmailPage,
 } from '../features/auth';
 import { LandingPage } from '../features/landing/LandingPage';
-import { HelpCenterPage } from '../features/help';
 import { NotificationCenter } from '../features/notifications/components/NotificationCenter';
 
-// Phase 18 Performance Hardening: route/role-level code splitting for portal pages
+// Phase 18 Performance Hardening: route/role-level code splitting for portal & help pages
+const HelpCenterPage = lazy(() => import('../features/help/pages/HelpCenterPage').then((m) => ({ default: m.HelpCenterPage })));
 const PatientDashboard = lazy(() => import('../features/dashboard/PatientDashboard').then((m) => ({ default: m.PatientDashboard })));
 const AdminDashboard = lazy(() => import('../features/dashboard/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
 const ReceptionistDashboard = lazy(() => import('../features/dashboard/ReceptionistDashboard').then((m) => ({ default: m.ReceptionistDashboard })));
@@ -657,7 +657,18 @@ function AppContent() {
   // 2. Public Help Center & Support (accessible without authentication)
   if (currentRoute === 'HELP_SUPPORT') {
     return (
-      <HelpCenterPage
+      <Suspense
+        fallback={
+          <div className="min-h-dvh flex items-center justify-center bg-[#F5F8FA] dark:bg-gray-900">
+            <div
+              role="status"
+              aria-label="Loading Help Center"
+              className="w-8 h-8 rounded-full border-2 border-[#0D9488] border-t-transparent animate-spin"
+            />
+          </div>
+        }
+      >
+        <HelpCenterPage
         onNavigateHome={() => navigateTo('LANDING', '/')}
         onNavigateLandingSection={(sectionId) => {
           navigateTo('LANDING', '/');
@@ -718,6 +729,7 @@ function AppContent() {
           }
         }}
       />
+      </Suspense>
     );
   }
 

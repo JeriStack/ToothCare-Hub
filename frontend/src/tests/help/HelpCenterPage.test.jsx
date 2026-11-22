@@ -94,11 +94,13 @@ describe('Public Help Center & Support (/help-support)', () => {
     expect(onHelpSupport).toHaveBeenCalledTimes(3);
   });
 
-  it('loads /help-support publicly without authentication via App routing', () => {
+  it('loads /help-support publicly without authentication via App routing', async () => {
     window.history.pushState({}, '', '/help-support');
     render(<App />);
 
-    expect(screen.getByRole('heading', { level: 1, name: /How can we help you\?/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /How can we help you\?/i })
+    ).toBeInTheDocument();
     expect(screen.getByText(/Find answers and guidance for using ToothCare Hub\./i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Help & Support/i, current: 'page' })).toBeInTheDocument();
   });
@@ -314,5 +316,24 @@ describe('Public Help Center & Support (/help-support)', () => {
       expect(faqsLink).toHaveAttribute('aria-current', 'location');
     });
     expect(guidesLink).not.toHaveAttribute('aria-current');
+  });
+
+  it('supports quick-search chips and "/" keyboard shortcut to focus search', () => {
+    renderHelpCenter();
+
+    const searchInput = screen.getByLabelText(/Search help articles, FAQs, and user guides/i);
+    expect(document.activeElement).not.toBe(searchInput);
+
+    // Press "/" outside an input to focus the search box
+    fireEvent.keyDown(document, { key: '/' });
+    expect(document.activeElement).toBe(searchInput);
+
+    // Clicking a quick-search chip populates search and filters FAQs
+    fireEvent.click(screen.getByRole('button', { name: 'Reset password' }));
+    expect(searchInput).toHaveValue('Reset password');
+
+    // Escape clears the active search query
+    fireEvent.keyDown(searchInput, { key: 'Escape' });
+    expect(searchInput).toHaveValue('');
   });
 });

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect, useDeferredValue } from 'react';
 import {
   Search,
   X,
@@ -7,6 +7,7 @@ import {
   Stethoscope,
   BellRing,
   ArrowRight,
+  ArrowUp,
   BookOpen,
   Clock,
   Phone,
@@ -42,10 +43,42 @@ const CATEGORY_ICONS = {
   BellRing,
 };
 
-function matchesQuery(textParts, normalizedQuery) {
-  if (!normalizedQuery) return true;
-  const haystack = textParts.filter(Boolean).join(' ').toLowerCase();
-  const tokens = normalizedQuery.split(/\s+/).filter(Boolean);
+const QUICK_SEARCH_TERMS = [
+  'Reset password',
+  'Book appointment',
+  'Cancel',
+  'Pending',
+  'Missing email',
+];
+
+// Precomputed static lookup maps and lowercase search haystacks for zero per-render allocation
+const GUIDES_BY_ID = Object.fromEntries(HELP_GUIDES.map((guide) => [guide.id, guide]));
+const FAQS_BY_ID = Object.fromEntries(HELP_FAQS.map((faq) => [faq.id, faq]));
+const CATEGORY_FAQ_COUNTS = HELP_FAQS.reduce((acc, faq) => {
+  acc[faq.category] = (acc[faq.category] || 0) + 1;
+  return acc;
+}, {});
+const FAQ_SEARCH_INDEX = new Map(
+  HELP_FAQS.map((faq) => [
+    faq.id,
+    [faq.question, faq.answer, ...(faq.keywords || [])].filter(Boolean).join(' ').toLowerCase(),
+  ])
+);
+const GUIDE_SEARCH_INDEX = new Map(
+  HELP_GUIDES.map((guide) => [
+    guide.id,
+    [guide.title, guide.summary, ...guide.steps].filter(Boolean).join(' ').toLowerCase(),
+  ])
+);
+const RELATED_GUIDES_BY_FAQ_ID = Object.fromEntries(
+  HELP_FAQS.map((faq) => [
+    faq.id,
+    (faq.relatedGuideIds || []).map((id) => GUIDES_BY_ID[id]).filter(Boolean),
+  ])
+);
+
+function matchesIndexedHaystack(haystack, tokens) {
+  if (tokens.length === 0) return true;
   return tokens.every((token) => haystack.includes(token));
 }
 
@@ -60,11 +93,13 @@ export function HelpCenterPage({
   onAdminLogin,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
+  const deferredSearchQuery = useDeferredValue(searchQuery);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [openFaqIds, setOpenFaqIds] = useState(() => new Set([HELP_FAQS[0].id]));
   const [openGuideIds, setOpenGuideIds] = useState(() => new Set());
   const [activeGuideId, setActiveGuideId] = useState(HELP_GUIDES[0].id);
   const [copiedField, setCopiedField] = useState(null);
+  const [showBackToTop, setShowBackToTop] = useState(false);
 
   const helpRootRef = useRef(null);
   const searchInputRef = useRef(null);
@@ -74,45 +109,66 @@ export function HelpCenterPage({
   useScrollReveal(helpRootRef);
 
   useEffect(() => {
+    const previousTitle = document.title;
+    document.title = 'Help & Support — ToothCare Hub';
     window.scrollTo?.({ top: 0, behavior: 'auto' });
+
+    const handleKeyShortcut = (event) => {
+      if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey) return;
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      searchInputRef.current?.focus();
+    };
+
+    let rafId = null;
+    const handleScrollVisibility = () => {
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        setShowBackToTop((window.scrollY || 0) > 420);
+      });
+    };
+
+    document.addEventListener('keydown', handleKeyShortcut);
+    window.addEventListener('scroll', handleScrollVisibility, { passive: true });
+    handleScrollVisibility();
+
     return () => {
+      document.title = previousTitle;
+      document.removeEventListener('keydown', handleKeyShortcut);
+      window.removeEventListener('scroll', handleScrollVisibility);
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+      }
       if (copyTimerRef.current) {
         window.clearTimeout(copyTimerRef.current);
       }
     };
   }, []);
 
-  const normalizedQuery = searchQuery.trim().toLowerCase();
-
-  const guidesById = useMemo(
-    () => Object.fromEntries(HELP_GUIDES.map((guide) => [guide.id, guide])),
-    []
+  const normalizedQuery = deferredSearchQuery.trim().toLowerCase();
+  const searchTokens = useMemo(
+    () => (normalizedQuery ? normalizedQuery.split(/\s+/).filter(Boolean) : []),
+    [normalizedQuery]
   );
-
-  const faqsById = useMemo(
-    () => Object.fromEntries(HELP_FAQS.map((faq) => [faq.id, faq])),
-    []
-  );
-
-  const categoryFaqCounts = useMemo(() => {
-    const counts = {};
-    for (const faq of HELP_FAQS) {
-      counts[faq.category] = (counts[faq.category] || 0) + 1;
-    }
-    return counts;
-  }, []);
 
   const filteredFaqs = useMemo(() => {
     return HELP_FAQS.filter((faq) => {
       if (selectedCategory !== 'all' && faq.category !== selectedCategory) {
         return false;
       }
-      return matchesQuery(
-        [faq.question, faq.answer, ...(faq.keywords || [])],
-        normalizedQuery
-      );
+      return matchesIndexedHaystack(FAQ_SEARCH_INDEX.get(faq.id) || '', searchTokens);
     });
-  }, [selectedCategory, normalizedQuery]);
+  }, [selectedCategory, searchTokens]);
 
   const filteredGuides = useMemo(() => {
     return HELP_GUIDES.filter((guide) => {
@@ -129,12 +185,9 @@ export function HelpCenterPage({
       ) {
         return false;
       }
-      return matchesQuery(
-        [guide.title, guide.summary, ...guide.steps],
-        normalizedQuery
-      );
+      return matchesIndexedHaystack(GUIDE_SEARCH_INDEX.get(guide.id) || '', searchTokens);
     });
-  }, [selectedCategory, normalizedQuery]);
+  }, [selectedCategory, searchTokens]);
 
   const allVisibleFaqsOpen =
     filteredFaqs.length > 0 && filteredFaqs.every((faq) => openFaqIds.has(faq.id));
@@ -201,14 +254,14 @@ export function HelpCenterPage({
     searchInputRef.current?.focus();
   };
 
-  const scrollElementIntoView = (element) => {
+  const scrollElementIntoView = useCallback((element) => {
     if (!element) return;
     const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
     element.scrollIntoView?.({
       behavior: prefersReducedMotion ? 'auto' : 'smooth',
       block: 'start',
     });
-  };
+  }, []);
 
   const handleCategoryCardClick = (categoryId) => {
     setSelectedCategory(categoryId);
@@ -219,7 +272,7 @@ export function HelpCenterPage({
     scrollElementIntoView(faqSectionRef.current);
   };
 
-  const handleJumpToGuide = (guideId) => {
+  const handleJumpToGuide = useCallback((guideId) => {
     setActiveGuideId(guideId);
     setOpenGuideIds((prev) => {
       if (prev.has(guideId)) return prev;
@@ -237,10 +290,10 @@ export function HelpCenterPage({
         scrollElementIntoView(document.getElementById(guideId));
       });
     }
-  };
+  }, [scrollElementIntoView]);
 
   const handleJumpToFaq = (faqId) => {
-    const targetFaq = faqsById[faqId];
+    const targetFaq = FAQS_BY_ID[faqId];
     if (!targetFaq) return;
     if (selectedCategory !== 'all' && targetFaq.category !== selectedCategory) {
       setSelectedCategory('all');
@@ -373,10 +426,16 @@ export function HelpCenterPage({
                   type="search"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape' && searchQuery) {
+                      e.preventDefault();
+                      setSearchQuery('');
+                    }
+                  }}
                   placeholder="Search by topic, e.g., book appointment, reset password, cancel..."
-                  className="w-full min-h-12 sm:min-h-14 pl-12 pr-12 py-3.5 rounded-2xl bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400 focus:border-[#0D9488] dark:focus:border-teal-400 transition-shadow text-sm sm:text-base"
+                  className="w-full min-h-12 sm:min-h-14 pl-12 pr-14 py-3.5 rounded-2xl bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400 focus:border-[#0D9488] dark:focus:border-teal-400 transition-shadow text-sm sm:text-base"
                 />
-                {searchQuery && (
+                {searchQuery ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -388,7 +447,35 @@ export function HelpCenterPage({
                   >
                     <X className="w-4 h-4" aria-hidden="true" />
                   </button>
+                ) : (
+                  <kbd
+                    aria-hidden="true"
+                    className="hidden sm:inline-flex items-center justify-center absolute right-3.5 px-2 py-1 rounded-lg text-[11px] font-semibold text-slate-400 dark:text-gray-400 bg-slate-100 dark:bg-gray-900/80 border border-slate-200 dark:border-gray-700 pointer-events-none"
+                  >
+                    /
+                  </kbd>
                 )}
+              </div>
+
+              {/* Quick-search suggestion chips */}
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
+                <span className="text-[11px] font-medium text-slate-500 dark:text-gray-400 mr-1">
+                  Popular:
+                </span>
+                {QUICK_SEARCH_TERMS.map((term) => (
+                  <button
+                    key={term}
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery(term);
+                      setSelectedCategory('all');
+                      searchInputRef.current?.focus();
+                    }}
+                    className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-white/90 dark:bg-gray-800/90 border border-slate-200/90 dark:border-gray-700 text-slate-600 dark:text-gray-300 hover:border-[#0D9488]/45 dark:hover:border-teal-400/45 hover:text-[#0F766E] dark:hover:text-teal-300 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                  >
+                    {term}
+                  </button>
+                ))}
               </div>
 
               <div
@@ -465,7 +552,7 @@ export function HelpCenterPage({
               {HELP_CATEGORIES.map((category, idx) => {
                 const Icon = CATEGORY_ICONS[category.icon] || LifeBuoy;
                 const isSelected = selectedCategory === category.id;
-                const faqCount = categoryFaqCounts[category.id] || 0;
+                const faqCount = CATEGORY_FAQ_COUNTS[category.id] || 0;
 
                 return (
                   <article
@@ -600,7 +687,7 @@ export function HelpCenterPage({
                 const count =
                   tab.id === 'all'
                     ? HELP_FAQS.length
-                    : categoryFaqCounts[tab.id] || 0;
+                    : CATEGORY_FAQ_COUNTS[tab.id] || 0;
 
                 return (
                   <button
@@ -645,23 +732,17 @@ export function HelpCenterPage({
               </div>
             ) : (
               <div className="space-y-3">
-                {filteredFaqs.map((faq) => {
-                  const relatedGuides = (faq.relatedGuideIds || [])
-                    .map((id) => guidesById[id])
-                    .filter(Boolean);
-
-                  return (
-                    <HelpAccordionItem
-                      key={faq.id}
-                      faq={faq}
-                      isOpen={openFaqIds.has(faq.id)}
-                      onToggle={handleToggleFaq}
-                      onForceOpen={handleForceOpenFaq}
-                      relatedGuides={relatedGuides}
-                      onSelectGuide={handleJumpToGuide}
-                    />
-                  );
-                })}
+                {filteredFaqs.map((faq) => (
+                  <HelpAccordionItem
+                    key={faq.id}
+                    faq={faq}
+                    isOpen={openFaqIds.has(faq.id)}
+                    onToggle={handleToggleFaq}
+                    onForceOpen={handleForceOpenFaq}
+                    relatedGuides={RELATED_GUIDES_BY_FAQ_ID[faq.id]}
+                    onSelectGuide={handleJumpToGuide}
+                  />
+                ))}
               </div>
             )}
           </div>
@@ -671,7 +752,7 @@ export function HelpCenterPage({
         <section
           id="help-guides"
           aria-labelledby="help-guides-heading"
-          className="py-14 sm:py-16 bg-white dark:bg-gray-900 border-b border-slate-100 dark:border-gray-800 scroll-mt-20"
+          className="landing-deferred-section py-14 sm:py-16 bg-white dark:bg-gray-900 border-b border-slate-100 dark:border-gray-800 scroll-mt-20"
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
             <div
@@ -726,7 +807,7 @@ export function HelpCenterPage({
                   const isHighlighted = activeGuideId === guide.id;
                   const isGuideOpen = openGuideIds.has(guide.id);
                   const relatedFaqs = (guide.relatedFaqIds || [])
-                    .map((id) => faqsById[id])
+                    .map((id) => FAQS_BY_ID[id])
                     .filter(Boolean);
 
                   return (
@@ -855,7 +936,7 @@ export function HelpCenterPage({
         <section
           id="help-contact"
           aria-labelledby="help-contact-heading"
-          className="py-14 sm:py-16 bg-slate-50/70 dark:bg-gray-950/60 scroll-mt-20"
+          className="landing-deferred-section py-14 sm:py-16 bg-slate-50/70 dark:bg-gray-950/60 scroll-mt-20"
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
@@ -1061,6 +1142,25 @@ export function HelpCenterPage({
         }}
         emergencyContactHref="#help-contact"
       />
+
+      {/* Floating Back-to-Top Button */}
+      <button
+        type="button"
+        aria-label="Back to top"
+        tabIndex={showBackToTop ? 0 : -1}
+        aria-hidden={!showBackToTop}
+        onClick={() => {
+          const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+          window.scrollTo?.({ top: 0, behavior: prefersReducedMotion ? 'auto' : 'smooth' });
+        }}
+        className={`fixed bottom-5 right-5 z-40 inline-flex items-center justify-center w-11 h-11 rounded-full bg-[#0D9488] hover:bg-[#0F766E] dark:bg-teal-600 dark:hover:bg-teal-500 text-white shadow-lg shadow-teal-900/20 dark:shadow-black/40 border border-white/15 cursor-pointer transition-[opacity,transform,background-color] duration-200 motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900 ${
+          showBackToTop
+            ? 'opacity-100 translate-y-0 pointer-events-auto'
+            : 'opacity-0 translate-y-3 pointer-events-none'
+        }`}
+      >
+        <ArrowUp className="w-5 h-5" aria-hidden="true" />
+      </button>
     </div>
   );
 }

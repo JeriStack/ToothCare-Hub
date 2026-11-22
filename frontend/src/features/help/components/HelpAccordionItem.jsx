@@ -17,7 +17,7 @@ const CATEGORY_LABELS = {
  * listener so native browser Find-in-page reveals collapsed answers, and keeps
  * the disclosure marker adjacent to the question text.
  */
-export function HelpAccordionItem({
+export const HelpAccordionItem = React.memo(function HelpAccordionItem({
   faq,
   isOpen,
   onToggle,
@@ -131,6 +131,6 @@ export function HelpAccordionItem({
       </div>
     </article>
   );
-}
+});
 
 export default HelpAccordionItem;
