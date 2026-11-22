@@ -4,7 +4,7 @@
 # =============================================================================
 
 # Stage 1: Deterministic production dependency installation (no dev tools in runtime)
-FROM composer:2.8 AS composer-builder
+FROM composer:2.10 AS composer-builder
 WORKDIR /build
 COPY composer.json composer.lock ./
 RUN composer install \
