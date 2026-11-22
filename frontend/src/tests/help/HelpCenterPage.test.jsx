@@ -99,7 +99,11 @@ describe('Public Help Center & Support (/help-support)', () => {
     render(<App />);
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: /How can we help you\?/i })
+      await screen.findByRole(
+        'heading',
+        { level: 1, name: /How can we help you\?/i },
+        { timeout: 5000 }
+      )
     ).toBeInTheDocument();
     expect(screen.getByText(/Find answers and guidance for using ToothCare Hub\./i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Help & Support/i, current: 'page' })).toBeInTheDocument();

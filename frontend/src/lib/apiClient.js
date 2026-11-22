@@ -128,6 +128,7 @@ async function request(method, path, data = null, options = {}) {
     loadingKey,
     onUploadProgress,
     onDownloadProgress,
+    _csrfRetried,
     ...restOptions
   } = options;
 
@@ -250,6 +251,23 @@ async function request(method, path, data = null, options = {}) {
       } else if (response.status === 403) {
         if (responseData?.error?.code === 'CSRF_TOKEN_INVALID') {
           clearCsrfToken();
+
+          // Automatically recover once from a stale/rotated session CSRF token
+          if (unsafeMethods.includes(upperMethod) && !_csrfRetried) {
+            const refreshedToken = await fetchCsrfToken();
+            if (refreshedToken) {
+              const retryHeaders = { ...(restOptions.headers || {}) };
+              delete retryHeaders['X-CSRF-Token'];
+              delete retryHeaders['x-csrf-token'];
+              retryHeaders['X-CSRF-Token'] = refreshedToken;
+
+              return request(method, path, data, {
+                ...options,
+                headers: retryHeaders,
+                _csrfRetried: true,
+              });
+            }
+          }
         }
         if (typeof window !== 'undefined') {
           window.dispatchEvent(
