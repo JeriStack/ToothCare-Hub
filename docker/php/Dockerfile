@@ -18,8 +18,15 @@ RUN composer install \
 # Pinned to PHP 8.5.12 (fixes CVE-2026-109618 / CVE-2026-109619)
 FROM php:8.5.12-fpm-alpine3.24 AS runtime
 
-RUN apk upgrade --no-cache \
-    && apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
+RUN set -eu; \
+    for attempt in 1 2 3 4 5; do \
+        apk upgrade --no-cache --timeout 30 \
+            && apk add --no-cache --timeout 30 --virtual .build-deps $PHPIZE_DEPS \
+            && break; \
+        if [ "$attempt" -eq 5 ]; then exit 1; fi; \
+        echo "apk transient failure (attempt $attempt/5), retrying..." >&2; \
+        sleep 3; \
+    done \
     && docker-php-ext-install pdo_mysql pcntl \
     && apk del .build-deps
 

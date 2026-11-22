@@ -55,7 +55,6 @@ test-results
 # ===== Documentation & IDE clutter =====
 docs
 README.md
-CONTRIBUTING.md
 .idea
 .vscode
 *.swp

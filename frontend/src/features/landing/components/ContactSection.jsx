@@ -110,7 +110,7 @@ export function ContactSection({ onBookAppointment }) {
   return (
     <section
       id="contact"
-      className="py-20 bg-white dark:bg-gray-900 border-t border-slate-100 dark:border-gray-800"
+      className="landing-deferred-section py-20 bg-white dark:bg-gray-900 border-t border-slate-100 dark:border-gray-800"
       aria-labelledby="contact-heading"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
@@ -129,6 +129,7 @@ export function ContactSection({ onBookAppointment }) {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
           {/* Left Column: Operating Hours Card */}
           <div
+            data-reveal="left"
             className="landing-reveal lg:col-span-6 bg-[#F8FAFC] dark:bg-gray-800/95 border border-slate-200/90 dark:border-gray-700/80 rounded-3xl p-6 sm:p-8 shadow-sm dark:shadow-lg dark:shadow-black/20 flex flex-col justify-between space-y-6"
             style={{ '--reveal-index': 0 }}
           >
@@ -228,6 +229,7 @@ export function ContactSection({ onBookAppointment }) {
 
           {/* Right Column: Reception & Booking Assistance */}
           <div
+            data-reveal="right"
             className="landing-reveal lg:col-span-6 bg-[#12304A] dark:bg-gradient-to-br dark:from-slate-800/95 dark:to-gray-900 border border-[#1E4668] dark:border-teal-500/25 text-white rounded-3xl p-6 sm:p-8 shadow-sm dark:shadow-lg dark:shadow-black/25 flex flex-col justify-between space-y-7"
             style={{ '--reveal-index': 1 }}
           >
@@ -324,7 +326,7 @@ export function ContactSection({ onBookAppointment }) {
             <button
               type="button"
               onClick={onBookAppointment}
-              className="group w-full flex items-center justify-center gap-2 py-3.5 px-5 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] dark:hover:bg-teal-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-teal-950/30 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#12304A] dark:focus-visible:ring-offset-gray-900"
+              className="landing-cta-shine group w-full flex items-center justify-center gap-2 py-3.5 px-5 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] dark:hover:bg-teal-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-teal-950/30 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#12304A] dark:focus-visible:ring-offset-gray-900"
             >
               <Calendar className="w-4 h-4 shrink-0" aria-hidden="true" />
               <span>Book Consultation Online</span>
