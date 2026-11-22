@@ -998,7 +998,7 @@ export function HelpCenterPage({
                   </div>
                   <div className="space-y-1">
                     <p className="font-bold text-amber-900 dark:text-amber-200">Dental Emergencies</p>
-                    <p className="text-amber-800/90 dark:text-amber-200/85 leading-relaxed">
+                    <p className="text-amber-800/90 dark:text-amber-200/85 leading-relaxed text-justify">
                       If you are experiencing severe oral pain, trauma, or swelling outside operating hours, please proceed directly to your nearest emergency medical facility.
                     </p>
                   </div>
