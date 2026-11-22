@@ -65,11 +65,11 @@ export function HelpAccordionItem({
           aria-expanded={isOpen}
           aria-controls={panelId}
           onClick={() => onToggle(faq.id)}
-          className="w-full min-h-14 text-left px-5 py-4 sm:px-6 sm:py-5 flex items-start gap-3.5 rounded-2xl cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 focus-visible:ring-inset"
+          className="w-full min-h-14 text-left px-5 py-4 sm:px-6 sm:py-4 flex items-center gap-3.5 rounded-2xl cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 focus-visible:ring-inset"
         >
           <span
             aria-hidden="true"
-            className={`mt-0.5 w-7 h-7 rounded-full flex items-center justify-center shrink-0 border transition-transform duration-200 motion-reduce:transition-none ${
+            className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 border transition-transform duration-200 motion-reduce:transition-none ${
               isOpen
                 ? 'rotate-180 bg-[#CCFBF1] dark:bg-teal-500/20 border-[#0D9488]/35 dark:border-teal-400/45 text-[#0F766E] dark:text-teal-300'
                 : 'bg-slate-50 dark:bg-gray-900 border-slate-200 dark:border-gray-600 text-slate-500 dark:text-gray-300'
@@ -78,11 +78,11 @@ export function HelpAccordionItem({
             <ChevronDown className="w-4 h-4" />
           </span>
 
-          <span className="flex-1 min-w-0 space-y-1.5">
-            <span className="block font-bold text-slate-900 dark:text-gray-100 text-sm sm:text-base leading-snug">
+          <span className="flex-1 min-w-0 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+            <span className="font-bold text-slate-900 dark:text-gray-100 text-sm sm:text-base leading-snug">
               {faq.question}
             </span>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-gray-900/80 text-slate-600 dark:text-gray-300 border border-slate-200/80 dark:border-gray-700">
+            <span className="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-gray-900/80 text-slate-600 dark:text-gray-300 border border-slate-200/80 dark:border-gray-700">
               {CATEGORY_LABELS[faq.category] || 'General'}
             </span>
           </span>
