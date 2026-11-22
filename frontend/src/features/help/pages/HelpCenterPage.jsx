@@ -61,6 +61,7 @@ export function HelpCenterPage({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [openFaqIds, setOpenFaqIds] = useState(() => new Set([HELP_FAQS[0].id]));
+  const [openGuideIds, setOpenGuideIds] = useState(() => new Set());
   const [activeGuideId, setActiveGuideId] = useState(HELP_GUIDES[0].id);
   const [copiedField, setCopiedField] = useState(null);
 
@@ -134,6 +135,25 @@ export function HelpCenterPage({
   const allVisibleFaqsOpen =
     filteredFaqs.length > 0 && filteredFaqs.every((faq) => openFaqIds.has(faq.id));
 
+  const allVisibleGuidesOpen =
+    filteredGuides.length > 0 && filteredGuides.every((guide) => openGuideIds.has(guide.id));
+
+  const handleToggleAllGuides = () => {
+    if (allVisibleGuidesOpen) {
+      setOpenGuideIds((prev) => {
+        const next = new Set(prev);
+        filteredGuides.forEach((guide) => next.delete(guide.id));
+        return next;
+      });
+    } else {
+      setOpenGuideIds((prev) => {
+        const next = new Set(prev);
+        filteredGuides.forEach((guide) => next.add(guide.id));
+        return next;
+      });
+    }
+  };
+
   const handleToggleFaq = useCallback((faqId) => {
     setOpenFaqIds((prev) => {
       const next = new Set(prev);
@@ -197,6 +217,12 @@ export function HelpCenterPage({
 
   const handleJumpToGuide = (guideId) => {
     setActiveGuideId(guideId);
+    setOpenGuideIds((prev) => {
+      if (prev.has(guideId)) return prev;
+      const next = new Set(prev);
+      next.add(guideId);
+      return next;
+    });
     const guideEl = document.getElementById(guideId);
     if (guideEl) {
       scrollElementIntoView(guideEl);
@@ -622,21 +648,34 @@ export function HelpCenterPage({
           aria-labelledby="help-guides-heading"
           className="py-14 sm:py-16 bg-white dark:bg-gray-900 border-b border-slate-100 dark:border-gray-800 scroll-mt-20"
         >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
-            <div className="space-y-2 max-w-2xl">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-500/15 border border-[#0D9488]/20 dark:border-teal-400/30 text-[#0F766E] dark:text-teal-300 text-xs font-semibold">
-                <BookOpen className="w-3.5 h-3.5" aria-hidden="true" />
-                <span>Step-by-Step User Guides</span>
-              </span>
-              <h2
-                id="help-guides-heading"
-                className="text-2xl sm:text-3xl font-extrabold text-[#12304A] dark:text-white tracking-tight"
-              >
-                Common Workflows Made Simple
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-gray-300">
-                Follow clear numbered instructions tailored to ToothCare Hub’s patient workflows.
-              </p>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+              <div className="space-y-2 max-w-2xl">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-500/15 border border-[#0D9488]/20 dark:border-teal-400/30 text-[#0F766E] dark:text-teal-300 text-xs font-semibold">
+                  <BookOpen className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>Step-by-Step User Guides</span>
+                </span>
+                <h2
+                  id="help-guides-heading"
+                  className="text-2xl sm:text-3xl font-extrabold text-[#12304A] dark:text-white tracking-tight"
+                >
+                  Common Workflows Made Simple
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-gray-300">
+                  Open any guide below for numbered step-by-step instructions tailored to ToothCare Hub.
+                </p>
+              </div>
+
+              {filteredGuides.length > 0 && (
+                <button
+                  type="button"
+                  aria-expanded={allVisibleGuidesOpen}
+                  onClick={handleToggleAllGuides}
+                  className="self-start sm:self-auto inline-flex items-center justify-center min-h-10 px-4 py-2 rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-semibold text-slate-700 dark:text-gray-200 hover:border-[#0D9488]/45 dark:hover:border-teal-400/45 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400"
+                >
+                  {allVisibleGuidesOpen ? 'Collapse all guides' : 'Expand all guides'}
+                </button>
+              )}
             </div>
 
             {filteredGuides.length === 0 ? (
@@ -654,9 +693,10 @@ export function HelpCenterPage({
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 items-start">
                 {filteredGuides.map((guide) => {
                   const isHighlighted = activeGuideId === guide.id;
+                  const isGuideOpen = openGuideIds.has(guide.id);
                   const relatedFaqs = (guide.relatedFaqIds || [])
                     .map((id) => faqsById[id])
                     .filter(Boolean);
@@ -666,86 +706,111 @@ export function HelpCenterPage({
                       key={guide.id}
                       id={guide.id}
                       onClick={() => setActiveGuideId(guide.id)}
-                      className={`scroll-mt-24 rounded-2xl p-6 sm:p-7 border transition-colors flex flex-col justify-between gap-6 ${
+                      className={`scroll-mt-24 rounded-2xl p-5 border transition-colors flex flex-col gap-4 ${
                         isHighlighted
-                          ? 'bg-white dark:bg-gray-800 border-[#0D9488]/45 dark:border-teal-400/45 shadow-md shadow-teal-900/5'
+                          ? 'bg-white dark:bg-gray-800 border-[#0D9488]/45 dark:border-teal-400/45 shadow-sm shadow-teal-900/5'
                           : 'bg-[#F8FAFC] dark:bg-gray-800/85 border-slate-200/90 dark:border-gray-700/80 hover:border-[#0D9488]/35 dark:hover:border-teal-400/35'
                       }`}
                     >
-                      <div className="space-y-4">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-teal-50 dark:bg-teal-500/15 text-[#0F766E] dark:text-teal-300 border border-[#0D9488]/20 dark:border-teal-400/30">
-                            <BookOpen className="w-3 h-3" aria-hidden="true" />
-                            <span>Step-by-Step Guide</span>
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between gap-2 text-[11px] font-semibold">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-teal-50 dark:bg-teal-500/15 text-[#0F766E] dark:text-teal-300 border border-[#0D9488]/20 dark:border-teal-400/30">
+                            {guide.steps.length} steps
                           </span>
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-gray-400">
+                          <span className="inline-flex items-center gap-1 font-medium text-slate-500 dark:text-gray-400">
                             <Clock className="w-3 h-3" aria-hidden="true" />
                             <span>{guide.estimatedTime}</span>
                           </span>
                         </div>
 
-                        <div className="space-y-1.5">
-                          <h3 className="text-lg font-bold text-[#12304A] dark:text-white leading-snug">
-                            {guide.title}
-                          </h3>
-                          <p className="text-xs sm:text-sm text-slate-600 dark:text-gray-300 leading-relaxed">
-                            {guide.summary}
-                          </p>
-                        </div>
-
-                        <ol className="space-y-2.5 pt-1">
-                          {guide.steps.map((stepText, idx) => (
-                            <li key={idx} className="flex items-start gap-3 text-xs sm:text-sm text-slate-700 dark:text-gray-200 leading-relaxed">
-                              <span
-                                aria-hidden="true"
-                                className="w-6 h-6 rounded-full bg-[#CCFBF1] dark:bg-teal-500/20 border border-[#0D9488]/25 dark:border-teal-400/35 text-[#0F766E] dark:text-teal-300 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5"
-                              >
-                                {idx + 1}
-                              </span>
-                              <span>{stepText}</span>
-                            </li>
-                          ))}
-                        </ol>
+                        <h3 className="text-base font-bold text-[#12304A] dark:text-white leading-snug">
+                          {guide.title}
+                        </h3>
+                        <p className="text-xs text-slate-600 dark:text-gray-300 leading-relaxed text-justify min-h-10">
+                          {guide.summary}
+                        </p>
                       </div>
 
-                      <div className="pt-4 border-t border-slate-200/80 dark:border-gray-700/80 space-y-4">
-                        {relatedFaqs.length > 0 && (
-                          <div className="space-y-2">
-                            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-gray-400">
-                              Related FAQs
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                              {relatedFaqs.map((faq) => (
-                                <button
-                                  key={faq.id}
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleJumpToFaq(faq.id);
-                                  }}
-                                  className="text-left min-h-9 px-3 py-1.5 rounded-lg text-xs font-medium bg-white dark:bg-gray-900/75 border border-slate-200 dark:border-gray-700 text-slate-700 dark:text-gray-200 hover:border-[#0D9488]/45 dark:hover:border-teal-400/45 hover:text-[#0F766E] dark:hover:text-teal-300 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
-                                >
-                                  {faq.question}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                      <details
+                        open={isGuideOpen}
+                        onToggle={(e) => {
+                          const nextOpen = e.currentTarget.open;
+                          setOpenGuideIds((prev) => {
+                            if (prev.has(guide.id) === nextOpen) return prev;
+                            const next = new Set(prev);
+                            if (nextOpen) {
+                              next.add(guide.id);
+                            } else {
+                              next.delete(guide.id);
+                            }
+                            return next;
+                          });
+                        }}
+                        className="group/guide rounded-xl bg-white/80 dark:bg-gray-900/50 border border-slate-200/80 dark:border-gray-700/70"
+                      >
+                        <summary className="list-none [&::-webkit-details-marker]:hidden flex items-center gap-2 px-3 py-2.5 text-xs font-semibold text-slate-700 dark:text-gray-200 hover:text-[#0F766E] dark:hover:text-teal-300 cursor-pointer select-none rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400">
+                          <ChevronRight
+                            className="w-3.5 h-3.5 shrink-0 text-[#0D9488] dark:text-teal-400 transition-transform duration-200 group-open/guide:rotate-90 motion-reduce:transition-none"
+                            aria-hidden="true"
+                          />
+                          <span>{isGuideOpen ? 'Hide steps' : 'View steps'}</span>
+                        </summary>
 
-                        {guide.nextAction && (
+                        <div className="px-3 pb-3 pt-2 border-t border-slate-200/70 dark:border-gray-700/60 space-y-3.5">
+                          <ol className="space-y-2">
+                            {guide.steps.map((stepText, idx) => (
+                              <li key={idx} className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-gray-200 leading-relaxed">
+                                <span
+                                  aria-hidden="true"
+                                  className="w-5 h-5 rounded-full bg-[#CCFBF1] dark:bg-teal-500/20 border border-[#0D9488]/25 dark:border-teal-400/35 text-[#0F766E] dark:text-teal-300 font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5"
+                                >
+                                  {idx + 1}
+                                </span>
+                                <span>{stepText}</span>
+                              </li>
+                            ))}
+                          </ol>
+
+                          {relatedFaqs.length > 0 && (
+                            <div className="pt-2.5 border-t border-slate-200/60 dark:border-gray-700/60 space-y-1.5">
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                                Related FAQs
+                              </p>
+                              <div className="flex flex-col gap-1.5">
+                                {relatedFaqs.map((faq) => (
+                                  <button
+                                    key={faq.id}
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleJumpToFaq(faq.id);
+                                    }}
+                                    className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-50 dark:bg-gray-800/80 border border-slate-200/80 dark:border-gray-700 text-slate-700 dark:text-gray-200 hover:border-[#0D9488]/45 dark:hover:border-teal-400/45 hover:text-[#0F766E] dark:hover:text-teal-300 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                                  >
+                                    {faq.question}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </details>
+
+                      {guide.nextAction && (
+                        <div className="pt-3 border-t border-slate-200/70 dark:border-gray-700/70">
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleGuideNextAction(guide.nextAction.actionKey);
                             }}
-                            className="inline-flex items-center gap-2 min-h-10 px-4 py-2 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] dark:bg-[#0F766E] dark:hover:bg-[#0D9488] text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-800"
+                            className="w-full inline-flex items-center justify-between gap-2 min-h-9 px-3.5 py-2 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] dark:bg-[#0F766E] dark:hover:bg-[#0D9488] text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-800"
                           >
                             <span>{guide.nextAction.label}</span>
-                            <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
+                            <ArrowRight className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                           </button>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </article>
                   );
                 })}

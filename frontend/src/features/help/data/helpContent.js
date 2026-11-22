@@ -324,7 +324,7 @@ export const HELP_GUIDES = [
   {
     id: 'guide-cancel-reschedule',
     category: 'appointments',
-    title: 'How to Cancel or Reschedule an Appointment',
+    title: 'How to Cancel or Reschedule',
     summary: 'Adjust an upcoming Pending or Confirmed consultation directly from My Appointments.',
     estimatedTime: '2 min read',
     steps: [
