@@ -403,7 +403,7 @@ services:
     restart: unless-stopped
 
   nginx-exporter:
-    image: nginx/nginx-prometheus-exporter:1.3.0
+    image: nginx/nginx-prometheus-exporter:1.5.0
     container_name: toothcare-nginx-exporter
     profiles:
       - monitoring
@@ -418,7 +418,7 @@ services:
     restart: unless-stopped
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    image: gcr.io/cadvisor/cadvisor:v0.55.1
     container_name: toothcare-cadvisor
     profiles:
       - monitoring
