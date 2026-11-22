@@ -185,15 +185,10 @@ npm run test:e2e:local
 
 ---
 
-## 10. Git Branch, Commit, and Contribution Conventions
+## 10. Git Branch and Commit Conventions
 
 - **Branches:** `main` (stable/releasable), `development` / `develop` (active integration; Dependabot targets `development`), `feature/<short-description>`, `fix/<short-description>`, `docs/<short-description>`, `chore/<short-description>`.
 - **Commits:** Imperative [Conventional Commits](https://www.conventionalcommits.org/) under 72 characters (e.g., `feat(appointments): validate slot conflicts`, `fix(auth): reject expired session`, `security(docker): upgrade Nginx base to stable-alpine3.24`).
-- **Community & Governance:**
-  - [`CONTRIBUTING.md`](CONTRIBUTING.md) — development setup, coding standards, verification gates, and PR checklist
-  - [`SECURITY.md`](SECURITY.md) — supported branches, security architecture, private vulnerability reporting, and disclosure policy
-  - [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) — community standards, clinical data ethics, and enforcement guidelines
-  - [`LICENSE`](LICENSE) — MIT License terms
 
 ---
 
