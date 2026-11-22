@@ -27,6 +27,13 @@ jobs:
         run: |
           docker compose -f compose.yaml -f compose.dev.yaml config -q
           docker compose -f compose.yaml -f compose.prod.yaml config -q
+          docker compose --profile monitoring -f compose.yaml -f compose.dev.yaml config -q
+
+      - name: Validate Prometheus & Grafana Monitoring Configurations (Phase 19)
+        run: |
+          python3 -c "import json, glob; [json.load(open(f)) for f in glob.glob('monitoring/grafana/dashboards/*.json')]; print('Grafana dashboard JSON valid')"
+          docker run --rm --entrypoint /bin/promtool -v "$PWD/monitoring/prometheus:/etc/prometheus:ro" prom/prometheus:v2.53.1 check config /etc/prometheus/prometheus.yml
+          docker run --rm --entrypoint /bin/promtool -v "$PWD/monitoring/prometheus:/etc/prometheus:ro" prom/prometheus:v2.53.1 check rules /etc/prometheus/rules/toothcare-alerts.yml
 
   backend:
     name: Backend (PHP ${{ matrix.php-version }})

@@ -1,31 +1,43 @@
-# Prometheus scrape configuration for ToothCare Hub
+# Prometheus scrape configuration for ToothCare Hub (Phase 19)
+# All targets resolve over internal Docker DNS (app / monitoring networks).
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
+  external_labels:
+    service: toothcare-hub
 
 rule_files:
   - "rules/toothcare-alerts.yml"
 
 scrape_configs:
+  # 1. Prometheus self-monitoring
   - job_name: "prometheus"
     static_configs:
-      - targets: ["localhost:9090"]
+      - targets: ["prometheus:9090"]
 
-  - job_name: "toothcare-backend"
-    metrics_path: /api/v1/metrics
-    static_configs:
-      - targets: ["backend:9000"]
-
-  # Application metrics through internal-only Nginx port 8081 (blocked on public port 80).
+  # 2. PHP Application & Outbox metrics via internal-only Nginx port 8081 (blocked on public port 80)
   - job_name: "toothcare-api"
     metrics_path: /api/v1/metrics
     static_configs:
       - targets: ["nginx:8081"]
+
+  # 3. Node.js Socket.IO real-time service metrics
   - job_name: "toothcare-realtime"
     metrics_path: /metrics
     static_configs:
       - targets: ["realtime:4000"]
 
-  - job_name: "nginx"
+  # 4. Nginx Prometheus Exporter (scrapes internal http://nginx:8081/stub_status)
+  - job_name: "nginx-exporter"
     static_configs:
-      - targets: ["nginx:80"]
+      - targets: ["nginx-exporter:9113"]
+
+  # 5. MySQL Exporter (least-privilege monitoring account)
+  - job_name: "mysqld-exporter"
+    static_configs:
+      - targets: ["mysqld-exporter:9104"]
+
+  # 6. cAdvisor container resource metrics
+  - job_name: "cadvisor"
+    static_configs:
+      - targets: ["cadvisor:8080"]
