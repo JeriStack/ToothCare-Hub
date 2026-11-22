@@ -3,5 +3,6 @@
 -- Never commit real credentials; set MYSQL_EXPORTER_USER and MYSQL_EXPORTER_PASSWORD via protected env/secrets.
 
 CREATE USER IF NOT EXISTS 'toothcare_exporter'@'%' IDENTIFIED BY 'CHANGE_ME_STRONG_EXPORTER_PASSWORD' WITH MAX_USER_CONNECTIONS 3;
-GRANT PROCESS, REPLICATION CLIENT, SELECT ON performance_schema.* TO 'toothcare_exporter'@'%';
+GRANT PROCESS, REPLICATION CLIENT ON *.* TO 'toothcare_exporter'@'%';
+GRANT SELECT ON performance_schema.* TO 'toothcare_exporter'@'%';
 FLUSH PRIVILEGES;
