@@ -26,17 +26,17 @@ export function HeroSection({ onBookAppointment, onExploreServices }) {
   return (
     <section
       id="home"
-      className="relative pt-28 pb-16 md:pt-36 md:pb-24 overflow-hidden bg-gradient-to-b from-[#F5F8FA] via-white to-white dark:from-gray-950 dark:via-gray-900 dark:to-gray-900"
+      className="landing-parallax-scope relative pt-28 pb-16 md:pt-36 md:pb-24 bg-gradient-to-b from-[#F5F8FA] via-white to-white dark:from-gray-950 dark:via-gray-900 dark:to-gray-900"
     >
-      {/* Background Soft Glow Elements */}
+      {/* Background Soft Glow Elements (scroll-linked parallax layers) */}
       <div
-        className="landing-ambient-float absolute top-12 left-1/4 w-96 h-96 bg-teal-100/40 dark:bg-teal-900/20 rounded-full blur-3xl pointer-events-none -z-10"
-        style={{ '--float-delay': '0ms' }}
+        className="landing-parallax-layer absolute top-12 left-1/4 w-96 h-96 bg-teal-100/45 dark:bg-teal-900/25 rounded-full blur-3xl pointer-events-none -z-10"
+        style={{ '--parallax-offset': '64px' }}
         aria-hidden="true"
       />
       <div
-        className="landing-ambient-float absolute top-24 right-10 w-96 h-96 bg-teal-50/50 dark:bg-sky-900/15 rounded-full blur-3xl pointer-events-none -z-10"
-        style={{ '--float-delay': '1.8s' }}
+        className="landing-parallax-layer absolute top-24 right-10 w-96 h-96 bg-teal-50/55 dark:bg-sky-900/20 rounded-full blur-3xl pointer-events-none -z-10"
+        style={{ '--parallax-offset': '-48px' }}
         aria-hidden="true"
       />
 
@@ -60,7 +60,7 @@ export function HeroSection({ onBookAppointment, onExploreServices }) {
               <button
                 type="button"
                 onClick={onBookAppointment}
-                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] text-white font-semibold text-sm hover:bg-[#0F766E] dark:hover:bg-[#0D9488] active:bg-[#115E59] shadow-lg shadow-teal-900/15 hover:shadow-teal-900/25 transition-all transform hover:-translate-y-0.5 motion-reduce:transform-none cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900"
+                className="landing-cta-shine inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] text-white font-semibold text-sm hover:bg-[#0F766E] dark:hover:bg-[#0D9488] active:bg-[#115E59] shadow-lg shadow-teal-900/15 hover:shadow-teal-900/25 transition-all transform hover:-translate-y-0.5 motion-reduce:transform-none cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900"
               >
                 <Calendar className="w-4 h-4" aria-hidden="true" />
                 Book Your Appointment
@@ -152,8 +152,11 @@ export function HeroSection({ onBookAppointment, onExploreServices }) {
                 {/* Subtle Inner Gradient Overlay for Depth */}
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-transparent pointer-events-none" />
 
-                {/* Floating Micro-Badge */}
-                <div className="absolute bottom-5 left-5 right-5 sm:right-auto bg-white/95 dark:bg-gray-900/90 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/60 dark:border-gray-700 shadow-lg shadow-slate-900/15 flex items-center gap-3">
+                {/* Floating Micro-Badge with subtle depth parallax */}
+                <div
+                  className="landing-parallax-layer absolute bottom-5 left-5 right-5 sm:right-auto bg-white/95 dark:bg-gray-900/90 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/60 dark:border-gray-700 shadow-lg shadow-slate-900/15 flex items-center gap-3"
+                  style={{ '--parallax-offset': '-18px' }}
+                >
                   <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                     <ShieldCheck className="w-5 h-5" />
                   </div>
@@ -164,8 +167,11 @@ export function HeroSection({ onBookAppointment, onExploreServices }) {
                 </div>
               </div>
 
-              {/* Decorative Background Accent */}
-              <div className="absolute -top-4 -right-4 -bottom-4 -left-4 rounded-[2.5rem] border border-teal-200/40 dark:border-teal-500/20 -z-10 pointer-events-none" />
+              {/* Decorative Background Accent with opposing parallax */}
+              <div
+                className="landing-parallax-layer absolute -top-4 -right-4 -bottom-4 -left-4 rounded-[2.5rem] border border-teal-200/40 dark:border-teal-500/20 -z-10 pointer-events-none"
+                style={{ '--parallax-offset': '24px' }}
+              />
             </div>
           </div>
 

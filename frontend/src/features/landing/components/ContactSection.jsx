@@ -129,6 +129,7 @@ export function ContactSection({ onBookAppointment }) {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
           {/* Left Column: Operating Hours Card */}
           <div
+            data-reveal="left"
             className="landing-reveal lg:col-span-6 bg-[#F8FAFC] dark:bg-gray-800/95 border border-slate-200/90 dark:border-gray-700/80 rounded-3xl p-6 sm:p-8 shadow-sm dark:shadow-lg dark:shadow-black/20 flex flex-col justify-between space-y-6"
             style={{ '--reveal-index': 0 }}
           >
@@ -228,6 +229,7 @@ export function ContactSection({ onBookAppointment }) {
 
           {/* Right Column: Reception & Booking Assistance */}
           <div
+            data-reveal="right"
             className="landing-reveal lg:col-span-6 bg-[#12304A] dark:bg-gradient-to-br dark:from-slate-800/95 dark:to-gray-900 border border-[#1E4668] dark:border-teal-500/25 text-white rounded-3xl p-6 sm:p-8 shadow-sm dark:shadow-lg dark:shadow-black/25 flex flex-col justify-between space-y-7"
             style={{ '--reveal-index': 1 }}
           >

@@ -367,7 +367,7 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
       <div
         ref={progressRef}
         aria-hidden="true"
-        className="landing-scroll-progress pointer-events-none absolute bottom-0 left-0 right-0 h-[2.5px] bg-gradient-to-r from-[#0D9488] via-teal-400 to-sky-400 dark:from-teal-400 dark:via-emerald-300 dark:to-sky-400"
+        className="landing-scroll-progress pointer-events-none absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#0D9488] via-teal-400 to-emerald-400 dark:from-teal-400 dark:via-emerald-300 dark:to-sky-400 shadow-[0_0_8px_rgba(13,148,136,0.45)]"
       />
 
       {/* Mobile Drawer Menu */}
