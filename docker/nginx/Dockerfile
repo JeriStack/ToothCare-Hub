@@ -1,17 +1,31 @@
-# Multi-stage build for ToothCare Hub Nginx edge reverse proxy
-# Stage 1: Build React frontend production bundle
+# =============================================================================
+# ToothCare Hub — Multi-Stage Production Frontend & Nginx Edge Image (Phase 20)
+# Build context: repository root (.)
+# =============================================================================
+
+# Stage 1: Deterministic React + Vite production build (no secrets in build args)
 FROM node:24-alpine AS frontend-builder
 WORKDIR /app
-COPY frontend/package*.json ./
+COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
-RUN npm run build
+RUN npm run build && test -f /app/dist/index.html
 
-# Stage 2: Final Nginx runtime
-FROM nginx:1.27-alpine
+# Stage 2: Minimal pinned Nginx 1.27 Alpine runtime (no Node.js, no node_modules)
+FROM nginx:1.27-alpine AS runtime
+
+COPY nginx/nginx.conf /etc/nginx/nginx.conf
+COPY nginx/snippets/ /etc/nginx/snippets/
+COPY docker/nginx/production.conf /etc/nginx/conf.d/default.conf
 COPY --from=frontend-builder /app/dist /var/www/frontend/dist
-COPY docker/nginx/conf.d/toothcare.conf /etc/nginx/conf.d/toothcare.conf
+
+RUN rm -f /etc/nginx/conf.d/toothcare.conf \
+    && chmod -R a+rX /var/www/frontend/dist
+
 EXPOSE 80 443
-HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
-  CMD wget -qO- http://127.0.0.1/health || exit 1
+STOPSIGNAL SIGQUIT
+
+HEALTHCHECK --interval=15s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget -qO- http://127.0.0.1/health || exit 1
+
 CMD ["nginx", "-g", "daemon off;"]

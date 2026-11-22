@@ -194,3 +194,42 @@ jobs:
       - name: Responsive contract tests
         working-directory: frontend
         run: npx vitest run src/tests/components/ResponsiveContracts.test.jsx
+
+  containers:
+    name: Production Container Build, Nginx Check & Trivy Scan (Phase 20)
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build production multi-stage images
+        run: |
+          docker build -f docker/nginx/Dockerfile -t toothcare-frontend:${{ github.sha }} .
+          docker build -f docker/php/Dockerfile -t toothcare-backend:${{ github.sha }} ./backend
+          docker build -f realtime/Dockerfile -t toothcare-realtime:${{ github.sha }} ./realtime
+
+      - name: Validate production Nginx configuration syntax
+        run: docker run --rm --add-host=php-fpm:127.0.0.1 --add-host=realtime:127.0.0.1 --entrypoint nginx toothcare-frontend:${{ github.sha }} -t
+
+      - name: Trivy image vulnerability scan (CRITICAL gate)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: toothcare-frontend:${{ github.sha }}
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Trivy scan backend PHP image (CRITICAL gate)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: toothcare-backend:${{ github.sha }}
+          severity: CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Trivy scan realtime Node.js image (CRITICAL gate)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: toothcare-realtime:${{ github.sha }}
+          severity: CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true

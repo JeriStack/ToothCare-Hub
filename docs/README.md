@@ -13,6 +13,7 @@
 | [`phase-14/`](phase-14/) | Real-time notifications with Node.js and Socket.IO (architecture, security, event contract, recovery, Docker, testing, troubleshooting) |
 | [`phase-18/`](phase-18/) | Security, privacy, accessibility, performance, reliability, dependency audits, incident response, and production readiness checklist |
 | [`phase-19/`](phase-19/) | Observability with Prometheus and Grafana (architecture, metrics inventory, alerting policy, runbook, Docker setup, Windows limitations, verification report) |
+| [`phase-20/`](phase-20/) | Production container hardening, multi-stage Dockerfiles, hardened Nginx/TLS release configuration, image security policy, and rollback procedures |
 | [`operations/`](operations/) | Database backup and disaster recovery, observability runbook |
 | [`implementation/`](implementation/) | Frontend stage implementation reports |
 
