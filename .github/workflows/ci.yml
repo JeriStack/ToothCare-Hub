@@ -213,7 +213,7 @@ jobs:
         run: docker run --rm --add-host=php-fpm:127.0.0.1 --add-host=realtime:127.0.0.1 --entrypoint nginx toothcare-frontend:${{ github.sha }} -t
 
       - name: Trivy image vulnerability scan (CRITICAL gate)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: toothcare-frontend:${{ github.sha }}
           severity: CRITICAL,HIGH
@@ -221,7 +221,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Trivy scan backend PHP image (CRITICAL gate)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: toothcare-backend:${{ github.sha }}
           severity: CRITICAL
@@ -229,7 +229,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Trivy scan realtime Node.js image (CRITICAL gate)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: toothcare-realtime:${{ github.sha }}
           severity: CRITICAL

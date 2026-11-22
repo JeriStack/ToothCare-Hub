@@ -4,7 +4,7 @@
 
 - **PHP Dependencies:** `composer audit --no-interaction`
 - **Frontend & Realtime Dependencies:** `npm audit --audit-level=high`
-- **Container Images:** `aquasecurity/trivy-action@0.28.0` scans `toothcare-frontend`, `toothcare-backend`, and `toothcare-realtime` on every CI run.
+- **Container Images:** `aquasecurity/trivy-action@v0.36.0` scans `toothcare-frontend`, `toothcare-backend`, and `toothcare-realtime` on every CI run.
 
 ## 2. Severity Remediation Policy
 
