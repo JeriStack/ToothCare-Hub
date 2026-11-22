@@ -293,8 +293,12 @@ npm run test:e2e:local
 
 ## Git Branch & Commit Conventions
 
+<div align="justify">
+
 - **Branches:** `main` (stable/releasable), `development` / `develop` (active integration; Dependabot targets `development`), `feature/<short-description>`, `fix/<short-description>`, `docs/<short-description>`, `chore/<short-description>`.
 - **Commits:** Imperative [Conventional Commits](https://www.conventionalcommits.org/) under 72 characters (e.g., `feat(appointments): validate slot conflicts`, `security(docker): upgrade Nginx base to stable-alpine3.24`).
+
+</div>
 
 ---
 
