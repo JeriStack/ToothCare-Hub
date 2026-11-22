@@ -1,7 +1,17 @@
+<<<<<<< HEAD
 # =============================================================================
 # ToothCare Hub — Multi-Stage Production PHP-FPM Backend Image (Phase 20)
 # Build context: ./backend
 # =============================================================================
+=======
+# PHP-FPM image for the ToothCare Hub backend API
+# Pinned to PHP 8.5.12 (security release, 2026-10-21) which fixes the
+# "PHP2Shell" RCE flaws CVE-2026-109618 and CVE-2026-109619 (CVSS 9.2).
+#
+# NOTE: the Docker build context is ./backend (see compose.yaml),
+# so COPY paths are relative to the backend/ directory.
+FROM php:8.6.0RC5-fpm-alpine3.24
+>>>>>>> origin/main
 
 # Stage 1: Deterministic production dependency installation (no dev tools in runtime)
 FROM composer:2.8 AS composer-builder

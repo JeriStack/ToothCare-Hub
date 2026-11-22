@@ -1,6 +1,10 @@
 # ToothCare Hub Real-Time Notification Service (Node.js + TypeScript + Socket.IO)
+<<<<<<< HEAD
 # Phase 20 Hardened Multi-Stage Build: deterministic npm ci, non-root runtime, graceful shutdown
 FROM node:24-alpine AS builder
+=======
+FROM node:26-alpine AS builder
+>>>>>>> origin/main
 
 WORKDIR /app
 ENV NODE_OPTIONS="--dns-result-order=ipv4first"
@@ -10,7 +14,7 @@ COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
 
-FROM node:24-alpine AS runtime
+FROM node:26-alpine AS runtime
 
 WORKDIR /app
 ENV NODE_OPTIONS="--dns-result-order=ipv4first"
