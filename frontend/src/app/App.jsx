@@ -34,7 +34,8 @@ import {
 import { LandingPage } from '../features/landing/LandingPage';
 import { NotificationCenter } from '../features/notifications/components/NotificationCenter';
 
-// Phase 18 Performance Hardening: route/role-level code splitting for portal pages
+// Phase 18 Performance Hardening: route/role-level code splitting for portal & help pages
+const HelpCenterPage = lazy(() => import('../features/help/pages/HelpCenterPage').then((m) => ({ default: m.HelpCenterPage })));
 const PatientDashboard = lazy(() => import('../features/dashboard/PatientDashboard').then((m) => ({ default: m.PatientDashboard })));
 const AdminDashboard = lazy(() => import('../features/dashboard/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
 const ReceptionistDashboard = lazy(() => import('../features/dashboard/ReceptionistDashboard').then((m) => ({ default: m.ReceptionistDashboard })));
@@ -75,6 +76,7 @@ function getInitialRoute() {
   if (path === '/forgot-password' || path === '/forgot') return 'FORGOT_PASSWORD';
   if (path === '/reset-password' || path === '/reset') return 'RESET_PASSWORD';
   if (path === '/verify-email' || path === '/verify') return 'VERIFY_EMAIL';
+  if (path === '/help-support' || path === '/help-support/') return 'HELP_SUPPORT';
   if (path.startsWith('/patient')) return 'PATIENT';
   if (path.startsWith('/admin') || path.startsWith('/receptionist')) return 'ADMIN';
   if (path.startsWith('/dentist')) return 'DENTIST';
@@ -652,10 +654,90 @@ function AppContent() {
     );
   }
 
-  // 2. Public Landing Page (Production-ready without demo bars)
+  // 2. Public Help Center & Support (accessible without authentication)
+  if (currentRoute === 'HELP_SUPPORT') {
+    return (
+      <Suspense
+        fallback={
+          <div className="min-h-dvh flex items-center justify-center bg-[#F5F8FA] dark:bg-gray-900">
+            <div
+              role="status"
+              aria-label="Loading Help Center"
+              className="w-8 h-8 rounded-full border-2 border-[#0D9488] border-t-transparent animate-spin"
+            />
+          </div>
+        }
+      >
+        <HelpCenterPage
+        onNavigateHome={() => navigateTo('LANDING', '/')}
+        onNavigateLandingSection={(sectionId) => {
+          navigateTo('LANDING', '/');
+          window.requestAnimationFrame?.(() => {
+            window.setTimeout(() => {
+              const target = document.getElementById(sectionId);
+              if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }, 60);
+          });
+        }}
+        onBookAppointment={(service, dentist) => {
+          if (service || dentist) {
+            setBookingPrefill({ service, dentist });
+          }
+          if (isAuthenticated) {
+            const role = user?.role?.toUpperCase();
+            if (role === 'PATIENT') {
+              navigateTo('PATIENT', '/patient');
+              setActiveTab('book');
+            } else {
+              navigateTo(role, role === 'ADMIN' ? '/admin' : '/dentist');
+            }
+          } else {
+            navigateTo('LOGIN', '/login');
+            showToast('Please sign in or create an account to schedule an appointment.');
+          }
+        }}
+        onLogin={() => {
+          if (isAuthenticated) {
+            const role = user?.role?.toUpperCase() || 'PATIENT';
+            navigateTo(role, `/${role.toLowerCase()}`);
+          } else {
+            navigateTo('LOGIN', '/login');
+          }
+        }}
+        onViewAppointments={() => {
+          if (isAuthenticated) {
+            const role = user?.role?.toUpperCase() || 'PATIENT';
+            if (role === 'PATIENT') {
+              navigateTo('PATIENT', '/patient/appointments');
+              setActiveTab('appointments');
+            } else {
+              navigateTo(role, `/${role.toLowerCase()}`);
+            }
+          } else {
+            navigateTo('LOGIN', '/login');
+          }
+        }}
+        onRegister={() => navigateTo('REGISTER', '/register')}
+        onForgotPassword={() => navigateTo('FORGOT_PASSWORD', '/forgot-password')}
+        onAdminLogin={() => {
+          if (isAuthenticated && user?.role === 'ADMIN') {
+            navigateTo('ADMIN', '/admin');
+          } else {
+            navigateTo('LOGIN', '/login');
+          }
+        }}
+      />
+      </Suspense>
+    );
+  }
+
+  // 2b. Public Landing Page (Production-ready without demo bars)
   if (currentRoute === 'LANDING') {
     return (
       <LandingPage
+        onHelpSupport={() => navigateTo('HELP_SUPPORT', '/help-support')}
         onBookAppointment={(service, dentist) => {
           if (service || dentist) {
             setBookingPrefill({ service, dentist });

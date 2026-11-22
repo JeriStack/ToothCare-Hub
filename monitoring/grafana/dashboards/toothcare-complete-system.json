@@ -1,0 +1,845 @@
+{
+  "uid": "toothcare-complete-system",
+  "title": "ToothCare Hub — Complete System & Prometheus Monitor",
+  "description": "End-to-end operational observability across Prometheus targets, Nginx edge proxy, MySQL 8.0, PHP-FPM email outbox workers, Node.js Socket.IO realtime service, and container resources.",
+  "tags": ["toothcare", "prometheus", "complete", "system", "observability"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "15s",
+  "graphTooltip": 1,
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "job",
+        "label": "Prometheus Job",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": "label_values(up, job)",
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": ["All"],
+          "value": ["$__all"]
+        },
+        "refresh": 2,
+        "sort": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 100,
+      "type": "row",
+      "title": "1. System Health, Alerts & Prometheus Targets",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "panels": []
+    },
+    {
+      "id": 1,
+      "title": "Targets Healthy",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 4, "x": 0, "y": 1 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 0.7 },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "sum(up{job=~\"$job\"}) / count(up{job=~\"$job\"})", "legendFormat": "Healthy %" }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Active Firing Alerts",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 4, "x": 4, "y": 1 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "count(ALERTS{alertstate=\"firing\"}) or vector(0)", "legendFormat": "Firing" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "MySQL 8.0",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 4, "x": 8, "y": 1 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }
+          ],
+          "noValue": "NO DATA"
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "mysql_up{job=\"mysqld-exporter\"}", "legendFormat": "MySQL" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Nginx Edge Proxy",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 4, "x": 12, "y": 1 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }
+          ],
+          "noValue": "NO DATA"
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "nginx_up{job=\"nginx-exporter\"}", "legendFormat": "Nginx" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Socket.IO Realtime",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 4, "x": 16, "y": 1 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }
+          ],
+          "noValue": "NO DATA"
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "toothcare_realtime_up{job=\"toothcare-realtime\"}", "legendFormat": "Realtime" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Realtime Uptime",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 4, "x": 20, "y": 1 },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "orange", "value": null },
+              { "color": "green", "value": 60 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "toothcare_realtime_uptime_seconds{job=\"toothcare-realtime\"}", "legendFormat": "Uptime" }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Prometheus Scrape Target Status (up)",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 6 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "value_and_name"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }
+          ],
+          "noValue": "NO DATA"
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "up{job=~\"$job\"}", "legendFormat": "{{job}}" }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Scrape Latency by Target",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 6 },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull", "max"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 12, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "scrape_duration_seconds{job=~\"$job\"}", "legendFormat": "{{job}}" }
+      ]
+    },
+
+    {
+      "id": 200,
+      "type": "row",
+      "title": "2. Edge Reverse Proxy (Nginx)",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 12 },
+      "panels": []
+    },
+    {
+      "id": 9,
+      "title": "Nginx HTTP Request Rate",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 13 },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "mean", "max"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 18, "lineWidth": 2, "gradientMode": "opacity" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "rate(nginx_http_requests_total{job=\"nginx-exporter\"}[5m])", "legendFormat": "HTTP requests/s" },
+        { "refId": "B", "expr": "rate(nginx_connections_accepted{job=\"nginx-exporter\"}[5m])", "legendFormat": "Connections accepted/s" },
+        { "refId": "C", "expr": "rate(nginx_connections_handled{job=\"nginx-exporter\"}[5m])", "legendFormat": "Connections handled/s" }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Nginx Connections by State",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 13 },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 15, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "nginx_connections_active{job=\"nginx-exporter\"}", "legendFormat": "active" },
+        { "refId": "B", "expr": "nginx_connections_reading{job=\"nginx-exporter\"}", "legendFormat": "reading" },
+        { "refId": "C", "expr": "nginx_connections_writing{job=\"nginx-exporter\"}", "legendFormat": "writing" },
+        { "refId": "D", "expr": "nginx_connections_waiting{job=\"nginx-exporter\"}", "legendFormat": "waiting" }
+      ]
+    },
+
+    {
+      "id": 300,
+      "type": "row",
+      "title": "3. MySQL 8.0 Database Performance",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 20 },
+      "panels": []
+    },
+    {
+      "id": 11,
+      "title": "MySQL Connection Pool Usage",
+      "type": "gauge",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 6, "x": 0, "y": 21 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 70 },
+              { "color": "red", "value": 85 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "100 * mysql_global_status_threads_connected{job=\"mysqld-exporter\"} / mysql_global_variables_max_connections{job=\"mysqld-exporter\"}", "legendFormat": "Used %" }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "InnoDB Buffer Pool Hit Ratio",
+      "type": "gauge",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 6, "x": 6, "y": 21 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 90 },
+              { "color": "green", "value": 98 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * (1 - (clamp_min(rate(mysql_global_status_innodb_buffer_pool_reads{job=\"mysqld-exporter\"}[5m]), 0) / clamp_min(rate(mysql_global_status_innodb_buffer_pool_read_requests{job=\"mysqld-exporter\"}[5m]), 1)))",
+          "legendFormat": "Hit Ratio %"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "MySQL Query & Question Throughput",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 21 },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "mean", "max"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 14, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "rate(mysql_global_status_queries{job=\"mysqld-exporter\"}[5m])", "legendFormat": "queries/s" },
+        { "refId": "B", "expr": "rate(mysql_global_status_questions{job=\"mysqld-exporter\"}[5m])", "legendFormat": "questions/s" },
+        { "refId": "C", "expr": "rate(mysql_global_status_slow_queries{job=\"mysqld-exporter\"}[5m])", "legendFormat": "slow queries/s" }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "MySQL Threads & Aborted Connections",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 28 },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 12, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "mysql_global_status_threads_connected{job=\"mysqld-exporter\"}", "legendFormat": "connected" },
+        { "refId": "B", "expr": "mysql_global_status_threads_running{job=\"mysqld-exporter\"}", "legendFormat": "running" },
+        { "refId": "C", "expr": "mysql_global_status_threads_cached{job=\"mysqld-exporter\"}", "legendFormat": "cached" },
+        { "refId": "D", "expr": "rate(mysql_global_status_aborted_connects{job=\"mysqld-exporter\"}[5m])", "legendFormat": "aborted connects/s" }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "InnoDB Buffer Pool Data & Dirty Pages",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 28 },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 14, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "mysql_global_status_innodb_buffer_pool_bytes_data{job=\"mysqld-exporter\"}", "legendFormat": "buffer pool data" },
+        { "refId": "B", "expr": "mysql_global_status_innodb_buffer_pool_bytes_dirty{job=\"mysqld-exporter\"}", "legendFormat": "buffer pool dirty" }
+      ]
+    },
+
+    {
+      "id": 400,
+      "type": "row",
+      "title": "4. PHP API & Email Outbox Worker",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 35 },
+      "panels": []
+    },
+    {
+      "id": 16,
+      "title": "Pending Emails",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 4, "x": 0, "y": 36 },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 25 },
+              { "color": "red", "value": 100 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "toothcare_email_jobs_pending{job=\"toothcare-api\"}", "legendFormat": "pending" }
+      ]
+    },
+    {
+      "id": 17,
+      "title": "Processing Emails",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 4, "x": 4, "y": 36 },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "toothcare_email_worker_processing{job=\"toothcare-api\"}", "legendFormat": "processing" }
+      ]
+    },
+    {
+      "id": 18,
+      "title": "Exhausted Jobs",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 4, "x": 8, "y": 36 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "toothcare_email_jobs_exhausted{job=\"toothcare-api\"}", "legendFormat": "exhausted" }
+      ]
+    },
+    {
+      "id": 19,
+      "title": "Oldest Pending Age",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 36 },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 300 },
+              { "color": "red", "value": 900 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "toothcare_email_oldest_pending_age_seconds{job=\"toothcare-api\"}", "legendFormat": "oldest pending" }
+      ]
+    },
+    {
+      "id": 20,
+      "title": "Total Delivered Emails",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 36 },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "sum(toothcare_email_delivery_success_total{job=\"toothcare-api\"})", "legendFormat": "delivered" }
+      ]
+    },
+    {
+      "id": 21,
+      "title": "Email Jobs by Event Type",
+      "type": "bargauge",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 41 },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showUnfilled": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "continuous-GrYlRd" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "sort_desc(toothcare_email_jobs_total{job=\"toothcare-api\"})", "legendFormat": "{{event_type}}" }
+      ]
+    },
+    {
+      "id": 22,
+      "title": "Email Outbox Queue Depth & Retries",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 41 },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 14, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "toothcare_email_jobs_pending{job=\"toothcare-api\"}", "legendFormat": "pending" },
+        { "refId": "B", "expr": "toothcare_email_worker_processing{job=\"toothcare-api\"}", "legendFormat": "processing" },
+        { "refId": "C", "expr": "toothcare_email_jobs_exhausted{job=\"toothcare-api\"}", "legendFormat": "exhausted" },
+        { "refId": "D", "expr": "sum(increase(toothcare_email_retry_total{job=\"toothcare-api\"}[15m]))", "legendFormat": "retries (15m)" }
+      ]
+    },
+
+    {
+      "id": 500,
+      "type": "row",
+      "title": "5. Real-Time Socket.IO Service",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 48 },
+      "panels": []
+    },
+    {
+      "id": 23,
+      "title": "Active Socket.IO Clients",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 49 },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "toothcare_realtime_active_connections{job=\"toothcare-realtime\"}", "legendFormat": "active clients" }
+      ]
+    },
+    {
+      "id": 24,
+      "title": "Auth Failures & Rejected Tickets",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 49 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 1 },
+              { "color": "red", "value": 10 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "toothcare_realtime_auth_failures_total{job=\"toothcare-realtime\"} + toothcare_realtime_rejected_tickets_total{job=\"toothcare-realtime\"}",
+          "legendFormat": "auth & ticket failures"
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "title": "Realtime Event Pipeline & Security Counters",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 49 },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 12, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "toothcare_realtime_events_received_total{job=\"toothcare-realtime\"}", "legendFormat": "received" },
+        { "refId": "B", "expr": "toothcare_realtime_events_delivered_total{job=\"toothcare-realtime\"}", "legendFormat": "delivered" },
+        { "refId": "C", "expr": "toothcare_realtime_events_duplicate_total{job=\"toothcare-realtime\"}", "legendFormat": "duplicate" },
+        { "refId": "D", "expr": "toothcare_realtime_events_rejected_total{job=\"toothcare-realtime\"}", "legendFormat": "rejected" },
+        { "refId": "E", "expr": "toothcare_realtime_session_revocations_total{job=\"toothcare-realtime\"}", "legendFormat": "revocations" }
+      ]
+    },
+
+    {
+      "id": 600,
+      "type": "row",
+      "title": "6. Containers, Network & Prometheus Engine",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 55 },
+      "panels": []
+    },
+    {
+      "id": 26,
+      "title": "Container / Docker Host CPU Usage (cores)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 56 },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "mean", "max"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 14, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (name) (rate(container_cpu_usage_seconds_total{name=~\"toothcare-.*\"}[5m])) or label_replace(rate(container_cpu_usage_seconds_total{id=~\"/|/docker|/non-systemd\"}[5m]), \"name\", \"$1\", \"id\", \"(.*)\")",
+          "legendFormat": "{{name}}"
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "title": "Container / Docker Host Working Set Memory",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 56 },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 14, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (name) (container_memory_working_set_bytes{name=~\"toothcare-.*\"}) or label_replace(container_memory_working_set_bytes{id=~\"/|/docker|/non-systemd\"}, \"name\", \"$1\", \"id\", \"(.*)\")",
+          "legendFormat": "{{name}}"
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "title": "Network Throughput (RX / TX)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 63 },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 14, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(container_network_receive_bytes_total{id=\"/\"}[5m]))", "legendFormat": "RX bytes/s" },
+        { "refId": "B", "expr": "sum(rate(container_network_transmit_bytes_total{id=\"/\"}[5m]))", "legendFormat": "TX bytes/s" }
+      ]
+    },
+    {
+      "id": 29,
+      "title": "Prometheus TSDB Series & Samples per Scrape",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 63 },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 12, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "refId": "A", "expr": "prometheus_tsdb_head_series{job=\"prometheus\"}", "legendFormat": "TSDB head series" },
+        { "refId": "B", "expr": "sum(scrape_samples_scraped)", "legendFormat": "Total samples scraped" }
+      ]
+    }
+  ]
+}
