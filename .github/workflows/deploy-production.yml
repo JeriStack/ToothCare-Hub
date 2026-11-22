@@ -2,6 +2,11 @@ name: Deploy Production
 
 on:
   workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Immutable release tag or commit SHA to build and promote"
+        required: false
+        default: ""
   release:
     types: [published]
 
@@ -10,16 +15,37 @@ permissions:
 
 jobs:
   deploy:
-    name: Production Deployment Gate
+    name: Production Release Artifact Build & Gate (Phase 20)
     runs-on: ubuntu-26.04
     environment: production
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - name: Verify Deployment Artifacts
+      - name: Resolve immutable release tag
+        id: meta
         run: |
-          echo "Checking production deployment assets..."
+          TAG="${{ github.event.inputs.image_tag }}"
+          if [ -z "$TAG" ]; then
+            TAG="${GITHUB_REF_NAME:-${GITHUB_SHA}}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "sha=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify production deployment & Compose assets
+        run: |
           test -f compose.yaml
+          test -f compose.prod.yaml
+          test -f docker/nginx/Dockerfile
+          test -f docker/php/Dockerfile
+          test -f realtime/Dockerfile
           test -f deployment/scripts/deploy.sh
-          echo "Production deployment gate ready for release orchestration."
+          docker compose -f compose.yaml -f compose.prod.yaml config -q
+
+      - name: Build immutable release images & record digests
+        run: |
+          docker build -f docker/nginx/Dockerfile -t "toothcare-frontend:${{ steps.meta.outputs.sha }}" -t "toothcare-frontend:${{ steps.meta.outputs.tag }}" .
+          docker build -f docker/php/Dockerfile -t "toothcare-backend:${{ steps.meta.outputs.sha }}" -t "toothcare-backend:${{ steps.meta.outputs.tag }}" ./backend
+          docker build -f realtime/Dockerfile -t "toothcare-realtime:${{ steps.meta.outputs.sha }}" -t "toothcare-realtime:${{ steps.meta.outputs.tag }}" ./realtime
+          docker run --rm --add-host=php-fpm:127.0.0.1 --add-host=realtime:127.0.0.1 --entrypoint nginx "toothcare-frontend:${{ steps.meta.outputs.sha }}" -t
+          docker images --digests --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.Size}}" | grep toothcare-

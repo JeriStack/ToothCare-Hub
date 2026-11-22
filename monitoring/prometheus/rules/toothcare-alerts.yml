@@ -1,5 +1,9 @@
+# ToothCare Hub — Prometheus Alert Rules (Phase 19)
+# Privacy Rule: Never include patient IDs, emails, appointment IDs, clinical notes, or secrets in labels/annotations.
+# Tuning Note: Thresholds below are initial development/staging baselines; tune after observing staging traffic.
+
 groups:
-  - name: toothcare-alerts
+  - name: toothcare-availability
     rules:
       - alert: TargetDown
         expr: up == 0
@@ -7,36 +11,80 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Prometheus target is down: {{ $labels.job }}"
-          description: "Container target {{ $labels.instance }} has been unreachable for more than 1 minute."
+          summary: "Prometheus scrape target is down: {{ $labels.job }}"
+          description: "Target {{ $labels.instance }} (job={{ $labels.job }}) has been unreachable for more than 1 minute."
+          impact: "Operational visibility or the underlying service is degraded."
+          action: "Inspect `docker compose ps` and `docker compose logs --tail=100 <service>`."
 
-      - alert: ApiHigh5xxRate
-        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
-        for: 2m
+      - alert: MysqlDown
+        expr: mysql_up == 0
+        for: 1m
         labels:
-          severity: warning
+          severity: critical
         annotations:
-          summary: "Elevated HTTP 5xx error rate"
-          description: "More than 5% of API requests returned 5xx errors over the last 5 minutes."
+          summary: "MySQL database is unreachable"
+          description: "mysqld-exporter reports mysql_up == 0 for more than 1 minute."
+          impact: "Core booking, authentication, and clinical API endpoints cannot serve traffic."
+          action: "Check toothcare-mysql container health, disk space, and MySQL error logs immediately."
 
-      - alert: ApiHighLatency
-        expr: http_request_duration_seconds{quantile="0.95"} > 1.5
-        for: 5m
+      - alert: NginxDown
+        expr: nginx_up == 0
+        for: 1m
         labels:
-          severity: warning
+          severity: critical
         annotations:
-          summary: "High API response latency"
-          description: "95th percentile request latency exceeds 1.5 seconds."
+          summary: "Nginx reverse proxy stub_status unreachable"
+          description: "nginx-exporter reports nginx_up == 0 for more than 1 minute."
+          impact: "Public web traffic and API proxy routing may be impacted."
+          action: "Check toothcare-nginx container health and `docker compose logs --tail=100 nginx`."
 
-      - alert: RealtimeUnavailable
+      - alert: RealtimeServiceUnavailable
         expr: up{job="toothcare-realtime"} == 0
         for: 1m
         labels:
           severity: warning
         annotations:
           summary: "Socket.IO real-time service unavailable"
-          description: "Real-time notification engine is down. In-app notifications will fall back to REST."
-  - name: toothcare-email
+          description: "toothcare-realtime metrics endpoint is down. Persistent notifications remain available via REST."
+          impact: "Live browser push updates are delayed until Socket.IO recovers."
+          action: "Inspect `docker compose logs --tail=100 realtime` and restart toothcare-realtime if needed."
+
+  - name: toothcare-database-and-infrastructure
+    rules:
+      - alert: MysqlHighConnectionUsage
+        expr: (mysql_global_status_threads_connected / clamp_min(mysql_global_variables_max_connections, 1)) > 0.80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MySQL connection usage exceeds 80%"
+          description: "MySQL is using more than 80% of configured max_connections for 5 minutes."
+          impact: "New API requests may fail with connection errors if saturation continues."
+          action: "Check active queries, PHP-FPM worker count, and connection leaks."
+
+      - alert: ContainerHighMemoryUsage
+        expr: (container_memory_working_set_bytes{name=~"toothcare-.*"} / clamp_min(container_spec_memory_limit_bytes{name=~"toothcare-.*"}, 1)) > 0.85 and container_spec_memory_limit_bytes{name=~"toothcare-.*"} > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High container memory usage on {{ $labels.name }}"
+          description: "Container {{ $labels.name }} is using more than 85% of its memory limit for 5 minutes."
+          impact: "Risk of OOM kills and service restarts."
+          action: "Inspect `docker stats` and container logs for memory growth."
+
+      - alert: ContainerHighCpuUsage
+        expr: rate(container_cpu_usage_seconds_total{name=~"toothcare-.*"}[5m]) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Sustained high CPU usage on {{ $labels.name }}"
+          description: "Container {{ $labels.name }} CPU usage exceeded 85% of one core for 10 minutes."
+          impact: "Increased API or worker latency."
+          action: "Check `docker stats`, slow MySQL queries, or stuck worker loops."
+
+  - name: toothcare-email-outbox
     rules:
       - alert: EmailJobsExhausted
         expr: toothcare_email_jobs_exhausted > 0
@@ -44,24 +92,43 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Email jobs exhausted all delivery attempts"
-          description: "{{ $value }} email job(s) failed permanently after all retries. Review them under System Health > Email Delivery."
+          summary: "Email outbox jobs exhausted all retry attempts"
+          description: "{{ $value }} email job(s) failed permanently after all retries."
+          impact: "Affected recipients did not receive email notifications; in-app notifications remain unaffected."
+          action: "Review System Health > Email Delivery and verify SMTP credentials/connectivity."
+
       - alert: EmailBacklogGrowing
         expr: toothcare_email_jobs_pending > 50
         for: 15m
         labels:
           severity: warning
         annotations:
-          summary: "Email outbox backlog is growing"
-          description: "More than 50 emails have been waiting for 15 minutes. Check the email-worker container and SMTP availability."
+          summary: "Email outbox backlog exceeds 50 pending jobs"
+          description: "More than 50 emails have been waiting in email_outbox for 15 minutes."
+          impact: "Delayed verification, reset, or appointment confirmation emails."
+          action: "Inspect toothcare-email-worker logs and SMTP throughput."
+
+      - alert: EmailOldestPendingTooOld
+        expr: toothcare_email_oldest_pending_age_seconds > 900
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Oldest pending email job is older than 15 minutes"
+          description: "The oldest pending email job has been queued for {{ $value }} seconds."
+          impact: "Time-sensitive emails (e.g., verification/reminders) are delayed."
+          action: "Verify toothcare-email-worker is running and SMTP is reachable."
+
       - alert: EmailDeliveryStalled
-        expr: toothcare_email_jobs_pending > 0 and (time() - toothcare_email_last_success_timestamp_seconds) > 3600
+        expr: toothcare_email_jobs_pending > 0 and toothcare_email_last_success_timestamp_seconds > 0 and (time() - toothcare_email_last_success_timestamp_seconds) > 3600
         for: 10m
         labels:
           severity: critical
         annotations:
-          summary: "No email delivered for over an hour while jobs are waiting"
-          description: "The worker may be stopped, or SMTP may be unreachable or misconfigured."
+          summary: "No email delivered for over 1 hour while jobs are pending"
+          description: "Email worker has pending jobs but no successful delivery in over 3600 seconds."
+          impact: "Outbound email delivery is stalled."
+          action: "Inspect toothcare-email-worker container status and SMTP host connectivity."
 
   - name: toothcare-realtime
     rules:
@@ -71,8 +138,10 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Real-time notification outbox backlog is growing"
-          description: "More than 50 real-time events have been waiting for 5 minutes. Check realtime-worker and realtime containers."
+          summary: "Real-time outbox backlog exceeds 50 pending events"
+          description: "More than 50 real-time events have been waiting for 5 minutes."
+          impact: "Live browser notification delivery is lagging."
+          action: "Check toothcare-realtime-worker and toothcare-realtime logs."
 
       - alert: RealtimeOutboxPermanentFailures
         expr: toothcare_realtime_outbox_failed_total > 0
@@ -81,7 +150,9 @@ groups:
           severity: warning
         annotations:
           summary: "Real-time outbox events exhausted retries"
-          description: "{{ $value }} real-time event(s) failed permanently. Persistent notifications remain available via REST."
+          description: "{{ $value }} real-time outbox event(s) failed permanently."
+          impact: "Users can still view persisted notifications via REST."
+          action: "Check internal HMAC secret alignment and realtime service health."
 
       - alert: RealtimeHighAuthFailures
         expr: rate(toothcare_realtime_auth_failures_total[5m]) > 1
@@ -90,4 +161,17 @@ groups:
           severity: warning
         annotations:
           summary: "Elevated Socket.IO handshake authentication failures"
-          description: "Investigate expired tickets, secret drift, or unauthorized connection attempts."
+          description: "Socket.IO authentication failure rate exceeded 1/s over 5 minutes."
+          impact: "Possible expired tickets, secret drift, or unauthorized connection attempts."
+          action: "Check toothcare-realtime logs and verify REALTIME_INTERNAL_SECRET consistency."
+
+      - alert: RealtimePublisherRejections
+        expr: rate(toothcare_realtime_events_rejected_total[5m]) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Socket.IO internal publisher rejecting events"
+          description: "Internal event publishing is experiencing sustained rejections."
+          impact: "Real-time updates may not reach connected clients."
+          action: "Verify HMAC signature configuration and event payload schema."

@@ -71,7 +71,8 @@ class EmailOutboxController
             'failures_only' => filter_var($request->getQuery('failures_only', 'false'), FILTER_VALIDATE_BOOLEAN),
         ];
         $page = max(1, (int) $request->getQuery('page', 1));
-        $perPage = max(1, min(100, (int) $request->getQuery('per_page', 25)));
+        $rawPerPage = $request->getQuery('per_page') ?? $request->getQuery('limit') ?? 25;
+        $perPage = max(1, min(100, (int) $rawPerPage));
         $result = $this->repository->list($filters, $page, $perPage);
         return Response::paginated(
             array_map(fn(array $r): array => $this->present($r), $result['data']),

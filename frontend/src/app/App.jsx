@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import {
   Calendar,
   Clock,
@@ -31,33 +31,35 @@ import {
   ResetPasswordPage,
   VerifyEmailPage,
 } from '../features/auth';
-import { PatientDashboard } from '../features/dashboard/PatientDashboard';
-import { AdminDashboard } from '../features/dashboard/AdminDashboard';
-import { ReceptionistDashboard } from '../features/dashboard/ReceptionistDashboard';
-import { DentistDashboard } from '../features/dashboard/DentistDashboard';
-import { ServicesPage } from '../features/services/pages/ServicesPage';
-import { DentistListPage } from '../features/dentists/pages/DentistListPage';
-import { PatientListPage } from '../features/patients/pages/PatientListPage';
-import { AdminSchedulePage } from '../features/schedules/pages/AdminSchedulePage';
-import { BookAppointmentPage } from '../features/appointments/pages/BookAppointmentPage';
-import { AppointmentHistoryPage } from '../features/appointments/pages/AppointmentHistoryPage';
-import { AdminAppointmentsPage } from '../features/appointments/pages/AdminAppointmentsPage';
 import { LandingPage } from '../features/landing/LandingPage';
-import { PatientServicesPage } from '../features/services/pages/PatientServicesPage';
-import { PatientDentistsPage } from '../features/dentists/pages/PatientDentistsPage';
-import { PatientProfilePage } from '../features/patients/pages/PatientProfilePage';
-import { PatientNotificationsPage } from '../features/notifications/pages/PatientNotificationsPage';
 import { NotificationCenter } from '../features/notifications/components/NotificationCenter';
-import { DentistAppointmentsPage } from '../features/dentists/pages/DentistAppointmentsPage';
-import { DentistAppointmentDetailPage } from '../features/dentists/pages/DentistAppointmentDetailPage';
-import { DentistProfilePage } from '../features/dentists/pages/DentistProfilePage';
-import { DentistTreatmentRecordsPage } from '../features/treatment-records/pages/DentistTreatmentRecordsPage';
-import { UserManagementPage } from '../features/users/pages/UserManagementPage';
-import { RolePermissionMatrixPage } from '../features/roles/pages/RolePermissionMatrixPage';
-import { AuditTrailPage } from '../features/audit/pages/AuditTrailPage';
-import { ReportsPage } from '../features/reports/pages/ReportsPage';
-import { SystemHealthPage } from '../features/system/pages/SystemHealthPage';
-import { StaffProfilePage } from '../features/staff/pages/StaffProfilePage';
+
+// Phase 18 Performance Hardening: route/role-level code splitting for portal pages
+const PatientDashboard = lazy(() => import('../features/dashboard/PatientDashboard').then((m) => ({ default: m.PatientDashboard })));
+const AdminDashboard = lazy(() => import('../features/dashboard/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
+const ReceptionistDashboard = lazy(() => import('../features/dashboard/ReceptionistDashboard').then((m) => ({ default: m.ReceptionistDashboard })));
+const DentistDashboard = lazy(() => import('../features/dashboard/DentistDashboard').then((m) => ({ default: m.DentistDashboard })));
+const ServicesPage = lazy(() => import('../features/services/pages/ServicesPage').then((m) => ({ default: m.ServicesPage })));
+const DentistListPage = lazy(() => import('../features/dentists/pages/DentistListPage').then((m) => ({ default: m.DentistListPage })));
+const PatientListPage = lazy(() => import('../features/patients/pages/PatientListPage').then((m) => ({ default: m.PatientListPage })));
+const AdminSchedulePage = lazy(() => import('../features/schedules/pages/AdminSchedulePage').then((m) => ({ default: m.AdminSchedulePage })));
+const BookAppointmentPage = lazy(() => import('../features/appointments/pages/BookAppointmentPage').then((m) => ({ default: m.BookAppointmentPage })));
+const AppointmentHistoryPage = lazy(() => import('../features/appointments/pages/AppointmentHistoryPage').then((m) => ({ default: m.AppointmentHistoryPage })));
+const AdminAppointmentsPage = lazy(() => import('../features/appointments/pages/AdminAppointmentsPage').then((m) => ({ default: m.AdminAppointmentsPage })));
+const PatientServicesPage = lazy(() => import('../features/services/pages/PatientServicesPage').then((m) => ({ default: m.PatientServicesPage })));
+const PatientDentistsPage = lazy(() => import('../features/dentists/pages/PatientDentistsPage').then((m) => ({ default: m.PatientDentistsPage })));
+const PatientProfilePage = lazy(() => import('../features/patients/pages/PatientProfilePage').then((m) => ({ default: m.PatientProfilePage })));
+const PatientNotificationsPage = lazy(() => import('../features/notifications/pages/PatientNotificationsPage').then((m) => ({ default: m.PatientNotificationsPage })));
+const DentistAppointmentsPage = lazy(() => import('../features/dentists/pages/DentistAppointmentsPage').then((m) => ({ default: m.DentistAppointmentsPage })));
+const DentistAppointmentDetailPage = lazy(() => import('../features/dentists/pages/DentistAppointmentDetailPage').then((m) => ({ default: m.DentistAppointmentDetailPage })));
+const DentistProfilePage = lazy(() => import('../features/dentists/pages/DentistProfilePage').then((m) => ({ default: m.DentistProfilePage })));
+const DentistTreatmentRecordsPage = lazy(() => import('../features/treatment-records/pages/DentistTreatmentRecordsPage').then((m) => ({ default: m.DentistTreatmentRecordsPage })));
+const UserManagementPage = lazy(() => import('../features/users/pages/UserManagementPage').then((m) => ({ default: m.UserManagementPage })));
+const RolePermissionMatrixPage = lazy(() => import('../features/roles/pages/RolePermissionMatrixPage').then((m) => ({ default: m.RolePermissionMatrixPage })));
+const AuditTrailPage = lazy(() => import('../features/audit/pages/AuditTrailPage').then((m) => ({ default: m.AuditTrailPage })));
+const ReportsPage = lazy(() => import('../features/reports/pages/ReportsPage').then((m) => ({ default: m.ReportsPage })));
+const SystemHealthPage = lazy(() => import('../features/system/pages/SystemHealthPage').then((m) => ({ default: m.SystemHealthPage })));
+const StaffProfilePage = lazy(() => import('../features/staff/pages/StaffProfilePage').then((m) => ({ default: m.StaffProfilePage })));
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { LoadingProvider, useRouteLoading } from '../contexts/LoadingContext';
 import { ThemeProvider } from '../contexts/ThemeContext';
@@ -1012,6 +1014,17 @@ function AppContent() {
 
         {/* Main Content Area */}
         <main id="main-content" tabIndex={-1} className="portal-main-shell flex-1 min-w-0 w-full focus:outline-none">
+          <Suspense
+            fallback={
+              <div
+                role="status"
+                aria-live="polite"
+                className="p-8 text-center text-sm text-slate-500 dark:text-gray-400"
+              >
+                Loading view...
+              </div>
+            }
+          >
           
           {/* ======================================================== */}
           {/* A. PATIENT PORTAL VIEWS */}
@@ -1233,6 +1246,7 @@ function AppContent() {
             </>
           )}
 
+          </Suspense>
         </main>
       </div>
 

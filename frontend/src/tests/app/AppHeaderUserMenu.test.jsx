@@ -323,7 +323,7 @@ describe('Portal Header Identity & Account Dropdown', () => {
     expect(trigger).toHaveTextContent('JD');
   });
 
-  it('omits redundant My Shifts & Leaves item from dentist sidebar navigation', () => {
+  it('omits redundant My Shifts & Leaves item from dentist sidebar navigation', async () => {
     window.history.pushState({}, '', '/dentist/shifts');
     mockUseAuth.mockReturnValue({
       user: {
@@ -351,7 +351,7 @@ describe('Portal Header Identity & Account Dropdown', () => {
     expect(screen.getByRole('button', { name: 'Treatment Records' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'My Profile' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /My Shifts & Leaves/i })).toBeNull();
-    expect(screen.getByText('DentistDashboardMock')).toBeInTheDocument();
+    expect(await screen.findByText('DentistDashboardMock')).toBeInTheDocument();
 
     const accountMenuTrigger = screen.getByRole('button', { name: /Dr\. Maria Santos account menu/i });
     expect(accountMenuTrigger).toHaveTextContent('Dentist');
@@ -364,10 +364,10 @@ describe('Portal Header Identity & Account Dropdown', () => {
 
     const profileMenuItem = within(accountMenu).getByRole('button', { name: /My Profile/i });
     fireEvent.click(profileMenuItem);
-    expect(screen.getByText('DentistProfilePageMock')).toBeInTheDocument();
+    expect(await screen.findByText('DentistProfilePageMock')).toBeInTheDocument();
   });
 
-  it('renders My Profile in receptionist navigation and replaces Portal Overview in account dropdown', () => {
+  it('renders My Profile in receptionist navigation and replaces Portal Overview in account dropdown', async () => {
     window.history.pushState({}, '', '/receptionist');
     mockUseAuth.mockReturnValue({
       user: {
@@ -407,7 +407,7 @@ describe('Portal Header Identity & Account Dropdown', () => {
 
     const profileMenuItem = within(accountMenu).getByRole('button', { name: /My Profile/i });
     fireEvent.click(profileMenuItem);
-    expect(screen.getByText('StaffProfilePageMock')).toBeInTheDocument();
+    expect(await screen.findByText('StaffProfilePageMock')).toBeInTheDocument();
   });
 
   it('registers route navigation transitions in App without flashing or leaking active loading state', async () => {

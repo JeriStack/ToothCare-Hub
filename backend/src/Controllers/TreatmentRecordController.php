@@ -33,8 +33,9 @@ class TreatmentRecordController
             throw HttpException::unauthorized('Authentication is required to view treatment records.');
         }
 
-        $page = $request->getQueryInt('page', 1);
-        $perPage = $request->getQueryInt('per_page', 20);
+        $page = max(1, $request->getQueryInt('page', 1));
+        $rawPerPage = $request->getQuery('per_page') ?? $request->getQuery('limit') ?? 20;
+        $perPage = max(1, min(100, (int) $rawPerPage));
 
         $result = $this->treatmentRecordService->listDentistRecords(
             (int) $user['id'],

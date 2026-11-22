@@ -34,8 +34,9 @@ class ServiceController
      */
     public function index(Request $request): Response
     {
-        $page = $request->getQueryInt('page', 1);
-        $perPage = $request->getQueryInt('per_page', 10);
+        $page = max(1, $request->getQueryInt('page', 1));
+        $rawPerPage = $request->getQuery('per_page') ?? $request->getQuery('limit') ?? 10;
+        $perPage = max(1, min(100, (int) $rawPerPage));
         $sortBy = (string) $request->getQuery('sort_by', 'name');
         $sortDir = (string) $request->getQuery('sort_dir', 'ASC');
 

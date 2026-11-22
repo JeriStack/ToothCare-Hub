@@ -56,8 +56,8 @@ class UserController
 
         $sortBy = (string) ($request->getQuery('sort_by') ?? 'created_at');
         $sortDir = (string) ($request->getQuery('sort_dir') ?? 'DESC');
-        $page = (int) ($request->getQuery('page') ?? 1);
-        $perPage = (int) ($request->getQuery('per_page') ?? 15);
+        $page = max(1, (int) ($request->getQuery('page') ?? 1));
+        $perPage = max(1, min(100, (int) ($request->getQuery('per_page') ?? $request->getQuery('limit') ?? 15)));
 
         $result = $this->userRepository->list($filters, $sortBy, $sortDir, $page, $perPage);
 
@@ -444,11 +444,23 @@ class UserController
 
     /**
      * GET /api/v1/users/{id}/avatar
-     * Serve user profile photo.
+     * Serve user profile photo with owner/staff authorization (Phase 18 privacy hardening).
      */
     public function serveAvatar(Request $request): Response
     {
+        $actor = $request->getUser();
+        if ($actor === null || !isset($actor['id'])) {
+            throw HttpException::unauthorized('Authentication is required.', 'AUTHENTICATION_REQUIRED');
+        }
+
         $id = (int) $request->getParam('id');
+        $actorId = (int) $actor['id'];
+        $actorRole = strtoupper((string) ($actor['role'] ?? ''));
+
+        if ($actorId !== $id && !in_array($actorRole, ['ADMIN', 'RECEPTIONIST', 'DENTIST'], true)) {
+            throw HttpException::forbidden('You are not authorized to access this profile photo.');
+        }
+
         $dbUser = $this->userRepository->findById($id);
         if ($dbUser === null) {
             throw HttpException::notFound("User profile #{$id} was not found.");
@@ -457,7 +469,7 @@ class UserController
         return $this->avatarStorageService->buildImageResponse(
             $dbUser['avatar_path'] ?? null,
             $dbUser['avatar_mime'] ?? null,
-            'public, max-age=3600'
+            'private, max-age=3600'
         );
     }
 }

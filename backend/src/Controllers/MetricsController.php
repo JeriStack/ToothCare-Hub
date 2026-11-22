@@ -58,6 +58,9 @@ class MetricsController
             $lines[] = '# HELP toothcare_email_worker_processing Jobs currently claimed by a worker.';
             $lines[] = '# TYPE toothcare_email_worker_processing gauge';
             $lines[] = 'toothcare_email_worker_processing ' . $stats['counts']['PROCESSING'];
+            $lines[] = '# HELP toothcare_email_oldest_pending_age_seconds Age in seconds of the oldest pending or retryable email job (0 when queue is empty).';
+            $lines[] = '# TYPE toothcare_email_oldest_pending_age_seconds gauge';
+            $lines[] = 'toothcare_email_oldest_pending_age_seconds ' . (int) ($stats['oldest_pending_age_seconds'] ?? 0);
             if ($stats['last_sent_at'] !== null) {
                 $lines[] = '# HELP toothcare_email_last_success_timestamp_seconds Unix time of the last successful delivery.';
                 $lines[] = '# TYPE toothcare_email_last_success_timestamp_seconds gauge';

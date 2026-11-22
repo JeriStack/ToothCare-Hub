@@ -1,7 +1,7 @@
 import apiClient from '../../lib/apiClient';
 
 /**
- * Clinical & Financial Analytics API
+ * Clinic Operational Reports & Analytics API
  */
 export const reportsApi = {
   async getAppointmentReports(params = {}) {
@@ -9,8 +9,13 @@ export const reportsApi = {
     return response.data?.data;
   },
 
-  async getRevenueReports(params = {}) {
-    const response = await apiClient.get('/admin/reports/revenue', { params });
+  async getServiceReports(params = {}) {
+    const response = await apiClient.get('/admin/reports/services', { params });
+    return response.data?.data;
+  },
+
+  async getPatientReports(params = {}) {
+    const response = await apiClient.get('/admin/reports/patients', { params });
     return response.data?.data;
   },
 

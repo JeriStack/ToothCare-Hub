@@ -12,10 +12,15 @@ This directory is part of the approved ToothCare Hub root layout for operational
 
 ## Active Configuration Files
 
-The active container mount files referenced by `docker-compose.yml` are located at:
+The active container mount files referenced by `compose.yaml` (`--profile monitoring`) are located at:
 
 - [`monitoring/prometheus/prometheus.yml`](prometheus/prometheus.yml)
+- [`monitoring/prometheus/rules/toothcare-alerts.yml`](prometheus/rules/toothcare-alerts.yml)
 - [`monitoring/grafana/provisioning/datasources/prometheus.yml`](grafana/provisioning/datasources/prometheus.yml)
 - [`monitoring/grafana/provisioning/dashboards/dashboards.yml`](grafana/provisioning/dashboards/dashboards.yml)
 - [`monitoring/grafana/dashboards/toothcare-overview.json`](grafana/dashboards/toothcare-overview.json)
+- [`monitoring/grafana/dashboards/infrastructure.json`](grafana/dashboards/infrastructure.json)
+- [`monitoring/mysql/exporter-user.sql`](mysql/exporter-user.sql)
+
+Full Phase 19 documentation, runbook, and verification guides live in [`docs/phase-19/`](../docs/phase-19/monitoring-architecture.md).
 

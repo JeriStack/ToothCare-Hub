@@ -16,6 +16,7 @@ use App\Controllers\DentistTimeOffController;
 use App\Controllers\HealthController;
 use App\Controllers\MetricsController;
 use App\Controllers\NotificationController;
+use App\Controllers\OpenApiDocsController;
 use App\Controllers\PatientController;
 use App\Controllers\RealtimeController;
 use App\Controllers\ReceptionistController;
@@ -30,6 +31,7 @@ use App\Core\Response;
 use App\Core\Router;
 use App\Middleware\AuthenticationMiddleware;
 use App\Middleware\AuthorizationMiddleware;
+use App\Middleware\RateLimitMiddleware;
 
 /**
  * ToothCare Hub API Route Definitions
@@ -46,6 +48,10 @@ $router->group('/api/v1', function (Router $r): void {
     // 1. Health & Liveness
     $r->get('/health', [HealthController::class, 'check']);
     $r->get('/metrics', [MetricsController::class, 'metrics']);
+
+    // Local/Development API Documentation (disabled with 404 in production)
+    $r->get('/docs', [OpenApiDocsController::class, 'ui']);
+    $r->get('/docs/openapi.yaml', [OpenApiDocsController::class, 'spec']);
 
     // 2. Authentication & Account Security (Phase 7)
     $r->post('/auth/register', [AuthController::class, 'register']);
@@ -72,7 +78,7 @@ $router->group('/api/v1', function (Router $r): void {
     $r->get('/user/profile/avatar', [UserController::class, 'serveMyAvatar'], [AuthenticationMiddleware::class]);
     $r->post('/user/profile/avatar', [UserController::class, 'uploadMyAvatar'], [AuthenticationMiddleware::class]);
     $r->delete('/user/profile/avatar', [UserController::class, 'deleteMyAvatar'], [AuthenticationMiddleware::class]);
-    $r->get('/users/{id}/avatar', [UserController::class, 'serveAvatar']);
+    $r->get('/users/{id}/avatar', [UserController::class, 'serveAvatar'], [AuthenticationMiddleware::class]);
 
     // 3. Public Catalog Endpoints (Active items for booking/discovery)
     $r->get('/services', [ServiceController::class, 'listPublic']);
@@ -114,8 +120,11 @@ $router->group('/api/v1', function (Router $r): void {
     $r->post('/receptionist/patients', [ReceptionistController::class, 'registerPatient'], [AuthenticationMiddleware::class, $frontDeskGuard, AuthorizationMiddleware::hasPermission('patients.manage', ['RECEPTIONIST', 'ADMIN'])]);
     $r->post('/receptionist/appointments', [ReceptionistController::class, 'createAppointment'], [AuthenticationMiddleware::class, $frontDeskGuard, AuthorizationMiddleware::hasPermission('appointments.book', ['RECEPTIONIST', 'ADMIN'])]);
 
-    // Admin Dashboard Aggregates
+    // Admin Dashboard Aggregates & Operational Visibility (Phase 15)
     $r->get('/admin/dashboard', [DashboardController::class, 'metrics'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('dashboard.view', ['ADMIN'])]);
+    $r->get('/admin/dashboard/summary', [DashboardController::class, 'metrics'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('dashboard.view', ['ADMIN'])]);
+    $r->get('/admin/operations/outbox', [DashboardController::class, 'outboxOperations'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('system.health', ['ADMIN'])]);
+    $r->get('/admin/operations/errors', [DashboardController::class, 'operationalErrors'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('system.health', ['ADMIN'])]);
 
     // Dental Services (Viewing for front desk scheduling; creation/updates restricted by DRBAC)
     $r->get('/admin/services', [ServiceController::class, 'index'], [AuthenticationMiddleware::class, $staffPortalGuard, AuthorizationMiddleware::hasPermission('services.view', ['RECEPTIONIST', 'ADMIN'])]);
@@ -192,6 +201,8 @@ $router->group('/api/v1', function (Router $r): void {
 
     // Reports & Analytics (Administrator Only)
     $r->get('/admin/reports/appointments', [ReportController::class, 'appointments'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('reports.view', ['ADMIN'])]);
+    $r->get('/admin/reports/services', [ReportController::class, 'services'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('reports.view', ['ADMIN'])]);
+    $r->get('/admin/reports/patients', [ReportController::class, 'patients'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('reports.view', ['ADMIN'])]);
     $r->get('/admin/reports/revenue', [ReportController::class, 'revenue'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('reports.view', ['ADMIN'])]);
     $r->get('/admin/reports/dentists', [ReportController::class, 'dentists'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('reports.view', ['ADMIN'])]);
 
@@ -203,6 +214,7 @@ $router->group('/api/v1', function (Router $r): void {
     $r->get('/patient/dashboard', [AppointmentController::class, 'patientDashboard'], $patientAuth);
     $r->post('/appointments', [AppointmentController::class, 'book'], $patientAuth);
     $r->get('/appointments', [AppointmentController::class, 'index'], $patientAuth);
+    $r->get('/appointments/search', [AppointmentController::class, 'search'], $patientAuth);
     $r->get('/appointments/{id}', [AppointmentController::class, 'show'], $patientAuth);
     $r->post('/appointments/{id}/cancel', [AppointmentController::class, 'cancel'], $patientAuth);
     $r->post('/appointments/{id}/reschedule', [AppointmentController::class, 'reschedule'], $patientAuth);
@@ -250,7 +262,7 @@ $router->group('/api/v1', function (Router $r): void {
     $r->get('/reports/appointments', $notImplemented('GET /api/v1/reports/appointments'));
 
     // Realtime Ticket & Internal Service-to-Service Verification Group (Phase 14)
-    $r->post('/realtime/ticket', [RealtimeController::class, 'issueTicket'], [AuthenticationMiddleware::class]);
+    $r->post('/realtime/ticket', [RealtimeController::class, 'issueTicket'], [AuthenticationMiddleware::class, RateLimitMiddleware::perMinute(60, 'realtime_ticket')]);
     $r->post('/internal/realtime/tickets/verify', [RealtimeController::class, 'verifyTicket']);
     $r->post('/internal/realtime/sessions/verify', [RealtimeController::class, 'verifySession']);
 });

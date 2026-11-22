@@ -294,7 +294,7 @@ class EmailOutboxRepository
         return $stmt->rowCount() === 1;
     }
     /**
-     * @return array{counts: array<string,int>, exhausted: int, last_sent_at: ?string, avg_delay_seconds: ?float, total: int}
+     * @return array{counts: array<string,int>, exhausted: int, last_sent_at: ?string, oldest_pending_age_seconds: int, avg_delay_seconds: ?float, total: int}
      */
     public function stats(): array
     {
@@ -308,6 +308,14 @@ class EmailOutboxRepository
         }
         $exhausted = (int) $pdo->query("SELECT COUNT(*) FROM email_outbox WHERE status = 'FAILED_PERMANENT' AND attempts >= max_attempts")->fetchColumn();
         $last = $pdo->query("SELECT MAX(sent_at) FROM email_outbox WHERE status = 'SENT'")->fetchColumn();
+        $oldestPending = $pdo->query("SELECT MIN(created_at) FROM email_outbox WHERE status IN ('PENDING','FAILED_RETRYABLE')")->fetchColumn();
+        $oldestPendingAgeSeconds = 0;
+        if ($oldestPending !== false && $oldestPending !== null) {
+            $ts = strtotime((string) $oldestPending);
+            if ($ts !== false) {
+                $oldestPendingAgeSeconds = max(0, time() - $ts);
+            }
+        }
         $recent = $pdo->query("SELECT created_at, sent_at FROM email_outbox WHERE status = 'SENT' AND sent_at IS NOT NULL ORDER BY id DESC LIMIT 200")->fetchAll(PDO::FETCH_ASSOC);
         $avg = null;
         if ($recent !== []) {
@@ -321,6 +329,7 @@ class EmailOutboxRepository
             'counts' => $counts,
             'exhausted' => $exhausted,
             'last_sent_at' => $last !== false && $last !== null ? (string) $last : null,
+            'oldest_pending_age_seconds' => $oldestPendingAgeSeconds,
             'avg_delay_seconds' => $avg,
             'total' => array_sum($counts),
         ];
