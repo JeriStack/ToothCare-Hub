@@ -109,6 +109,8 @@ services:
   phpmyadmin:
     image: phpmyadmin:latest
     container_name: toothcare-phpmyadmin
+    profiles:
+      - tools
     environment:
       PMA_HOST: mysql
       PMA_PORT: 3306

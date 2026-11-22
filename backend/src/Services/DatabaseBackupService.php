@@ -734,10 +734,22 @@ class DatabaseBackupService
     }
 
     /**
+     * Validate a MySQL database identifier against SQL/shell injection (Phase 18 hardening).
+     */
+    public static function validateDatabaseIdentifier(string $name): string
+    {
+        if (preg_match('/^[A-Za-z0-9_]{1,64}$/', $name) !== 1) {
+            throw new InvalidArgumentException("Invalid database identifier '{$name}'. Only alphanumeric characters and underscores (max 64 chars) are allowed.");
+        }
+        return $name;
+    }
+
+    /**
      * Import raw SQL statements into target database.
      */
     public function importSqlIntoDatabase(string $sql, string $targetDatabase): void
     {
+        $targetDatabase = self::validateDatabaseIdentifier($targetDatabase);
         $pdo = $this->database->getConnection();
         $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
 
@@ -810,7 +822,7 @@ class DatabaseBackupService
         ?string $testDatabase = null,
         ?string $customKey = null
     ): array {
-        $testDb = $testDatabase ?? ('toothcare_restore_test_' . date('Ymd_His'));
+        $testDb = self::validateDatabaseIdentifier($testDatabase ?? ('toothcare_restore_test_' . date('Ymd_His')));
         $this->log("Initiating isolated restoration verification in test database '{$testDb}'...");
 
         $pdo = $this->database->getConnection();

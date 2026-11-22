@@ -186,8 +186,11 @@ class StaffProfileApiTest extends TestCase
             $this->assertSame('nosniff', $headers['X-Content-Type-Options'] ?? null);
             $this->assertSame($pngBytes, $serveRes->getBody());
 
-            // 5. Public / staff endpoint serves user avatar
-            $serveByIdRes = $this->app->handle($this->makeJsonRequest('GET', "/api/v1/users/{$userId}/avatar"));
+            // 5. User avatar endpoint requires authentication (401 unauthenticated) and serves to owner/staff (200)
+            $unauthServeByIdRes = $this->app->handle($this->makeJsonRequest('GET', "/api/v1/users/{$userId}/avatar"));
+            $this->assertSame(401, $unauthServeByIdRes->getStatusCode());
+
+            $serveByIdRes = $this->app->handle($this->makeJsonRequest('GET', "/api/v1/users/{$userId}/avatar", null, $this->receptionistUser));
             $this->assertSame(200, $serveByIdRes->getStatusCode());
             $this->assertSame($pngBytes, $serveByIdRes->getBody());
 

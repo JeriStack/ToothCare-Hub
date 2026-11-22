@@ -214,10 +214,16 @@ final class AuthAndUsersPaths
     #[OA\Get(
         path: '/users/{id}/avatar',
         operationId: 'getUserAvatarById',
-        summary: 'Serve Public User Avatar by ID',
+        summary: 'Serve User Avatar by ID (Owner or Clinical/Admin Staff)',
         tags: ['Users'],
+        security: [['CookieAuth' => []]],
         parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
-        responses: [new OA\Response(response: 200, description: 'Image binary'), new OA\Response(response: 404, description: 'Avatar not found')]
+        responses: [
+            new OA\Response(response: 200, description: 'Image binary (private cache)'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+            new OA\Response(response: 403, description: 'Forbidden — cross-user avatar access denied'),
+            new OA\Response(response: 404, description: 'Avatar not found'),
+        ]
     )]
     public function userAvatarById(): void {}
 

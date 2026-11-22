@@ -11,6 +11,7 @@
 | [`security/`](security/) | Security checklist and authentication documentation |
 | [`modules/`](modules/) | Admin, scheduling, booking, patient portal, dentist portal, administrator control center, email notifications (Phase 13) |
 | [`phase-14/`](phase-14/) | Real-time notifications with Node.js and Socket.IO (architecture, security, event contract, recovery, Docker, testing, troubleshooting) |
+| [`phase-18/`](phase-18/) | Security, privacy, accessibility, performance, reliability, dependency audits, incident response, and production readiness checklist |
 | [`operations/`](operations/) | Database backup and disaster recovery, observability runbook |
 | [`implementation/`](implementation/) | Frontend stage implementation reports |
 

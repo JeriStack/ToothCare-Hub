@@ -22,6 +22,8 @@ services:
     environment:
       APP_DEBUG: "false"
       APP_ENV: "production"
+      SESSION_COOKIE_SECURE: "true"
+      SESSION_COOKIE_SAMESITE: "Lax"
     restart: always
 
   mysql:

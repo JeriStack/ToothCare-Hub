@@ -31,6 +31,7 @@ use App\Core\Response;
 use App\Core\Router;
 use App\Middleware\AuthenticationMiddleware;
 use App\Middleware\AuthorizationMiddleware;
+use App\Middleware\RateLimitMiddleware;
 
 /**
  * ToothCare Hub API Route Definitions
@@ -77,7 +78,7 @@ $router->group('/api/v1', function (Router $r): void {
     $r->get('/user/profile/avatar', [UserController::class, 'serveMyAvatar'], [AuthenticationMiddleware::class]);
     $r->post('/user/profile/avatar', [UserController::class, 'uploadMyAvatar'], [AuthenticationMiddleware::class]);
     $r->delete('/user/profile/avatar', [UserController::class, 'deleteMyAvatar'], [AuthenticationMiddleware::class]);
-    $r->get('/users/{id}/avatar', [UserController::class, 'serveAvatar']);
+    $r->get('/users/{id}/avatar', [UserController::class, 'serveAvatar'], [AuthenticationMiddleware::class]);
 
     // 3. Public Catalog Endpoints (Active items for booking/discovery)
     $r->get('/services', [ServiceController::class, 'listPublic']);
@@ -261,7 +262,7 @@ $router->group('/api/v1', function (Router $r): void {
     $r->get('/reports/appointments', $notImplemented('GET /api/v1/reports/appointments'));
 
     // Realtime Ticket & Internal Service-to-Service Verification Group (Phase 14)
-    $r->post('/realtime/ticket', [RealtimeController::class, 'issueTicket'], [AuthenticationMiddleware::class]);
+    $r->post('/realtime/ticket', [RealtimeController::class, 'issueTicket'], [AuthenticationMiddleware::class, RateLimitMiddleware::perMinute(60, 'realtime_ticket')]);
     $r->post('/internal/realtime/tickets/verify', [RealtimeController::class, 'verifyTicket']);
     $r->post('/internal/realtime/sessions/verify', [RealtimeController::class, 'verifySession']);
 });

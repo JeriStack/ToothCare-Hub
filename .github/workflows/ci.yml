@@ -53,6 +53,10 @@ jobs:
         working-directory: backend
         run: composer install --no-interaction --prefer-dist
 
+      - name: Composer dependency security audit (Phase 18)
+        working-directory: backend
+        run: composer audit --no-interaction
+
       - name: PHP lint (syntax check)
         working-directory: backend
         run: find src public config tests bin templates -name "*.php" -print0 | xargs -0 -n1 php -l
@@ -150,10 +154,11 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Install, typecheck, build, and test realtime service
+      - name: Install, audit, typecheck, build, and test realtime service
         working-directory: realtime
         run: |
           npm ci
+          npm audit --audit-level=high
           npm run typecheck
           npm run build
           npm test
@@ -172,10 +177,11 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: Frontend checks
+      - name: Frontend checks & dependency audit
         working-directory: frontend
         run: |
           npm ci
+          npm audit --audit-level=high
           npm test -- --run
           npm run build
       - name: Responsive contract tests

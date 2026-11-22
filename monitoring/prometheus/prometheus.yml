@@ -16,11 +16,11 @@ scrape_configs:
     static_configs:
       - targets: ["backend:9000"]
 
-  # Application metrics through the edge proxy (PHP-FPM speaks FastCGI, not HTTP).
+  # Application metrics through internal-only Nginx port 8081 (blocked on public port 80).
   - job_name: "toothcare-api"
     metrics_path: /api/v1/metrics
     static_configs:
-      - targets: ["nginx:80"]
+      - targets: ["nginx:8081"]
   - job_name: "toothcare-realtime"
     metrics_path: /metrics
     static_configs:

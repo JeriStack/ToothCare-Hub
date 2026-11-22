@@ -24,20 +24,46 @@ class Logger
 
     private const SENSITIVE_KEYS = [
         'password',
+        'password_hash',
         'password_confirmation',
         'current_password',
         'new_password',
         'db_password',
+        'smtp_password',
+        'mail_password',
         'token',
         'auth_token',
         'access_token',
         'refresh_token',
         'csrf_token',
+        'verification_token',
+        'reset_token',
+        'session_id',
+        'ticket',
+        'ticket_hash',
         'secret',
+        'realtime_internal_secret',
         'api_key',
+        'email_payload_key',
+        'backup_encryption_key',
         'authorization',
         'cookie',
         'set-cookie',
+        'clinical_notes',
+        'treatment_notes',
+        'diagnosis',
+        'medical_history',
+        'medical_alerts',
+        'allergies',
+    ];
+
+    private const SENSITIVE_KEY_SUFFIXES = [
+        '_password',
+        '_secret',
+        '_token',
+        '_hash',
+        'private_key',
+        '_encryption_key',
     ];
 
     public function __construct(?string $logPath = null, string $logLevel = 'debug')
@@ -149,7 +175,7 @@ class Logger
         $redacted = [];
         foreach ($data as $key => $value) {
             $keyLower = strtolower((string) $key);
-            if (in_array($keyLower, self::SENSITIVE_KEYS, true)) {
+            if ($this->isSensitiveKey($keyLower)) {
                 $redacted[$key] = '***REDACTED***';
             } elseif (is_array($value)) {
                 $redacted[$key] = $this->redact($value);
@@ -158,6 +184,19 @@ class Logger
             }
         }
         return $redacted;
+    }
+
+    private function isSensitiveKey(string $keyLower): bool
+    {
+        if (in_array($keyLower, self::SENSITIVE_KEYS, true)) {
+            return true;
+        }
+        foreach (self::SENSITIVE_KEY_SUFFIXES as $suffix) {
+            if (str_ends_with($keyLower, $suffix)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
 
