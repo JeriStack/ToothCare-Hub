@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, X, Calendar, User, LogIn, ArrowLeft, LifeBuoy } from 'lucide-react';
+import { Menu, X, User, LogIn, ArrowLeft, LifeBuoy } from 'lucide-react';
 import { useAuth } from '../../auth';
 import { ThemeToggle } from '../../../components/ui/ThemeToggle';
 
@@ -140,15 +140,15 @@ export function HelpNavbar({ onNavigateHome, onBookAppointment, onLogin }) {
           </nav>
 
           {/* Desktop Right Actions */}
-          <div className="hidden sm:flex items-center gap-2.5 lg:gap-3">
+          <div className="hidden sm:flex items-center gap-2.5 lg:gap-3 shrink-0">
             <ThemeToggle variant="surface" />
             {isAuthenticated ? (
               <button
                 type="button"
                 onClick={onLogin}
-                className="inline-flex items-center gap-1.5 min-h-10 px-4 py-2 rounded-xl text-xs font-semibold text-[#0D9488] dark:text-teal-300 bg-teal-50 dark:bg-teal-900/40 hover:bg-teal-100 dark:hover:bg-teal-900/60 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                className="inline-flex items-center gap-1.5 min-h-10 px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 text-[#0D9488] dark:text-teal-300 bg-teal-50 dark:bg-teal-900/40 hover:bg-teal-100 dark:hover:bg-teal-900/60 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
               >
-                <User className="w-4 h-4" aria-hidden="true" />
+                <User className="w-4 h-4 shrink-0" aria-hidden="true" />
                 <span>
                   Portal ({user?.patient?.first_name || user?.dentist?.first_name || user?.first_name || 'Account'})
                 </span>
@@ -157,20 +157,12 @@ export function HelpNavbar({ onNavigateHome, onBookAppointment, onLogin }) {
               <button
                 type="button"
                 onClick={onLogin}
-                className="inline-flex items-center gap-2 min-h-10 px-4 py-2 rounded-xl text-xs font-semibold border border-[#0D9488]/30 dark:border-teal-400/40 bg-teal-50/90 dark:bg-teal-500/15 text-[#0F766E] dark:text-teal-200 hover:bg-teal-100/90 dark:hover:bg-teal-500/25 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400"
+                className="inline-flex items-center gap-2 min-h-10 px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 border border-[#0D9488]/30 dark:border-teal-400/40 bg-teal-50/90 dark:bg-teal-500/15 text-[#0F766E] dark:text-teal-200 hover:bg-teal-100/90 dark:hover:bg-teal-500/25 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400"
               >
-                <LogIn className="w-3.5 h-3.5" aria-hidden="true" />
+                <LogIn className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                 <span>Sign In</span>
               </button>
             )}
-            <button
-              type="button"
-              onClick={onBookAppointment}
-              className="landing-cta-shine inline-flex items-center gap-2 min-h-10 px-4 py-2 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] text-white text-xs font-semibold hover:bg-[#0F766E] dark:hover:bg-[#0D9488] shadow-md shadow-teal-900/15 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900"
-            >
-              <Calendar className="w-4 h-4" aria-hidden="true" />
-              <span>Book Appointment</span>
-            </button>
           </div>
 
           {/* Mobile Controls */}
@@ -253,17 +245,6 @@ export function HelpNavbar({ onNavigateHome, onBookAppointment, onLogin }) {
             >
               {isAuthenticated ? <User className="w-4 h-4" aria-hidden="true" /> : <LogIn className="w-4 h-4" aria-hidden="true" />}
               <span>{isAuthenticated ? 'Go to Portal' : 'Sign In'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onBookAppointment?.();
-              }}
-              className="w-full flex items-center justify-center gap-2 min-h-11 py-3 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] text-white text-sm font-semibold hover:bg-[#0F766E] dark:hover:bg-[#0D9488] shadow-md shadow-teal-900/15 transition-all cursor-pointer"
-            >
-              <Calendar className="w-4 h-4" aria-hidden="true" />
-              <span>Book an Appointment</span>
             </button>
           </div>
         </div>

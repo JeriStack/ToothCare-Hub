@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
-import { Menu, X, Calendar, User, LogIn } from 'lucide-react';
+import { Menu, X, User, LogIn } from 'lucide-react';
 import { useAuth } from '../../../features/auth';
 import { ThemeToggle } from '../../../components/ui/ThemeToggle';
 
@@ -335,15 +335,15 @@ export function LandingNavbar({ onBookAppointment, onLogin, onHelpSupport }) {
           </nav>
 
           {/* Desktop Right Action CTAs */}
-          <div className="hidden sm:flex items-center gap-2.5 lg:gap-3">
+          <div className="hidden sm:flex items-center gap-2.5 lg:gap-3 shrink-0">
             <ThemeToggle variant="surface" />
             {isAuthenticated ? (
               <button
                 type="button"
                 onClick={onLogin}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-[#0D9488] dark:text-teal-300 bg-teal-50 dark:bg-teal-900/40 hover:bg-teal-100 dark:hover:bg-teal-900/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 text-[#0D9488] dark:text-teal-300 bg-teal-50 dark:bg-teal-900/40 hover:bg-teal-100 dark:hover:bg-teal-900/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
               >
-                <User className="w-4 h-4 text-[#0D9488] dark:text-teal-300" />
+                <User className="w-4 h-4 text-[#0D9488] dark:text-teal-300 shrink-0" />
                 <span>
                   Portal ({user?.patient?.first_name || user?.dentist?.first_name || user?.first_name || 'Account'})
                 </span>
@@ -352,22 +352,14 @@ export function LandingNavbar({ onBookAppointment, onLogin, onHelpSupport }) {
               <button
                 type="button"
                 onClick={onLogin}
-                className="group inline-flex items-center gap-2 min-h-10 px-4 py-2 rounded-xl text-xs font-semibold border border-[#0D9488]/30 dark:border-teal-400/40 bg-teal-50/90 dark:bg-teal-500/15 text-[#0F766E] dark:text-teal-200 shadow-sm shadow-teal-900/5 dark:shadow-teal-950/30 hover:bg-teal-100/90 dark:hover:bg-teal-500/25 hover:border-[#0D9488]/55 dark:hover:border-teal-300/65 hover:text-[#115E59] dark:hover:text-white active:scale-[0.98] transition-all duration-200 motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900 cursor-pointer"
+                className="group inline-flex items-center gap-2 min-h-10 px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 border border-[#0D9488]/30 dark:border-teal-400/40 bg-teal-50/90 dark:bg-teal-500/15 text-[#0F766E] dark:text-teal-200 shadow-sm shadow-teal-900/5 dark:shadow-teal-950/30 hover:bg-teal-100/90 dark:hover:bg-teal-500/25 hover:border-[#0D9488]/55 dark:hover:border-teal-300/65 hover:text-[#115E59] dark:hover:text-white active:scale-[0.98] transition-all duration-200 motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900 cursor-pointer"
               >
-                <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-[#0D9488]/12 dark:bg-teal-400/20 text-[#0D9488] dark:text-teal-300 transition-colors group-hover:bg-[#0D9488]/20 dark:group-hover:bg-teal-400/30">
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-[#0D9488]/12 dark:bg-teal-400/20 text-[#0D9488] dark:text-teal-300 transition-colors group-hover:bg-[#0D9488]/20 dark:group-hover:bg-teal-400/30 shrink-0">
                   <LogIn className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transform-none" aria-hidden="true" />
                 </span>
                 <span>Sign In</span>
               </button>
             )}
-            <button
-              type="button"
-              onClick={onBookAppointment}
-              className="landing-cta-shine inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] text-white text-xs font-semibold hover:bg-[#0F766E] dark:hover:bg-[#0D9488] active:bg-[#115E59] shadow-md shadow-teal-900/15 hover:shadow-teal-900/25 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900"
-            >
-              <Calendar className="w-4 h-4" />
-              Book Appointment
-            </button>
           </div>
 
           {/* Mobile Controls */}
@@ -466,17 +458,6 @@ export function LandingNavbar({ onBookAppointment, onLogin, onHelpSupport }) {
                 <span>Sign In</span>
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onBookAppointment?.();
-              }}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] text-white text-sm font-semibold hover:bg-[#0F766E] dark:hover:bg-[#0D9488] shadow-md shadow-teal-900/15 transition-all"
-            >
-              <Calendar className="w-4 h-4" />
-              Book an Appointment
-            </button>
           </div>
         </div>
       )}

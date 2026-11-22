@@ -94,6 +94,7 @@ describe('LandingNavbar Section Navigation & Active Highlight', () => {
     fireEvent.click(helpLink);
     expect(handleHelpSupport).toHaveBeenCalledTimes(1);
     expect(window.scrollTo).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: /Book Appointment/i })).not.toBeInTheDocument();
   });
 
   it('marks Home active initially and switches aria-current & highlight cleanly on click', () => {
