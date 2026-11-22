@@ -20,6 +20,7 @@ import {
   RotateCcw,
   CheckCircle2,
   Headphones,
+  ChevronRight,
 } from 'lucide-react';
 import { HelpNavbar } from '../components/HelpNavbar';
 import { HelpAccordionItem } from '../components/HelpAccordionItem';
@@ -420,66 +421,84 @@ export function HelpCenterPage({
                 const faqCount = categoryFaqCounts[category.id] || 0;
 
                 return (
-                  <button
+                  <article
                     key={category.id}
-                    type="button"
-                    aria-pressed={isSelected}
-                    onClick={() => handleCategoryCardClick(category.id)}
-                    className={`group text-left p-6 rounded-2xl border transition-all flex flex-col justify-between gap-5 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
+                    className={`group p-5 sm:p-6 rounded-2xl border transition-all flex flex-col justify-between gap-4 ${
                       isSelected
                         ? 'bg-teal-50/75 dark:bg-teal-950/35 border-[#0D9488] dark:border-teal-400 shadow-md shadow-teal-900/10'
                         : 'bg-[#F8FAFC] dark:bg-gray-800/90 border-slate-200/90 dark:border-gray-700/80 hover:border-[#0D9488]/45 dark:hover:border-teal-400/45 hover:bg-white dark:hover:bg-gray-800 hover:shadow-md'
                     }`}
                   >
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between gap-2">
-                        <div
-                          className={`w-11 h-11 rounded-xl flex items-center justify-center border transition-colors ${
-                            isSelected
-                              ? 'bg-[#0D9488] border-[#0D9488] text-white'
-                              : 'bg-teal-50 dark:bg-teal-500/15 border-[#0D9488]/20 dark:border-teal-400/30 text-[#0D9488] dark:text-teal-300 group-hover:bg-[#0D9488] group-hover:text-white'
-                          }`}
-                        >
-                          <Icon className="w-5 h-5" aria-hidden="true" />
-                        </div>
-                        <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-white dark:bg-gray-900/80 text-slate-600 dark:text-gray-300 border border-slate-200/80 dark:border-gray-700">
-                          {faqCount} {faqCount === 1 ? 'FAQ' : 'FAQs'}
-                        </span>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <h3 className="font-bold text-base text-slate-900 dark:text-gray-100 group-hover:text-[#0F766E] dark:group-hover:text-teal-200 transition-colors">
-                          {category.title}
-                        </h3>
-                        <p className="text-xs text-slate-600 dark:text-gray-300 leading-relaxed text-justify">
-                          {category.description}
-                        </p>
-                      </div>
-
-                      <ul className="space-y-1.5 pt-1">
-                        {category.highlights.map((item) => (
-                          <li
-                            key={item}
-                            className="flex items-start gap-2 text-xs text-slate-600 dark:text-gray-300"
+                      <button
+                        type="button"
+                        aria-pressed={isSelected}
+                        onClick={() => handleCategoryCardClick(category.id)}
+                        className="w-full text-left space-y-3.5 rounded-xl cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div
+                            className={`w-11 h-11 rounded-xl flex items-center justify-center border transition-colors ${
+                              isSelected
+                                ? 'bg-[#0D9488] border-[#0D9488] text-white'
+                                : 'bg-teal-50 dark:bg-teal-500/15 border-[#0D9488]/20 dark:border-teal-400/30 text-[#0D9488] dark:text-teal-300 group-hover:bg-[#0D9488] group-hover:text-white'
+                            }`}
                           >
-                            <CheckCircle2
-                              className="w-3.5 h-3.5 text-[#0D9488] dark:text-teal-400 shrink-0 mt-0.5"
-                              aria-hidden="true"
-                            />
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
+                            <Icon className="w-5 h-5" aria-hidden="true" />
+                          </div>
+                          <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-white dark:bg-gray-900/80 text-slate-600 dark:text-gray-300 border border-slate-200/80 dark:border-gray-700">
+                            {faqCount} {faqCount === 1 ? 'FAQ' : 'FAQs'}
+                          </span>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <h3 className="font-bold text-base text-slate-900 dark:text-gray-100 group-hover:text-[#0F766E] dark:group-hover:text-teal-200 transition-colors">
+                            {category.title}
+                          </h3>
+                          <p className="text-xs text-slate-600 dark:text-gray-300 leading-relaxed text-justify">
+                            {category.description}
+                          </p>
+                        </div>
+                      </button>
+
+                      {/* Collapsible native disclosure for sub-topics */}
+                      <details className="group/details rounded-xl bg-white/80 dark:bg-gray-900/55 border border-slate-200/80 dark:border-gray-700/75 px-3 py-2">
+                        <summary className="list-none [&::-webkit-details-marker]:hidden flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-gray-200 cursor-pointer select-none rounded-lg py-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400">
+                          <ChevronRight
+                            className="w-3.5 h-3.5 text-[#0D9488] dark:text-teal-400 shrink-0 transition-transform duration-200 motion-reduce:transition-none group-open/details:rotate-90"
+                            aria-hidden="true"
+                          />
+                          <span>Included topics ({category.highlights.length})</span>
+                        </summary>
+                        <ul className="space-y-1.5 pt-2.5 mt-2 border-t border-slate-200/70 dark:border-gray-700/70">
+                          {category.highlights.map((item) => (
+                            <li
+                              key={item}
+                              className="flex items-start gap-2 text-xs text-slate-600 dark:text-gray-300"
+                            >
+                              <CheckCircle2
+                                className="w-3.5 h-3.5 text-[#0D9488] dark:text-teal-400 shrink-0 mt-0.5"
+                                aria-hidden="true"
+                              />
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
                     </div>
 
-                    <div className="pt-3 border-t border-slate-200/70 dark:border-gray-700/70 flex items-center justify-between text-xs font-semibold text-[#0F766E] dark:text-teal-300">
+                    <button
+                      type="button"
+                      onClick={() => handleCategoryCardClick(category.id)}
+                      className="w-full pt-3 border-t border-slate-200/70 dark:border-gray-700/70 flex items-center justify-between text-xs font-semibold text-[#0F766E] dark:text-teal-300 cursor-pointer rounded-b-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400"
+                    >
                       <span>{isSelected ? 'Viewing topic' : 'View topic answers'}</span>
                       <ArrowRight
                         className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transform-none"
                         aria-hidden="true"
                       />
-                    </div>
-                  </button>
+                    </button>
+                  </article>
                 );
               })}
             </div>
