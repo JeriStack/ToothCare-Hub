@@ -29,7 +29,7 @@ A responsive web-based dental appointment and clinic management system. ToothCar
 | Layer | Technology | Implementation Status |
 |---|---|---|
 | **Frontend** | React 18, Vite 8 (Rolldown), Tailwind CSS 3, Lucide React, React Router 7, Socket.IO Client | Full SPA with Light/Dark theme system, role-based portals, appointment search/filtering, operational reports, and live real-time notifications |
-| **Backend API** | Native PHP (`^8.5`, `8.5.12-fpm-alpine3.24`), Composer, PDO | 55 OpenAPI-documented `/api/v1/*` routes covering auth, DRBAC, scheduling, appointments, treatment records, dashboards, reports, audit trail, and operational views |
+| **Backend API** | Native PHP (`^8.5`, `8.5.12-fpm-alpine3.24`), Composer, PDO, `zircote/swagger-php` | 105 OpenAPI 3.0.3-documented `/api/v1/*` paths (138 operations) generated from PHP 8 attributes (`docs/openapi.yaml`), local/dev Swagger UI (`/api/v1/docs`, `/api-docs`), and full API guides (`docs/api/README.md`) |
 | **Database** | MySQL 8.x (`InnoDB`, `utf8mb4`) | 32 ordered SQL migrations (`001`–`032`), transaction-safe row locking, persistent `toothcare_mysql_data` volume, and composite reporting/search indexes |
 | **Email Worker** | PHPMailer (`^6.9`) over SMTP + transactional `email_outbox` | Outbox worker (`backend/bin/email-worker.php`) & reminder scheduler (`backend/bin/schedule-reminders.php`) with encrypted payloads and retry policy |
 | **Real-Time** | Node.js (`24-alpine`) + TypeScript + Socket.IO (`^4.8.1`) | Authenticated WebSocket service (`realtime/`) with short-lived hashed tickets, HMAC-SHA256 internal publisher/revocation, and `realtime_outbox` worker |

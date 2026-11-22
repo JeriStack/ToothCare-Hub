@@ -16,6 +16,7 @@ use App\Controllers\DentistTimeOffController;
 use App\Controllers\HealthController;
 use App\Controllers\MetricsController;
 use App\Controllers\NotificationController;
+use App\Controllers\OpenApiDocsController;
 use App\Controllers\PatientController;
 use App\Controllers\RealtimeController;
 use App\Controllers\ReceptionistController;
@@ -46,6 +47,10 @@ $router->group('/api/v1', function (Router $r): void {
     // 1. Health & Liveness
     $r->get('/health', [HealthController::class, 'check']);
     $r->get('/metrics', [MetricsController::class, 'metrics']);
+
+    // Local/Development API Documentation (disabled with 404 in production)
+    $r->get('/docs', [OpenApiDocsController::class, 'ui']);
+    $r->get('/docs/openapi.yaml', [OpenApiDocsController::class, 'spec']);
 
     // 2. Authentication & Account Security (Phase 7)
     $r->post('/auth/register', [AuthController::class, 'register']);

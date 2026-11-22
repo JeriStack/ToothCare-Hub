@@ -7,11 +7,11 @@
 | [`setup/`](setup/) | Environment configuration, local development, Docker, Git workflow |
 | [`design/`](design/) | Design system, wireframes, user journeys, route map, UI/UX guidelines |
 | [`database/`](database/) | Data dictionary, ERD, schema design, concurrency, audits |
-| [`api/`](api/) | API contract, authentication and CSRF, CORS, error codes |
+| [`api/`](api/) | OpenAPI 3.0.3 guides ([`api/README.md`](api/README.md)), authentication & CSRF, RBAC/DRBAC, error handling, pagination, appointment workflows, curl examples, Postman collection |
 | [`security/`](security/) | Security checklist and authentication documentation |
 | [`modules/`](modules/) | Admin, scheduling, booking, patient portal, dentist portal, administrator control center, email notifications (Phase 13) |
 | [`phase-14/`](phase-14/) | Real-time notifications with Node.js and Socket.IO (architecture, security, event contract, recovery, Docker, testing, troubleshooting) |
 | [`operations/`](operations/) | Database backup and disaster recovery, observability runbook |
 | [`implementation/`](implementation/) | Frontend stage implementation reports |
 
-Other documentation lives next to the code: [`backend/docs/`](../backend/docs/) (OpenAPI), [`database/README.md`](../database/README.md), [`docker/README.md`](../docker/README.md), [`monitoring/README.md`](../monitoring/README.md), [`nginx/README.md`](../nginx/README.md), [`deployment/README.md`](../deployment/README.md).
+Other documentation lives next to the code: [`docs/openapi.yaml`](openapi.yaml) (canonical OpenAPI 3.0.3 spec), [`database/README.md`](../database/README.md), [`docker/README.md`](../docker/README.md), [`monitoring/README.md`](../monitoring/README.md), [`nginx/README.md`](../nginx/README.md), [`deployment/README.md`](../deployment/README.md).

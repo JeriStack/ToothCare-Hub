@@ -39,19 +39,30 @@ class Phase16ApiContractTest extends TestCase
 
     public function testOpenApiSpecificationContainsRequiredPathsSchemasAndExcludesInternalRoutes(): void
     {
-        $specPath = realpath(dirname(__DIR__, 2) . '/openapi/openapi.yaml');
-        $this->assertNotFalse($specPath);
-        $this->assertFileExists($specPath);
+        $canonicalPath = realpath(dirname(__DIR__, 3) . '/docs/openapi.yaml');
+        $mirrorPath = realpath(dirname(__DIR__, 2) . '/openapi/openapi.yaml');
+        $this->assertNotFalse($canonicalPath);
+        $this->assertNotFalse($mirrorPath);
+        $this->assertFileExists($canonicalPath);
+        $this->assertFileExists($mirrorPath);
 
-        $raw = file_get_contents($specPath);
+        $raw = file_get_contents($canonicalPath);
+        $mirrorRaw = file_get_contents($mirrorPath);
         $this->assertNotFalse($raw);
+        $this->assertNotFalse($mirrorRaw);
+        $this->assertSame(
+            str_replace("\r\n", "\n", $raw),
+            str_replace("\r\n", "\n", $mirrorRaw),
+            'docs/openapi.yaml and backend/openapi/openapi.yaml must remain identical'
+        );
+
         $spec = Yaml::parse($raw);
         $this->assertStringStartsWith('3.', (string) ($spec['openapi'] ?? ''));
 
         $paths = array_keys($spec['paths'] ?? []);
-        $this->assertGreaterThanOrEqual(55, count($paths));
+        $this->assertGreaterThanOrEqual(105, count($paths));
 
-        // Verify key Phase 14 & Phase 15 endpoints are documented
+        // Verify key Phase 14, 15, & 17 endpoints are documented
         foreach ([
             '/health',
             '/auth/login',
@@ -73,6 +84,62 @@ class Phase16ApiContractTest extends TestCase
         // Internal service-to-service routes MUST NOT be exposed as public OpenAPI endpoints
         foreach ($paths as $path) {
             $this->assertStringNotContainsString('/internal/', $path, "Internal route leaked into OpenAPI spec: {$path}");
+        }
+    }
+
+    public function testSwaggerUiAndSpecEndpointsWorkInTestingAndAreBlockedInProduction(): void
+    {
+        // Allowed in non-production (testing/development)
+        $uiRes = $this->app->handle(Request::create('GET', '/api/v1/docs'));
+        $this->assertSame(200, $uiRes->getStatusCode());
+        $this->assertStringContainsString('SwaggerUIBundle', $uiRes->getBody());
+        $this->assertStringContainsString('/api/v1/docs/openapi.yaml', $uiRes->getBody());
+
+        $specRes = $this->app->handle(Request::create('GET', '/api/v1/docs/openapi.yaml'));
+        $this->assertSame(200, $specRes->getStatusCode());
+        $this->assertStringContainsString('openapi: 3.0.3', $specRes->getBody());
+
+        // Blocked with 404 in production unless explicitly enabled + authenticated ADMIN
+        $prevAppEnv = getenv('APP_ENV');
+        $prevEnvArray = $_ENV['APP_ENV'] ?? null;
+        $prevServerArray = $_SERVER['APP_ENV'] ?? null;
+        $prevSwagger = getenv('SWAGGER_UI_ENABLED');
+        putenv('APP_ENV=production');
+        $_ENV['APP_ENV'] = 'production';
+        $_SERVER['APP_ENV'] = 'production';
+        putenv('SWAGGER_UI_ENABLED=false');
+        \App\Core\Config::setInstance(null);
+        try {
+            $prodApp = new Application(null, false);
+            $prodUi = $prodApp->handle(Request::create('GET', '/api/v1/docs'));
+            $this->assertSame(404, $prodUi->getStatusCode());
+
+            $prodSpec = $prodApp->handle(Request::create('GET', '/api/v1/docs/openapi.yaml'));
+            $this->assertSame(404, $prodSpec->getStatusCode());
+
+            // Even when SWAGGER_UI_ENABLED=true in production, only authenticated ADMIN is allowed
+            putenv('SWAGGER_UI_ENABLED=true');
+            $patReq = Request::create('GET', '/api/v1/docs');
+            $patReq->setUser($this->patientUser);
+            $this->assertSame(404, $prodApp->handle($patReq)->getStatusCode());
+
+            $adminReq = Request::create('GET', '/api/v1/docs');
+            $adminReq->setUser($this->adminUser);
+            $this->assertSame(200, $prodApp->handle($adminReq)->getStatusCode());
+        } finally {
+            putenv($prevAppEnv === false ? 'APP_ENV' : "APP_ENV={$prevAppEnv}");
+            if ($prevEnvArray === null) {
+                unset($_ENV['APP_ENV']);
+            } else {
+                $_ENV['APP_ENV'] = $prevEnvArray;
+            }
+            if ($prevServerArray === null) {
+                unset($_SERVER['APP_ENV']);
+            } else {
+                $_SERVER['APP_ENV'] = $prevServerArray;
+            }
+            putenv($prevSwagger === false ? 'SWAGGER_UI_ENABLED' : "SWAGGER_UI_ENABLED={$prevSwagger}");
+            \App\Core\Config::setInstance(null);
         }
     }
 

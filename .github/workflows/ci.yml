@@ -85,9 +85,11 @@ jobs:
           php -r 'require "vendor/autoload.php"; $r = App\Services\Realtime\RealtimeConfig::fromEnvironment(); if (!$r->isValid()) { fwrite(STDERR, implode("\n", $r->errors)); exit(1); } echo "realtime settings valid\n";'
           php -r 'require "vendor/autoload.php"; foreach (App\Services\Email\EmailTemplateRenderer::TEMPLATES as $t) { if (!(new App\Services\Email\EmailTemplateRenderer(App\Services\Email\EmailTemplateRenderer::defaultTemplateDir()))->has($t)) { fwrite(STDERR, "missing template $t\n"); exit(1); } } echo "all email templates present\n";'
 
-      - name: Validate OpenAPI spec
+      - name: Verify OpenAPI spec is up to date & valid (Phase 17)
         working-directory: backend
-        run: php scripts/validate-openapi.php
+        run: |
+          composer openapi:check
+          composer openapi:validate
 
   migrations:
     name: Database migrations (MySQL 8.0)
