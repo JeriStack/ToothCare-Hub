@@ -1,0 +1,104 @@
+# =============================================================================
+# ToothCare Hub — Isolated Staging Environment Compose Overrides (Phase 21)
+# Usage:
+#   IMAGE_REGISTRY=ghcr.io/your-org IMAGE_TAG=<commit-sha> \
+#     docker compose -f compose.yaml -f compose.prod.yaml -f compose.staging.yaml up -d --no-build
+#
+# Staging Isolation Guarantees:
+#   - Separate named volumes (never shared with dev or production)
+#   - Pulls immutable pre-built CI images (never rebuilds on staging server)
+#   - Routes all outbound emails to isolated Mailpit test sink (never emails real patients)
+#   - Loopback-restricted Prometheus (9090), Grafana (3001), and Mailpit UI (8025)
+# =============================================================================
+
+services:
+  nginx:
+    image: ${IMAGE_REGISTRY:-ghcr.io/toothcare-hub}/toothcare-frontend:${IMAGE_TAG:?IMAGE_TAG is required}
+    pull_policy: always
+    environment:
+      APP_ENV: "staging"
+
+  php-fpm:
+    image: ${IMAGE_REGISTRY:-ghcr.io/toothcare-hub}/toothcare-backend:${IMAGE_TAG:?IMAGE_TAG is required}
+    pull_policy: always
+    environment:
+      APP_ENV: "staging"
+      APP_DEBUG: "false"
+      MAIL_ENABLED: "true"
+      MAIL_HOST: "mailpit"
+      MAIL_PORT: "1025"
+      MAIL_ENCRYPTION: "none"
+      MAIL_USERNAME: ""
+      MAIL_PASSWORD: ""
+
+  realtime:
+    image: ${IMAGE_REGISTRY:-ghcr.io/toothcare-hub}/toothcare-realtime:${IMAGE_TAG:?IMAGE_TAG is required}
+    pull_policy: always
+    environment:
+      NODE_ENV: "production"
+
+  realtime-worker:
+    image: ${IMAGE_REGISTRY:-ghcr.io/toothcare-hub}/toothcare-backend:${IMAGE_TAG:?IMAGE_TAG is required}
+    pull_policy: always
+    environment:
+      APP_ENV: "staging"
+      APP_DEBUG: "false"
+
+  email-worker:
+    image: ${IMAGE_REGISTRY:-ghcr.io/toothcare-hub}/toothcare-backend:${IMAGE_TAG:?IMAGE_TAG is required}
+    pull_policy: always
+    environment:
+      APP_ENV: "staging"
+      APP_DEBUG: "false"
+      MAIL_ENABLED: "true"
+      MAIL_HOST: "mailpit"
+      MAIL_PORT: "1025"
+      MAIL_ENCRYPTION: "none"
+      MAIL_USERNAME: ""
+      MAIL_PASSWORD: ""
+
+  reminder-scheduler:
+    image: ${IMAGE_REGISTRY:-ghcr.io/toothcare-hub}/toothcare-backend:${IMAGE_TAG:?IMAGE_TAG is required}
+    pull_policy: always
+    environment:
+      APP_ENV: "staging"
+      APP_DEBUG: "false"
+
+  db-backup:
+    image: ${IMAGE_REGISTRY:-ghcr.io/toothcare-hub}/toothcare-backend:${IMAGE_TAG:?IMAGE_TAG is required}
+    pull_policy: always
+
+  # Controlled staging SMTP sink: captures all staging emails so real patients are never emailed
+  mailpit:
+    image: axllent/mailpit:v1.22
+    container_name: toothcare-staging-mailpit
+    ports:
+      - "127.0.0.1:${MAILPIT_WEB_PORT:-8025}:8025"
+    networks:
+      - app
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+    healthcheck:
+      test: ["CMD-SHELL", "/mailpit readyz || exit 1"]
+      interval: 15s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+    restart: always
+
+volumes:
+  mysql-data:
+    name: toothcare_staging_mysql_data
+  backend-storage:
+    name: toothcare_staging_backend_storage
+  prometheus-data:
+    name: toothcare_staging_prometheus_data
+  grafana-data:
+    name: toothcare_staging_grafana_data

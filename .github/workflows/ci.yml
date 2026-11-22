@@ -23,11 +23,13 @@ jobs:
           cp frontend/.env.example frontend/.env
           cp realtime/.env.example realtime/.env
 
-      - name: Validate Docker Compose Configurations
+      - name: Validate Docker Compose Configurations & Deployment Scripts
         run: |
           docker compose -f compose.yaml -f compose.dev.yaml config -q
           docker compose -f compose.yaml -f compose.prod.yaml config -q
+          IMAGE_TAG=ci-check docker compose -f compose.yaml -f compose.prod.yaml -f compose.staging.yaml config -q
           docker compose --profile monitoring -f compose.yaml -f compose.dev.yaml config -q
+          bash -n deployment/scripts/deploy.sh deployment/scripts/health-check.sh deployment/scripts/rollback.sh
 
       - name: Validate Prometheus & Grafana Monitoring Configurations (Phase 19)
         run: |

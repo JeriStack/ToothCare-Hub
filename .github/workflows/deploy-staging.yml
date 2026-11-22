@@ -1,0 +1,153 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches: [staging, develop]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      deploy_to_host:
+        description: "Deploy built images to configured staging host via SSH (requires staging env secrets)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    name: Build, Scan & Publish Immutable Release Images
+    runs-on: ubuntu-26.04
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+      commit_sha: ${{ steps.meta.outputs.sha }}
+      registry_prefix: ${{ steps.meta.outputs.registry_prefix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Compute immutable release metadata
+        id: meta
+        run: |
+          SHA_SHORT="${GITHUB_SHA::12}"
+          REGISTRY_PREFIX="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}"
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF_NAME}"
+          else
+            TAG="sha-${SHA_SHORT}"
+          fi
+          echo "sha=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "registry_prefix=${REGISTRY_PREFIX}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate Compose staging configuration & deployment scripts
+        run: |
+          cp .env.staging.example .env
+          cp backend/.env.example backend/.env
+          cp frontend/.env.example frontend/.env
+          cp realtime/.env.example realtime/.env
+          IMAGE_REGISTRY="${{ steps.meta.outputs.registry_prefix }}" IMAGE_TAG="${{ steps.meta.outputs.tag }}" \
+            docker compose -f compose.yaml -f compose.prod.yaml -f compose.staging.yaml config -q
+          bash -n deployment/scripts/deploy.sh deployment/scripts/health-check.sh deployment/scripts/rollback.sh
+
+      - name: Build immutable release images once
+        run: |
+          PREFIX="${{ steps.meta.outputs.registry_prefix }}"
+          TAG="${{ steps.meta.outputs.tag }}"
+          docker build -f docker/nginx/Dockerfile -t "${PREFIX}/toothcare-frontend:${TAG}" .
+          docker build -f docker/php/Dockerfile -t "${PREFIX}/toothcare-backend:${TAG}" ./backend
+          docker build -f realtime/Dockerfile -t "${PREFIX}/toothcare-realtime:${TAG}" ./realtime
+
+      - name: Validate production Nginx config inside built image
+        run: |
+          docker run --rm --add-host=php-fpm:127.0.0.1 --add-host=realtime:127.0.0.1 \
+            --entrypoint nginx "${{ steps.meta.outputs.registry_prefix }}/toothcare-frontend:${{ steps.meta.outputs.tag }}" -t
+
+      - name: Scan release images with Trivy (block on CRITICAL)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: "${{ steps.meta.outputs.registry_prefix }}/toothcare-frontend:${{ steps.meta.outputs.tag }}"
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push immutable images & record digests
+        run: |
+          PREFIX="${{ steps.meta.outputs.registry_prefix }}"
+          TAG="${{ steps.meta.outputs.tag }}"
+          docker push "${PREFIX}/toothcare-frontend:${TAG}"
+          docker push "${PREFIX}/toothcare-backend:${TAG}"
+          docker push "${PREFIX}/toothcare-realtime:${TAG}"
+
+          FRONTEND_DIGEST="$(docker inspect --format='{{index .RepoDigests 0}}' "${PREFIX}/toothcare-frontend:${TAG}")"
+          BACKEND_DIGEST="$(docker inspect --format='{{index .RepoDigests 0}}' "${PREFIX}/toothcare-backend:${TAG}")"
+          REALTIME_DIGEST="$(docker inspect --format='{{index .RepoDigests 0}}' "${PREFIX}/toothcare-realtime:${TAG}")"
+
+          cat <<EOF > release-manifest.json
+          {
+            "commit_sha": "${{ steps.meta.outputs.sha }}",
+            "image_tag": "${TAG}",
+            "built_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "images": {
+              "frontend": "${FRONTEND_DIGEST}",
+              "backend": "${BACKEND_DIGEST}",
+              "realtime": "${REALTIME_DIGEST}"
+            }
+          }
+          EOF
+          cat release-manifest.json
+
+      - name: Upload release manifest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-manifest-${{ steps.meta.outputs.tag }}
+          path: release-manifest.json
+          retention-days: 30
+
+  deploy-staging:
+    name: Deploy Immutable Images to Staging Environment
+    needs: build-and-publish
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.deploy_to_host == true }}
+    runs-on: ubuntu-26.04
+    environment: staging
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Deploy to staging host over SSH (when hosting secrets are configured)
+        env:
+          STAGING_SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          STAGING_SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          STAGING_APP_DIR: ${{ secrets.STAGING_APP_DIR }}
+          IMAGE_REGISTRY: ${{ needs.build-and-publish.outputs.registry_prefix }}
+          IMAGE_TAG: ${{ needs.build-and-publish.outputs.image_tag }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: |
+          if [ -z "${STAGING_SSH_HOST}" ] || [ -z "${STAGING_SSH_USER}" ] || [ -z "${STAGING_SSH_KEY}" ]; then
+            echo "STAGING DEPLOY SKIPPED: Configure STAGING_SSH_HOST, STAGING_SSH_USER, STAGING_SSH_KEY, and STAGING_APP_DIR in the 'staging' GitHub Environment to enable live host deployment."
+            exit 0
+          fi
+
+          mkdir -p ~/.ssh
+          printf '%s\n' "${STAGING_SSH_KEY}" > ~/.ssh/staging_deploy_key
+          chmod 600 ~/.ssh/staging_deploy_key
+          ssh-keyscan -H "${STAGING_SSH_HOST}" >> ~/.ssh/known_hosts
+
+          ssh -i ~/.ssh/staging_deploy_key "${STAGING_SSH_USER}@${STAGING_SSH_HOST}" \
+            "cd '${STAGING_APP_DIR:-/opt/toothcare-staging}' && \
+             echo '${GHCR_TOKEN}' | docker login ghcr.io -u '${GHCR_USER}' --password-stdin && \
+             DEPLOY_ENV=staging IMAGE_REGISTRY='${IMAGE_REGISTRY}' IMAGE_TAG='${IMAGE_TAG}' bash deployment/scripts/deploy.sh"

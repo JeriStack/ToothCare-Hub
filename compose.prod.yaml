@@ -17,7 +17,7 @@ services:
     build:
       context: .
       dockerfile: docker/nginx/Dockerfile
-    image: toothcare-frontend:${IMAGE_TAG:-v1.0.0}
+    image: ${IMAGE_REGISTRY:-ghcr.io/toothcare-hub}/toothcare-frontend:${IMAGE_TAG:-v1.0.0}
     ports:
       - "80:80"
       - "443:443"
@@ -40,7 +40,7 @@ services:
     restart: always
 
   php-fpm:
-    image: toothcare-backend:${IMAGE_TAG:-v1.0.0}
+    image: ${IMAGE_REGISTRY:-ghcr.io/toothcare-hub}/toothcare-backend:${IMAGE_TAG:-v1.0.0}
     environment:
       APP_DEBUG: "false"
       APP_ENV: "production"
@@ -72,7 +72,7 @@ services:
     restart: always
 
   realtime:
-    image: toothcare-realtime:${IMAGE_TAG:-v1.0.0}
+    image: ${IMAGE_REGISTRY:-ghcr.io/toothcare-hub}/toothcare-realtime:${IMAGE_TAG:-v1.0.0}
     environment:
       NODE_ENV: "production"
     read_only: true
@@ -90,7 +90,7 @@ services:
     restart: always
 
   realtime-worker:
-    image: toothcare-backend:${IMAGE_TAG:-v1.0.0}
+    image: ${IMAGE_REGISTRY:-ghcr.io/toothcare-hub}/toothcare-backend:${IMAGE_TAG:-v1.0.0}
     user: "www-data:www-data"
     environment:
       APP_DEBUG: "false"
@@ -107,7 +107,7 @@ services:
     restart: always
 
   email-worker:
-    image: toothcare-backend:${IMAGE_TAG:-v1.0.0}
+    image: ${IMAGE_REGISTRY:-ghcr.io/toothcare-hub}/toothcare-backend:${IMAGE_TAG:-v1.0.0}
     user: "www-data:www-data"
     environment:
       APP_DEBUG: "false"
@@ -124,7 +124,7 @@ services:
     restart: always
 
   reminder-scheduler:
-    image: toothcare-backend:${IMAGE_TAG:-v1.0.0}
+    image: ${IMAGE_REGISTRY:-ghcr.io/toothcare-hub}/toothcare-backend:${IMAGE_TAG:-v1.0.0}
     user: "www-data:www-data"
     environment:
       APP_DEBUG: "false"
@@ -141,7 +141,7 @@ services:
     restart: always
 
   db-backup:
-    image: toothcare-backend:${IMAGE_TAG:-v1.0.0}
+    image: ${IMAGE_REGISTRY:-ghcr.io/toothcare-hub}/toothcare-backend:${IMAGE_TAG:-v1.0.0}
     security_opt:
       - no-new-privileges:true
     cap_drop:

@@ -5,9 +5,9 @@ This directory contains deployment automation scripts and server configuration t
 ## Contents
 
 - `apache/virtual-host.example.conf` — Example Apache VirtualHost configuration pointing `DocumentRoot` strictly to `backend/public` for non-Docker local/XAMPP fallback environments.
-- `scripts/deploy.sh` — Controlled release deployment script (to be implemented in Phase 20/21).
-- `scripts/rollback.sh` — Application image rollback script (to be implemented in Phase 20/21; database recovery is handled separately to prevent accidental data loss).
-- `scripts/health-check.sh` — Post-deployment smoke and readiness check script across Nginx, PHP API (`/api/v1/health`), and real-time services.
+- `scripts/deploy.sh` — Controlled immutable release deployment script (pulls pre-built images, runs pre-migration backup in prod, applies controlled migrations, starts containers with `--no-build`, and runs health checks).
+- `scripts/rollback.sh` — Application-only image rollback script using `.last_known_good_release` or an explicit immutable tag (database recovery is handled separately in `docs/phase-21/database-recovery.md`).
+- `scripts/health-check.sh` — Post-deployment smoke and readiness check script across Nginx, SPA routing, PHP API (`/api/v1/health`, `/services`, `/dentists`), edge `403` blocks, and optional synthetic staging login.
 
 ## Security Rules
 
