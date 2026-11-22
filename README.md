@@ -163,12 +163,26 @@ ToothCare-Hub/
 
 ## Quick Start
 
-### 1. Prerequisites
+<details>
+<summary><strong>1. Prerequisites</strong></summary>
+
+<div align="justify">
+
+Ensure the following core tooling is installed before running ToothCare Hub locally. Docker Compose v2 is recommended for running the full multi-service stack, while direct host CLIs are optional for running backend, frontend, or realtime test suites outside containers.
+
 - **Git** `2.40+` · **Docker Engine / Docker Desktop** with **Compose v2**
 - **Direct Host CLI (optional):** PHP `8.5+` (`pdo`, `pdo_mysql`, `openssl`, `mbstring`, `json`, `curl`, `fileinfo`), Composer `2.x`, Node.js `24 LTS`, npm `10+`
 
-### 2. Configure Environment Templates
-All `.env.example` files contain safe placeholders only. Copy them locally before starting services *(never commit real `.env` files or place secrets in `frontend/.env`)*:
+</div>
+
+</details>
+
+<details>
+<summary><strong>2. Configure Environment Templates</strong></summary>
+
+<p align="justify">
+All <code>.env.example</code> files contain safe placeholders only. Copy them locally before starting services, and populate local credentials as needed <em>(never commit real <code>.env</code> files or place secrets in <code>frontend/.env</code>)</em>:
+</p>
 
 ```powershell
 Copy-Item .env.example .env
@@ -177,7 +191,14 @@ Copy-Item frontend/.env.example frontend/.env
 Copy-Item realtime/.env.example realtime/.env
 ```
 
-### 3. Start the Stack (Docker Compose v2)
+</details>
+
+<details>
+<summary><strong>3. Start the Stack (Docker Compose v2)</strong></summary>
+
+<p align="justify">
+Launch the complete local development stack (Nginx edge proxy, PHP-FPM API, MySQL 8, Node.js Socket.IO realtime service, and background workers) using the base and development Compose files. Optional monitoring profiles can be enabled at any time without modifying persistent database volumes:
+</p>
 
 ```powershell
 # Start full local development stack (Nginx, PHP-FPM, MySQL 8, Realtime, Workers)
@@ -190,8 +211,14 @@ docker compose --profile monitoring -f compose.yaml -f compose.dev.yaml up -d
 docker compose -f compose.yaml -f compose.dev.yaml down
 ```
 
+</details>
+
 <details>
 <summary><strong>More Docker &amp; Production Compose Commands</strong></summary>
+
+<p align="justify">
+Use the commands below to validate Compose configurations, inspect running container health and logs, verify Nginx syntax, or rebuild individual services without restarting the rest of the stack:
+</p>
 
 ```powershell
 # Validate development and hardened production Compose configurations
