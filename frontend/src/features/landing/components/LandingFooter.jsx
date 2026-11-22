@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowUp, ShieldCheck, X } from 'lucide-react';
-
+
+
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
   const [legalModal, setLegalModal] = useState(null); // 'privacy' | 'terms' | null
@@ -10,11 +11,11 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
   };
 
   return (
-    <footer className="bg-slate-900 text-slate-300 border-t border-slate-800">
+    <footer className="landing-deferred-section bg-slate-900 text-slate-300 border-t border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 space-y-12">
         
         {/* Top Grid */}
-        <div className="landing-reveal grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 text-center">
+        <div data-reveal="footer" className="landing-reveal grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 text-center">
           
           {/* Brand Info */}
           <div className="md:col-span-2 lg:col-span-2 space-y-4 flex flex-col items-center text-center">
@@ -23,6 +24,10 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
                 <img
                   src="/images/logo-icon.png"
                   alt="ToothCare Hub Logo"
+                  width="40"
+                  height="40"
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-contain"
                 />
               </div>

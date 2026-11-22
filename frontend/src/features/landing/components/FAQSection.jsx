@@ -36,7 +36,7 @@ export function FAQSection() {
   };
 
   return (
-    <section className="py-20 bg-slate-50/60 dark:bg-gray-950/60 border-t border-slate-100 dark:border-gray-800">
+    <section className="landing-deferred-section py-20 bg-slate-50/60 dark:bg-gray-950/60 border-t border-slate-100 dark:border-gray-800">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
         
         <div className="landing-reveal text-center space-y-3">
@@ -54,6 +54,7 @@ export function FAQSection() {
             return (
               <div
                 key={idx}
+                data-reveal="up"
                 style={{ '--reveal-index': idx % 4 }}
                 className="landing-reveal bg-white dark:bg-gray-800 border border-slate-200/80 dark:border-gray-700 rounded-2xl overflow-hidden transition-colors shadow-xs"
               >

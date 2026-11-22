@@ -5,6 +5,8 @@ import { LandingNavbar } from '../../features/landing/components/LandingNavbar';
 import { FAQSection } from '../../features/landing/components/FAQSection';
 import { HowItWorksSection } from '../../features/landing/components/HowItWorksSection';
 import { BookingCTA } from '../../features/landing/components/BookingCTA';
+import { HeroSection } from '../../features/landing/components/HeroSection';
+import { LandingFooter } from '../../features/landing/components/LandingFooter';
 import { useScrollReveal } from '../../features/landing/hooks/useScrollReveal';
 
 vi.mock('../../features/auth', () => ({
@@ -179,5 +181,23 @@ describe('Landing Page Animations', () => {
     expect(ctaContainer.querySelector('.landing-parallax-scope')).toBeInTheDocument();
     expect(ctaContainer.querySelectorAll('.landing-parallax-layer').length).toBeGreaterThanOrEqual(2);
     expect(ctaContainer.querySelector('.landing-cta-shine')).toBeInTheDocument();
+  });
+
+  it('applies LCP fetchpriority on hero image and lazy/deferred rendering on below-the-fold sections', () => {
+    const { container: heroContainer } = render(
+      <HeroSection onBookAppointment={vi.fn()} onExploreServices={vi.fn()} />
+    );
+    const heroImg = heroContainer.querySelector('img[src="/images/hero-dentist-photo.jpg"]');
+    expect(heroImg).toBeInTheDocument();
+    expect(heroImg).toHaveAttribute('fetchpriority', 'high');
+    expect(heroImg).not.toHaveAttribute('loading', 'lazy');
+
+    const { container: footerContainer } = render(
+      <LandingFooter onLogin={vi.fn()} onBookAppointment={vi.fn()} onAdminLogin={vi.fn()} />
+    );
+    expect(footerContainer.querySelector('footer')).toHaveClass('landing-deferred-section');
+    const footerLogo = footerContainer.querySelector('img[src="/images/logo-icon.png"]');
+    expect(footerLogo).toHaveAttribute('loading', 'lazy');
+    expect(footerLogo).not.toHaveAttribute('fetchpriority');
   });
 });

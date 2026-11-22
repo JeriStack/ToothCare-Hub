@@ -5,11 +5,11 @@ export function BookingCTA({ onBookAppointment, onLogin }) {
   return (
     <section className="landing-parallax-scope py-20 bg-slate-50/70 dark:bg-gray-950/70">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div data-reveal="scale" className="landing-reveal relative rounded-3xl bg-gradient-to-br from-[#12304A] via-[#0B1D2D] to-[#12304A] dark:from-slate-900 dark:via-[#0B1D2D] dark:to-slate-900 text-white p-8 sm:p-14 overflow-hidden shadow-2xl shadow-slate-900/10 dark:shadow-slate-950/60 border border-slate-800 text-center space-y-8">
+        <div data-reveal="scale" className="landing-reveal relative rounded-3xl bg-gradient-to-br from-[#12304A] via-[#0B1D2D] to-[#12304A] dark:from-slate-900 dark:via-[#0B1D2D] dark:to-slate-900 text-white p-8 sm:p-14 overflow-clip shadow-2xl shadow-slate-900/10 dark:shadow-slate-950/60 border border-slate-800 text-center space-y-8">
           
           {/* Subtle Decorative Background Rings with opposing scroll parallax */}
-          <div className="landing-parallax-layer absolute -top-24 -right-24 w-96 h-96 rounded-full border border-white/10 pointer-events-none" style={{ '--parallax-offset': '56px' }} aria-hidden="true" />
-          <div className="landing-parallax-layer absolute -bottom-24 -left-24 w-96 h-96 rounded-full border border-teal-400/15 pointer-events-none" style={{ '--parallax-offset': '-56px' }} aria-hidden="true" />
+          <div className="landing-parallax-layer absolute -top-24 -right-24 w-96 h-96 rounded-full border border-white/15 pointer-events-none" style={{ '--parallax-offset': '96px' }} aria-hidden="true" />
+          <div className="landing-parallax-layer absolute -bottom-24 -left-24 w-96 h-96 rounded-full border border-teal-400/25 pointer-events-none" style={{ '--parallax-offset': '-96px' }} aria-hidden="true" />
 
           {/* Content */}
           <div className="max-w-2xl mx-auto space-y-4 relative z-10">

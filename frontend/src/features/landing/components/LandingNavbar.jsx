@@ -25,6 +25,7 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
   const headerRef = useRef(null);
   const mobileToggleRef = useRef(null);
   const linkRefs = useRef({});
+  const sectionElsRef = useRef({});
   const progressRef = useRef(null);
   const scrollLockRef = useRef({ targetId: null, targetY: 0, until: 0 });
   const [indicator, setIndicator] = useState({ left: 0, width: 0, ready: false });
@@ -64,6 +65,18 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
     };
   }, [mobileMenuOpen]);
 
+  const getSectionEl = useCallback((id) => {
+    const cached = sectionElsRef.current[id];
+    if (cached && cached.isConnected) {
+      return cached;
+    }
+    const found = document.getElementById(id);
+    if (found) {
+      sectionElsRef.current[id] = found;
+    }
+    return found;
+  }, []);
+
   const resolveActiveSection = useCallback(() => {
     const scrollY = window.scrollY || 0;
     if (scrollY <= 24) {
@@ -77,7 +90,7 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
 
     if (isNearBottom) {
       for (let i = NAV_LINKS.length - 1; i >= 0; i -= 1) {
-        if (document.getElementById(NAV_LINKS[i].id)) {
+        if (getSectionEl(NAV_LINKS[i].id)) {
           return NAV_LINKS[i].id;
         }
       }
@@ -85,13 +98,13 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
 
     let currentSection = 'home';
     for (const link of NAV_LINKS) {
-      const el = document.getElementById(link.id);
+      const el = getSectionEl(link.id);
       if (el && el.getBoundingClientRect().top <= SECTION_ACTIVATION_THRESHOLD) {
         currentSection = link.id;
       }
     }
     return currentSection;
-  }, []);
+  }, [getSectionEl]);
 
   const updateIndicator = useCallback(() => {
     const activeEl = linkRefs.current[activeSection];
@@ -248,6 +261,9 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
               <img
                 src="/images/logo-icon.png"
                 alt="ToothCare Hub Emblem"
+                width="40"
+                height="40"
+                decoding="async"
                 className="w-full h-full object-contain"
               />
             </div>
@@ -336,7 +352,7 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
             <button
               type="button"
               onClick={onBookAppointment}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] text-white text-xs font-semibold hover:bg-[#0F766E] dark:hover:bg-[#0D9488] active:bg-[#115E59] shadow-md shadow-teal-900/15 hover:shadow-teal-900/25 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900"
+              className="landing-cta-shine inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] text-white text-xs font-semibold hover:bg-[#0F766E] dark:hover:bg-[#0D9488] active:bg-[#115E59] shadow-md shadow-teal-900/15 hover:shadow-teal-900/25 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900"
             >
               <Calendar className="w-4 h-4" />
               Book Appointment

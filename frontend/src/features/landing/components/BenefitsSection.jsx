@@ -43,7 +43,7 @@ const BENEFITS = [
 export function BenefitsSection() {
   return (
     <section
-      className="py-20 bg-white dark:bg-gray-900 border-t border-slate-100 dark:border-gray-800"
+      className="landing-deferred-section py-20 bg-white dark:bg-gray-900 border-t border-slate-100 dark:border-gray-800"
       aria-labelledby="benefits-heading"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">

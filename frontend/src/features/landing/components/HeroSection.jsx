@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Calendar, ArrowRight, ShieldCheck, Clock, Users, TrendingUp } from 'lucide-react';
 import { Skeleton } from '../../../components/ui/Skeleton';
 
@@ -23,6 +23,14 @@ const TRUST_STATS = [
 
 export function HeroSection({ onBookAppointment, onExploreServices }) {
   const [imageLoaded, setImageLoaded] = useState(false);
+  const heroImgRef = useRef(null);
+
+  useEffect(() => {
+    if (heroImgRef.current?.complete && heroImgRef.current.naturalWidth > 0) {
+      setImageLoaded(true);
+    }
+  }, []);
+
   return (
     <section
       id="home"
@@ -31,12 +39,12 @@ export function HeroSection({ onBookAppointment, onExploreServices }) {
       {/* Background Soft Glow Elements (scroll-linked parallax layers) */}
       <div
         className="landing-parallax-layer absolute top-12 left-1/4 w-96 h-96 bg-teal-100/45 dark:bg-teal-900/25 rounded-full blur-3xl pointer-events-none -z-10"
-        style={{ '--parallax-offset': '64px' }}
+        style={{ '--parallax-offset': '96px' }}
         aria-hidden="true"
       />
       <div
         className="landing-parallax-layer absolute top-24 right-10 w-96 h-96 bg-teal-50/55 dark:bg-sky-900/20 rounded-full blur-3xl pointer-events-none -z-10"
-        style={{ '--parallax-offset': '-48px' }}
+        style={{ '--parallax-offset': '-72px' }}
         aria-hidden="true"
       />
 
@@ -135,17 +143,21 @@ export function HeroSection({ onBookAppointment, onExploreServices }) {
             <div className="relative mx-auto max-w-lg lg:max-w-none">
               
               {/* Asymmetric Organic Decorative Container */}
-              <div className="relative rounded-3xl overflow-hidden shadow-2xl shadow-slate-200/80 dark:shadow-slate-950/70 border border-slate-100 dark:border-gray-700 bg-white dark:bg-gray-800">
+              <div className="relative rounded-3xl overflow-clip shadow-2xl shadow-slate-200/80 dark:shadow-slate-950/70 border border-slate-100 dark:border-gray-700 bg-white dark:bg-gray-800">
                 {!imageLoaded && (
                   <Skeleton className="absolute inset-0 w-full h-[380px] sm:h-[460px] lg:h-[500px] rounded-3xl z-0" />
                 )}
                 <img
+                  ref={heroImgRef}
                   src="/images/hero-dentist-photo.jpg"
                   alt="Dentist consulting with patient and reviewing digital dental X-ray on tablet in modern clinic operatory"
+                  width="1200"
+                  height="800"
+                  fetchpriority="high"
+                  decoding="async"
                   className={`w-full h-[380px] sm:h-[460px] lg:h-[500px] object-cover object-center transition-opacity duration-300 ${
                     imageLoaded ? 'opacity-100' : 'opacity-0'
                   }`}
-                  loading="eager"
                   onLoad={() => setImageLoaded(true)}
                 />
 
@@ -155,7 +167,7 @@ export function HeroSection({ onBookAppointment, onExploreServices }) {
                 {/* Floating Micro-Badge with subtle depth parallax */}
                 <div
                   className="landing-parallax-layer absolute bottom-5 left-5 right-5 sm:right-auto bg-white/95 dark:bg-gray-900/90 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/60 dark:border-gray-700 shadow-lg shadow-slate-900/15 flex items-center gap-3"
-                  style={{ '--parallax-offset': '-18px' }}
+                  style={{ '--parallax-offset': '-28px' }}
                 >
                   <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                     <ShieldCheck className="w-5 h-5" />
@@ -170,7 +182,7 @@ export function HeroSection({ onBookAppointment, onExploreServices }) {
               {/* Decorative Background Accent with opposing parallax */}
               <div
                 className="landing-parallax-layer absolute -top-4 -right-4 -bottom-4 -left-4 rounded-[2.5rem] border border-teal-200/40 dark:border-teal-500/20 -z-10 pointer-events-none"
-                style={{ '--parallax-offset': '24px' }}
+                style={{ '--parallax-offset': '36px' }}
               />
             </div>
           </div>

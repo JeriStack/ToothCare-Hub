@@ -56,7 +56,7 @@ export function HowItWorksSection({ onBookAppointment }) {
         {/* Steps Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-7 relative">
           <div
-            className="landing-line-draw hidden lg:block pointer-events-none absolute top-12 left-[12%] right-[12%] h-px bg-gradient-to-r from-[#0D9488]/20 via-[#0D9488]/60 to-[#0D9488]/20 dark:from-teal-500/20 dark:via-teal-400/60 dark:to-teal-500/20"
+            className="landing-line-draw hidden lg:block pointer-events-none absolute top-12 left-[12%] right-[12%] h-[2px] rounded-full bg-gradient-to-r from-[#0D9488]/25 via-[#0D9488]/75 to-[#0D9488]/25 dark:from-teal-500/25 dark:via-teal-400/75 dark:to-teal-500/25"
             aria-hidden="true"
           />
 
@@ -133,7 +133,7 @@ export function HowItWorksSection({ onBookAppointment }) {
           <button
             type="button"
             onClick={onBookAppointment}
-            className="group inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] dark:hover:bg-teal-500 text-white text-xs sm:text-sm font-semibold shadow-md shadow-teal-900/15 transition-all shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900"
+            className="landing-cta-shine group inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] dark:hover:bg-teal-500 text-white text-xs sm:text-sm font-semibold shadow-md shadow-teal-900/15 transition-all shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900"
           >
             <span>Start Booking Request</span>
             <ArrowRight
