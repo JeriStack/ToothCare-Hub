@@ -18,7 +18,8 @@ RUN composer install \
 # Pinned to PHP 8.5.12 (fixes CVE-2026-109618 / CVE-2026-109619)
 FROM php:8.5.12-fpm-alpine3.24 AS runtime
 
-RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
+RUN apk upgrade --no-cache \
+    && apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
     && docker-php-ext-install pdo_mysql pcntl \
     && apk del .build-deps
 

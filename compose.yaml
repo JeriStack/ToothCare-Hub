@@ -9,7 +9,7 @@ services:
   # 1. Edge Reverse Proxy (Public Entry Point)
   # ---------------------------------------------------------------------------
   nginx:
-    image: nginx:1.27-alpine
+    image: nginx:stable-alpine3.24
     container_name: toothcare-nginx
     depends_on:
       php-fpm:

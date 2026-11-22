@@ -14,7 +14,7 @@ FROM node:24-alpine AS runtime
 
 WORKDIR /app
 ENV NODE_OPTIONS="--dns-result-order=ipv4first"
-RUN chown -R node:node /app
+RUN apk upgrade --no-cache && chown -R node:node /app
 USER node
 
 COPY --chown=node:node package.json package-lock.json ./

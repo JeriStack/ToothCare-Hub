@@ -12,8 +12,10 @@ RUN npm ci --no-audit --no-fund --fetch-retries=5 --fetch-retry-mintimeout=20000
 COPY frontend/ ./
 RUN npm run build && test -f /app/dist/index.html
 
-# Stage 2: Minimal pinned Nginx 1.27 Alpine runtime (no Node.js, no node_modules)
-FROM nginx:1.27-alpine AS runtime
+# Stage 2: Minimal pinned Nginx Stable Alpine 3.24 runtime (no Node.js, no node_modules)
+FROM nginx:stable-alpine3.24 AS runtime
+
+RUN apk upgrade --no-cache
 
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
 COPY nginx/snippets/ /etc/nginx/snippets/
