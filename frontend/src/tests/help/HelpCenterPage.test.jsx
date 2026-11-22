@@ -276,4 +276,43 @@ describe('Public Help Center & Support (/help-support)', () => {
     expect(document.documentElement.classList.contains('dark')).toBe(true);
     expect(window.localStorage.getItem('toothcare_theme')).toBe('dark');
   });
+
+  it('tracks active section indicator on scroll and renders the scroll progress bar', async () => {
+    renderHelpCenter();
+
+    expect(screen.getByTestId('help-scroll-progress')).toHaveClass('landing-scroll-progress');
+
+    const helpNav = screen.getByRole('navigation', { name: 'Help Center Navigation' });
+    const faqsLink = within(helpNav).getByRole('link', { name: 'FAQs' });
+    const guidesLink = within(helpNav).getByRole('link', { name: 'User Guides' });
+
+    // Initially at top: Help & Support is current page, in-page links have no location indicator
+    expect(faqsLink).not.toHaveAttribute('aria-current');
+
+    // Simulate scrolling into the FAQs section
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 700 });
+    const mockRect = (top) => ({
+      top,
+      bottom: top + 500,
+      left: 0,
+      right: 1000,
+      width: 1000,
+      height: 500,
+      x: 0,
+      y: top,
+      toJSON: () => {},
+    });
+    vi.spyOn(document.getElementById('help-hero'), 'getBoundingClientRect').mockReturnValue(mockRect(-700));
+    vi.spyOn(document.getElementById('help-topics'), 'getBoundingClientRect').mockReturnValue(mockRect(-300));
+    vi.spyOn(document.getElementById('help-faq'), 'getBoundingClientRect').mockReturnValue(mockRect(80));
+    vi.spyOn(document.getElementById('help-guides'), 'getBoundingClientRect').mockReturnValue(mockRect(900));
+    vi.spyOn(document.getElementById('help-contact'), 'getBoundingClientRect').mockReturnValue(mockRect(1600));
+
+    fireEvent.scroll(window);
+
+    await waitFor(() => {
+      expect(faqsLink).toHaveAttribute('aria-current', 'location');
+    });
+    expect(guidesLink).not.toHaveAttribute('aria-current');
+  });
 });

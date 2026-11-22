@@ -25,6 +25,7 @@ import {
 import { HelpNavbar } from '../components/HelpNavbar';
 import { HelpAccordionItem } from '../components/HelpAccordionItem';
 import { LandingFooter } from '../../landing/components/LandingFooter';
+import { useScrollReveal } from '../../landing/hooks/useScrollReveal';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import {
   HELP_CATEGORIES,
@@ -65,9 +66,12 @@ export function HelpCenterPage({
   const [activeGuideId, setActiveGuideId] = useState(HELP_GUIDES[0].id);
   const [copiedField, setCopiedField] = useState(null);
 
+  const helpRootRef = useRef(null);
   const searchInputRef = useRef(null);
   const faqSectionRef = useRef(null);
   const copyTimerRef = useRef(null);
+
+  useScrollReveal(helpRootRef);
 
   useEffect(() => {
     window.scrollTo?.({ top: 0, behavior: 'auto' });
@@ -296,7 +300,10 @@ export function HelpCenterPage({
   };
 
   return (
-    <div className="min-h-dvh flex flex-col bg-[#F5F8FA] dark:bg-gray-900 text-slate-800 dark:text-gray-100 font-sans overflow-x-clip selection:bg-[#CCFBF1] selection:text-[#0F766E] dark:selection:bg-teal-900/70 dark:selection:text-teal-100">
+    <div
+      ref={helpRootRef}
+      className="landing-animated-root min-h-dvh flex flex-col bg-[#F5F8FA] dark:bg-gray-900 text-slate-800 dark:text-gray-100 font-sans overflow-x-clip selection:bg-[#CCFBF1] selection:text-[#0F766E] dark:selection:bg-teal-900/70 dark:selection:text-teal-100"
+    >
       <a
         href="#help-main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[#12304A] dark:focus:bg-teal-700 focus:text-white focus:text-xs focus:font-semibold focus:shadow-lg"
@@ -306,23 +313,33 @@ export function HelpCenterPage({
 
       <HelpNavbar
         onNavigateHome={onNavigateHome}
-        onBookAppointment={onBookAppointment}
         onLogin={onLogin}
       />
 
       <main id="help-main-content" className="flex-1">
         {/* Section A — Help Center Hero */}
         <section
+          id="help-hero"
           aria-labelledby="help-hero-heading"
-          className="relative bg-gradient-to-b from-[#F5F8FA] via-white to-white dark:from-gray-950 dark:via-gray-900 dark:to-gray-900 border-b border-slate-200/80 dark:border-gray-800 py-14 sm:py-20"
+          className="relative landing-parallax-scope bg-gradient-to-b from-[#F5F8FA] via-white to-white dark:from-gray-950 dark:via-gray-900 dark:to-gray-900 border-b border-slate-200/80 dark:border-gray-800 py-14 sm:py-20"
         >
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
-            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-teal-50 dark:bg-teal-500/15 border border-[#0D9488]/20 dark:border-teal-400/30 text-[#0F766E] dark:text-teal-300 text-xs font-semibold">
+          {/* Ambient Parallax Glow Orbs */}
+          <div
+            aria-hidden="true"
+            style={{ '--parallax-offset': '32px' }}
+            className="landing-parallax-layer pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-[34rem] h-[18rem] rounded-full bg-teal-400/12 dark:bg-teal-500/12 blur-3xl"
+          />
+
+          <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
+            <span
+              style={{ '--hero-delay': '0ms' }}
+              className="landing-hero-enter inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-teal-50 dark:bg-teal-500/15 border border-[#0D9488]/20 dark:border-teal-400/30 text-[#0F766E] dark:text-teal-300 text-xs font-semibold"
+            >
               <LifeBuoy className="w-3.5 h-3.5" aria-hidden="true" />
               <span>ToothCare Hub Public Help Center</span>
             </span>
 
-            <div className="space-y-3">
+            <div style={{ '--hero-delay': '80ms' }} className="landing-hero-enter space-y-3">
               <h1
                 id="help-hero-heading"
                 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#12304A] dark:text-white tracking-tight leading-tight"
@@ -339,7 +356,8 @@ export function HelpCenterPage({
               role="search"
               aria-label="Search Help Center articles and FAQs"
               onSubmit={handleSearchSubmit}
-              className="max-w-2xl mx-auto pt-2"
+              style={{ '--hero-delay': '160ms' }}
+              className="landing-hero-enter max-w-2xl mx-auto pt-2"
             >
               <label htmlFor="help-center-search" className="sr-only">
                 Search help articles, FAQs, and user guides
@@ -411,7 +429,10 @@ export function HelpCenterPage({
           className="py-14 sm:py-16 bg-white dark:bg-gray-900 border-b border-slate-100 dark:border-gray-800"
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div
+              data-reveal="fade"
+              className="landing-reveal flex flex-col sm:flex-row sm:items-end justify-between gap-4"
+            >
               <div className="space-y-2">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-500/15 border border-[#0D9488]/20 dark:border-teal-400/30 text-[#0F766E] dark:text-teal-300 text-xs font-semibold">
                   <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
@@ -441,7 +462,7 @@ export function HelpCenterPage({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              {HELP_CATEGORIES.map((category) => {
+              {HELP_CATEGORIES.map((category, idx) => {
                 const Icon = CATEGORY_ICONS[category.icon] || LifeBuoy;
                 const isSelected = selectedCategory === category.id;
                 const faqCount = categoryFaqCounts[category.id] || 0;
@@ -449,7 +470,8 @@ export function HelpCenterPage({
                 return (
                   <article
                     key={category.id}
-                    className={`group p-5 sm:p-6 rounded-2xl border transition-all flex flex-col justify-between gap-4 ${
+                    style={{ '--reveal-index': idx }}
+                    className={`landing-reveal landing-card-hover group p-5 sm:p-6 rounded-2xl border flex flex-col justify-between gap-4 ${
                       isSelected
                         ? 'bg-teal-50/75 dark:bg-teal-950/35 border-[#0D9488] dark:border-teal-400 shadow-md shadow-teal-900/10'
                         : 'bg-[#F8FAFC] dark:bg-gray-800/90 border-slate-200/90 dark:border-gray-700/80 hover:border-[#0D9488]/45 dark:hover:border-teal-400/45 hover:bg-white dark:hover:bg-gray-800 hover:shadow-md'
@@ -539,7 +561,10 @@ export function HelpCenterPage({
           className="py-14 sm:py-16 bg-slate-50/70 dark:bg-gray-950/60 border-b border-slate-100 dark:border-gray-800 scroll-mt-20"
         >
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div
+              data-reveal="fade"
+              className="landing-reveal flex flex-col sm:flex-row sm:items-end justify-between gap-4"
+            >
               <div className="space-y-2">
                 <h2
                   id="help-faq-heading"
@@ -649,7 +674,10 @@ export function HelpCenterPage({
           className="py-14 sm:py-16 bg-white dark:bg-gray-900 border-b border-slate-100 dark:border-gray-800 scroll-mt-20"
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div
+              data-reveal="fade"
+              className="landing-reveal flex flex-col sm:flex-row sm:items-end justify-between gap-4"
+            >
               <div className="space-y-2 max-w-2xl">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-500/15 border border-[#0D9488]/20 dark:border-teal-400/30 text-[#0F766E] dark:text-teal-300 text-xs font-semibold">
                   <BookOpen className="w-3.5 h-3.5" aria-hidden="true" />
@@ -694,7 +722,7 @@ export function HelpCenterPage({
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 items-start">
-                {filteredGuides.map((guide) => {
+                {filteredGuides.map((guide, idx) => {
                   const isHighlighted = activeGuideId === guide.id;
                   const isGuideOpen = openGuideIds.has(guide.id);
                   const relatedFaqs = (guide.relatedFaqIds || [])
@@ -705,11 +733,12 @@ export function HelpCenterPage({
                     <article
                       key={guide.id}
                       id={guide.id}
+                      style={{ '--reveal-index': idx % 3 }}
                       onClick={() => setActiveGuideId(guide.id)}
-                      className={`scroll-mt-24 rounded-2xl p-5 border transition-colors flex flex-col gap-4 ${
+                      className={`landing-reveal landing-card-hover scroll-mt-24 rounded-2xl p-5 border flex flex-col gap-4 ${
                         isHighlighted
                           ? 'bg-white dark:bg-gray-800 border-[#0D9488]/45 dark:border-teal-400/45 shadow-sm shadow-teal-900/5'
-                          : 'bg-[#F8FAFC] dark:bg-gray-800/85 border-slate-200/90 dark:border-gray-700/80 hover:border-[#0D9488]/35 dark:hover:border-teal-400/35'
+                          : 'bg-[#F8FAFC] dark:bg-gray-800/85 border-slate-200/90 dark:border-gray-700/80 hover:border-[#0D9488]/35 dark:hover:border-teal-400/35 hover:shadow-md'
                       }`}
                     >
                       <div className="space-y-2.5">
@@ -804,10 +833,13 @@ export function HelpCenterPage({
                               e.stopPropagation();
                               handleGuideNextAction(guide.nextAction.actionKey);
                             }}
-                            className="w-full inline-flex items-center justify-between gap-2 min-h-9 px-3.5 py-2 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] dark:bg-[#0F766E] dark:hover:bg-[#0D9488] text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-800"
+                            className="landing-cta-shine group/btn w-full inline-flex items-center justify-between gap-2 min-h-9 px-3.5 py-2 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] dark:bg-[#0F766E] dark:hover:bg-[#0D9488] text-white text-xs font-semibold shadow-xs active:scale-[0.99] transition-all duration-200 motion-reduce:transition-none cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-800"
                           >
                             <span>{guide.nextAction.label}</span>
-                            <ArrowRight className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                            <ArrowRight
+                              className="w-3.5 h-3.5 shrink-0 transition-transform duration-200 group-hover/btn:translate-x-0.5 motion-reduce:transform-none"
+                              aria-hidden="true"
+                            />
                           </button>
                         </div>
                       )}
@@ -828,7 +860,10 @@ export function HelpCenterPage({
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
               {/* Contact Details Card */}
-              <div className="lg:col-span-7 bg-[#12304A] dark:bg-gradient-to-br dark:from-slate-800/95 dark:to-gray-900 border border-[#1E4668] dark:border-teal-500/25 text-white rounded-3xl p-6 sm:p-8 shadow-sm flex flex-col justify-between gap-6">
+              <div
+                data-reveal="left"
+                className="landing-reveal lg:col-span-7 bg-[#12304A] dark:bg-gradient-to-br dark:from-slate-800/95 dark:to-gray-900 border border-[#1E4668] dark:border-teal-500/25 text-white rounded-3xl p-6 sm:p-8 shadow-sm flex flex-col justify-between gap-6"
+              >
                 <div className="space-y-5">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-400/15 border border-teal-400/25 text-teal-300 text-[11px] font-semibold">
                     <Headphones className="w-3.5 h-3.5" aria-hidden="true" />
@@ -943,7 +978,10 @@ export function HelpCenterPage({
               </div>
 
               {/* Operating Hours & Safety Card */}
-              <div className="lg:col-span-5 bg-white dark:bg-gray-800/95 border border-slate-200/90 dark:border-gray-700/80 rounded-3xl p-6 sm:p-8 shadow-sm flex flex-col justify-between gap-6">
+              <div
+                data-reveal="right"
+                className="landing-reveal lg:col-span-5 bg-white dark:bg-gray-800/95 border border-slate-200/90 dark:border-gray-700/80 rounded-3xl p-6 sm:p-8 shadow-sm flex flex-col justify-between gap-6"
+              >
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">
                     <div className="w-11 h-11 rounded-2xl bg-teal-50 dark:bg-teal-500/15 border border-[#0D9488]/20 dark:border-teal-400/30 text-[#0D9488] dark:text-teal-300 flex items-center justify-center shrink-0">

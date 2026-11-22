@@ -56,7 +56,7 @@ export function HelpAccordionItem({
   return (
     <article
       id={faq.id}
-      className="bg-white dark:bg-gray-800 border border-slate-200/90 dark:border-gray-700/80 rounded-2xl transition-colors shadow-2xs hover:border-[#0D9488]/40 dark:hover:border-teal-400/40"
+      className="bg-white dark:bg-gray-800 border border-slate-200/90 dark:border-gray-700/80 rounded-2xl transition-[border-color,box-shadow,background-color] duration-200 shadow-2xs hover:shadow-sm hover:border-[#0D9488]/40 dark:hover:border-teal-400/40"
     >
       <h3 className="m-0">
         <button
@@ -91,7 +91,11 @@ export function HelpAccordionItem({
 
       {/* Border, padding, and background live on the nested wrapper so hidden="until-found" never leaves remnants */}
       <div id={panelId} ref={panelRef} role="region" aria-labelledby={buttonId}>
-        <div className="px-5 pb-5 sm:px-6 sm:pb-6 pt-3 border-t border-slate-100 dark:border-gray-700/80 space-y-4">
+        <div
+          className={`px-5 pb-5 sm:px-6 sm:pb-6 pt-3 border-t border-slate-100 dark:border-gray-700/80 space-y-4 ${
+            isOpen ? 'tch-animate-fade-in' : ''
+          }`}
+        >
           <p className="text-xs sm:text-sm text-slate-600 dark:text-gray-300 leading-relaxed font-normal">
             {faq.answer}
           </p>
