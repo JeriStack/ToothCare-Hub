@@ -15,7 +15,7 @@ const NAV_LINKS = [
 const HEADER_SCROLL_OFFSET = 80;
 const SECTION_ACTIVATION_THRESHOLD = 140;
 
-export function LandingNavbar({ onBookAppointment, onLogin }) {
+export function LandingNavbar({ onBookAppointment, onLogin, onHelpSupport }) {
   const { user, isAuthenticated } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -307,7 +307,7 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
                   href={`#${link.id}`}
                   aria-current={isActive ? 'location' : undefined}
                   onClick={(e) => scrollToSection(e, link.id)}
-                  className={`relative z-10 px-4 py-1.5 rounded-full text-xs whitespace-nowrap transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
+                  className={`relative z-10 px-3 xl:px-4 py-1.5 rounded-full text-xs whitespace-nowrap transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
                     isActive
                       ? `font-bold text-[#0F766E] dark:text-teal-200 ${
                           !indicator.ready
@@ -321,6 +321,17 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
                 </a>
               );
             })}
+            <a
+              href="/help-support"
+              onClick={(e) => {
+                e.preventDefault();
+                setMobileMenuOpen(false);
+                onHelpSupport?.();
+              }}
+              className="relative z-10 px-3 xl:px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap text-slate-600 dark:text-gray-300 hover:text-[#0F766E] dark:hover:text-teal-200 hover:bg-teal-50/80 dark:hover:bg-teal-500/15 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400"
+            >
+              Help &amp; Support
+            </a>
           </nav>
 
           {/* Desktop Right Action CTAs */}
@@ -414,6 +425,17 @@ export function LandingNavbar({ onBookAppointment, onLogin }) {
                 </a>
               );
             })}
+            <a
+              href="/help-support"
+              onClick={(e) => {
+                e.preventDefault();
+                setMobileMenuOpen(false);
+                onHelpSupport?.();
+              }}
+              className="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold text-slate-700 dark:text-gray-200 hover:bg-teal-50/80 dark:hover:bg-teal-500/15 hover:text-[#0F766E] dark:hover:text-teal-200 transition-colors"
+            >
+              <span>Help &amp; Support</span>
+            </a>
           </nav>
 
           <div className="pt-4 border-t border-slate-100 dark:border-gray-800 flex flex-col gap-2.5">

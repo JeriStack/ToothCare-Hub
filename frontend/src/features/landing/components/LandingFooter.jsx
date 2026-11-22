@@ -3,11 +3,25 @@ import { ArrowUp, ShieldCheck, X } from 'lucide-react';
 
 
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
-export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
+export function LandingFooter({
+  onLogin,
+  onBookAppointment,
+  onAdminLogin,
+  onHelpSupport,
+  onNavigateSection,
+  emergencyContactHref = '#contact',
+}) {
   const [legalModal, setLegalModal] = useState(null); // 'privacy' | 'terms' | null
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSectionLinkClick = (e, sectionId) => {
+    if (onNavigateSection) {
+      e.preventDefault();
+      onNavigateSection(sectionId);
+    }
   };
 
   return (
@@ -55,22 +69,22 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
             <h4 className="text-xs font-bold uppercase tracking-wider text-white">Platform Navigation</h4>
             <ul className="space-y-2 text-xs flex flex-col items-center">
               <li>
-                <a href="#home" className="hover:text-white transition-colors">Home</a>
+                <a href="#home" onClick={(e) => handleSectionLinkClick(e, 'home')} className="hover:text-white transition-colors">Home</a>
               </li>
               <li>
-                <a href="#about" className="hover:text-white transition-colors">About Platform</a>
+                <a href="#about" onClick={(e) => handleSectionLinkClick(e, 'about')} className="hover:text-white transition-colors">About Platform</a>
               </li>
               <li>
-                <a href="#services" className="hover:text-white transition-colors">Services & Pricing</a>
+                <a href="#services" onClick={(e) => handleSectionLinkClick(e, 'services')} className="hover:text-white transition-colors">Services &amp; Pricing</a>
               </li>
               <li>
-                <a href="#dentists" className="hover:text-white transition-colors">Dentist Profiles</a>
+                <a href="#dentists" onClick={(e) => handleSectionLinkClick(e, 'dentists')} className="hover:text-white transition-colors">Dentist Profiles</a>
               </li>
               <li>
-                <a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a>
+                <a href="#how-it-works" onClick={(e) => handleSectionLinkClick(e, 'how-it-works')} className="hover:text-white transition-colors">How It Works</a>
               </li>
               <li>
-                <a href="#contact" className="hover:text-white transition-colors">Operating Hours</a>
+                <a href="#contact" onClick={(e) => handleSectionLinkClick(e, 'contact')} className="hover:text-white transition-colors">Operating Hours</a>
               </li>
             </ul>
           </div>
@@ -120,8 +134,20 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
 
           {/* Legal / Policy */}
           <div className="space-y-3 md:col-span-2 lg:col-span-1 text-center">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-white">Policies & Care</h4>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-white">Policies &amp; Care</h4>
             <ul className="space-y-2 text-xs flex flex-col items-center">
+              <li>
+                <a
+                  href="/help-support"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onHelpSupport?.();
+                  }}
+                  className="tch-tap hover:text-teal-300 transition-colors text-center font-medium text-teal-400 cursor-pointer"
+                >
+                  Help &amp; Support
+                </a>
+              </li>
               <li>
                 <button
                   type="button"
@@ -141,7 +167,7 @@ export function LandingFooter({ onLogin, onBookAppointment, onAdminLogin }) {
                 </button>
               </li>
               <li>
-                <a href="#contact" className="hover:text-white transition-colors">
+                <a href={emergencyContactHref} className="hover:text-white transition-colors">
                   Emergency Support
                 </a>
               </li>
