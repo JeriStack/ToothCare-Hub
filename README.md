@@ -83,17 +83,62 @@ flowchart LR
 
 ## Technology Stack
 
-| Layer | Technology | Highlights |
-|---|---|---|
-| **Frontend** | React 18, Vite 8 (Rolldown), Tailwind CSS 3, Lucide React, React Router 7, Socket.IO Client | Light/Dark theme system, `React.lazy` code splitting (`299.92 kB` / `64.88 kB` gzip main chunk), role portals, search, reports, live notifications |
-| **Backend API** | Native PHP (`^8.5`, `8.5.12-fpm-alpine3.24`), Composer, PDO, `zircote/swagger-php` | **105** OpenAPI 3.0.3 paths (**138** operations) generated from PHP 8 attributes ([`docs/openapi.yaml`](docs/openapi.yaml)), dev-only Swagger UI (`/api/v1/docs`) |
-| **Database** | MySQL 8.0 (`InnoDB`, `utf8mb4`) | 32 ordered SQL migrations (`001`–`032`), row-level locking, AES-256-GCM encrypted backups, composite reporting/search indexes |
-| **Email Worker** | PHPMailer (`^7.2`) + transactional `email_outbox` | Outbox worker (`backend/bin/email-worker.php`) & reminder scheduler with encrypted payloads, retry policy, and Prometheus age/backlog metrics |
-| **Real-Time** | Node.js (`24-alpine`), TypeScript, Socket.IO (`^4.8.1`) | Short-lived hashed tickets, HMAC-SHA256 internal verification/revocation, non-root `read_only` runtime |
-| **Reverse Proxy** | Nginx (`stable-alpine3.24`) | Hardened [`production.conf`](docker/nginx/production.conf) & TLS/WSS template, immutable `/assets/` cache, privacy-safe `$uri` access logs, internal port `8081` |
-| **Containers** | Docker Compose v2 (`compose.yaml`, `compose.dev.yaml`, `compose.prod.yaml`) | Multi-stage builds with `apk upgrade --no-cache`, zero host source mounts or public MySQL in prod, `no-new-privileges`, `cap_drop: [ALL]`, resource limits |
-| **Observability** | Prometheus, Grafana, `mysqld-exporter`, `nginx-exporter`, `cadvisor`, `node-exporter` | `--profile monitoring`, 15 alert rules, provisioned Application & Infrastructure dashboards, least-privilege MySQL exporter |
-| **Quality & CI** | PHPUnit, Vitest 5, Node `node:test`, Playwright, Trivy `v0.36.0`, `promtool`, CodeQL | 6-job GitHub Actions CI + Dependabot targeting `development` |
+<table>
+  <thead>
+    <tr>
+      <th align="center">Layer</th>
+      <th align="center">Technology</th>
+      <th align="center">Highlights</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center"><strong>Frontend</strong></td>
+      <td align="justify">React 18, Vite 8 (Rolldown), Tailwind CSS 3, Lucide React, React Router 7, Socket.IO Client</td>
+      <td align="justify">Light/Dark theme system, <code>React.lazy</code> code splitting (<code>300.98 kB</code> / <code>65.22 kB</code> gzip main chunk), role portals, search, reports, live notifications</td>
+    </tr>
+    <tr>
+      <td align="center"><strong>Backend API</strong></td>
+      <td align="justify">Native PHP (<code>^8.5</code>, <code>8.5.12-fpm-alpine3.24</code>), Composer, PDO, <code>zircote/swagger-php</code></td>
+      <td align="justify"><strong>105</strong> OpenAPI 3.0.3 paths (<strong>138</strong> operations) generated from PHP 8 attributes (<a href="docs/openapi.yaml"><code>docs/openapi.yaml</code></a>), dev-only Swagger UI (<code>/api/v1/docs</code>)</td>
+    </tr>
+    <tr>
+      <td align="center"><strong>Database</strong></td>
+      <td align="justify">MySQL 8.0 (<code>InnoDB</code>, <code>utf8mb4</code>)</td>
+      <td align="justify">32 ordered SQL migrations (<code>001</code>–<code>032</code>), row-level locking, AES-256-GCM encrypted backups, composite reporting/search indexes</td>
+    </tr>
+    <tr>
+      <td align="center"><strong>Email Worker</strong></td>
+      <td align="justify">PHPMailer (<code>^7.2</code>) + transactional <code>email_outbox</code></td>
+      <td align="justify">Outbox worker (<code>backend/bin/email-worker.php</code>) &amp; reminder scheduler with encrypted payloads, retry policy, and Prometheus age/backlog metrics</td>
+    </tr>
+    <tr>
+      <td align="center"><strong>Real-Time</strong></td>
+      <td align="justify">Node.js (<code>24-alpine</code>), TypeScript, Socket.IO (<code>^4.8.1</code>)</td>
+      <td align="justify">Short-lived hashed tickets, HMAC-SHA256 internal verification/revocation, non-root <code>read_only</code> runtime</td>
+    </tr>
+    <tr>
+      <td align="center"><strong>Reverse Proxy</strong></td>
+      <td align="justify">Nginx (<code>stable-alpine3.24</code>)</td>
+      <td align="justify">Hardened <a href="docker/nginx/production.conf"><code>production.conf</code></a> &amp; TLS/WSS template, immutable <code>/assets/</code> cache, privacy-safe <code>$uri</code> access logs, internal port <code>8081</code></td>
+    </tr>
+    <tr>
+      <td align="center"><strong>Containers</strong></td>
+      <td align="justify">Docker Compose v2 (<code>compose.yaml</code>, <code>compose.dev.yaml</code>, <code>compose.prod.yaml</code>)</td>
+      <td align="justify">Multi-stage builds with <code>apk upgrade --no-cache</code>, zero host source mounts or public MySQL in prod, <code>no-new-privileges</code>, <code>cap_drop: [ALL]</code>, resource limits</td>
+    </tr>
+    <tr>
+      <td align="center"><strong>Observability</strong></td>
+      <td align="justify">Prometheus, Grafana, <code>mysqld-exporter</code>, <code>nginx-exporter</code>, <code>cadvisor</code>, <code>node-exporter</code></td>
+      <td align="justify"><code>--profile monitoring</code>, 15 alert rules, provisioned Application &amp; Infrastructure dashboards, least-privilege MySQL exporter</td>
+    </tr>
+    <tr>
+      <td align="center"><strong>Quality &amp; CI</strong></td>
+      <td align="justify">PHPUnit, Vitest 5, Node <code>node:test</code>, Playwright, Trivy <code>v0.36.0</code>, <code>promtool</code>, CodeQL</td>
+      <td align="justify">6-job GitHub Actions CI + Dependabot targeting <code>development</code></td>
+    </tr>
+  </tbody>
+</table>
 
 ---
 
