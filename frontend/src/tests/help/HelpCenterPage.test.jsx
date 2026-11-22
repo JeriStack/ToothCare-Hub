@@ -194,10 +194,12 @@ describe('Public Help Center & Support (/help-support)', () => {
 
     const faqSection = document.getElementById('help-faq');
     const firstFaqBtn = within(faqSection).getByRole('button', {
-      name: new RegExp(HELP_FAQS[0].question.replace(/[?]/g, '\\?'), 'i'),
+      name: (accessibleName) =>
+        accessibleName.toLowerCase().includes(HELP_FAQS[0].question.toLowerCase()),
     });
     const secondFaqBtn = within(faqSection).getByRole('button', {
-      name: new RegExp(HELP_FAQS[1].question.replace(/[?]/g, '\\?'), 'i'),
+      name: (accessibleName) =>
+        accessibleName.toLowerCase().includes(HELP_FAQS[1].question.toLowerCase()),
     });
 
     expect(firstFaqBtn).toHaveAttribute('aria-expanded', 'true');
