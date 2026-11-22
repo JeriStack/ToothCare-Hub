@@ -4,7 +4,7 @@
 # =============================================================================
 
 # Stage 1: Deterministic React + Vite production build (no secrets in build args)
-FROM node:24-alpine AS frontend-builder
+FROM node:26-alpine AS frontend-builder
 WORKDIR /app
 ENV NODE_OPTIONS="--dns-result-order=ipv4first"
 COPY frontend/package.json frontend/package-lock.json ./
