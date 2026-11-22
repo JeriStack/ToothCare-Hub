@@ -3,8 +3,9 @@
 FROM node:24-alpine AS builder
 
 WORKDIR /app
+ENV NODE_OPTIONS="--dns-result-order=ipv4first"
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --no-audit --no-fund --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 --maxsockets=5
 COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
@@ -12,11 +13,12 @@ RUN npm run build
 FROM node:24-alpine AS runtime
 
 WORKDIR /app
+ENV NODE_OPTIONS="--dns-result-order=ipv4first"
 RUN chown -R node:node /app
 USER node
 
 COPY --chown=node:node package.json package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm ci --omit=dev --no-audit --no-fund --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 --maxsockets=5 && npm cache clean --force
 COPY --from=builder --chown=node:node /app/dist ./dist
 
 ENV NODE_ENV=production

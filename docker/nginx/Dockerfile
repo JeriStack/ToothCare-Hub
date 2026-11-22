@@ -6,8 +6,9 @@
 # Stage 1: Deterministic React + Vite production build (no secrets in build args)
 FROM node:24-alpine AS frontend-builder
 WORKDIR /app
+ENV NODE_OPTIONS="--dns-result-order=ipv4first"
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
+RUN npm ci --no-audit --no-fund --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 --maxsockets=5
 COPY frontend/ ./
 RUN npm run build && test -f /app/dist/index.html
 
