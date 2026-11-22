@@ -78,7 +78,7 @@ export function HelpAccordionItem({
             <ChevronDown className="w-4 h-4" />
           </span>
 
-          <span className="flex-1 min-w-0 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+          <span className="flex-1 min-w-0 flex flex-wrap items-center gap-x-3 gap-y-1.5">
             <span className="font-bold text-slate-900 dark:text-gray-100 text-sm sm:text-base leading-snug">
               {faq.question}
             </span>
