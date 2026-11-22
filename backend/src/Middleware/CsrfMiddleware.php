@@ -8,7 +8,6 @@ use App\Core\Config;
 use App\Core\HttpException;
 use App\Core\Request;
 use App\Core\Response;
-use App\Services\AuthService;
 
 /**
  * CSRF Protection Middleware
@@ -43,10 +42,10 @@ class CsrfMiddleware implements MiddlewareInterface
             return $next($request);
         }
 
-        // Hydrate PHP session if a browser session cookie is present and session is not yet active
+        // Hydrate PHP session using the configured session cookie name when present
         $cookieName = $this->config->getString('session_cookie_name', 'toothcare_session');
         if (session_status() === PHP_SESSION_NONE && !empty($_COOKIE[$cookieName]) && !headers_sent()) {
-            (new AuthService(null, null, null, null, null, null, null, null, $this->config))->initializeSession();
+            self::ensureSessionStarted($this->config);
         }
 
         // Enforce whenever a session is active and either a CSRF token or authenticated user is bound to it
@@ -65,11 +64,9 @@ class CsrfMiddleware implements MiddlewareInterface
         return $next($request);
     }
 
-    public static function generateToken(): string
+    public static function generateToken(?Config $config = null): string
     {
-        if (session_status() !== PHP_SESSION_ACTIVE) {
-            @session_start();
-        }
+        self::ensureSessionStarted($config);
 
         $token = bin2hex(random_bytes(32));
         $_SESSION['csrf_token'] = $token;
@@ -77,16 +74,51 @@ class CsrfMiddleware implements MiddlewareInterface
         return $token;
     }
 
-    public static function getToken(): string
+    public static function getToken(?Config $config = null): string
     {
-        if (session_status() !== PHP_SESSION_ACTIVE) {
-            @session_start();
-        }
+        self::ensureSessionStarted($config);
 
         if (empty($_SESSION['csrf_token'])) {
-            return self::generateToken();
+            return self::generateToken($config);
         }
 
         return (string) $_SESSION['csrf_token'];
+    }
+
+    /**
+     * Start the PHP session using ToothCare Hub's configured session cookie name and security parameters
+     * so CSRF tokens are always bound to the same session cookie as authentication (`toothcare_session`).
+     */
+    private static function ensureSessionStarted(?Config $config = null): void
+    {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            return;
+        }
+
+        if (!headers_sent()) {
+            $resolvedConfig = $config ?? Config::getInstance();
+            $sessionName = $resolvedConfig->getString('session_cookie_name', 'toothcare_session');
+            $defaultLifetime = max(60, $resolvedConfig->getInt('session_lifetime', 7200));
+            $rememberLifetime = max($defaultLifetime, $resolvedConfig->getInt('session_remember_lifetime', 2592000));
+            $secure = $resolvedConfig->getBool('session_cookie_secure', false);
+            $sameSite = $resolvedConfig->getString('session_cookie_samesite', 'Lax');
+
+            ini_set('session.use_strict_mode', '1');
+            ini_set('session.use_only_cookies', '1');
+            ini_set('session.cookie_httponly', '1');
+            ini_set('session.gc_maxlifetime', (string) $rememberLifetime);
+
+            session_name($sessionName);
+            session_set_cookie_params([
+                'lifetime' => 0,
+                'path' => '/',
+                'domain' => '',
+                'secure' => $secure,
+                'httponly' => true,
+                'samesite' => $sameSite,
+            ]);
+        }
+
+        @session_start();
     }
 }

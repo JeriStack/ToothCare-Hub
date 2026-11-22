@@ -43,7 +43,7 @@ const BENEFITS = [
 export function BenefitsSection() {
   return (
     <section
-      className="py-20 bg-white dark:bg-gray-900 border-t border-slate-100 dark:border-gray-800"
+      className="landing-deferred-section py-20 bg-white dark:bg-gray-900 border-t border-slate-100 dark:border-gray-800"
       aria-labelledby="benefits-heading"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
@@ -69,8 +69,9 @@ export function BenefitsSection() {
             return (
               <article
                 key={b.title}
+                data-reveal="up"
                 style={{ '--reveal-index': idx % 3 }}
-                className="landing-reveal group relative overflow-hidden p-6 sm:p-7 rounded-2xl bg-[#F8FAFC] dark:bg-gray-800/90 border border-slate-200/90 dark:border-gray-700/80 hover:border-[#0D9488]/45 dark:hover:border-teal-400/45 hover:bg-white dark:hover:bg-gray-800 shadow-xs hover:shadow-md hover:shadow-teal-900/5 dark:hover:shadow-black/30 hover:-translate-y-0.5 motion-reduce:transform-none transition-all duration-200 flex flex-col justify-between gap-5"
+                className="landing-reveal landing-card-hover group relative overflow-hidden p-6 sm:p-7 rounded-2xl bg-[#F8FAFC] dark:bg-gray-800/90 border border-slate-200/90 dark:border-gray-700/80 hover:border-[#0D9488]/45 dark:hover:border-teal-400/45 hover:bg-white dark:hover:bg-gray-800 shadow-xs hover:shadow-md hover:shadow-teal-900/5 dark:hover:shadow-black/30 flex flex-col justify-between gap-5"
               >
                 <div className="space-y-4">
                   <div className="flex items-center justify-between gap-3">

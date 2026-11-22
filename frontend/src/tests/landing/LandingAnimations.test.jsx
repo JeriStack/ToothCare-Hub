@@ -3,6 +3,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { LandingNavbar } from '../../features/landing/components/LandingNavbar';
 import { FAQSection } from '../../features/landing/components/FAQSection';
+import { HowItWorksSection } from '../../features/landing/components/HowItWorksSection';
+import { BookingCTA } from '../../features/landing/components/BookingCTA';
+import { HeroSection } from '../../features/landing/components/HeroSection';
+import { LandingFooter } from '../../features/landing/components/LandingFooter';
 import { useScrollReveal } from '../../features/landing/hooks/useScrollReveal';
 
 vi.mock('../../features/auth', () => ({
@@ -19,9 +23,10 @@ function RevealTestHarness() {
 
   return (
     <div ref={rootRef} className="landing-animated-root" data-testid="reveal-root">
-      <div className="landing-reveal" data-testid="below-fold-item">
+      <div className="landing-reveal" data-reveal="left" data-testid="below-fold-item">
         Animated Block
       </div>
+      <div className="landing-line-draw" data-testid="connector-line" aria-hidden="true" />
     </div>
   );
 }
@@ -86,15 +91,23 @@ describe('Landing Page Animations', () => {
 
     const root = screen.getByTestId('reveal-root');
     const item = screen.getByTestId('below-fold-item');
+    const line = screen.getByTestId('connector-line');
 
     expect(root).toHaveAttribute('data-reveal-fallback', 'true');
     expect(observeMock).toHaveBeenCalledWith(item);
+    expect(observeMock).toHaveBeenCalledWith(line);
     expect(item).not.toHaveClass('is-revealed');
+    expect(line).not.toHaveClass('is-revealed');
 
-    observerCallback([{ isIntersecting: true, boundingClientRect: { top: 400 }, target: item }]);
+    observerCallback([
+      { isIntersecting: true, boundingClientRect: { top: 400 }, target: item },
+      { isIntersecting: true, boundingClientRect: { top: 420 }, target: line },
+    ]);
 
     expect(item).toHaveClass('is-revealed');
+    expect(line).toHaveClass('is-revealed');
     expect(unobserveMock).toHaveBeenCalledWith(item);
+    expect(unobserveMock).toHaveBeenCalledWith(line);
   });
 
   it('skips JS fallback when native CSS view() timeline is supported or reduced motion is preferred', () => {
@@ -152,5 +165,39 @@ describe('Landing Page Animations', () => {
     expect(secondButton).toHaveAttribute('aria-expanded', 'true');
     expect(secondPanel).toHaveAttribute('data-open', 'true');
     expect(secondPanel).toHaveAttribute('aria-hidden', 'false');
+  });
+
+  it('wires scroll-drawn connector, directional reveals, parallax scopes, and CTA shine effects', () => {
+    const { container: stepsContainer } = render(
+      <HowItWorksSection onBookAppointment={vi.fn()} />
+    );
+    expect(stepsContainer.querySelector('.landing-line-draw')).toBeInTheDocument();
+    expect(stepsContainer.querySelectorAll('.landing-reveal[data-reveal="up"]').length).toBeGreaterThanOrEqual(4);
+    expect(stepsContainer.querySelector('.landing-reveal[data-reveal="scale"]')).toBeInTheDocument();
+
+    const { container: ctaContainer } = render(
+      <BookingCTA onBookAppointment={vi.fn()} />
+    );
+    expect(ctaContainer.querySelector('.landing-parallax-scope')).toBeInTheDocument();
+    expect(ctaContainer.querySelectorAll('.landing-parallax-layer').length).toBeGreaterThanOrEqual(2);
+    expect(ctaContainer.querySelector('.landing-cta-shine')).toBeInTheDocument();
+  });
+
+  it('applies LCP fetchpriority on hero image and lazy/deferred rendering on below-the-fold sections', () => {
+    const { container: heroContainer } = render(
+      <HeroSection onBookAppointment={vi.fn()} onExploreServices={vi.fn()} />
+    );
+    const heroImg = heroContainer.querySelector('img[src="/images/hero-dentist-photo.jpg"]');
+    expect(heroImg).toBeInTheDocument();
+    expect(heroImg).toHaveAttribute('fetchpriority', 'high');
+    expect(heroImg).not.toHaveAttribute('loading', 'lazy');
+
+    const { container: footerContainer } = render(
+      <LandingFooter onLogin={vi.fn()} onBookAppointment={vi.fn()} onAdminLogin={vi.fn()} />
+    );
+    expect(footerContainer.querySelector('footer')).toHaveClass('landing-deferred-section');
+    const footerLogo = footerContainer.querySelector('img[src="/images/logo-icon.png"]');
+    expect(footerLogo).toHaveAttribute('loading', 'lazy');
+    expect(footerLogo).not.toHaveAttribute('fetchpriority');
   });
 });

@@ -15,7 +15,13 @@ RUN npm run build && test -f /app/dist/index.html
 # Stage 2: Minimal pinned Nginx Stable Alpine 3.24 runtime (no Node.js, no node_modules)
 FROM nginx:stable-alpine3.24 AS runtime
 
-RUN apk upgrade --no-cache
+RUN set -eu; \
+    for attempt in 1 2 3 4 5; do \
+        apk upgrade --no-cache --timeout 30 && break; \
+        if [ "$attempt" -eq 5 ]; then exit 1; fi; \
+        echo "apk upgrade transient failure (attempt $attempt/5), retrying..." >&2; \
+        sleep 3; \
+    done
 
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
 COPY nginx/snippets/ /etc/nginx/snippets/

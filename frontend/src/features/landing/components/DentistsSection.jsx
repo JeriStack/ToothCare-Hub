@@ -107,8 +107,9 @@ export function DentistsSection({ onSelectDentist }) {
               return (
                 <article
                   key={dentist.id}
+                  data-reveal="scale"
                   style={{ '--reveal-index': idx % 3 }}
-                  className="landing-reveal bg-white dark:bg-gray-800 border border-slate-200/90 dark:border-gray-700 rounded-2xl p-6 hover:shadow-xl hover:shadow-slate-200/60 dark:hover:shadow-slate-950/60 hover:-translate-y-0.5 motion-reduce:transform-none transition-all flex flex-col justify-between space-y-6 group"
+                  className="landing-reveal landing-card-hover bg-white dark:bg-gray-800 border border-slate-200/90 dark:border-gray-700 rounded-2xl p-6 hover:shadow-xl hover:shadow-slate-200/60 dark:hover:shadow-slate-950/60 flex flex-col justify-between space-y-6 group"
                 >
                   <div className="space-y-4 text-center">
                     {/* Doctor Avatar / Icon Frame */}

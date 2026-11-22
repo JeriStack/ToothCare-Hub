@@ -65,11 +65,16 @@ export function useScrollReveal(rootRef) {
       intersectionObserver.observe(el);
     };
 
+    const REVEAL_SELECTOR = '.landing-reveal, .landing-line-draw';
+
     const scanSubtree = (container) => {
-      if (container instanceof HTMLElement && container.classList.contains('landing-reveal')) {
+      if (
+        container instanceof HTMLElement &&
+        (container.classList.contains('landing-reveal') || container.classList.contains('landing-line-draw'))
+      ) {
         registerElement(container);
       }
-      container.querySelectorAll?.('.landing-reveal').forEach(registerElement);
+      container.querySelectorAll?.(REVEAL_SELECTOR).forEach(registerElement);
     };
 
     scanSubtree(root);

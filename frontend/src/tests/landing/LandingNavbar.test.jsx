@@ -64,8 +64,15 @@ describe('LandingNavbar Section Navigation & Active Highlight', () => {
     sectionsRoot = null;
   });
 
-  it('renders navigation links in exact vertical landing page section order', () => {
-    render(<LandingNavbar onBookAppointment={vi.fn()} onLogin={vi.fn()} />);
+  it('renders navigation links in exact vertical landing page section order followed by Help & Support', () => {
+    const handleHelpSupport = vi.fn();
+    render(
+      <LandingNavbar
+        onBookAppointment={vi.fn()}
+        onLogin={vi.fn()}
+        onHelpSupport={handleHelpSupport}
+      />
+    );
 
     const primaryNav = screen.getByRole('navigation', { name: 'Primary' });
     const linkLabels = Array.from(primaryNav.querySelectorAll('a')).map((el) => el.textContent);
@@ -77,7 +84,17 @@ describe('LandingNavbar Section Navigation & Active Highlight', () => {
       'Our Dentists',
       'How It Works',
       'Contact',
+      'Help & Support',
     ]);
+
+    const helpLink = Array.from(primaryNav.querySelectorAll('a')).find(
+      (el) => el.textContent === 'Help & Support'
+    );
+    expect(helpLink).toHaveAttribute('href', '/help-support');
+    fireEvent.click(helpLink);
+    expect(handleHelpSupport).toHaveBeenCalledTimes(1);
+    expect(window.scrollTo).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: /Book Appointment/i })).not.toBeInTheDocument();
   });
 
   it('marks Home active initially and switches aria-current & highlight cleanly on click', () => {

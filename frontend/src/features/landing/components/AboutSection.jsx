@@ -58,31 +58,35 @@ export function AboutSection({ onBookAppointment }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           {/* Left Column: Mission & Highlights */}
-          <div className="landing-reveal lg:col-span-7 space-y-6" style={{ '--reveal-index': 0 }}>
-            <div className="space-y-3">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-500/15 border border-[#0D9488]/20 dark:border-teal-400/30 text-[#0F766E] dark:text-teal-300 text-xs font-semibold">
-                <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
-                <span>Why ToothCare Hub</span>
-              </span>
-              <h2
-                id="about-heading"
-                className="text-3xl sm:text-4xl font-extrabold text-[#12304A] dark:text-white tracking-tight"
-              >
-                A Better Way to Manage Your Dental Appointments
-              </h2>
+          <div className="lg:col-span-7 space-y-6">
+            <div className="landing-reveal space-y-6" data-reveal="left" style={{ '--reveal-index': 0 }}>
+              <div className="space-y-3">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-500/15 border border-[#0D9488]/20 dark:border-teal-400/30 text-[#0F766E] dark:text-teal-300 text-xs font-semibold">
+                  <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>Why ToothCare Hub</span>
+                </span>
+                <h2
+                  id="about-heading"
+                  className="text-3xl sm:text-4xl font-extrabold text-[#12304A] dark:text-white tracking-tight"
+                >
+                  A Better Way to Manage Your Dental Appointments
+                </h2>
+              </div>
+
+              <p className="text-sm sm:text-base text-slate-600 dark:text-gray-300 leading-relaxed font-normal text-justify">
+                ToothCare Hub brings essential dental appointment information into one convenient platform.
+                Patients can discover verified services, explore attending dentist profiles, and request consultations
+                with ease, while clinic staff coordinate operatory chairs and review requests through an organized digital workflow.
+              </p>
             </div>
 
-            <p className="text-sm sm:text-base text-slate-600 dark:text-gray-300 leading-relaxed font-normal text-justify">
-              ToothCare Hub brings essential dental appointment information into one convenient platform.
-              Patients can discover verified services, explore attending dentist profiles, and request consultations
-              with ease, while clinic staff coordinate operatory chairs and review requests through an organized digital workflow.
-            </p>
-
             <div className="pt-2 space-y-3.5">
-              {HIGHLIGHTS.map((item) => (
+              {HIGHLIGHTS.map((item, idx) => (
                 <div
                   key={item.title}
-                  className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-white/80 dark:bg-gray-900/60 border border-slate-200/70 dark:border-gray-800 hover:border-[#0D9488]/35 dark:hover:border-teal-400/35 transition-colors"
+                  data-reveal="up"
+                  style={{ '--reveal-index': idx }}
+                  className="landing-reveal landing-card-hover flex items-start gap-3.5 p-3.5 rounded-2xl bg-white/80 dark:bg-gray-900/60 border border-slate-200/70 dark:border-gray-800 hover:border-[#0D9488]/35 dark:hover:border-teal-400/35 hover:shadow-md hover:shadow-teal-900/5"
                 >
                   <div className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-500/15 border border-[#0D9488]/20 dark:border-teal-400/30 text-[#0D9488] dark:text-teal-300 flex items-center justify-center shrink-0 mt-0.5">
                     <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
@@ -103,7 +107,7 @@ export function AboutSection({ onBookAppointment }) {
               <button
                 type="button"
                 onClick={onBookAppointment}
-                className="group inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] text-white text-xs sm:text-sm font-semibold hover:bg-[#0F766E] dark:hover:bg-[#0D9488] shadow-md shadow-teal-900/15 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-950"
+                className="landing-cta-shine group inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] text-white text-xs sm:text-sm font-semibold hover:bg-[#0F766E] dark:hover:bg-[#0D9488] shadow-md shadow-teal-900/15 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-950"
               >
                 <span>Schedule a Consultation</span>
                 <ArrowRight
@@ -115,7 +119,7 @@ export function AboutSection({ onBookAppointment }) {
           </div>
 
           {/* Right Column: Platform Quality Card */}
-          <div className="landing-reveal lg:col-span-5" style={{ '--reveal-index': 2 }}>
+          <div className="landing-reveal lg:col-span-5" data-reveal="right" style={{ '--reveal-index': 1 }}>
             <div className="bg-white dark:bg-gray-800/95 rounded-3xl p-6 sm:p-8 border border-slate-200/90 dark:border-gray-700/80 shadow-xl shadow-slate-200/50 dark:shadow-black/30 space-y-6">
               <div className="flex items-center gap-3.5 border-b border-slate-100 dark:border-gray-700/80 pb-5">
                 <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-500/15 border border-[#0D9488]/20 dark:border-teal-400/30 text-[#0D9488] dark:text-teal-300 flex items-center justify-center shrink-0">

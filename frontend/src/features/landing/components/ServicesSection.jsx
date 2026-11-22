@@ -158,8 +158,9 @@ export function ServicesSection({ onBookService }) {
             {filteredServices.map((service, idx) => (
               <article
                 key={service.id}
+                data-reveal="up"
                 style={{ '--reveal-index': idx % 3 }}
-                className="landing-reveal group bg-[#F8FAFC] dark:bg-gray-800/95 border border-slate-200/90 dark:border-gray-700/80 hover:border-[#0D9488]/45 dark:hover:border-teal-400/45 hover:bg-white dark:hover:bg-gray-800 shadow-xs hover:shadow-md hover:shadow-teal-900/5 dark:hover:shadow-black/30 hover:-translate-y-0.5 motion-reduce:transform-none transition-all duration-200 rounded-2xl p-6 flex flex-col justify-between gap-6"
+                className="landing-reveal landing-card-hover group bg-[#F8FAFC] dark:bg-gray-800/95 border border-slate-200/90 dark:border-gray-700/80 hover:border-[#0D9488]/45 dark:hover:border-teal-400/45 hover:bg-white dark:hover:bg-gray-800 shadow-xs hover:shadow-md hover:shadow-teal-900/5 dark:hover:shadow-black/30 rounded-2xl p-6 flex flex-col justify-between gap-6"
               >
                 <div className="space-y-3.5">
                   <div className="flex items-center justify-between gap-2">
