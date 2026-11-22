@@ -51,6 +51,12 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # Major swagger-php upgrades (e.g. 4.x -> 7.x) change generated OpenAPI YAML
+      # and require manual `composer openapi:generate` + spec validation.
+      - dependency-name: "zircote/swagger-php"
+        update-types:
+          - "version-update:semver-major"
 
   # 3. Frontend React + Vite dependencies (npm)
   - package-ecosystem: "npm"
@@ -69,6 +75,14 @@ updates:
       - "dependencies"
       - "frontend"
     groups:
+      # Always bump React runtime and type packages atomically so peer dependencies
+      # (@types/react vs @types/react-dom) never diverge and break `npm ci`.
+      react-ecosystem:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
       frontend-minor-and-patch:
         patterns:
           - "*"
