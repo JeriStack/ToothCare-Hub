@@ -9,11 +9,16 @@ Staging runs the exact production container topology (`compose.yaml` + `compose.
 - **Controlled Email Sink (Mailpit):** `php-fpm` and `email-worker` route all SMTP traffic to `mailpit:1025`. Web UI is bound strictly to `127.0.0.1:8025` (inspect via SSH tunnel `ssh -L 8025:127.0.0.1:8025 user@staging-host`). Staging **cannot** send real emails to patients.
 - **Synthetic Data Only:** Seed staging exclusively using `backend/scripts/seed.php` synthetic fixtures; never copy production dumps or real patient contact data into staging.
 
-## 2. Manual Bootstrap on a Fresh Staging Host
+## 2. Manual Bootstrap on a Fresh Ubuntu 24.04 Staging Host
 
 ```bash
-# 1. Copy staging environment template and fill with staging-only secrets
-cp .env.staging.example .env
+# 0. One-command VPS preparation (installs official Docker + Compose v2, UFW 22/80/443,
+#    Certbot, non-root deploy user, and initializes /opt/toothcare-staging/.env with chmod 600)
+sudo DEPLOY_ENV=staging DEPLOY_USER=toothcare REPO_URL=<your-repo-url> \
+  bash deployment/scripts/bootstrap-ubuntu-vps.sh
+
+# 1. Edit /opt/toothcare-staging/.env with unique staging-only secrets
+cd /opt/toothcare-staging && nano .env
 
 # 2. Deploy an immutable CI-built image tag (never rebuild on server)
 DEPLOY_ENV=staging IMAGE_REGISTRY=ghcr.io/<owner> IMAGE_TAG=sha-<12> \

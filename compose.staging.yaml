@@ -14,13 +14,13 @@
 services:
   nginx:
     image: ${IMAGE_REGISTRY:-ghcr.io/toothcare-hub}/toothcare-frontend:${IMAGE_TAG:?IMAGE_TAG is required}
-    pull_policy: always
+    pull_policy: ${IMAGE_PULL_POLICY:-always}
     environment:
       APP_ENV: "staging"
 
   php-fpm:
     image: ${IMAGE_REGISTRY:-ghcr.io/toothcare-hub}/toothcare-backend:${IMAGE_TAG:?IMAGE_TAG is required}
-    pull_policy: always
+    pull_policy: ${IMAGE_PULL_POLICY:-always}
     environment:
       APP_ENV: "staging"
       APP_DEBUG: "false"
@@ -33,20 +33,20 @@ services:
 
   realtime:
     image: ${IMAGE_REGISTRY:-ghcr.io/toothcare-hub}/toothcare-realtime:${IMAGE_TAG:?IMAGE_TAG is required}
-    pull_policy: always
+    pull_policy: ${IMAGE_PULL_POLICY:-always}
     environment:
       NODE_ENV: "production"
 
   realtime-worker:
     image: ${IMAGE_REGISTRY:-ghcr.io/toothcare-hub}/toothcare-backend:${IMAGE_TAG:?IMAGE_TAG is required}
-    pull_policy: always
+    pull_policy: ${IMAGE_PULL_POLICY:-always}
     environment:
       APP_ENV: "staging"
       APP_DEBUG: "false"
 
   email-worker:
     image: ${IMAGE_REGISTRY:-ghcr.io/toothcare-hub}/toothcare-backend:${IMAGE_TAG:?IMAGE_TAG is required}
-    pull_policy: always
+    pull_policy: ${IMAGE_PULL_POLICY:-always}
     environment:
       APP_ENV: "staging"
       APP_DEBUG: "false"
@@ -59,14 +59,14 @@ services:
 
   reminder-scheduler:
     image: ${IMAGE_REGISTRY:-ghcr.io/toothcare-hub}/toothcare-backend:${IMAGE_TAG:?IMAGE_TAG is required}
-    pull_policy: always
+    pull_policy: ${IMAGE_PULL_POLICY:-always}
     environment:
       APP_ENV: "staging"
       APP_DEBUG: "false"
 
   db-backup:
     image: ${IMAGE_REGISTRY:-ghcr.io/toothcare-hub}/toothcare-backend:${IMAGE_TAG:?IMAGE_TAG is required}
-    pull_policy: always
+    pull_policy: ${IMAGE_PULL_POLICY:-always}
 
   # Controlled staging SMTP sink: captures all staging emails so real patients are never emailed
   mailpit:
