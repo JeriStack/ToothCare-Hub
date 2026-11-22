@@ -73,7 +73,7 @@ services:
   # 3. Relational Database (MySQL 8.0)
   # ---------------------------------------------------------------------------
   mysql:
-    image: mysql:26.10
+    image: mysql:8.0
     container_name: toothcare-mysql
     environment:
       MYSQL_DATABASE: ${DB_NAME:-toothcare_hub}
@@ -278,33 +278,6 @@ services:
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
-<<<<<<< HEAD
-=======
-  # 5c. Local SMTP sink (development only, opt-in: docker compose --profile mail up -d mailpit)
-  #     Captures all mail; nothing leaves the machine. Web UI: http://127.0.0.1:8025
-  #     Point MAIL_HOST=mailpit, MAIL_PORT=1025, MAIL_ENCRYPTION=none at it.
-  # ---------------------------------------------------------------------------
-  mailpit:
-    image: axllent/mailpit:v1.34
-    container_name: toothcare-mailpit
-    profiles:
-      - mail
-      - dev
-      - local
-    ports:
-      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025"
-      - "127.0.0.1:${MAILPIT_WEB_PORT:-8025}:8025"
-    networks:
-      - app
-    healthcheck:
-      test: ["CMD-SHELL", "/mailpit readyz || exit 1"]
-      interval: 10s
-      timeout: 3s
-      start_period: 5s
-      retries: 3
-    restart: unless-stopped
-  # ---------------------------------------------------------------------------
->>>>>>> origin/main
   # 6. Database Automated Backup Daemon (2:00 AM Daily Full Backup + Retention)
   # ---------------------------------------------------------------------------
   db-backup:
