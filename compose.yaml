@@ -356,7 +356,7 @@ services:
     restart: unless-stopped
 
   grafana:
-    image: grafana/grafana:11.1.0
+    image: grafana/grafana:13.3.1
     container_name: toothcare-grafana
     profiles:
       - monitoring
