@@ -14,7 +14,6 @@
 | [`phase-18/`](phase-18/) | Security, privacy, accessibility, performance, reliability, dependency audits, incident response, and production readiness checklist |
 | [`phase-19/`](phase-19/) | Observability with Prometheus and Grafana (architecture, metrics inventory, alerting policy, runbook, Docker setup, Windows limitations, verification report) |
 | [`phase-20/`](phase-20/) | Production container hardening, multi-stage Dockerfiles, hardened Nginx/TLS release configuration, image security policy, and rollback procedures |
-| [`phase-21/`](phase-21/) | Staging environment, hosting evaluation, CI/CD artifact promotion (`deploy-staging.yml`, `deploy-production.yml`), deployment/rollback scripts, and database recovery |
 | [`operations/`](operations/) | Database backup and disaster recovery, observability runbook |
 | [`implementation/`](implementation/) | Frontend stage implementation reports |
 

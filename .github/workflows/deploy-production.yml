@@ -4,75 +4,48 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: "Staging-verified immutable image tag or sha-<12> to promote (never 'latest')"
-        required: true
-        type: string
+        description: "Immutable release tag or commit SHA to build and promote"
+        required: false
+        default: ""
   release:
     types: [published]
 
 permissions:
   contents: read
-  packages: read
-
-concurrency:
-  group: deploy-production
-  cancel-in-progress: false
 
 jobs:
-  promote-production:
-    name: Promote Staging-Verified Images to Production (Protected Approval Gate)
+  deploy:
+    name: Production Release Artifact Build & Gate (Phase 20)
     runs-on: ubuntu-26.04
     environment: production
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - name: Resolve immutable release tag (never rebuild after staging)
+      - name: Resolve immutable release tag
         id: meta
         run: |
           TAG="${{ github.event.inputs.image_tag }}"
-          if [ -z "${TAG}" ]; then
-            TAG="${GITHUB_REF_NAME}"
-          fi
-          if [ -z "${TAG}" ] || [ "${TAG}" = "latest" ]; then
-            echo "ERROR: Production promotion requires an explicit staging-verified tag or sha-<12>." >&2
-            exit 1
+          if [ -z "$TAG" ]; then
+            TAG="${GITHUB_REF_NAME:-${GITHUB_SHA}}"
           fi
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "registry_prefix=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+          echo "sha=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
 
-      - name: Verify production Compose & deployment scripts
+      - name: Verify production deployment & Compose assets
         run: |
           test -f compose.yaml
           test -f compose.prod.yaml
+          test -f docker/nginx/Dockerfile
+          test -f docker/php/Dockerfile
+          test -f realtime/Dockerfile
           test -f deployment/scripts/deploy.sh
-          test -f deployment/scripts/health-check.sh
-          test -f deployment/scripts/rollback.sh
-          bash -n deployment/scripts/deploy.sh deployment/scripts/health-check.sh deployment/scripts/rollback.sh
-          IMAGE_TAG="${{ steps.meta.outputs.tag }}" docker compose -f compose.yaml -f compose.prod.yaml config -q
+          docker compose -f compose.yaml -f compose.prod.yaml config -q
 
-      - name: Promote exact staging-verified images to production host
-        env:
-          PROD_SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
-          PROD_SSH_USER: ${{ secrets.PROD_SSH_USER }}
-          PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
-          PROD_APP_DIR: ${{ secrets.PROD_APP_DIR }}
-          IMAGE_REGISTRY: ${{ steps.meta.outputs.registry_prefix }}
-          IMAGE_TAG: ${{ steps.meta.outputs.tag }}
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GHCR_USER: ${{ github.actor }}
+      - name: Build immutable release images & record digests
         run: |
-          if [ -z "${PROD_SSH_HOST}" ] || [ -z "${PROD_SSH_USER}" ] || [ -z "${PROD_SSH_KEY}" ]; then
-            echo "PRODUCTION DEPLOY SKIPPED: Configure PROD_SSH_HOST, PROD_SSH_USER, PROD_SSH_KEY, and PROD_APP_DIR in the protected 'production' GitHub Environment."
-            exit 0
-          fi
-
-          mkdir -p ~/.ssh
-          printf '%s\n' "${PROD_SSH_KEY}" > ~/.ssh/prod_deploy_key
-          chmod 600 ~/.ssh/prod_deploy_key
-          ssh-keyscan -H "${PROD_SSH_HOST}" >> ~/.ssh/known_hosts
-
-          ssh -i ~/.ssh/prod_deploy_key "${PROD_SSH_USER}@${PROD_SSH_HOST}" \
-            "cd '${PROD_APP_DIR:-/opt/toothcare-prod}' && \
-             echo '${GHCR_TOKEN}' | docker login ghcr.io -u '${GHCR_USER}' --password-stdin && \
-             DEPLOY_ENV=production IMAGE_REGISTRY='${IMAGE_REGISTRY}' IMAGE_TAG='${IMAGE_TAG}' bash deployment/scripts/deploy.sh"
+          docker build -f docker/nginx/Dockerfile -t "toothcare-frontend:${{ steps.meta.outputs.sha }}" -t "toothcare-frontend:${{ steps.meta.outputs.tag }}" .
+          docker build -f docker/php/Dockerfile -t "toothcare-backend:${{ steps.meta.outputs.sha }}" -t "toothcare-backend:${{ steps.meta.outputs.tag }}" ./backend
+          docker build -f realtime/Dockerfile -t "toothcare-realtime:${{ steps.meta.outputs.sha }}" -t "toothcare-realtime:${{ steps.meta.outputs.tag }}" ./realtime
+          docker run --rm --add-host=php-fpm:127.0.0.1 --add-host=realtime:127.0.0.1 --entrypoint nginx "toothcare-frontend:${{ steps.meta.outputs.sha }}" -t
+          docker images --digests --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.Size}}" | grep toothcare-
