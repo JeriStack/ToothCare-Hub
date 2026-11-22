@@ -7,6 +7,7 @@ updates:
   # 1. GitHub Actions workflows
   - package-ecosystem: "github-actions"
     directory: "/"
+    target-branch: "development"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -30,6 +31,7 @@ updates:
   # 2. Backend PHP dependencies (Composer)
   - package-ecosystem: "composer"
     directory: "/backend"
+    target-branch: "development"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -53,6 +55,7 @@ updates:
   # 3. Frontend React + Vite dependencies (npm)
   - package-ecosystem: "npm"
     directory: "/frontend"
+    target-branch: "development"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -76,6 +79,7 @@ updates:
   # 4. Real-Time Node.js + Socket.IO dependencies (npm)
   - package-ecosystem: "npm"
     directory: "/realtime"
+    target-branch: "development"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -99,6 +103,7 @@ updates:
   # 5. Root workspace tooling (Playwright / Node types)
   - package-ecosystem: "npm"
     directory: "/"
+    target-branch: "development"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -126,6 +131,7 @@ updates:
       - "/docker/nginx"
       - "/frontend"
       - "/realtime"
+    target-branch: "development"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -142,6 +148,7 @@ updates:
   # 7. Docker Compose service images (compose.yaml, compose.dev.yaml, compose.prod.yaml)
   - package-ecosystem: "docker-compose"
     directory: "/"
+    target-branch: "development"
     schedule:
       interval: "weekly"
       day: "monday"
