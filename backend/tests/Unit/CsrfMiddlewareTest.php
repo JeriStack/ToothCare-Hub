@@ -65,5 +65,19 @@ class CsrfMiddlewareTest extends TestCase
             return Response::success(['created' => true]);
         });
     }
+
+    public function testGetTokenUsesConfiguredSessionCookieName(): void
+    {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+
+        $token = CsrfMiddleware::getToken();
+
+        $this->assertNotEmpty($token);
+        if (!headers_sent()) {
+            $this->assertSame('toothcare_session', session_name());
+        }
+    }
 }
 

@@ -86,6 +86,7 @@ class AuthController
      */
     public function csrfToken(Request $request): Response
     {
+        $this->authService->initializeSession();
         $token = CsrfMiddleware::getToken();
         return Response::success(['csrf_token' => $token]);
     }
