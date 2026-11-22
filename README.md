@@ -192,6 +192,7 @@ npm run test:e2e:local
 - **Phase 13 — Email Outbox Notifications:** [`docs/modules/email-notifications/email-architecture.md`](docs/modules/email-notifications/email-architecture.md)
 - **Phase 14 — Real-Time Notifications (Node.js + Socket.IO):** [`docs/phase-14/`](docs/phase-14/architecture.md)
 - **Phase 15 — Dashboards, Search, Reports, & Operational Views:** [`docs/phase-15/`](docs/phase-15/dashboard-metrics.md)
+- **Phase 16 — Testing Strategy & Regression Coverage:** [`docs/phase-16/`](docs/phase-16/testing-strategy.md)
 
 ---
 

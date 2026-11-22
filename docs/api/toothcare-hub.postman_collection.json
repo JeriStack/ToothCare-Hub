@@ -1,0 +1,204 @@
+{
+  "info": {
+    "name": "ToothCare Hub API Contract Suite (v1)",
+    "description": "Phase 16 API contract & regression collection for ToothCare Hub (/api/v1). Uses placeholder variables only — never commit real credentials.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080/api/v1" },
+    { "key": "csrfToken", "value": "" },
+    { "key": "patientEmail", "value": "patient.test@example.com" },
+    { "key": "patientPassword", "value": "TestPassword123!" },
+    { "key": "adminEmail", "value": "admin.test@example.com" },
+    { "key": "adminPassword", "value": "TestPassword123!" }
+  ],
+  "item": [
+    {
+      "name": "Health & Liveness",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": { "method": "GET", "url": "{{baseUrl}}/health" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Standard success envelope', () => {",
+                  "  pm.expect(json.error).to.eql(null);",
+                  "  pm.expect(json.data).to.have.property('status');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /auth/csrf-token",
+          "request": { "method": "GET", "url": "{{baseUrl}}/auth/csrf-token" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Returns CSRF token', () => pm.expect(json.data.csrf_token).to.be.a('string').and.not.empty);",
+                  "pm.collectionVariables.set('csrfToken', json.data.csrf_token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Authentication & Security Negative Cases",
+      "item": [
+        {
+          "name": "GET /auth/me (Unauthenticated -> 401)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/auth/me" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Rejects unauthenticated access with 401', () => pm.response.to.have.status(401));",
+                  "const json = pm.response.json();",
+                  "pm.test('Error envelope shape', () => {",
+                  "  pm.expect(json.data).to.eql(null);",
+                  "  pm.expect(json.error).to.have.property('code');",
+                  "  pm.expect(json.error).to.have.property('message');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/login (Invalid credentials -> 401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"nonexistent@example.com\",\"password\":\"WrongPass123!\"}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Rejects invalid login with 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Public Catalog & Availability",
+      "item": [
+        {
+          "name": "GET /services",
+          "request": { "method": "GET", "url": "{{baseUrl}}/services" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns services array', () => pm.expect(pm.response.json().data).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /dentists",
+          "request": { "method": "GET", "url": "{{baseUrl}}/dentists" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns dentists array', () => pm.expect(pm.response.json().data).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dashboards, Search, Reports, & Operations (Authenticated Admin)",
+      "item": [
+        {
+          "name": "GET /admin/dashboard/summary",
+          "request": { "method": "GET", "url": "{{baseUrl}}/admin/dashboard/summary" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 for Admin or 401/403 without admin session', () => pm.expect(pm.response.code).to.be.oneOf([200, 401, 403]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /appointments/search?page=1&limit=20",
+          "request": { "method": "GET", "url": "{{baseUrl}}/appointments/search?page=1&limit=20" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 when authenticated or 401 unauthenticated', () => pm.expect(pm.response.code).to.be.oneOf([200, 401]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /admin/reports/services",
+          "request": { "method": "GET", "url": "{{baseUrl}}/admin/reports/services" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 for Admin or 401/403 without admin session', () => pm.expect(pm.response.code).to.be.oneOf([200, 401, 403]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /admin/operations/outbox?channel=email",
+          "request": { "method": "GET", "url": "{{baseUrl}}/admin/operations/outbox?channel=email" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 for Admin or 401/403 without admin session', () => pm.expect(pm.response.code).to.be.oneOf([200, 401, 403]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

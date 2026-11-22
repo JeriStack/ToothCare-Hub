@@ -2241,6 +2241,62 @@ paths:
         '403':
           description: Forbidden without system.health permission.
 
+  /admin/reports/appointments:
+    get:
+      summary: Appointment Volume & Status Report
+      description: Database-driven appointment totals, status distribution, completion/cancellation rates, and daily breakdown within an inclusive Asia/Manila date range.
+      operationId: getAdminAppointmentsReport
+      tags:
+        - Reports
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Appointment report generated.
+        '403':
+          description: Forbidden without reports.view permission.
+        '422':
+          description: Invalid date format or end_date earlier than start_date.
+
+  /admin/reports/dentists:
+    get:
+      summary: Dentist Clinical Workload Report
+      description: Database-driven appointment counts per dentist (assigned, pending, upcoming, confirmed, completed, cancelled) within an inclusive Asia/Manila date range.
+      operationId: getAdminDentistsWorkloadReport
+      tags:
+        - Reports
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Dentist workload report generated.
+        '403':
+          description: Forbidden without reports.view permission.
+        '422':
+          description: Invalid date format or end_date earlier than start_date.
+
   /admin/reports/services:
     get:
       summary: Dental Service Utilization Report

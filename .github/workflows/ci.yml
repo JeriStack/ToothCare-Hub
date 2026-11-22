@@ -57,13 +57,21 @@ jobs:
         working-directory: backend
         run: find src public config tests bin templates -name "*.php" -print0 | xargs -0 -n1 php -l
 
-      - name: Run PHPUnit (fake mail transport; no SMTP is ever contacted)
+      - name: Run PHPUnit unit tests
         working-directory: backend
         env:
           MAIL_ENABLED: "false"
           MAIL_HOST: ""
           EMAIL_PAYLOAD_KEY: ci-only-not-a-secret
-        run: ./vendor/bin/phpunit
+        run: composer test:unit
+
+      - name: Run PHPUnit integration & regression tests (fake mail transport)
+        working-directory: backend
+        env:
+          MAIL_ENABLED: "false"
+          MAIL_HOST: ""
+          EMAIL_PAYLOAD_KEY: ci-only-not-a-secret
+        run: composer test:integration
 
       - name: Email and realtime worker command validation
         working-directory: backend
@@ -114,12 +122,20 @@ jobs:
           DB_PASSWORD: ci_root_pass
         run: php database/migrate.php --no-backup
 
-      - name: Verify email and realtime outbox schema and permissions
+      - name: Verify email, realtime, and Phase 15 reporting schema and idempotency
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: "3306"
+          DB_NAME: toothcare_ci
+          DB_USER: root
+          DB_PASSWORD: ci_root_pass
         run: |
           mysql -h 127.0.0.1 -uroot -pci_root_pass toothcare_ci -e "SELECT event_key, locked_by, payload_json FROM email_outbox LIMIT 0"
           mysql -h 127.0.0.1 -uroot -pci_root_pass toothcare_ci -e "SELECT ticket_hash, session_id_hash, expires_at FROM realtime_tickets LIMIT 0"
           mysql -h 127.0.0.1 -uroot -pci_root_pass toothcare_ci -e "SELECT event_id, event_type, recipient_user_id, status FROM realtime_outbox LIMIT 0"
           test "$(mysql -h 127.0.0.1 -uroot -pci_root_pass toothcare_ci -N -e "SELECT COUNT(*) FROM permissions WHERE slug LIKE 'email_outbox.%'")" = "4"
+          test "$(mysql -h 127.0.0.1 -uroot -pci_root_pass toothcare_ci -N -e "SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='toothcare_ci' AND INDEX_NAME='idx_appointments_service_start'")" -ge "1"
+          php database/migrate.php --no-backup
 
   realtime:
     name: Realtime (Node 24 + Socket.IO)

@@ -487,11 +487,38 @@ class AppointmentService
                 throw HttpException::notFound('Appointment not found.');
             }
 
-            // Ownership check for patients
+            // Ownership & cancellation cutoff policy check for patients
             if (strtoupper($userRole) === 'PATIENT') {
                 $patient = $this->patientRepo->findByUserId($userId);
                 if (!$patient || (int) $appointment['patient_id'] !== (int) $patient['id']) {
                     throw HttpException::forbidden('You can only cancel your own appointments.');
+                }
+
+                // Enforce clinic cancellation cutoff policy for CONFIRMED appointments
+                if (strtoupper((string) $appointment['status']) === AppointmentValidator::STATUS_CONFIRMED) {
+                    $cutoffHours = 24;
+                    try {
+                        $settingStmt = $pdo->prepare("SELECT setting_value FROM clinic_settings WHERE setting_key = 'cancellation_cutoff_hours' LIMIT 1");
+                        $settingStmt->execute();
+                        $rawCutoff = $settingStmt->fetchColumn();
+                        if ($rawCutoff !== false && is_numeric($rawCutoff)) {
+                            $cutoffHours = max(0, (int) $rawCutoff);
+                        }
+                    } catch (Throwable) {
+                        $cutoffHours = 24;
+                    }
+
+                    if ($cutoffHours > 0) {
+                        $now = new DateTimeImmutable('now', $this->timezone);
+                        $apptStart = new DateTimeImmutable((string) $appointment['start_at'], $this->timezone);
+                        $cutoffBoundary = $now->modify("+{$cutoffHours} hours");
+                        if ($apptStart <= $cutoffBoundary) {
+                            throw HttpException::unprocessableEntity(
+                                "Confirmed appointments cannot be cancelled within {$cutoffHours} hours of the scheduled time. Please contact the clinic.",
+                                ['appointment_id' => ["Cancellation cutoff is {$cutoffHours} hours prior to appointment start."]]
+                            );
+                        }
+                    }
                 }
             }
 
