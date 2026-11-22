@@ -2,25 +2,35 @@
 
 **Brand Tagline:** *Healthier Smiles. Brighter Futures.*
 
-A responsive web-based dental appointment and clinic management system. ToothCare Hub replaces manual appointment handling with a structured digital workflow where **MySQL (`InnoDB`) and the native PHP REST API (`/api/v1`) serve as the authoritative system of record**, supported by a **React + Vite** frontend, **PHPMailer** asynchronous email outbox processing, **Node.js + Socket.IO** real-time notifications, **Docker Compose + Nginx** containerization, and **Prometheus + Grafana** observability.
+<p align="justify">
+A responsive web-based dental appointment and clinic management system. ToothCare Hub replaces manual appointment handling with a structured digital workflow where <strong>MySQL (<code>InnoDB</code>) and the native PHP REST API (<code>/api/v1</code>) serve as the authoritative system of record</strong>, supported by a <strong>React + Vite</strong> frontend, <strong>PHPMailer</strong> asynchronous email outbox processing, <strong>Node.js + Socket.IO</strong> real-time notifications, <strong>Docker Compose + Nginx</strong> containerization, and <strong>Prometheus + Grafana</strong> observability.
+</p>
 
 ---
 
 ## 1. Project Objectives
+
+<div align="justify">
 
 1. **Prevent Conflicting Bookings:** Enforce dentist schedules, time-off blocks, and variable service durations using server-side validation and transaction-safe InnoDB row locking (`SELECT ... FOR UPDATE`).
 2. **Enforce Least-Privilege Role Boundaries:** Re-validate authentication, role permissions, and resource ownership on every `/api/v1/*` request.
 3. **Isolate Notification Side Effects:** Persist in-app notifications and `email_outbox` rows inside the booking transaction; deliver SMTP emails and Socket.IO broadcasts only after commit so external outages never roll back a saved appointment.
 4. **Provide Reproducible Delivery & Observability:** Package services with Docker Compose behind an Nginx reverse proxy, gate changes with GitHub Actions CI, and monitor service health with Prometheus and Grafana.
 
+</div>
+
 ---
 
 ## 2. Target Users & Roles
+
+<div align="justify">
 
 - **Administrator (`ADMIN`):** Manages user accounts, DRBAC role-permission matrices, clinic operating hours/closures, dental services, dentist rosters, and clinic-wide appointments; reviews real-time executive KPIs, operational reports (appointments, service utilization, dentist workload, patient registrations), append-only audit logs, outbox delivery health, and redacted operational errors.
 - **Receptionist / Front Desk (`RECEPTIONIST`):** Manages daily arrival schedules, patient check-ins, live waiting queues, walk-in intake/booking, and appointment triage (`CONFIRMED` / `REJECTED`) with role-scoped front-desk KPIs.
 - **Dentist (`DENTIST`):** Views strictly scoped daily and upcoming assigned appointments; accesses permitted patient visit context; records versioned clinical treatment notes with FDI tooth charting; marks eligible visits `COMPLETED`; submits time-off requests.
 - **Patient (`PATIENT`):** Registers or signs in with email verification; browses active dental services and dentists; checks real-time slot availability; books appointments via a guided wizard; tracks status lifecycle (`PENDING`, `CONFIRMED`, `REJECTED`, `CANCELLED`, `COMPLETED`), receives live Socket.IO + email notifications, and cancels/reschedules within clinic policy rules.
+
+</div>
 
 ---
 
