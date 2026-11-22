@@ -17,25 +17,26 @@ A responsive web-based dental appointment and clinic management system. ToothCar
 
 ## 2. Target Users & Roles
 
-- **Admin / Receptionist (`ADMIN`):** Manages patient records, dentist profiles, dental services/pricing, and dentist working schedules; reviews pending appointment requests (`CONFIRMED` / `REJECTED`); monitors clinic KPIs and filtered reports.
-- **Dentist (`DENTIST`):** Views assigned daily and upcoming appointments; accesses permitted patient visit context; records clinical diagnosis and treatment notes; marks eligible visits `COMPLETED`.
-- **Patient (`PATIENT`):** Registers or signs in; browses active dental services and dentists; checks available time slots; submits appointment requests through a guided 6-step wizard; tracks appointment status (`PENDING`, `CONFIRMED`, `REJECTED`, `CANCELLED`, `COMPLETED`); cancels within clinic policy rules.
+- **Administrator (`ADMIN`):** Manages user accounts, DRBAC role-permission matrices, clinic operating hours/closures, dental services, dentist rosters, and clinic-wide appointments; reviews real-time executive KPIs, operational reports (appointments, service utilization, dentist workload, patient registrations), append-only audit logs, outbox delivery health, and redacted operational errors.
+- **Receptionist / Front Desk (`RECEPTIONIST`):** Manages daily arrival schedules, patient check-ins, live waiting queues, walk-in intake/booking, and appointment triage (`CONFIRMED` / `REJECTED`) with role-scoped front-desk KPIs.
+- **Dentist (`DENTIST`):** Views strictly scoped daily and upcoming assigned appointments; accesses permitted patient visit context; records versioned clinical treatment notes with FDI tooth charting; marks eligible visits `COMPLETED`; submits time-off requests.
+- **Patient (`PATIENT`):** Registers or signs in with email verification; browses active dental services and dentists; checks real-time slot availability; books appointments via a guided wizard; tracks status lifecycle (`PENDING`, `CONFIRMED`, `REJECTED`, `CANCELLED`, `COMPLETED`), receives live Socket.IO + email notifications, and cancels/reschedules within clinic policy rules.
 
 ---
 
 ## 3. Technology Stack
 
-| Layer | Technology | Current Implementation Status |
+| Layer | Technology | Implementation Status |
 |---|---|---|
-| **Frontend** | React, TypeScript/JSX, Vite, Tailwind CSS, shadcn/ui, Lucide React, React Router, Axios, React Hook Form, Zod | Phase 2 containerized SPA static bundle mounted at `/var/www/frontend/dist`; feature development in Phase 5+ |
-| **Backend API** | Native PHP (`^8.5`, pinned to `8.5.12-fpm-alpine3.24`), Composer, PDO | Phase 2 containerized image built; front controller responsive to `/api/v1/health` & `/api/v1/metrics`; feature routes in Phase 5+ |
-| **Database** | MySQL 8.x (`InnoDB`, `utf8mb4`) | Phase 2 containerized service active with persistent volume `toothcare_mysql_data` & `mysqladmin ping` readiness check |
-| **Email Worker** | PHPMailer (`^6.9`) over SMTP + transactional `email_outbox` | Phase 13 worker `backend/bin/email-worker.php` and reminder scheduler `backend/bin/schedule-reminders.php`, both reusing the PHP image ([docs](docs/modules/email-notifications/email-architecture.md)) |
-| **Real-Time** | Node.js (`24-alpine`) + Socket.IO (`^4.8.1`) | Phase 2 containerized service active with non-root user, `/health`, `/metrics`, and `/socket.io/` proxying |
-| **Reverse Proxy** | Nginx (`1.27-alpine`) | Phase 2 primary edge entry point; SPA fallback, FastCGI `/api/` routing, WebSocket proxying, and security headers |
-| **Containerization** | Docker Compose v2 (`compose.yaml`, `compose.dev.yaml`, `compose.prod.yaml`) | Fully implemented and verified in Phase 2 |
-| **Observability** | Prometheus (`v2.53.1`) + Grafana (`11.1.0`) + `mysqld-exporter` | Configured under optional Compose profile `monitoring` |
-| **CI/CD** | GitHub Actions (`.github/workflows/ci.yml`) | Automated Docker Compose config, PHP, Node, and test validation on `main`, `develop`, `development` |
+| **Frontend** | React 18, Vite 8 (Rolldown), Tailwind CSS 3, Lucide React, React Router 7, Socket.IO Client | Full SPA with Light/Dark theme system, role-based portals, appointment search/filtering, operational reports, and live real-time notifications |
+| **Backend API** | Native PHP (`^8.5`, `8.5.12-fpm-alpine3.24`), Composer, PDO, `zircote/swagger-php` | 105 OpenAPI 3.0.3-documented `/api/v1/*` paths (138 operations) generated from PHP 8 attributes (`docs/openapi.yaml`), local/dev Swagger UI (`/api/v1/docs`, `/api-docs`), and full API guides (`docs/api/README.md`) |
+| **Database** | MySQL 8.x (`InnoDB`, `utf8mb4`) | 32 ordered SQL migrations (`001`–`032`), transaction-safe row locking, persistent `toothcare_mysql_data` volume, and composite reporting/search indexes |
+| **Email Worker** | PHPMailer (`^6.9`) over SMTP + transactional `email_outbox` | Outbox worker (`backend/bin/email-worker.php`) & reminder scheduler (`backend/bin/schedule-reminders.php`) with encrypted payloads and retry policy |
+| **Real-Time** | Node.js (`24-alpine`) + TypeScript + Socket.IO (`^4.8.1`) | Authenticated WebSocket service (`realtime/`) with short-lived hashed tickets, HMAC-SHA256 internal publisher/revocation, and `realtime_outbox` worker |
+| **Reverse Proxy** | Nginx (`1.27-alpine`) | SPA fallback, FastCGI `/api/` routing, WebSocket `/socket.io/` proxying, internal route blocking, and security headers |
+| **Containerization** | Docker Compose v2 (`compose.yaml`, `compose.dev.yaml`, `compose.prod.yaml`) | Multi-stage builds with non-root containers, health checks, and private internal networking |
+| **Observability** | Prometheus (`v2.53.1`) + Grafana (`11.1.0`) + `mysqld-exporter` | Optional Compose profile `monitoring` scraping `/api/v1/metrics` and `realtime` `/metrics` |
+| **Testing & CI/CD** | PHPUnit 11, Vitest 5, Node `node:test`, Playwright, GitHub Actions, CodeQL, Dependabot | Automated lint, OpenAPI validation, MySQL 8 migration verification, unit/integration suites, E2E browser checks, and security scanning on `main`, `develop`, `development` |
 
 ---
 
@@ -153,56 +154,48 @@ docker compose up -d --no-deps php-fpm
 
 ```powershell
 # Backend unit & integration tests (PHPUnit)
-cd backend; ./vendor/bin/phpunit; cd ..
+composer --working-dir=backend test
 
-# OpenAPI specification generation & validation
-cd backend; composer run openapi; cd ..
+# OpenAPI 3 specification validation
+php backend/scripts/validate-openapi.php
 
-# Frontend component tests & lint (Vitest / ESLint)
-cd frontend; npm test; cd ..
+# Frontend unit/component tests & production build (Vitest 5 + Vite 8)
+npm --prefix frontend test -- --run
+npm --prefix frontend run build
 
-# Realtime service tests
-cd realtime; npm test; cd ..
+# Real-time Socket.IO service typecheck, build, and tests
+npm --prefix realtime run typecheck
+npm --prefix realtime test
+
+# Playwright browser E2E tests (local Chromium on dedicated port 5174)
+npm run test:e2e:local
 ```
 
 ---
 
 ## 10. Git Branch, Commit, and Contribution Conventions
 
-- **Branches:** `main` (stable/releasable), `development` / `develop` (integration), `feature/<short-description>`, `fix/<short-description>`, `docs/<short-description>`, `chore/<short-description>`.
-- **Commits:** Imperative conventional commits under ~70 characters (e.g., `feat(appointments): validate slot conflicts`, `fix(auth): reject invalid session`, `docs(phase-1): document local environment`).
-- **Pull Requests:** Must complete all checkboxes in [`.github/pull_request_template.md`](.github/pull_request_template.md) and pass CI checks.
-- See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/setup/git-workflow.md`](docs/setup/git-workflow.md) for complete rules.
+- **Branches:** `main` (stable/releasable), `development` / `develop` (active integration), `feature/<short-description>`, `fix/<short-description>`, `docs/<short-description>`, `chore/<short-description>`.
+- **Commits:** Imperative [Conventional Commits](https://www.conventionalcommits.org/) under 72 characters (e.g., `feat(appointments): validate slot conflicts`, `fix(auth): reject expired session`, `docs(phase-15): document dashboard metrics`).
+- **Community & Governance:**
+  - [`CONTRIBUTING.md`](CONTRIBUTING.md) — development setup, coding standards, verification gates, and PR checklist
+  - [`SECURITY.md`](SECURITY.md) — supported branches, private vulnerability reporting, and disclosure policy
+  - [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) — community standards and enforcement guidelines
+  - [`LICENSE`](LICENSE) — MIT License terms
 
 ---
 
 ## 11. Project Documentation Index
 
-- **Phase 0 — Project Initiation & Scope Freeze:**
-  - [`docs/planning/project-brief.md`](docs/planning/project-brief.md)
-  - [`docs/planning/mvp-scope.md`](docs/planning/mvp-scope.md)
-  - [`docs/planning/requirements-register.md`](docs/planning/requirements-register.md)
-  - [`docs/planning/role-permission-matrix.md`](docs/planning/role-permission-matrix.md)
-  - [`docs/planning/appointment-policy-decisions.md`](docs/planning/appointment-policy-decisions.md)
-  - [`docs/planning/runtime-compatibility.md`](docs/planning/runtime-compatibility.md)
-  - [`docs/planning/risk-and-assumptions-register.md`](docs/planning/risk-and-assumptions-register.md)
-  - [`docs/planning/phase-0-exit-checklist.md`](docs/planning/phase-0-exit-checklist.md)
-- **Phase 1 — Repository, Local Environment & Team Workflow:**
-  - [`docs/setup/environment-assessment.md`](docs/setup/environment-assessment.md)
-  - [`docs/setup/environment-configuration.md`](docs/setup/environment-configuration.md)
-  - [`docs/setup/docker-context-security.md`](docs/setup/docker-context-security.md)
-  - [`docs/setup/git-workflow.md`](docs/setup/git-workflow.md)
-  - [`docs/setup/local-development.md`](docs/setup/local-development.md)
-  - [`docs/setup/phase-1-exit-checklist.md`](docs/setup/phase-1-exit-checklist.md)
-- **Phase 2 — Dockerized Development Environment and Nginx Reverse Proxy:**
-  - [`docs/setup/phase-2-implementation.md`](docs/setup/phase-2-implementation.md)
-- **Reference & Security Guides:**
-  - [`docs/architecture/directory-structure.md`](docs/architecture/directory-structure.md)
-  - [`docs/security/security-checklist.md`](docs/security/security-checklist.md)
-  - [`CONTRIBUTING.md`](CONTRIBUTING.md)
+- **Planning & Setup (Phases 0–2):** [`docs/README.md`](docs/README.md), [`docs/setup/local-development.md`](docs/setup/local-development.md), [`docs/setup/environment-configuration.md`](docs/setup/environment-configuration.md)
+- **Architecture & Security:** [`docs/architecture/directory-structure.md`](docs/architecture/directory-structure.md), [`docs/security/security-checklist.md`](docs/security/security-checklist.md)
+- **Phase 13 — Email Outbox Notifications:** [`docs/modules/email-notifications/email-architecture.md`](docs/modules/email-notifications/email-architecture.md)
+- **Phase 14 — Real-Time Notifications (Node.js + Socket.IO):** [`docs/phase-14/`](docs/phase-14/architecture.md)
+- **Phase 15 — Dashboards, Search, Reports, & Operational Views:** [`docs/phase-15/`](docs/phase-15/dashboard-metrics.md)
+- **Phase 16 — Testing Strategy & Regression Coverage:** [`docs/phase-16/`](docs/phase-16/testing-strategy.md)
 
 ---
 
 ## 12. License
 
-See [LICENSE](LICENSE).
+Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for full copyright, permissions, and warranty terms.

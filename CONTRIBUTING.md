@@ -58,6 +58,10 @@ php database/migrate.php
 
 ## 3. Branching & Commit Conventions
 
+### Branching Strategy
+- `main` — stable, release-ready branch protected by CI checks.
+- `development` (and `develop`) — active integration branch for ongoing phase work; open feature/fix PRs here before promoting to `main`.
+
 ### Branch Naming
 Use short, descriptive, kebab-case branch names prefixed by type:
 
@@ -90,6 +94,7 @@ Common scopes: `appointments`, `auth`, `backend`, `db`, `docker`, `email`, `fron
   - PDO prepared statements only — never interpolate untrusted input into SQL.
   - Keep controllers thin; place business logic and transactions in `backend/src/Services/` and SQL queries in `backend/src/Repositories/`.
   - Use explicit DRBAC permissions (`AuthorizationMiddleware::hasPermission(...)`) and strict ownership checks on all protected endpoints.
+  - Enforce server-side pagination (`per_page` / `limit`, max `100`) with deterministic primary-key tie-breakers (`ORDER BY ..., id DESC|ASC`) on all potentially growing list endpoints.
   - Use relative dates in tests (e.g., `DateTimeImmutable` in `Asia/Manila`) instead of hardcoded future dates that expire over time.
 
 - **Real-Time Service (Node.js + TypeScript + Socket.IO in `realtime/`):**

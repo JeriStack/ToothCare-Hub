@@ -315,7 +315,7 @@ class DentistRepository
             FROM dentists d
             INNER JOIN users u ON d.user_id = u.id
             {$whereSql}
-            ORDER BY {$sortColumn} {$direction}
+            ORDER BY {$sortColumn} {$direction}, d.id {$direction}
             LIMIT {$perPage} OFFSET {$offset}
         ";
 

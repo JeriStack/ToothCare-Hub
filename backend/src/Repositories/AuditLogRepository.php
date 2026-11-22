@@ -186,7 +186,7 @@ class AuditLogRepository
         $direction = strtoupper($sortDir) === 'ASC' ? 'ASC' : 'DESC';
 
         $page = max(1, $page);
-        $perPage = max(1, min(200, $perPage));
+        $perPage = max(1, min(100, $perPage));
         $offset = ($page - 1) * $perPage;
 
         $stmt = $pdo->prepare("
@@ -198,7 +198,7 @@ class AuditLogRepository
             FROM audit_logs al
             LEFT JOIN users u ON al.actor_user_id = u.id
             {$whereSql}
-            ORDER BY {$sortCol} {$direction}
+            ORDER BY {$sortCol} {$direction}, al.id {$direction}
             LIMIT {$perPage} OFFSET {$offset}
         ");
         $stmt->execute($params);

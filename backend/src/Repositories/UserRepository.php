@@ -318,7 +318,7 @@ class UserRepository
             LEFT JOIN dentists d ON d.user_id = u.id
             LEFT JOIN patients p ON p.user_id = u.id
             {$whereSql}
-            ORDER BY {$sortColumn} {$direction}
+            ORDER BY {$sortColumn} {$direction}, u.id {$direction}
             LIMIT {$perPage} OFFSET {$offset}
         ";
 

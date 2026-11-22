@@ -80,7 +80,8 @@ class NotificationService
     public function getUserNotifications(int $userId, array $params = []): array
     {
         $page = isset($params['page']) ? max(1, (int) $params['page']) : 1;
-        $perPage = isset($params['per_page']) ? max(1, min(100, (int) $params['per_page'])) : 20;
+        $rawPerPage = $params['per_page'] ?? $params['limit'] ?? 20;
+        $perPage = max(1, min(100, (int) $rawPerPage));
         $role = isset($params['role']) ? (string) $params['role'] : null;
 
         return $this->notificationRepo->findByUser($userId, $role, $page, $perPage);

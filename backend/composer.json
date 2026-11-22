@@ -35,7 +35,9 @@
         "test": "phpunit",
         "test:unit": "phpunit --testsuite Unit",
         "test:integration": "phpunit --testsuite Integration",
-        "openapi": "openapi src -o docs/openapi.yaml",
+        "openapi": "php scripts/generate-openapi.php",
+        "openapi:generate": "php scripts/generate-openapi.php",
+        "openapi:check": "php scripts/generate-openapi.php --check",
         "openapi:validate": "php scripts/validate-openapi.php",
         "db:seed": "php scripts/seed.php"
     },

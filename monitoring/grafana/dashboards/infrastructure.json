@@ -1,34 +1,95 @@
 {
-  "annotations": { "list": [] },
+  "uid": "toothcare-infra-overview",
+  "title": "ToothCare Hub — Infrastructure Overview",
+  "tags": ["toothcare", "infrastructure", "phase-19"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 2,
   "editable": true,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "annotations": { "list": [] },
   "panels": [
     {
-      "title": "Container CPU Usage",
-      "type": "timeseries",
+      "id": 1,
+      "title": "MySQL & Nginx Availability",
+      "type": "stat",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }
+          ],
+          "noValue": "NO DATA"
+        },
+        "overrides": []
+      },
       "targets": [
-        {
-          "expr": "sum(rate(container_cpu_usage_seconds_total[5m])) by (container_name)",
-          "legendFormat": "{{ container_name }}"
-        }
+        { "expr": "mysql_up{job=\"mysqld-exporter\"}", "legendFormat": "MySQL" },
+        { "expr": "nginx_up{job=\"nginx-exporter\"}", "legendFormat": "Nginx" }
       ]
     },
     {
-      "title": "Container Memory Usage",
+      "id": 2,
+      "title": "MySQL Active Connections vs Max",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
       "targets": [
-        {
-          "expr": "sum(container_memory_usage_bytes) by (container_name)",
-          "legendFormat": "{{ container_name }}"
-        }
+        { "expr": "mysql_global_status_threads_connected{job=\"mysqld-exporter\"}", "legendFormat": "threads connected" },
+        { "expr": "mysql_global_status_threads_running{job=\"mysqld-exporter\"}", "legendFormat": "threads running" },
+        { "expr": "mysql_global_variables_max_connections{job=\"mysqld-exporter\"}", "legendFormat": "max connections" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "MySQL Query Rate (queries/s)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "targets": [
+        { "expr": "rate(mysql_global_status_queries{job=\"mysqld-exporter\"}[5m])", "legendFormat": "queries/s" },
+        { "expr": "rate(mysql_global_status_slow_queries{job=\"mysqld-exporter\"}[5m])", "legendFormat": "slow queries/s" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Nginx Connections by State",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "expr": "nginx_connections_active{job=\"nginx-exporter\"}", "legendFormat": "active" },
+        { "expr": "nginx_connections_reading{job=\"nginx-exporter\"}", "legendFormat": "reading" },
+        { "expr": "nginx_connections_writing{job=\"nginx-exporter\"}", "legendFormat": "writing" },
+        { "expr": "nginx_connections_waiting{job=\"nginx-exporter\"}", "legendFormat": "waiting" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Container CPU Usage (cores)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "expr": "sum by (name) (rate(container_cpu_usage_seconds_total{name=~\"toothcare-.*\"}[5m]))", "legendFormat": "{{name}}" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Container Working Set Memory (bytes)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "targets": [
+        { "expr": "sum by (name) (container_memory_working_set_bytes{name=~\"toothcare-.*\"})", "legendFormat": "{{name}}" }
       ]
     }
-  ],
-  "schemaVersion": 39,
-  "tags": ["toothcare", "infrastructure"],
-  "title": "ToothCare Hub - Infrastructure",
-  "version": 1
+  ]
 }

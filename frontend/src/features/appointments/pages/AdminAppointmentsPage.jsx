@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Calendar,
   Clock,
@@ -23,9 +23,11 @@ import {
 } from 'lucide-react';
 import { appointmentsApi } from '../api';
 import { dentistsApi } from '../../dentists/api';
+import { servicesApi } from '../../services/api';
 import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
 import { STATUS_STYLES } from '../components/AppointmentCard';
-
+
+
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 export function AdminAppointmentsPage() {
   // State
@@ -34,13 +36,17 @@ export function AdminAppointmentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dentists, setDentists] = useState([]);
+  const [services, setServices] = useState([]);
+  const requestSeqRef = useRef(0);
 
   // Filters
   const [statusFilter, setStatusFilter] = useState(''); // '' = ALL
   const [search, setSearch] = useState('');
   const [dentistId, setDentistId] = useState('');
+  const [serviceId, setServiceId] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [filterError, setFilterError] = useState(null);
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -69,32 +75,45 @@ export function AdminAppointmentsPage() {
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState(null);
 
-  // Load Dentists List once for filter dropdown
+  // Load Dentists & Services lists once for filter dropdowns
   useEffect(() => {
     dentistsApi
       .getPublicDentists()
       .then((data) => setDentists(Array.isArray(data) ? data : []))
       .catch(() => {});
+    servicesApi
+      .getPublicServices()
+      .then((data) => setServices(Array.isArray(data) ? data : []))
+      .catch(() => {});
   }, []);
 
-  // Fetch paginated admin appointments
+  // Fetch paginated admin appointments (guarded against stale out-of-order responses)
   const fetchAppointments = useCallback(() => {
+    if (dateFrom && dateTo && dateTo < dateFrom) {
+      setFilterError('End date cannot be earlier than start date.');
+      return;
+    }
+
+    setFilterError(null);
     setLoading(true);
     setError(null);
+    const currentSeq = ++requestSeqRef.current;
 
     const params = {
       page,
-      limit: 15,
+      per_page: 15,
     };
     if (statusFilter) params.status = statusFilter;
     if (search.trim()) params.search = search.trim();
     if (dentistId) params.dentist_id = dentistId;
-    if (dateFrom) params.date_from = dateFrom;
-    if (dateTo) params.date_to = dateTo;
+    if (serviceId) params.service_id = serviceId;
+    if (dateFrom) params.start_date = dateFrom;
+    if (dateTo) params.end_date = dateTo;
 
     appointmentsApi
       .listAdmin(params)
       .then((res) => {
+        if (currentSeq !== requestSeqRef.current) return;
         const list = Array.isArray(res?.data)
           ? res.data
           : Array.isArray(res?.data?.items)
@@ -104,13 +123,16 @@ export function AdminAppointmentsPage() {
         if (res?.meta) setMeta(res.meta);
       })
       .catch((err) => {
+        if (currentSeq !== requestSeqRef.current) return;
         setAppointments([]);
         setError(err.response?.data?.error?.message || err.message || 'Failed to load appointments.');
       })
       .finally(() => {
-        setLoading(false);
+        if (currentSeq === requestSeqRef.current) {
+          setLoading(false);
+        }
       });
-  }, [page, statusFilter, search, dentistId, dateFrom, dateTo, refreshKey]);
+  }, [page, statusFilter, search, dentistId, serviceId, dateFrom, dateTo, refreshKey]);
 
   useEffect(() => {
     fetchAppointments();
@@ -218,8 +240,10 @@ export function AdminAppointmentsPage() {
     setStatusFilter('');
     setSearch('');
     setDentistId('');
+    setServiceId('');
     setDateFrom('');
     setDateTo('');
+    setFilterError(null);
     setPage(1);
   };
 
@@ -294,25 +318,29 @@ export function AdminAppointmentsPage() {
         </div>
 
         {/* Search & Select Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
           {/* Search Input */}
           <div className="relative">
+            <label htmlFor="admin-appt-search" className="sr-only">Search patient, email, or service</label>
             <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
+              id="admin-appt-search"
               type="text"
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              placeholder="Search patient, email, ref #..."
+              placeholder="Search patient, email, service..."
               className="w-full pl-9 pr-3 py-2 bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400"
             />
           </div>
 
           {/* Dentist Select */}
           <div>
+            <label htmlFor="admin-appt-dentist" className="sr-only">Filter by dentist</label>
             <select
+              id="admin-appt-dentist"
               value={dentistId}
               onChange={(e) => {
                 setDentistId(e.target.value);
@@ -329,9 +357,32 @@ export function AdminAppointmentsPage() {
             </select>
           </div>
 
+          {/* Dental Service Select */}
+          <div>
+            <label htmlFor="admin-appt-service" className="sr-only">Filter by dental service</label>
+            <select
+              id="admin-appt-service"
+              value={serviceId}
+              onChange={(e) => {
+                setServiceId(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-3 py-2 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400 bg-white dark:bg-gray-700 text-slate-700 dark:text-slate-100"
+            >
+              <option value="">All Services</option>
+              {services.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Date From */}
           <div>
+            <label htmlFor="admin-appt-date-from" className="sr-only">Start date</label>
             <input
+              id="admin-appt-date-from"
               type="date"
               value={dateFrom}
               onChange={(e) => {
@@ -339,13 +390,15 @@ export function AdminAppointmentsPage() {
                 setPage(1);
               }}
               className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400 text-slate-700 dark:text-slate-100"
-              placeholder="From Date"
+              aria-label="Start date"
             />
           </div>
 
           {/* Date To */}
           <div>
+            <label htmlFor="admin-appt-date-to" className="sr-only">End date</label>
             <input
+              id="admin-appt-date-to"
               type="date"
               value={dateTo}
               onChange={(e) => {
@@ -353,21 +406,28 @@ export function AdminAppointmentsPage() {
                 setPage(1);
               }}
               className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400 text-slate-700 dark:text-slate-100"
-              placeholder="To Date"
+              aria-label="End date"
             />
           </div>
         </div>
 
+        {filterError && (
+          <div role="alert" className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl px-3 py-2 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>{filterError}</span>
+          </div>
+        )}
+
         {/* Clear Filters CTA if active */}
-        {(statusFilter || search || dentistId || dateFrom || dateTo) && (
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-1">
+        {(statusFilter || search || dentistId || serviceId || dateFrom || dateTo) && (
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400 pt-1">
             <span>Filters currently applied</span>
             <button
               type="button"
               onClick={resetFilters}
               className="text-[#0D9488] dark:text-teal-400 font-semibold hover:underline"
             >
-              Reset all filters
+              Clear Filters
             </button>
           </div>
         )}

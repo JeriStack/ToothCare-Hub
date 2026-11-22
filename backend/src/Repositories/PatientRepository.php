@@ -297,7 +297,7 @@ class PatientRepository
             FROM patients p
             INNER JOIN users u ON p.user_id = u.id
             {$whereClause}
-            ORDER BY {$sortColumn} {$direction}
+            ORDER BY {$sortColumn} {$direction}, p.id {$direction}
             LIMIT :limit OFFSET :offset
         ";
 

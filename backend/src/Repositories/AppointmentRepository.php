@@ -290,9 +290,13 @@ class AppointmentRepository
         ?string $from = null,
         ?string $to = null,
         int $page = 1,
-        int $perPage = 20
+        int $perPage = 20,
+        ?int $dentistId = null,
+        ?int $serviceId = null
     ): array {
         $pdo = $this->database->getConnection();
+        $page = max(1, $page);
+        $perPage = max(1, min(100, $perPage));
         $where = ['a.patient_id = :patient_id'];
         $params = [':patient_id' => $patientId];
 
@@ -308,6 +312,14 @@ class AppointmentRepository
             $where[] = 'a.start_at <= :to';
             $params[':to'] = $to;
         }
+        if ($dentistId !== null && $dentistId > 0) {
+            $where[] = 'a.dentist_id = :dentist_id';
+            $params[':dentist_id'] = $dentistId;
+        }
+        if ($serviceId !== null && $serviceId > 0) {
+            $where[] = 'a.service_id = :service_id';
+            $params[':service_id'] = $serviceId;
+        }
 
         $whereClause = implode(' AND ', $where);
 
@@ -317,7 +329,7 @@ class AppointmentRepository
         $total = (int) $countStmt->fetchColumn();
 
         $offset = max(0, ($page - 1) * $perPage);
-        $totalPages = $perPage > 0 ? (int) ceil($total / $perPage) : 1;
+        $totalPages = $total > 0 ? (int) ceil($total / $perPage) : 1;
 
         $sql = "
             SELECT a.*,
@@ -327,7 +339,7 @@ class AppointmentRepository
             JOIN dentists d ON a.dentist_id = d.id
             JOIN services s ON a.service_id = s.id
             WHERE {$whereClause}
-            ORDER BY a.start_at DESC
+            ORDER BY a.start_at DESC, a.id DESC
             LIMIT :limit OFFSET :offset
         ";
 
@@ -357,6 +369,8 @@ class AppointmentRepository
     public function findAllFiltered(array $filters = [], int $page = 1, int $perPage = 20): array
     {
         $pdo = $this->database->getConnection();
+        $page = max(1, $page);
+        $perPage = max(1, min(100, $perPage));
         $where = ['1=1'];
         $params = [];
 
@@ -385,12 +399,14 @@ class AppointmentRepository
             $params[':to'] = (string) $filters['to'];
         }
         if (!empty($filters['search'])) {
-            $searchTerm = '%' . trim((string) $filters['search']) . '%';
-            $where[] = '(p.first_name LIKE :search1 OR p.last_name LIKE :search2 OR u_p.email LIKE :search3 OR p.phone LIKE :search4)';
+            $escaped = str_replace(['%', '_'], ['\\%', '\\_'], trim((string) $filters['search']));
+            $searchTerm = '%' . $escaped . '%';
+            $where[] = '(p.first_name LIKE :search1 OR p.last_name LIKE :search2 OR u_p.email LIKE :search3 OR p.phone LIKE :search4 OR s.name LIKE :search5)';
             $params[':search1'] = $searchTerm;
             $params[':search2'] = $searchTerm;
             $params[':search3'] = $searchTerm;
             $params[':search4'] = $searchTerm;
+            $params[':search5'] = $searchTerm;
         }
 
         $whereClause = implode(' AND ', $where);
@@ -408,7 +424,7 @@ class AppointmentRepository
         $total = (int) $countStmt->fetchColumn();
 
         $offset = max(0, ($page - 1) * $perPage);
-        $totalPages = $perPage > 0 ? (int) ceil($total / $perPage) : 1;
+        $totalPages = $total > 0 ? (int) ceil($total / $perPage) : 1;
 
         $sql = "
             SELECT a.*,
@@ -422,7 +438,7 @@ class AppointmentRepository
             JOIN dentists d ON a.dentist_id = d.id
             JOIN services s ON a.service_id = s.id
             WHERE {$whereClause}
-            ORDER BY a.start_at DESC
+            ORDER BY a.start_at DESC, a.id DESC
             LIMIT :limit OFFSET :offset
         ";
 
@@ -444,7 +460,98 @@ class AppointmentRepository
     }
 
     /**
-     * List appointments for a dentist with optional filters.
+     * List paginated appointments assigned to a dentist using SQL LIMIT/OFFSET
+     * (avoids loading unbounded appointment tables into PHP memory).
+     *
+     * @return array{items: list<array<string, mixed>>, total: int, page: int, per_page: int, total_pages: int}
+     */
+    public function findByDentistPaginated(
+        int $dentistId,
+        ?string $from = null,
+        ?string $to = null,
+        ?string $status = null,
+        ?string $search = null,
+        ?int $serviceId = null,
+        int $page = 1,
+        int $perPage = 20
+    ): array {
+        $pdo = $this->database->getConnection();
+        $page = max(1, $page);
+        $perPage = max(1, min(100, $perPage));
+
+        $where = ['a.dentist_id = :dentist_id'];
+        $params = [':dentist_id' => $dentistId];
+
+        if ($from !== null && $from !== '') {
+            $where[] = 'a.start_at >= :from';
+            $params[':from'] = $from;
+        }
+        if ($to !== null && $to !== '') {
+            $where[] = 'a.start_at <= :to';
+            $params[':to'] = $to;
+        }
+        if ($status !== null && $status !== '' && $status !== 'ALL') {
+            $where[] = 'a.status = :status';
+            $params[':status'] = strtoupper($status);
+        }
+        if ($serviceId !== null && $serviceId > 0) {
+            $where[] = 'a.service_id = :service_id';
+            $params[':service_id'] = $serviceId;
+        }
+        if ($search !== null && trim($search) !== '') {
+            $term = '%' . str_replace(['%', '_'], ['\\%', '\\_'], trim($search)) . '%';
+            $where[] = '(p.first_name LIKE :s1 OR p.last_name LIKE :s2 OR s.name LIKE :s3)';
+            $params[':s1'] = $term;
+            $params[':s2'] = $term;
+            $params[':s3'] = $term;
+        }
+
+        $whereSql = implode(' AND ', $where);
+
+        $countStmt = $pdo->prepare("
+            SELECT COUNT(*)
+            FROM appointments a
+            JOIN patients p ON a.patient_id = p.id
+            JOIN services s ON a.service_id = s.id
+            WHERE {$whereSql}
+        ");
+        $countStmt->execute($params);
+        $total = (int) $countStmt->fetchColumn();
+
+        $offset = ($page - 1) * $perPage;
+        $totalPages = $total > 0 ? (int) ceil($total / $perPage) : 1;
+
+        $stmt = $pdo->prepare("
+            SELECT a.*,
+                   p.first_name AS patient_first_name, p.last_name AS patient_last_name,
+                   p.phone AS patient_phone, p.medical_alerts AS patient_medical_alerts,
+                   p.date_of_birth AS patient_date_of_birth, p.gender AS patient_gender,
+                   s.name AS service_name, s.duration_minutes AS service_duration
+            FROM appointments a
+            JOIN patients p ON a.patient_id = p.id
+            JOIN services s ON a.service_id = s.id
+            WHERE {$whereSql}
+            ORDER BY a.start_at ASC, a.id ASC
+            LIMIT :limit OFFSET :offset
+        ");
+        foreach ($params as $k => $v) {
+            $stmt->bindValue($k, $v);
+        }
+        $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return [
+            'items' => $stmt->fetchAll(PDO::FETCH_ASSOC),
+            'total' => $total,
+            'page' => $page,
+            'per_page' => $perPage,
+            'total_pages' => $totalPages,
+        ];
+    }
+
+    /**
+     * List appointments for a dentist with optional filters (bounded for daily/schedule views).
      *
      * @return list<array<string, mixed>>
      */
@@ -489,7 +596,7 @@ class AppointmentRepository
             $params[] = $term;
         }
 
-        $sql .= ' ORDER BY a.start_at ASC';
+        $sql .= ' ORDER BY a.start_at ASC, a.id ASC';
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);

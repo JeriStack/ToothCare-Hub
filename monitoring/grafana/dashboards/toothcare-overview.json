@@ -1,36 +1,52 @@
 {
-  "annotations": { "list": [] },
+  "uid": "toothcare-app-overview",
+  "title": "ToothCare Hub — Application Overview",
+  "tags": ["toothcare", "application", "phase-19"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 2,
   "editable": true,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "annotations": { "list": [] },
   "panels": [
     {
-      "title": "API request rate",
-      "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
-      "targets": [
-        {
-          "expr": "sum(rate(http_requests_total{job=\"toothcare-backend\"}[5m]))",
-          "legendFormat": "requests/s"
-        }
-      ]
-    },
-    {
-      "title": "Realtime connected clients",
+      "id": 1,
+      "title": "Prometheus Target Health (up)",
       "type": "stat",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }
+          ],
+          "noValue": "NO DATA"
+        },
+        "overrides": []
+      },
       "targets": [
-        {
-          "expr": "socket_io_connected{job=\"toothcare-realtime\"}",
-          "legendFormat": "clients"
-        }
+        { "expr": "up", "legendFormat": "{{job}}" }
       ]
     },
     {
-      "title": "Email outbox queue",
+      "id": 2,
+      "title": "Nginx HTTP Request Rate (req/s)",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "noValue": "0" }, "overrides": [] },
+      "targets": [
+        { "expr": "rate(nginx_http_requests_total{job=\"nginx-exporter\"}[5m])", "legendFormat": "HTTP req/s" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Email Outbox Queue Depth",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
       "targets": [
         { "expr": "toothcare_email_jobs_pending{job=\"toothcare-api\"}", "legendFormat": "pending" },
         { "expr": "toothcare_email_worker_processing{job=\"toothcare-api\"}", "legendFormat": "processing" },
@@ -38,19 +54,66 @@
       ]
     },
     {
-      "title": "Email deliveries and failures (per 15m)",
+      "id": 4,
+      "title": "Oldest Pending Email Job Age (s)",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 6 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 300 },
+              { "color": "red", "value": 900 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "toothcare_email_oldest_pending_age_seconds{job=\"toothcare-api\"}", "legendFormat": "oldest pending" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Active Socket.IO Connections",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 6 },
+      "fieldConfig": { "defaults": { "unit": "short", "noValue": "NO DATA" }, "overrides": [] },
+      "targets": [
+        { "expr": "toothcare_realtime_active_connections{job=\"toothcare-realtime\"}", "legendFormat": "clients" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Email Deliveries, Failures & Retries (15m)",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
       "targets": [
         { "expr": "sum(increase(toothcare_email_delivery_success_total{job=\"toothcare-api\"}[15m]))", "legendFormat": "delivered" },
         { "expr": "sum by (category) (increase(toothcare_email_delivery_failure_total{job=\"toothcare-api\"}[15m]))", "legendFormat": "failed {{category}}" },
         { "expr": "sum(increase(toothcare_email_retry_total{job=\"toothcare-api\"}[15m]))", "legendFormat": "retries" }
       ]
+    },
+    {
+      "id": 7,
+      "title": "Realtime Events Delivered by Type & Auth Failures (5m)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "expr": "increase(toothcare_realtime_events_delivered_by_type_total{job=\"toothcare-realtime\"}[5m])", "legendFormat": "delivered {{event_type}}" },
+        { "expr": "increase(toothcare_realtime_auth_failures_total{job=\"toothcare-realtime\"}[5m])", "legendFormat": "auth failures" },
+        { "expr": "increase(toothcare_realtime_events_rejected_total{job=\"toothcare-realtime\"}[5m])", "legendFormat": "publisher rejected" },
+        { "expr": "toothcare_realtime_outbox_pending{job=\"toothcare-api\"}", "legendFormat": "outbox pending" }
+      ]
     }
-  ],
-  "schemaVersion": 39,
-  "tags": ["toothcare"],
-  "title": "ToothCare Hub - Overview",
-  "version": 1
+  ]
 }

@@ -27,6 +27,13 @@ jobs:
         run: |
           docker compose -f compose.yaml -f compose.dev.yaml config -q
           docker compose -f compose.yaml -f compose.prod.yaml config -q
+          docker compose --profile monitoring -f compose.yaml -f compose.dev.yaml config -q
+
+      - name: Validate Prometheus & Grafana Monitoring Configurations (Phase 19)
+        run: |
+          python3 -c "import json, glob; [json.load(open(f)) for f in glob.glob('monitoring/grafana/dashboards/*.json')]; print('Grafana dashboard JSON valid')"
+          docker run --rm --entrypoint /bin/promtool -v "$PWD/monitoring/prometheus:/etc/prometheus:ro" prom/prometheus:v2.53.1 check config /etc/prometheus/prometheus.yml
+          docker run --rm --entrypoint /bin/promtool -v "$PWD/monitoring/prometheus:/etc/prometheus:ro" prom/prometheus:v2.53.1 check rules /etc/prometheus/rules/toothcare-alerts.yml
 
   backend:
     name: Backend (PHP ${{ matrix.php-version }})
@@ -53,17 +60,29 @@ jobs:
         working-directory: backend
         run: composer install --no-interaction --prefer-dist
 
+      - name: Composer dependency security audit (Phase 18)
+        working-directory: backend
+        run: composer audit --no-interaction
+
       - name: PHP lint (syntax check)
         working-directory: backend
         run: find src public config tests bin templates -name "*.php" -print0 | xargs -0 -n1 php -l
 
-      - name: Run PHPUnit (fake mail transport; no SMTP is ever contacted)
+      - name: Run PHPUnit unit tests
         working-directory: backend
         env:
           MAIL_ENABLED: "false"
           MAIL_HOST: ""
           EMAIL_PAYLOAD_KEY: ci-only-not-a-secret
-        run: ./vendor/bin/phpunit
+        run: composer test:unit
+
+      - name: Run PHPUnit integration & regression tests (fake mail transport)
+        working-directory: backend
+        env:
+          MAIL_ENABLED: "false"
+          MAIL_HOST: ""
+          EMAIL_PAYLOAD_KEY: ci-only-not-a-secret
+        run: composer test:integration
 
       - name: Email and realtime worker command validation
         working-directory: backend
@@ -77,9 +96,11 @@ jobs:
           php -r 'require "vendor/autoload.php"; $r = App\Services\Realtime\RealtimeConfig::fromEnvironment(); if (!$r->isValid()) { fwrite(STDERR, implode("\n", $r->errors)); exit(1); } echo "realtime settings valid\n";'
           php -r 'require "vendor/autoload.php"; foreach (App\Services\Email\EmailTemplateRenderer::TEMPLATES as $t) { if (!(new App\Services\Email\EmailTemplateRenderer(App\Services\Email\EmailTemplateRenderer::defaultTemplateDir()))->has($t)) { fwrite(STDERR, "missing template $t\n"); exit(1); } } echo "all email templates present\n";'
 
-      - name: Validate OpenAPI spec
+      - name: Verify OpenAPI spec is up to date & valid (Phase 17)
         working-directory: backend
-        run: php scripts/validate-openapi.php
+        run: |
+          composer openapi:check
+          composer openapi:validate
 
   migrations:
     name: Database migrations (MySQL 8.0)
@@ -114,12 +135,20 @@ jobs:
           DB_PASSWORD: ci_root_pass
         run: php database/migrate.php --no-backup
 
-      - name: Verify email and realtime outbox schema and permissions
+      - name: Verify email, realtime, and Phase 15 reporting schema and idempotency
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: "3306"
+          DB_NAME: toothcare_ci
+          DB_USER: root
+          DB_PASSWORD: ci_root_pass
         run: |
           mysql -h 127.0.0.1 -uroot -pci_root_pass toothcare_ci -e "SELECT event_key, locked_by, payload_json FROM email_outbox LIMIT 0"
           mysql -h 127.0.0.1 -uroot -pci_root_pass toothcare_ci -e "SELECT ticket_hash, session_id_hash, expires_at FROM realtime_tickets LIMIT 0"
           mysql -h 127.0.0.1 -uroot -pci_root_pass toothcare_ci -e "SELECT event_id, event_type, recipient_user_id, status FROM realtime_outbox LIMIT 0"
           test "$(mysql -h 127.0.0.1 -uroot -pci_root_pass toothcare_ci -N -e "SELECT COUNT(*) FROM permissions WHERE slug LIKE 'email_outbox.%'")" = "4"
+          test "$(mysql -h 127.0.0.1 -uroot -pci_root_pass toothcare_ci -N -e "SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='toothcare_ci' AND INDEX_NAME='idx_appointments_service_start'")" -ge "1"
+          php database/migrate.php --no-backup
 
   realtime:
     name: Realtime (Node 24 + Socket.IO)
@@ -132,10 +161,11 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Install, typecheck, build, and test realtime service
+      - name: Install, audit, typecheck, build, and test realtime service
         working-directory: realtime
         run: |
           npm ci
+          npm audit --audit-level=high
           npm run typecheck
           npm run build
           npm test
@@ -154,12 +184,52 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: Frontend checks
+      - name: Frontend checks & dependency audit
         working-directory: frontend
         run: |
           npm ci
+          npm audit --audit-level=high
           npm test -- --run
           npm run build
       - name: Responsive contract tests
         working-directory: frontend
         run: npx vitest run src/tests/components/ResponsiveContracts.test.jsx
+
+  containers:
+    name: Production Container Build, Nginx Check & Trivy Scan (Phase 20)
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build production multi-stage images
+        run: |
+          docker build -f docker/nginx/Dockerfile -t toothcare-frontend:${{ github.sha }} .
+          docker build -f docker/php/Dockerfile -t toothcare-backend:${{ github.sha }} ./backend
+          docker build -f realtime/Dockerfile -t toothcare-realtime:${{ github.sha }} ./realtime
+
+      - name: Validate production Nginx configuration syntax
+        run: docker run --rm --add-host=php-fpm:127.0.0.1 --add-host=realtime:127.0.0.1 --entrypoint nginx toothcare-frontend:${{ github.sha }} -t
+
+      - name: Trivy image vulnerability scan (CRITICAL gate)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: toothcare-frontend:${{ github.sha }}
+          severity: CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Trivy scan backend PHP image (CRITICAL gate)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: toothcare-backend:${{ github.sha }}
+          severity: CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Trivy scan realtime Node.js image (CRITICAL gate)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: toothcare-realtime:${{ github.sha }}
+          severity: CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true

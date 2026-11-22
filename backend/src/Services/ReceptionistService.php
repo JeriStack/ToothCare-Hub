@@ -85,22 +85,38 @@ class ReceptionistService
 
         $pdo = $this->database->getConnection();
 
-        // 1. Operational Counts
-        $countStmt = $pdo->prepare('
-            SELECT 
+        // 1. Operational Counts (index-friendly Asia/Manila day bounds)
+        $todayStart = $todayDate . ' 00:00:00';
+        $todayEnd = $todayDate . ' 23:59:59';
+        $nowStr = $now->format('Y-m-d H:i:s');
+
+        $countStmt = $pdo->prepare("
+            SELECT
                 COUNT(*) AS today_total,
-                SUM(CASE WHEN status = "CONFIRMED" THEN 1 ELSE 0 END) AS confirmed_today,
-                SUM(CASE WHEN status = "COMPLETED" THEN 1 ELSE 0 END) AS completed_today,
-                SUM(CASE WHEN status = "CANCELLED" THEN 1 ELSE 0 END) AS cancelled_today
+                COALESCE(SUM(CASE WHEN status = 'CONFIRMED' THEN 1 ELSE 0 END), 0) AS confirmed_today,
+                COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END), 0) AS completed_today,
+                COALESCE(SUM(CASE WHEN status = 'CANCELLED' THEN 1 ELSE 0 END), 0) AS cancelled_today
             FROM appointments
-            WHERE DATE(start_at) = ?
-        ');
-        $countStmt->execute([$todayDate]);
+            WHERE start_at >= ? AND start_at <= ?
+        ");
+        $countStmt->execute([$todayStart, $todayEnd]);
         $apptCounts = $countStmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
-        // Global pending review count
-        $pendingStmt = $pdo->query('SELECT COUNT(*) as total FROM appointments WHERE status = "PENDING"');
-        $pendingCount = (int) ($pendingStmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
+        // Global pending, upcoming, and status distribution in one pass
+        $globalStmt = $pdo->prepare("
+            SELECT
+                COALESCE(SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END), 0) AS pending_total,
+                COALESCE(SUM(CASE WHEN status = 'CONFIRMED' THEN 1 ELSE 0 END), 0) AS confirmed_total,
+                COALESCE(SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END), 0) AS completed_total,
+                COALESCE(SUM(CASE WHEN status = 'CANCELLED' THEN 1 ELSE 0 END), 0) AS cancelled_total,
+                COALESCE(SUM(CASE WHEN status = 'REJECTED' THEN 1 ELSE 0 END), 0) AS rejected_total,
+                COALESCE(SUM(CASE WHEN status IN ('PENDING', 'CONFIRMED') AND start_at >= ? THEN 1 ELSE 0 END), 0) AS upcoming_total
+            FROM appointments
+        ");
+        $globalStmt->execute([$nowStr]);
+        $globalCounts = $globalStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        $pendingCount = (int) ($globalCounts['pending_total'] ?? 0);
+        $upcomingCount = (int) ($globalCounts['upcoming_total'] ?? 0);
 
         // Attendance counts for today
         $attCounts = $this->attendanceRepo->getTodayCounts($todayDate);
@@ -134,12 +150,20 @@ class ReceptionistService
             'counts' => [
                 'today_total' => (int) ($apptCounts['today_total'] ?? 0),
                 'pending_requests' => $pendingCount,
+                'upcoming_appointments' => $upcomingCount,
                 'confirmed_today' => (int) ($apptCounts['confirmed_today'] ?? 0),
                 'checked_in' => $attCounts['checked_in'] + $attCounts['waiting'] + $attCounts['in_consultation'],
                 'waiting' => $attCounts['waiting'] + $attCounts['checked_in'],
                 'in_consultation' => $attCounts['in_consultation'],
                 'completed_today' => (int) ($apptCounts['completed_today'] ?? 0),
                 'cancelled_today' => (int) ($apptCounts['cancelled_today'] ?? 0),
+            ],
+            'status_distribution' => [
+                'PENDING' => (int) ($globalCounts['pending_total'] ?? 0),
+                'CONFIRMED' => (int) ($globalCounts['confirmed_total'] ?? 0),
+                'COMPLETED' => (int) ($globalCounts['completed_total'] ?? 0),
+                'CANCELLED' => (int) ($globalCounts['cancelled_total'] ?? 0),
+                'REJECTED' => (int) ($globalCounts['rejected_total'] ?? 0),
             ],
             'today_schedule' => $todaySchedule,
             'waiting_list' => $waitingList,
@@ -176,10 +200,13 @@ class ReceptionistService
             JOIN dentists d ON d.id = a.dentist_id
             JOIN services s ON s.id = a.service_id
             LEFT JOIN appointment_attendances att ON att.appointment_id = a.id
-            WHERE DATE(a.start_at) = :today
+            WHERE a.start_at >= :today_start AND a.start_at <= :today_end
         ';
 
-        $params = [':today' => $todayDate];
+        $params = [
+            ':today_start' => $todayDate . ' 00:00:00',
+            ':today_end' => $todayDate . ' 23:59:59',
+        ];
 
         if (!empty($filters['dentist_id'])) {
             $sql .= ' AND a.dentist_id = :dentist_id';

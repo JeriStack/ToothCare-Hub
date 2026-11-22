@@ -1,0 +1,3009 @@
+openapi: 3.0.3
+info:
+  title: 'ToothCare Hub REST API'
+  description: 'Authoritative native PHP REST API (/api/v1) for ToothCare Hub — Dental Appointment and Clinic Management System. Uses server-side PHP sessions (HttpOnly, SameSite=Lax cookie) with synchronizer CSRF tokens on state-changing requests and server-enforced DRBAC + resource ownership checks.'
+  version: 1.0.0
+servers:
+  -
+    url: /api/v1
+    description: 'Same-origin API base path (Nginx reverse proxy / Vite dev proxy)'
+  -
+    url: 'http://localhost:8080/api/v1'
+    description: 'Local Docker Compose Nginx edge gateway'
+paths:
+  /appointments:
+    get:
+      tags:
+        - Appointments
+      summary: 'List Authenticated Patient Appointments (Paginated)'
+      operationId: listPatientAppointments
+      parameters:
+        -
+          name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - PENDING
+              - CONFIRMED
+              - REJECTED
+              - CANCELLED
+              - COMPLETED
+        -
+          name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        -
+          name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+        -
+          name: dentist_id
+          in: query
+          schema:
+            type: integer
+        -
+          name: service_id
+          in: query
+          schema:
+            type: integer
+        -
+          name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        -
+          name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+            minimum: 1
+      responses:
+        '200':
+          description: 'Paginated patient appointments'
+        '401':
+          description: Unauthenticated
+        '422':
+          description: 'Invalid filter parameters'
+      security:
+        -
+          CookieAuth: []
+    post:
+      tags:
+        - Appointments
+      summary: 'Request New Dental Appointment (Patient)'
+      description: 'Validates active dentist/service, working hours, time-off, clinic closures, and uses InnoDB row locking (SELECT ... FOR UPDATE) with half-open interval non-overlap checks to prevent double booking.'
+      operationId: bookAppointment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              required:
+                - dentist_id
+                - service_id
+                - start_at
+              properties:
+                dentist_id:
+                  type: integer
+                  example: 2
+                service_id:
+                  type: integer
+                  example: 1
+                start_at:
+                  type: string
+                  example: '2026-12-01 09:00:00'
+                chief_complaint:
+                  type: string
+                  example: 'Routine dental cleaning'
+                  nullable: true
+              type: object
+      responses:
+        '201':
+          description: 'Appointment requested (status: PENDING)'
+        '401':
+          description: Unauthenticated
+        '409':
+          description: 'Overlapping slot conflict'
+        '422':
+          description: 'Validation or scheduling policy violation'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /appointments/search:
+    get:
+      tags:
+        - Appointments
+      summary: 'Role-Scoped Appointment Search & Advanced Filtering'
+      description: 'Enforces strict server-side role scoping: Admin/Receptionist search clinic-wide; Dentist strictly scoped to own dentist_id; Patient strictly scoped to own patient_id.'
+      operationId: searchAppointments
+      parameters:
+        -
+          name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        -
+          name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+        -
+          name: dentist_id
+          in: query
+          schema:
+            type: integer
+        -
+          name: patient_id
+          in: query
+          schema:
+            type: integer
+        -
+          name: service_id
+          in: query
+          schema:
+            type: integer
+        -
+          name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - PENDING
+              - CONFIRMED
+              - REJECTED
+              - CANCELLED
+              - COMPLETED
+        -
+          name: search
+          in: query
+          schema:
+            type: string
+        -
+          name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        -
+          name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+            minimum: 1
+      responses:
+        '200':
+          description: 'Paginated search results'
+        '401':
+          description: Unauthenticated
+        '422':
+          description: 'Invalid filter or date range'
+      security:
+        -
+          CookieAuth: []
+  '/appointments/{id}':
+    get:
+      tags:
+        - Appointments
+      summary: 'Get Single Appointment with Status History (Owner/Admin)'
+      operationId: getAppointmentById
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Appointment details'
+        '400':
+          description: 'Invalid ID'
+        '403':
+          description: Forbidden
+        '404':
+          description: 'Not found'
+      security:
+        -
+          CookieAuth: []
+  '/appointments/{id}/cancel':
+    post:
+      tags:
+        - Appointments
+      summary: 'Cancel Appointment (Enforces 24h Patient Cutoff for Confirmed Visits)'
+      operationId: cancelAppointment
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Appointment cancelled'
+        '403':
+          description: 'Ownership denied'
+        '422':
+          description: 'Outside cancellation cutoff or invalid transition'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/appointments/{id}/reschedule':
+    post:
+      tags:
+        - Appointments
+      summary: 'Reschedule Appointment (Atomic Cancel-and-Relink)'
+      operationId: rescheduleAppointment
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '201':
+          description: 'Replacement appointment created'
+        '409':
+          description: 'New slot conflict'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /admin/appointments:
+    get:
+      tags:
+        - Appointments
+      summary: 'List & Filter Clinic Appointments (Admin/Receptionist, Paginated)'
+      operationId: listAdminAppointments
+      responses:
+        '200':
+          description: 'Paginated appointments'
+        '422':
+          description: 'Invalid filters'
+      security:
+        -
+          CookieAuth: []
+  '/admin/appointments/{id}':
+    get:
+      tags:
+        - Appointments
+      summary: 'Get Appointment Details with Audit Trail (Admin/Receptionist)'
+      operationId: getAdminAppointment
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Appointment details'
+      security:
+        -
+          CookieAuth: []
+  '/admin/appointments/{id}/confirm':
+    patch:
+      tags:
+        - Appointments
+      summary: 'Approve & Confirm Pending Appointment (Admin/Receptionist)'
+      operationId: confirmAppointment
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Appointment confirmed'
+        '409':
+          description: 'Invalid transition or slot conflict'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/admin/appointments/{id}/reject':
+    patch:
+      tags:
+        - Appointments
+      summary: 'Decline Pending Appointment with Reason (Admin/Receptionist)'
+      operationId: rejectAppointment
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Appointment rejected'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/admin/appointments/{id}/complete':
+    patch:
+      tags:
+        - Appointments
+      summary: 'Mark Confirmed Appointment Completed (Admin)'
+      operationId: completeAdminAppointment
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Appointment completed'
+        '409':
+          description: 'Invalid status transition'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /dentist/appointments:
+    get:
+      tags:
+        - Appointments
+      summary: 'List Assigned Dentist Appointments (SQL Paginated)'
+      operationId: listDentistAppointments
+      responses:
+        '200':
+          description: 'Paginated assigned appointments'
+      security:
+        -
+          CookieAuth: []
+  '/dentist/appointments/{id}':
+    get:
+      tags:
+        - Appointments
+      summary: 'Get Assigned Dentist Appointment Detail (Ownership Enforced)'
+      operationId: getDentistAppointment
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Assigned appointment detail'
+        '403':
+          description: 'Not assigned to this dentist'
+      security:
+        -
+          CookieAuth: []
+  '/dentist/appointments/{id}/complete':
+    post:
+      tags:
+        - Appointments
+      summary: 'Complete Assigned Appointment (POST, Dentist)'
+      operationId: completeDentistAppointmentPost
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Appointment completed'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+    patch:
+      tags:
+        - Appointments
+      summary: 'Complete Assigned Appointment (PATCH, Dentist)'
+      operationId: completeDentistAppointmentPatch
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Appointment completed'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /receptionist/schedule/today:
+    get:
+      tags:
+        - Receptionist
+      summary: 'Get Today Clinic Arrival Schedule (Receptionist/Admin)'
+      operationId: getReceptionistTodaySchedule
+      responses:
+        '200':
+          description: 'Today schedule with attendance states'
+      security:
+        -
+          CookieAuth: []
+  '/receptionist/appointments/{id}/check-in':
+    post:
+      tags:
+        - Receptionist
+      summary: 'Check In Arriving Patient (Receptionist/Admin)'
+      operationId: checkInPatient
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Patient checked in'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/receptionist/appointments/{id}/attendance':
+    patch:
+      tags:
+        - Receptionist
+      summary: 'Update Operational Attendance State (Receptionist/Admin)'
+      operationId: updatePatientAttendance
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Attendance updated'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /receptionist/waiting-list:
+    get:
+      tags:
+        - Receptionist
+      summary: 'Get Live Clinic Waiting Queue (Receptionist/Admin)'
+      operationId: getReceptionistWaitingList
+      responses:
+        '200':
+          description: 'Waiting queue'
+      security:
+        -
+          CookieAuth: []
+  /receptionist/patients:
+    post:
+      tags:
+        - Receptionist
+      summary: 'Register Walk-In Patient (Receptionist/Admin)'
+      operationId: registerWalkInPatient
+      responses:
+        '201':
+          description: 'Patient registered'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /receptionist/appointments:
+    post:
+      tags:
+        - Receptionist
+      summary: 'Create Front-Desk Appointment (Receptionist/Admin)'
+      operationId: createFrontDeskAppointment
+      responses:
+        '201':
+          description: 'Appointment created'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /treatment-records:
+    get:
+      tags:
+        - Clinical
+      summary: 'List Treatment Records (Dentist/Admin, Paginated)'
+      operationId: listTreatmentRecords
+      responses:
+        '200':
+          description: 'Paginated treatment records'
+      security:
+        -
+          CookieAuth: []
+    post:
+      tags:
+        - Clinical
+      summary: 'Create Clinical Treatment Record (Dentist/Admin)'
+      operationId: createTreatmentRecord
+      responses:
+        '201':
+          description: 'Treatment record created'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/treatment-records/{id}':
+    get:
+      tags:
+        - Clinical
+      summary: 'Get Treatment Record by ID (Dentist/Admin)'
+      operationId: getTreatmentRecord
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Treatment record'
+      security:
+        -
+          CookieAuth: []
+    put:
+      tags:
+        - Clinical
+      summary: 'Amend Treatment Record (PUT, Dentist/Admin)'
+      operationId: putTreatmentRecord
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Treatment record amended'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+    patch:
+      tags:
+        - Clinical
+      summary: 'Amend Treatment Record (PATCH, Dentist/Admin)'
+      operationId: patchTreatmentRecord
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Treatment record amended'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/appointments/{id}/treatment-record':
+    get:
+      tags:
+        - Clinical
+      summary: 'Get Treatment Record Linked to Appointment (Dentist/Admin)'
+      operationId: getAppointmentTreatmentRecord
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Treatment record'
+      security:
+        -
+          CookieAuth: []
+  /health:
+    get:
+      tags:
+        - Health
+      summary: 'API Health & Readiness Check'
+      operationId: getHealth
+      parameters:
+        -
+          name: check
+          in: query
+          schema:
+            type: string
+            enum:
+              - ready
+      responses:
+        '200':
+          description: 'Service is healthy'
+        '503':
+          description: 'Database dependency degraded'
+  /metrics:
+    get:
+      tags:
+        - Health
+      summary: 'Prometheus Metrics Exposition'
+      operationId: getPrometheusMetrics
+      responses:
+        '200':
+          description: 'Prometheus text metrics'
+  /auth/csrf-token:
+    get:
+      tags:
+        - Authentication
+      summary: 'Retrieve Synchronizer CSRF Token'
+      operationId: getCsrfToken
+      responses:
+        '200':
+          description: 'CSRF token issued for current session'
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: 'Register Patient Account'
+      description: 'Creates a new PATIENT account (role escalation attempts are ignored server-side) and queues an email verification message.'
+      operationId: registerPatient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              required:
+                - first_name
+                - last_name
+                - email
+                - password
+                - password_confirmation
+                - phone
+                - date_of_birth
+              properties:
+                first_name:
+                  type: string
+                  example: Ana
+                last_name:
+                  type: string
+                  example: Reyes
+                email:
+                  type: string
+                  format: email
+                  example: ana.reyes@example.com
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                password_confirmation:
+                  type: string
+                  format: password
+                phone:
+                  type: string
+                  example: '09171234567'
+                date_of_birth:
+                  type: string
+                  format: date
+                  example: '1993-04-12'
+                gender:
+                  type: string
+                  enum: [MALE, FEMALE, OTHER, PREFER_NOT_TO_SAY]
+              type: object
+      responses:
+        '201':
+          description: 'Patient registered'
+        '409':
+          description: 'Email already exists'
+        '422':
+          description: 'Validation error'
+        '429':
+          description: 'Rate limit exceeded'
+      security:
+        -
+          CsrfToken: []
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: 'Authenticate User & Create Session Cookie'
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: patient.demo@example.com
+                password:
+                  type: string
+                  format: password
+                remember_me:
+                  type: boolean
+                  example: false
+              type: object
+      responses:
+        '200':
+          description: 'Authenticated; session cookie issued'
+        '401':
+          description: 'Invalid credentials'
+        '403':
+          description: 'Account suspended or email unverified'
+        '429':
+          description: 'Login rate limited'
+      security:
+        -
+          CsrfToken: []
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: 'Invalidate Session & Revoke Real-Time Connections'
+      operationId: logoutUser
+      responses:
+        '200':
+          description: 'Logged out cleanly'
+        '401':
+          description: Unauthenticated
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /auth/verify-email:
+    post:
+      tags:
+        - Authentication
+      summary: 'Verify Account Email Using Single-Use Token'
+      operationId: verifyEmail
+      responses:
+        '200':
+          description: 'Email verified'
+        '400':
+          description: 'Invalid or expired token'
+      security:
+        -
+          CsrfToken: []
+  /auth/resend-verification:
+    post:
+      tags:
+        - Authentication
+      summary: 'Resend Verification Email'
+      operationId: resendVerificationEmail
+      responses:
+        '200':
+          description: 'Verification email queued if account exists'
+      security:
+        -
+          CsrfToken: []
+  /auth/forgot-password:
+    post:
+      tags:
+        - Authentication
+      summary: 'Request Password Reset Link'
+      operationId: forgotPassword
+      responses:
+        '200':
+          description: 'Reset link queued if account exists'
+      security:
+        -
+          CsrfToken: []
+  /auth/password/forgot:
+    post:
+      tags:
+        - Authentication
+      summary: 'Request Password Reset Link (Alias)'
+      operationId: forgotPasswordAlias
+      responses:
+        '200':
+          description: 'Reset link queued if account exists'
+      security:
+        -
+          CsrfToken: []
+  /auth/reset-password:
+    post:
+      tags:
+        - Authentication
+      summary: 'Reset Password Using Single-Use Token'
+      operationId: resetPassword
+      responses:
+        '200':
+          description: 'Password reset succeeded'
+        '400':
+          description: 'Invalid or expired token'
+        '422':
+          description: 'Password policy validation failed'
+      security:
+        -
+          CsrfToken: []
+  /auth/password/reset:
+    post:
+      tags:
+        - Authentication
+      summary: 'Reset Password (Alias)'
+      operationId: resetPasswordAlias
+      responses:
+        '200':
+          description: 'Password reset succeeded'
+      security:
+        -
+          CsrfToken: []
+  /auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: 'Get Authenticated User Identity & Permissions'
+      operationId: getCurrentUser
+      responses:
+        '200':
+          description: 'Current user identity'
+        '401':
+          description: Unauthenticated
+      security:
+        -
+          CookieAuth: []
+    patch:
+      tags:
+        - Users
+      summary: 'Update Authenticated User Profile'
+      operationId: updateCurrentUser
+      responses:
+        '200':
+          description: 'Profile updated'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /auth/me/avatar:
+    get:
+      tags:
+        - Users
+      summary: 'Serve Authenticated User Avatar'
+      operationId: getMyAuthAvatar
+      responses:
+        '200':
+          description: 'Image binary'
+      security:
+        -
+          CookieAuth: []
+    post:
+      tags:
+        - Users
+      summary: 'Upload Authenticated User Avatar'
+      operationId: uploadMyAuthAvatar
+      responses:
+        '200':
+          description: 'Avatar uploaded'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+    delete:
+      tags:
+        - Users
+      summary: 'Remove Authenticated User Avatar'
+      operationId: deleteMyAuthAvatar
+      responses:
+        '200':
+          description: 'Avatar removed'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /user/profile:
+    get:
+      tags:
+        - Users
+      summary: 'Get Staff/User Self-Service Profile'
+      operationId: getUserProfile
+      responses:
+        '200':
+          description: 'Profile retrieved'
+      security:
+        -
+          CookieAuth: []
+    patch:
+      tags:
+        - Users
+      summary: 'Update Staff/User Self-Service Profile'
+      operationId: updateUserProfile
+      responses:
+        '200':
+          description: 'Profile updated'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /user/profile/avatar:
+    get:
+      tags:
+        - Users
+      summary: 'Serve Self-Service User Avatar'
+      operationId: getUserProfileAvatar
+      responses:
+        '200':
+          description: 'Image binary'
+      security:
+        -
+          CookieAuth: []
+    post:
+      tags:
+        - Users
+      summary: 'Upload Self-Service User Avatar'
+      operationId: uploadUserProfileAvatar
+      responses:
+        '200':
+          description: 'Avatar uploaded'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+    delete:
+      tags:
+        - Users
+      summary: 'Delete Self-Service User Avatar'
+      operationId: deleteUserProfileAvatar
+      responses:
+        '200':
+          description: 'Avatar removed'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/users/{id}/avatar':
+    get:
+      tags:
+        - Users
+      summary: 'Serve User Avatar by ID (Owner or Clinical/Admin Staff)'
+      operationId: getUserAvatarById
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Image binary (private cache)'
+        '401':
+          description: Unauthenticated
+        '403':
+          description: 'Forbidden — cross-user avatar access denied'
+        '404':
+          description: 'Avatar not found'
+      security:
+        -
+          CookieAuth: []
+  /admin/users:
+    get:
+      tags:
+        - Users
+      summary: 'List All User Accounts (Admin, Paginated)'
+      operationId: listAdminUsers
+      parameters:
+        -
+          name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        -
+          name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 15
+            maximum: 100
+            minimum: 1
+        -
+          name: limit
+          in: query
+          schema:
+            type: integer
+            maximum: 100
+            minimum: 1
+        -
+          name: search
+          in: query
+          schema:
+            type: string
+        -
+          name: role
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'Paginated user list'
+        '403':
+          description: 'Requires users.view'
+      security:
+        -
+          CookieAuth: []
+    post:
+      tags:
+        - Users
+      summary: 'Create Staff/User Account (Admin)'
+      operationId: createAdminUser
+      responses:
+        '201':
+          description: 'User created'
+        '403':
+          description: 'Requires users.manage'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/admin/users/{id}':
+    get:
+      tags:
+        - Users
+      summary: 'Get Single User Account Details (Admin)'
+      operationId: getAdminUser
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'User details'
+        '404':
+          description: 'Not found'
+      security:
+        -
+          CookieAuth: []
+  '/admin/users/{id}/status':
+    patch:
+      tags:
+        - Users
+      summary: 'Activate or Deactivate User Account (Admin)'
+      operationId: updateAdminUserStatus
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'User status updated'
+        '403':
+          description: 'Requires users.manage'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/admin/users/{id}/role':
+    patch:
+      tags:
+        - Users
+      summary: 'Update User Role Assignment (Admin)'
+      operationId: updateAdminUserRole
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'User role updated'
+        '403':
+          description: 'Requires users.manage'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /admin/roles:
+    get:
+      tags:
+        - RBAC
+      summary: 'List DRBAC Roles and Attached Permissions (Admin)'
+      operationId: listRoles
+      responses:
+        '200':
+          description: 'Roles list'
+      security:
+        -
+          CookieAuth: []
+  /admin/permissions:
+    get:
+      tags:
+        - RBAC
+      summary: 'List All DRBAC Permissions (Admin)'
+      operationId: listPermissions
+      responses:
+        '200':
+          description: 'Permissions catalog'
+      security:
+        -
+          CookieAuth: []
+  '/admin/roles/{id}/permissions':
+    put:
+      tags:
+        - RBAC
+      summary: 'Synchronize Role Permission Matrix (Admin)'
+      operationId: syncRolePermissions
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Permissions updated'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /admin/dashboard:
+    get:
+      tags:
+        - Dashboards
+      summary: 'Administrator Dashboard Metrics & Operational Summary'
+      operationId: getAdminDashboard
+      responses:
+        '200':
+          description: 'Executive dashboard metrics'
+        '403':
+          description: 'Requires dashboard.view'
+      security:
+        -
+          CookieAuth: []
+  /admin/dashboard/summary:
+    get:
+      tags:
+        - Dashboards
+      summary: 'Administrator Dashboard Summary (Alias)'
+      operationId: getAdminDashboardSummary
+      responses:
+        '200':
+          description: 'Executive dashboard summary'
+        '403':
+          description: 'Requires dashboard.view'
+      security:
+        -
+          CookieAuth: []
+  /receptionist/dashboard:
+    get:
+      tags:
+        - Dashboards
+      summary: 'Receptionist Front-Desk Dashboard Summary'
+      operationId: getReceptionistDashboard
+      responses:
+        '200':
+          description: 'Front-desk KPIs and queues'
+      security:
+        -
+          CookieAuth: []
+  /dentist/dashboard:
+    get:
+      tags:
+        - Dashboards
+      summary: 'Dentist Scoped Clinical Workload Dashboard'
+      operationId: getDentistDashboard
+      responses:
+        '200':
+          description: 'Dentist workload KPIs'
+      security:
+        -
+          CookieAuth: []
+  /patient/dashboard:
+    get:
+      tags:
+        - Dashboards
+      summary: 'Patient Personal Dashboard Summary'
+      operationId: getPatientDashboard
+      responses:
+        '200':
+          description: 'Patient upcoming visits, counts, and unread notifications'
+      security:
+        -
+          CookieAuth: []
+  /admin/reports/appointments:
+    get:
+      tags:
+        - Reports
+      summary: 'Appointments Volume & Status Report (Admin)'
+      operationId: getAdminAppointmentsReport
+      parameters:
+        -
+          name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        -
+          name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: 'Appointment report'
+        '403':
+          description: 'Requires reports.view'
+        '422':
+          description: 'Invalid date range'
+      security:
+        -
+          CookieAuth: []
+  /admin/reports/services:
+    get:
+      tags:
+        - Reports
+      summary: 'Dental Service Utilization Report (Admin)'
+      operationId: getAdminServiceUtilizationReport
+      parameters:
+        -
+          name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        -
+          name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: 'Service utilization breakdown'
+        '422':
+          description: 'Invalid date range'
+      security:
+        -
+          CookieAuth: []
+  /admin/reports/patients:
+    get:
+      tags:
+        - Reports
+      summary: 'Patient Directory & Registration Trend Report (Admin)'
+      operationId: getAdminPatientRegistrationReport
+      parameters:
+        -
+          name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        -
+          name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: 'Patient totals & registration timeline'
+        '422':
+          description: 'Invalid date range'
+      security:
+        -
+          CookieAuth: []
+  /admin/reports/dentists:
+    get:
+      tags:
+        - Reports
+      summary: 'Dentist Clinical Workload Report (Admin)'
+      operationId: getAdminDentistsWorkloadReport
+      parameters:
+        -
+          name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        -
+          name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: 'Dentist workload metrics'
+        '422':
+          description: 'Invalid date range'
+      security:
+        -
+          CookieAuth: []
+  /admin/reports/revenue:
+    get:
+      tags:
+        - Reports
+      summary: 'Legacy Procedure Catalog Summary (Deprecated — Use /admin/reports/services)'
+      operationId: getAdminLegacyRevenueReport
+      responses:
+        '200':
+          description: 'Legacy procedure summary'
+        '422':
+          description: 'Invalid date range'
+      deprecated: true
+      security:
+        -
+          CookieAuth: []
+  /notifications:
+    get:
+      tags:
+        - Notifications
+      summary: 'List Authenticated User Notifications (Paginated)'
+      operationId: listNotifications
+      parameters:
+        -
+          name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        -
+          name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+            minimum: 1
+        -
+          name: limit
+          in: query
+          schema:
+            type: integer
+            maximum: 100
+            minimum: 1
+      responses:
+        '200':
+          description: 'Paginated notifications'
+        '401':
+          description: Unauthenticated
+      security:
+        -
+          CookieAuth: []
+  /notifications/unread-count:
+    get:
+      tags:
+        - Notifications
+      summary: 'Get Unread Notification Count'
+      operationId: getUnreadNotificationCount
+      responses:
+        '200':
+          description: 'Unread count'
+      security:
+        -
+          CookieAuth: []
+  '/notifications/{id}/read':
+    patch:
+      tags:
+        - Notifications
+      summary: 'Mark Single Notification Read (Strict Ownership)'
+      operationId: markNotificationRead
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Marked read'
+        '403':
+          description: Forbidden
+        '404':
+          description: 'Not found'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /notifications/read-all:
+    post:
+      tags:
+        - Notifications
+      summary: 'Mark All Notifications Read (POST)'
+      operationId: markAllNotificationsReadPost
+      responses:
+        '200':
+          description: 'All marked read'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+    patch:
+      tags:
+        - Notifications
+      summary: 'Mark All Notifications Read (PATCH)'
+      operationId: markAllNotificationsReadPatch
+      responses:
+        '200':
+          description: 'All marked read'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /realtime/ticket:
+    post:
+      tags:
+        - Notifications
+      summary: 'Issue Short-Lived Single-Use Socket.IO Connection Ticket'
+      description: 'Returns a short-lived opaque ticket stored as SHA-256 hash server-side and bound to the authenticated PHP session. Never pass tickets in URLs or store in localStorage.'
+      operationId: issueRealtimeTicket
+      responses:
+        '200':
+          description: 'Connection ticket issued'
+        '401':
+          description: Unauthenticated
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /admin/audit-logs:
+    get:
+      tags:
+        - Operations
+      summary: 'List Append-Only Forensic Audit Logs (Admin, Paginated)'
+      operationId: listAuditLogs
+      responses:
+        '200':
+          description: 'Paginated audit logs'
+      security:
+        -
+          CookieAuth: []
+  /admin/audit-logs/export:
+    get:
+      tags:
+        - Operations
+      summary: 'Export Filtered Audit Logs CSV (Admin)'
+      operationId: exportAuditLogsCsv
+      responses:
+        '200':
+          description: 'CSV export stream'
+      security:
+        -
+          CookieAuth: []
+  /admin/security/events:
+    get:
+      tags:
+        - Operations
+      summary: 'List Security & Access-Control Events (Admin, Paginated)'
+      operationId: listSecurityEvents
+      responses:
+        '200':
+          description: 'Paginated security events'
+      security:
+        -
+          CookieAuth: []
+  /admin/email-outbox/stats:
+    get:
+      tags:
+        - Operations
+      summary: 'Get Email Outbox Queue Metrics (DRBAC email_outbox.view)'
+      operationId: getEmailOutboxStats
+      responses:
+        '200':
+          description: 'Email outbox stats'
+      security:
+        -
+          CookieAuth: []
+  /admin/email-outbox/jobs:
+    get:
+      tags:
+        - Operations
+      summary: 'List Email Outbox Jobs (DRBAC email_outbox.view_failures, Paginated)'
+      operationId: listEmailOutboxJobs
+      responses:
+        '200':
+          description: 'Paginated email jobs'
+      security:
+        -
+          CookieAuth: []
+  '/admin/email-outbox/jobs/{id}':
+    get:
+      tags:
+        - Operations
+      summary: 'Get Single Email Outbox Job Metadata'
+      operationId: getEmailOutboxJob
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Job metadata'
+      security:
+        -
+          CookieAuth: []
+  '/admin/email-outbox/jobs/{id}/retry':
+    post:
+      tags:
+        - Operations
+      summary: 'Requeue Failed Email Outbox Job (DRBAC email_outbox.retry)'
+      operationId: retryEmailOutboxJob
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Job requeued'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/admin/email-outbox/jobs/{id}/abandon':
+    post:
+      tags:
+        - Operations
+      summary: 'Abandon Failed Email Outbox Job (DRBAC email_outbox.manage)'
+      operationId: abandonEmailOutboxJob
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Job abandoned'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /admin/operations/outbox:
+    get:
+      tags:
+        - Operations
+      summary: 'Unified Email & Realtime Outbox Monitoring (Admin, Paginated)'
+      operationId: getAdminOutboxOperations
+      parameters:
+        -
+          name: channel
+          in: query
+          schema:
+            type: string
+            default: email
+            enum:
+              - email
+              - realtime
+        -
+          name: status
+          in: query
+          schema:
+            type: string
+        -
+          name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        -
+          name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+            minimum: 1
+      responses:
+        '200':
+          description: 'Unified outbox summary & redacted jobs'
+        '422':
+          description: 'Invalid channel'
+      security:
+        -
+          CookieAuth: []
+  /admin/operations/errors:
+    get:
+      tags:
+        - Operations
+      summary: 'Safe Redacted Operational Errors Feed (Admin, Paginated)'
+      operationId: getAdminOperationalErrors
+      parameters:
+        -
+          name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        -
+          name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+            minimum: 1
+      responses:
+        '200':
+          description: 'Paginated redacted operational errors'
+      security:
+        -
+          CookieAuth: []
+  /admin/system/health:
+    get:
+      tags:
+        - Operations
+      summary: 'System Infrastructure & Dependency Health Diagnostics (Admin)'
+      operationId: getAdminSystemHealth
+      responses:
+        '200':
+          description: 'Database, PHP-FPM, Realtime, Rate Limiter, & Backup diagnostics'
+      security:
+        -
+          CookieAuth: []
+  /admin/clinic/settings:
+    get:
+      tags:
+        - Settings
+      summary: 'Get Clinic Settings (Admin)'
+      operationId: getClinicSettings
+      responses:
+        '200':
+          description: 'Settings map'
+      security:
+        -
+          CookieAuth: []
+    put:
+      tags:
+        - Settings
+      summary: 'Update Clinic Settings (Admin)'
+      operationId: updateClinicSettings
+      responses:
+        '200':
+          description: 'Settings updated'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /services:
+    get:
+      tags:
+        - Services
+      summary: 'List Active Dental Services'
+      operationId: listPublicServices
+      responses:
+        '200':
+          description: 'Active services array'
+  /dentists:
+    get:
+      tags:
+        - Dentists
+      summary: 'List Active Dentists'
+      operationId: listPublicDentists
+      responses:
+        '200':
+          description: 'Active dentists array'
+  '/dentists/{id}':
+    get:
+      tags:
+        - Dentists
+      summary: 'Get Public Dentist Profile by ID'
+      operationId: getPublicDentist
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Dentist profile'
+        '404':
+          description: 'Not found'
+  '/dentists/{id}/avatar':
+    get:
+      tags:
+        - Dentists
+      summary: 'Serve Dentist Avatar Image'
+      operationId: getDentistAvatarById
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Image binary'
+        '404':
+          description: 'Not found'
+  /availability:
+    get:
+      tags:
+        - Scheduling
+      summary: 'Compute Available Appointment Slots (Asia/Manila)'
+      operationId: getAvailabilitySlots
+      parameters:
+        -
+          name: dentist_id
+          in: query
+          required: true
+          schema:
+            type: integer
+        -
+          name: service_id
+          in: query
+          required: true
+          schema:
+            type: integer
+        -
+          name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: 'Available time slots'
+        '422':
+          description: 'Invalid parameters'
+  /clinic/hours:
+    get:
+      tags:
+        - Scheduling
+      summary: 'Get Clinic Weekly Operating Hours'
+      operationId: getClinicHours
+      responses:
+        '200':
+          description: 'Operating hours'
+  /clinic/closures:
+    get:
+      tags:
+        - Scheduling
+      summary: 'Get Scheduled Clinic Closures & Holidays'
+      operationId: getClinicClosures
+      responses:
+        '200':
+          description: 'Closures list'
+  '/dentists/{id}/schedules':
+    get:
+      tags:
+        - Scheduling
+      summary: 'Get Dentist Weekly Working Shifts'
+      operationId: getPublicDentistSchedules
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Dentist shifts'
+  '/dentists/{id}/time-off':
+    get:
+      tags:
+        - Scheduling
+      summary: 'Get Dentist Scheduled Time-Off Blocks'
+      operationId: getPublicDentistTimeOff
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Time-off list'
+  /patients/me:
+    get:
+      tags:
+        - Patients
+      summary: 'Get Authenticated Patient Profile'
+      operationId: getMyPatientProfile
+      responses:
+        '200':
+          description: 'Patient profile'
+      security:
+        -
+          CookieAuth: []
+    patch:
+      tags:
+        - Patients
+      summary: 'Update Authenticated Patient Profile'
+      operationId: updateMyPatientProfile
+      responses:
+        '200':
+          description: 'Profile updated'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /patients/me/avatar:
+    get:
+      tags:
+        - Patients
+      summary: 'Serve Authenticated Patient Avatar'
+      operationId: getMyPatientAvatar
+      responses:
+        '200':
+          description: 'Image binary'
+      security:
+        -
+          CookieAuth: []
+    post:
+      tags:
+        - Patients
+      summary: 'Upload Authenticated Patient Avatar'
+      operationId: uploadMyPatientAvatar
+      responses:
+        '200':
+          description: 'Avatar uploaded'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+    delete:
+      tags:
+        - Patients
+      summary: 'Delete Authenticated Patient Avatar'
+      operationId: deleteMyPatientAvatar
+      responses:
+        '200':
+          description: 'Avatar removed'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/patients/{id}/avatar':
+    get:
+      tags:
+        - Patients
+      summary: 'Serve Patient Avatar by ID (Owner/Authorized Staff)'
+      operationId: getPatientAvatarById
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Image binary'
+        '403':
+          description: Forbidden
+      security:
+        -
+          CookieAuth: []
+  '/patients/{id}':
+    get:
+      tags:
+        - Patients
+      summary: 'Get Patient Profile (Strict Ownership / Staff)'
+      operationId: getPatientById
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Patient profile'
+        '403':
+          description: Forbidden
+      security:
+        -
+          CookieAuth: []
+    patch:
+      tags:
+        - Patients
+      summary: 'Update Patient Profile (Strict Ownership / Staff)'
+      operationId: updatePatientById
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Patient updated'
+        '403':
+          description: Forbidden
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /dentist/profile:
+    get:
+      tags:
+        - Dentists
+      summary: 'Get Authenticated Dentist Profile'
+      operationId: getMyDentistProfile
+      responses:
+        '200':
+          description: 'Dentist profile'
+      security:
+        -
+          CookieAuth: []
+    patch:
+      tags:
+        - Dentists
+      summary: 'Update Authenticated Dentist Profile'
+      operationId: updateMyDentistProfile
+      responses:
+        '200':
+          description: 'Profile updated'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /dentist/profile/avatar:
+    get:
+      tags:
+        - Dentists
+      summary: 'Serve Authenticated Dentist Avatar'
+      operationId: getMyDentistAvatar
+      responses:
+        '200':
+          description: 'Image binary'
+      security:
+        -
+          CookieAuth: []
+    post:
+      tags:
+        - Dentists
+      summary: 'Upload Authenticated Dentist Avatar'
+      operationId: uploadMyDentistAvatar
+      responses:
+        '200':
+          description: 'Avatar uploaded'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+    delete:
+      tags:
+        - Dentists
+      summary: 'Delete Authenticated Dentist Avatar'
+      operationId: deleteMyDentistAvatar
+      responses:
+        '200':
+          description: 'Avatar removed'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /dentist/time-off:
+    post:
+      tags:
+        - Dentists
+      summary: 'Submit Dentist Time-Off Block'
+      operationId: requestDentistTimeOff
+      responses:
+        '201':
+          description: 'Time-off created'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /admin/services:
+    get:
+      tags:
+        - Services
+      summary: 'List All Services (Admin/Receptionist, Paginated)'
+      operationId: listAdminServices
+      responses:
+        '200':
+          description: 'Paginated services'
+      security:
+        -
+          CookieAuth: []
+    post:
+      tags:
+        - Services
+      summary: 'Create Dental Service (Admin)'
+      operationId: createAdminService
+      responses:
+        '201':
+          description: 'Service created'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/admin/services/{id}':
+    get:
+      tags:
+        - Services
+      summary: 'Get Service Details (Admin/Receptionist)'
+      operationId: getAdminService
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Service details'
+      security:
+        -
+          CookieAuth: []
+    put:
+      tags:
+        - Services
+      summary: 'Update Service (PUT, Admin)'
+      operationId: replaceAdminService
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Service updated'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+    patch:
+      tags:
+        - Services
+      summary: 'Update Service (PATCH, Admin)'
+      operationId: patchAdminService
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Service updated'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/admin/services/{id}/status':
+    patch:
+      tags:
+        - Services
+      summary: 'Toggle Service Active Status (Admin)'
+      operationId: updateAdminServiceStatus
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Status updated'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /admin/dentists:
+    get:
+      tags:
+        - Dentists
+      summary: 'List All Dentists (Admin/Receptionist, Paginated)'
+      operationId: listAdminDentists
+      responses:
+        '200':
+          description: 'Paginated dentists'
+      security:
+        -
+          CookieAuth: []
+    post:
+      tags:
+        - Dentists
+      summary: 'Create Dentist Account & Profile (Admin)'
+      operationId: createAdminDentist
+      responses:
+        '201':
+          description: 'Dentist created'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/admin/dentists/{id}':
+    get:
+      tags:
+        - Dentists
+      summary: 'Get Dentist Details (Admin/Receptionist)'
+      operationId: getAdminDentist
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Dentist details'
+      security:
+        -
+          CookieAuth: []
+    put:
+      tags:
+        - Dentists
+      summary: 'Update Dentist (PUT, Admin)'
+      operationId: replaceAdminDentist
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Dentist updated'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+    patch:
+      tags:
+        - Dentists
+      summary: 'Update Dentist (PATCH, Admin)'
+      operationId: patchAdminDentist
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Dentist updated'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/admin/dentists/{id}/status':
+    patch:
+      tags:
+        - Dentists
+      summary: 'Toggle Dentist Active Status (Admin)'
+      operationId: updateAdminDentistStatus
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Status updated'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /admin/clinic/hours:
+    put:
+      tags:
+        - Scheduling
+      summary: 'Update Clinic Weekly Operating Hours (Admin)'
+      operationId: updateClinicHours
+      responses:
+        '200':
+          description: 'Operating hours updated'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /admin/clinic/closures:
+    get:
+      tags:
+        - Scheduling
+      summary: 'List Clinic Closures (Admin/Receptionist)'
+      operationId: listAdminClinicClosures
+      responses:
+        '200':
+          description: 'Closures list'
+      security:
+        -
+          CookieAuth: []
+    post:
+      tags:
+        - Scheduling
+      summary: 'Create Clinic Closure (Admin)'
+      operationId: createAdminClinicClosure
+      responses:
+        '201':
+          description: 'Closure created'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/admin/clinic/closures/{id}':
+    delete:
+      tags:
+        - Scheduling
+      summary: 'Delete Clinic Closure (Admin)'
+      operationId: deleteAdminClinicClosure
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Closure deleted'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/admin/dentists/{id}/schedules':
+    get:
+      tags:
+        - Scheduling
+      summary: 'List Dentist Working Shifts (Admin/Receptionist)'
+      operationId: listAdminDentistSchedules
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Shifts list'
+      security:
+        -
+          CookieAuth: []
+    post:
+      tags:
+        - Scheduling
+      summary: 'Add Dentist Working Shift (Admin)'
+      operationId: createAdminDentistSchedule
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '201':
+          description: 'Shift created'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/admin/dentists/{id}/schedules/{scheduleId}':
+    put:
+      tags:
+        - Scheduling
+      summary: 'Update Dentist Working Shift (Admin)'
+      operationId: updateAdminDentistSchedule
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        -
+          name: scheduleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Shift updated'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+    delete:
+      tags:
+        - Scheduling
+      summary: 'Delete Dentist Working Shift (Admin)'
+      operationId: deleteAdminDentistSchedule
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        -
+          name: scheduleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Shift deleted'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/admin/dentists/{id}/time-off':
+    get:
+      tags:
+        - Scheduling
+      summary: 'List Dentist Time-Off (Admin/Receptionist)'
+      operationId: listAdminDentistTimeOff
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Time-off list'
+      security:
+        -
+          CookieAuth: []
+    post:
+      tags:
+        - Scheduling
+      summary: 'Create Dentist Time-Off Block (Admin)'
+      operationId: createAdminDentistTimeOff
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '201':
+          description: 'Time-off created'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/admin/dentists/{id}/time-off/{timeOffId}':
+    delete:
+      tags:
+        - Scheduling
+      summary: 'Delete Dentist Time-Off Block (Admin)'
+      operationId: deleteAdminDentistTimeOff
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        -
+          name: timeOffId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Time-off deleted'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /admin/patients:
+    get:
+      tags:
+        - Patients
+      summary: 'List All Patients (Admin/Receptionist, Paginated)'
+      operationId: listAdminPatients
+      responses:
+        '200':
+          description: 'Paginated patient directory'
+      security:
+        -
+          CookieAuth: []
+  '/admin/patients/{id}':
+    get:
+      tags:
+        - Patients
+      summary: 'Get Patient Details (Admin/Receptionist)'
+      operationId: getAdminPatient
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Patient details'
+      security:
+        -
+          CookieAuth: []
+    put:
+      tags:
+        - Patients
+      summary: 'Update Patient (PUT, Admin/Receptionist)'
+      operationId: replaceAdminPatient
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Patient updated'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+    patch:
+      tags:
+        - Patients
+      summary: 'Update Patient (PATCH, Admin/Receptionist)'
+      operationId: patchAdminPatient
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Patient updated'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/admin/patients/{id}/status':
+    patch:
+      tags:
+        - Patients
+      summary: 'Activate or Deactivate Patient Account (Admin)'
+      operationId: updateAdminPatientStatus
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Status updated'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+components:
+  schemas:
+    ResponseMeta:
+      properties:
+        request_id:
+          type: string
+          example: req-9f8e7d6c
+        message:
+          type: string
+          nullable: true
+        total:
+          type: integer
+          example: 42
+          nullable: true
+        page:
+          type: integer
+          example: 1
+          nullable: true
+        per_page:
+          type: integer
+          example: 20
+          nullable: true
+        last_page:
+          type: integer
+          example: 3
+          nullable: true
+      type: object
+    ErrorDetail:
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: VALIDATION_ERROR
+        message:
+          type: string
+          example: 'The given data was invalid.'
+        details:
+          type: object
+          nullable: true
+          additionalProperties: true
+      type: object
+    SuccessEnvelope:
+      required:
+        - data
+        - meta
+        - error
+      properties:
+        data:
+          nullable: true
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+        error:
+          type: object
+          example: null
+          nullable: true
+      type: object
+    ErrorEnvelope:
+      required:
+        - data
+        - meta
+        - error
+      properties:
+        data:
+          example: null
+          nullable: true
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+      type: object
+    PaginationMeta:
+      required:
+        - total
+        - page
+        - per_page
+        - last_page
+      properties:
+        total:
+          type: integer
+          example: 120
+        page:
+          type: integer
+          minimum: 1
+          example: 1
+        per_page:
+          type: integer
+          maximum: 100
+          minimum: 1
+          example: 20
+        last_page:
+          type: integer
+          minimum: 1
+          example: 6
+      type: object
+    User:
+      properties:
+        id:
+          type: integer
+          example: 10
+        email:
+          type: string
+          format: email
+          example: patient.demo@example.com
+        first_name:
+          type: string
+          example: Ana
+          nullable: true
+        last_name:
+          type: string
+          example: Reyes
+          nullable: true
+        role:
+          type: string
+          enum:
+            - ADMIN
+            - RECEPTIONIST
+            - DENTIST
+            - PATIENT
+        is_active:
+          type: boolean
+          example: true
+        email_verified:
+          type: boolean
+          example: true
+        avatar_url:
+          type: string
+          example: /api/v1/users/10/avatar
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+      type: object
+    Patient:
+      properties:
+        id:
+          type: integer
+          example: 5
+        user_id:
+          type: integer
+          example: 10
+        first_name:
+          type: string
+          example: Ana
+        last_name:
+          type: string
+          example: Reyes
+        date_of_birth:
+          type: string
+          format: date
+          example: '1993-04-12'
+        phone:
+          type: string
+          example: '09171234567'
+        gender:
+          type: string
+          enum:
+            - MALE
+            - FEMALE
+            - OTHER
+            - PREFER_NOT_TO_SAY
+        address:
+          type: string
+          nullable: true
+        avatar_url:
+          type: string
+          nullable: true
+      type: object
+    Dentist:
+      properties:
+        id:
+          type: integer
+          example: 2
+        user_id:
+          type: integer
+          example: 4
+        first_name:
+          type: string
+          example: Clara
+        last_name:
+          type: string
+          example: Mendoza
+        specialization:
+          type: string
+          example: 'General Dentistry'
+        license_number:
+          type: string
+          example: PRC-2026-001
+        default_operatory_chair:
+          type: string
+          example: 'Chair 1'
+        is_active:
+          type: boolean
+          example: true
+        avatar_url:
+          type: string
+          nullable: true
+      type: object
+    Service:
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: 'Dental Prophylaxis (Cleaning)'
+        category:
+          type: string
+          example: Preventive
+        description:
+          type: string
+          nullable: true
+        price:
+          type: number
+          format: float
+          example: 1500
+        duration_minutes:
+          type: integer
+          enum:
+            - 15
+            - 30
+            - 45
+            - 60
+            - 90
+            - 120
+          example: 30
+        is_active:
+          type: boolean
+          example: true
+      type: object
+    Appointment:
+      properties:
+        id:
+          type: integer
+          example: 101
+        patient_id:
+          type: integer
+          example: 5
+        dentist_id:
+          type: integer
+          example: 2
+        service_id:
+          type: integer
+          example: 1
+        start_at:
+          type: string
+          example: '2026-12-01 09:00:00'
+        end_at:
+          type: string
+          example: '2026-12-01 09:30:00'
+        duration_snapshot:
+          type: integer
+          example: 30
+        price_snapshot:
+          type: number
+          format: float
+          example: 1500
+        status:
+          type: string
+          enum:
+            - PENDING
+            - CONFIRMED
+            - REJECTED
+            - CANCELLED
+            - COMPLETED
+        operatory_chair:
+          type: string
+          example: 'Chair 1'
+        rescheduled_from_id:
+          type: integer
+          nullable: true
+        cancellation_reason:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+      type: object
+    AppointmentStatusHistory:
+      properties:
+        id:
+          type: integer
+          example: 12
+        appointment_id:
+          type: integer
+          example: 101
+        old_status:
+          type: string
+          example: PENDING
+          nullable: true
+        new_status:
+          type: string
+          example: CONFIRMED
+        actor_user_id:
+          type: integer
+          nullable: true
+        reason:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+      type: object
+    Notification:
+      properties:
+        id:
+          type: integer
+          example: 501
+        user_id:
+          type: integer
+          example: 10
+        role:
+          type: string
+          enum:
+            - ADMIN
+            - RECEPTIONIST
+            - DENTIST
+            - PATIENT
+        type:
+          type: string
+          example: APPOINTMENT_CONFIRMED
+        title:
+          type: string
+          example: 'Appointment Confirmed'
+        message:
+          type: string
+          example: 'Your dental visit has been confirmed.'
+        reference_type:
+          type: string
+          example: appointments
+        reference_id:
+          type: integer
+          example: 101
+          nullable: true
+        read_at:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+      type: object
+    TreatmentRecord:
+      properties:
+        id:
+          type: integer
+          example: 21
+        appointment_id:
+          type: integer
+          example: 101
+        dentist_id:
+          type: integer
+          example: 2
+        patient_id:
+          type: integer
+          example: 5
+        teeth_treated:
+          type: string
+          example: '11, 21'
+          nullable: true
+        diagnosis:
+          type: string
+          example: 'Mild plaque buildup'
+        procedure_notes:
+          type: string
+          example: 'Ultrasonic scaling completed'
+        created_at:
+          type: string
+          format: date-time
+      type: object
+    DashboardSummary:
+      properties:
+        counts:
+          type: object
+        appointment_trends:
+          type: array
+          items:
+            type: object
+        outbox_summary:
+          type: object
+        recent_errors:
+          type: array
+          items:
+            type: object
+        timezone:
+          type: string
+          example: Asia/Manila
+        generated_at:
+          type: string
+          format: date-time
+      type: object
+    OperationalError:
+      properties:
+        id:
+          type: string
+          example: email-42
+        timestamp:
+          type: string
+        severity:
+          type: string
+          enum:
+            - WARNING
+            - ERROR
+        module:
+          type: string
+          example: email_outbox
+        correlation_id:
+          type: string
+        summary:
+          description: 'Redacted operational summary (no stack traces, paths, or secrets).'
+          type: string
+        resolution_status:
+          type: string
+      type: object
+  securitySchemes:
+    CookieAuth:
+      type: apiKey
+      description: 'Server-side PHP session cookie (HttpOnly, SameSite=Lax, Secure in production).'
+      name: toothcare_session
+      in: cookie
+    CsrfToken:
+      type: apiKey
+      description: 'Synchronizer CSRF token obtained from GET /api/v1/auth/csrf-token; required on POST, PUT, PATCH, and DELETE requests.'
+      name: X-CSRF-Token
+      in: header
+tags:
+  -
+    name: Health
+    description: 'Liveness, readiness, and Prometheus metrics'
+  -
+    name: Authentication
+    description: 'Session authentication, registration, CSRF, email verification, and password reset'
+  -
+    name: Users
+    description: 'Self-service user profiles, avatars, and administrator account management'
+  -
+    name: RBAC
+    description: 'Dynamic Role-Based Access Control (DRBAC) roles and permissions matrix'
+  -
+    name: Patients
+    description: 'Patient self-service profiles and front-desk/admin patient directory'
+  -
+    name: Dentists
+    description: 'Public dentist directory, dentist self-service profile, schedules, time-off, and admin roster'
+  -
+    name: Services
+    description: 'Public dental service catalog and administrative service management'
+  -
+    name: Scheduling
+    description: 'Clinic operating hours, closures, and real-time slot availability'
+  -
+    name: Appointments
+    description: 'Appointment booking, role-scoped search, triage review, cancellation, rescheduling, and completion'
+  -
+    name: Receptionist
+    description: 'Front-desk workspace, daily arrival check-ins, waiting queue, and walk-in intake'
+  -
+    name: Clinical
+    description: 'Versioned clinical treatment records and FDI tooth charting'
+  -
+    name: Notifications
+    description: 'Persistent in-app notifications and Socket.IO real-time connection tickets'
+  -
+    name: Dashboards
+    description: 'Role-appropriate database-driven executive, receptionist, dentist, and patient dashboards'
+  -
+    name: Reports
+    description: 'Database-driven operational reports (appointments, service utilization, dentist workload, patients)'
+  -
+    name: Operations
+    description: 'Audit logs, security events, email/realtime outbox monitoring, and redacted operational errors'
+  -
+    name: Settings
+    description: 'Clinic-wide configuration settings'

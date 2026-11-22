@@ -220,6 +220,62 @@ class AppointmentController
     }
 
     /**
+     * GET /api/v1/appointments/search
+     * Role-aware appointment search enforcing server-side ownership and permissions.
+     */
+    public function search(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required to search appointments.');
+        }
+
+        $role = strtoupper((string) ($user['role'] ?? 'PATIENT'));
+        $queryParams = $request->getQueryParams();
+        $page = isset($queryParams['page']) ? max(1, (int) $queryParams['page']) : 1;
+        $rawLimit = $queryParams['per_page'] ?? $queryParams['limit'] ?? 20;
+        $perPage = max(1, min(100, (int) $rawLimit));
+
+        if ($role === 'ADMIN' || $role === 'RECEPTIONIST') {
+            $result = $this->appointmentService->listAdminAppointments($queryParams, $page, $perPage);
+            return Response::paginated(
+                $result['items'] ?? [],
+                [
+                    'total' => $result['total'] ?? 0,
+                    'page' => $result['page'] ?? $page,
+                    'per_page' => $result['per_page'] ?? $perPage,
+                    'last_page' => $result['total_pages'] ?? 1,
+                ]
+            );
+        }
+
+        if ($role === 'DENTIST') {
+            $result = $this->appointmentService->listDentistAppointments((int) $user['id'], $queryParams);
+            return Response::paginated(
+                $result['items'] ?? [],
+                $result['meta'] ?? [
+                    'total' => 0,
+                    'page' => $page,
+                    'per_page' => $perPage,
+                    'last_page' => 1,
+                ]
+            );
+        }
+
+        // Default: PATIENT — strictly scoped to authenticated patient
+        $result = $this->appointmentService->listPatientAppointments((int) $user['id'], $queryParams);
+        return Response::paginated(
+            $result['items'] ?? [],
+            [
+                'total' => $result['total'] ?? 0,
+                'page' => $result['page'] ?? $page,
+                'per_page' => $result['per_page'] ?? $perPage,
+                'last_page' => $result['total_pages'] ?? 1,
+            ]
+        );
+    }
+
+    /**
      * GET /api/v1/admin/appointments
      * Administrative filterable & paginated appointments overview.
      */
@@ -227,7 +283,8 @@ class AppointmentController
     {
         $queryParams = $request->getQueryParams();
         $page = isset($queryParams['page']) ? max(1, (int) $queryParams['page']) : 1;
-        $perPage = isset($queryParams['per_page']) ? max(1, min(100, (int) $queryParams['per_page'])) : 20;
+        $rawLimit = $queryParams['per_page'] ?? $queryParams['limit'] ?? 20;
+        $perPage = max(1, min(100, (int) $rawLimit));
 
         $result = $this->appointmentService->listAdminAppointments($queryParams, $page, $perPage);
 

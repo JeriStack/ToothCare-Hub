@@ -1,0 +1,398 @@
+{
+  "info": {
+    "name": "ToothCare Hub API v1 — Full Workflow & Contract Suite",
+    "description": "Phase 17 Postman collection for ToothCare Hub (/api/v1). Uses placeholder variables and synthetic test accounts only — never commit real credentials.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080/api/v1" },
+    { "key": "csrfToken", "value": "" },
+    { "key": "patientEmail", "value": "patient.demo@example.com" },
+    { "key": "patientPassword", "value": "SyntheticPass123!" },
+    { "key": "adminEmail", "value": "admin.demo@example.com" },
+    { "key": "adminPassword", "value": "SyntheticPass123!" },
+    { "key": "dentistId", "value": "1" },
+    { "key": "serviceId", "value": "1" },
+    { "key": "appointmentId", "value": "1" },
+    { "key": "notificationId", "value": "1" },
+    { "key": "bookingDate", "value": "2026-12-15" }
+  ],
+  "item": [
+    {
+      "name": "1. Health, CSRF & Public Catalog",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": { "method": "GET", "url": "{{baseUrl}}/health" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                "const json = pm.response.json();",
+                "pm.test('Standard success envelope', () => { pm.expect(json.error).to.eql(null); pm.expect(json.data).to.have.property('status'); });"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "GET /auth/csrf-token",
+          "request": { "method": "GET", "url": "{{baseUrl}}/auth/csrf-token" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                "const json = pm.response.json();",
+                "pm.test('Returns CSRF token', () => pm.expect(json.data.csrf_token).to.be.a('string').and.not.empty);",
+                "pm.collectionVariables.set('csrfToken', json.data.csrf_token);"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "GET /services",
+          "request": { "method": "GET", "url": "{{baseUrl}}/services" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                "const json = pm.response.json();",
+                "pm.test('Returns services array', () => pm.expect(json.data).to.be.an('array'));",
+                "if (json.data.length > 0) pm.collectionVariables.set('serviceId', String(json.data[0].id));"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "GET /dentists",
+          "request": { "method": "GET", "url": "{{baseUrl}}/dentists" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                "const json = pm.response.json();",
+                "pm.test('Returns dentists array', () => pm.expect(json.data).to.be.an('array'));",
+                "if (json.data.length > 0) pm.collectionVariables.set('dentistId', String(json.data[0].id));"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "GET /availability",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/availability?dentist_id={{dentistId}}&service_id={{serviceId}}&date={{bookingDate}}"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                "pm.test('Success envelope', () => pm.expect(pm.response.json().error).to.eql(null));"
+              ]
+            }
+          }]
+        }
+      ]
+    },
+    {
+      "name": "2. Authentication & Session Lifecycle",
+      "item": [
+        {
+          "name": "GET /auth/me (Unauthenticated -> 401)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/auth/me" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Rejects unauthenticated access with 401', () => pm.response.to.have.status(401));",
+                "const json = pm.response.json();",
+                "pm.test('Error envelope shape', () => { pm.expect(json.data).to.eql(null); pm.expect(json.error).to.have.property('code'); });"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "POST /auth/register (Patient)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"first_name\":\"Alex\",\"last_name\":\"Rivera\",\"email\":\"{{patientEmail}}\",\"password\":\"{{patientPassword}}\",\"phone\":\"+15550101234\"}"
+            },
+            "url": "{{baseUrl}}/auth/register"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('201 Created or 409/422 if already registered', () => pm.expect(pm.response.code).to.be.oneOf([201, 409, 422]));"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "POST /auth/login (Patient)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{patientEmail}}\",\"password\":\"{{patientPassword}}\"}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('200 OK or 401/403 if synthetic user not seeded', () => pm.expect(pm.response.code).to.be.oneOf([200, 401, 403]));",
+                "const json = pm.response.json();",
+                "if (json && json.data && json.data.csrf_token) pm.collectionVariables.set('csrfToken', json.data.csrf_token);"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "GET /auth/me (Authenticated)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/auth/me" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('200 Authenticated or 401 without session', () => pm.expect(pm.response.code).to.be.oneOf([200, 401]));"
+              ]
+            }
+          }]
+        }
+      ]
+    },
+    {
+      "name": "3. Appointment Booking, Triage & Cancellation",
+      "item": [
+        {
+          "name": "POST /appointments (Book Appointment)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"dentist_id\":{{dentistId}},\"service_id\":{{serviceId}},\"appointment_date\":\"{{bookingDate}}\",\"start_time\":\"10:00\",\"notes\":\"Routine checkup\"}"
+            },
+            "url": "{{baseUrl}}/appointments"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('201 Created, 409 Conflict, 422 Validation, or 401 Unauthenticated', () => pm.expect(pm.response.code).to.be.oneOf([201, 401, 409, 422]));",
+                "const json = pm.response.json();",
+                "if (json && json.data && json.data.id) pm.collectionVariables.set('appointmentId', String(json.data.id));"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "GET /appointments/search?page=1&limit=20",
+          "request": { "method": "GET", "url": "{{baseUrl}}/appointments/search?page=1&limit=20" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('200 Paginated or 401 Unauthenticated', () => pm.expect(pm.response.code).to.be.oneOf([200, 401]));"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "POST /appointments/{{appointmentId}}/cancel",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"reason\":\"Schedule conflict\"}"
+            },
+            "url": "{{baseUrl}}/appointments/{{appointmentId}}/cancel"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('200 Cancelled or 401/403/404/409/422', () => pm.expect(pm.response.code).to.be.oneOf([200, 401, 403, 404, 409, 422]));"
+              ]
+            }
+          }]
+        }
+      ]
+    },
+    {
+      "name": "4. Notifications & Realtime Ticket",
+      "item": [
+        {
+          "name": "GET /notifications",
+          "request": { "method": "GET", "url": "{{baseUrl}}/notifications?page=1&per_page=20" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('200 OK or 401 Unauthenticated', () => pm.expect(pm.response.code).to.be.oneOf([200, 401]));"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "PATCH /notifications/{{notificationId}}/read",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "X-CSRF-Token", "value": "{{csrfToken}}" }],
+            "url": "{{baseUrl}}/notifications/{{notificationId}}/read"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('200 OK or 401/404', () => pm.expect(pm.response.code).to.be.oneOf([200, 401, 404]));"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "POST /realtime/ticket",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "X-CSRF-Token", "value": "{{csrfToken}}" }],
+            "url": "{{baseUrl}}/realtime/ticket"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('200 OK or 401 Unauthenticated', () => pm.expect(pm.response.code).to.be.oneOf([200, 401]));"
+              ]
+            }
+          }]
+        }
+      ]
+    },
+    {
+      "name": "5. Admin Triage, Dashboards, Reports & Operations",
+      "item": [
+        {
+          "name": "POST /auth/login (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{adminEmail}}\",\"password\":\"{{adminPassword}}\"}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('200 OK or 401 if synthetic admin not seeded', () => pm.expect(pm.response.code).to.be.oneOf([200, 401]));"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "POST /admin/appointments/{{appointmentId}}/confirm",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "X-CSRF-Token", "value": "{{csrfToken}}" }],
+            "url": "{{baseUrl}}/admin/appointments/{{appointmentId}}/confirm"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('200 Confirmed or 401/403/404/409', () => pm.expect(pm.response.code).to.be.oneOf([200, 401, 403, 404, 409]));"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "POST /admin/appointments/{{appointmentId}}/reject",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRF-Token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"reason\":\"Dentist unavailable\"}"
+            },
+            "url": "{{baseUrl}}/admin/appointments/{{appointmentId}}/reject"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('200 Rejected or 401/403/404/409/422', () => pm.expect(pm.response.code).to.be.oneOf([200, 401, 403, 404, 409, 422]));"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "GET /admin/dashboard/summary",
+          "request": { "method": "GET", "url": "{{baseUrl}}/admin/dashboard/summary" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('200 for Admin or 401/403', () => pm.expect(pm.response.code).to.be.oneOf([200, 401, 403]));"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "GET /admin/reports/services",
+          "request": { "method": "GET", "url": "{{baseUrl}}/admin/reports/services" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('200 for Admin or 401/403', () => pm.expect(pm.response.code).to.be.oneOf([200, 401, 403]));"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "GET /admin/operations/outbox?channel=email",
+          "request": { "method": "GET", "url": "{{baseUrl}}/admin/operations/outbox?channel=email" },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('200 for Admin or 401/403', () => pm.expect(pm.response.code).to.be.oneOf([200, 401, 403]));"
+              ]
+            }
+          }]
+        }
+      ]
+    }
+  ]
+}
