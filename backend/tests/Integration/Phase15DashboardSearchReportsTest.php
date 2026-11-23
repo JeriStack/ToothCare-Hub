@@ -332,12 +332,13 @@ class Phase15DashboardSearchReportsTest extends TestCase
         $this->assertSame(2, $docData['dentists'][0]['total_assigned']);
         $this->assertSame(1, $docData['dentists'][0]['upcoming_count']);
 
-        // Appointments report with combined date, dentist, service, and status filters returns counts + filterable appointment list
+        // Appointments report with combined date, dentist, service, patient, and status filters returns counts + filterable appointment list
         $apptReportRes = $this->app->handle($this->authRequest('GET', '/api/v1/admin/reports/appointments', $this->adminUser, [
             'start_date' => $today,
             'end_date' => $endDate,
             'dentist_id' => (string) $this->dentist1Id,
             'service_id' => (string) $this->service1Id,
+            'patient_id' => (string) $this->patient2Id,
             'status' => 'COMPLETED',
         ]));
         $this->assertSame(200, $apptReportRes->getStatusCode());
@@ -351,6 +352,9 @@ class Phase15DashboardSearchReportsTest extends TestCase
         // Reject invalid filter values on appointments report
         $this->assertSame(422, $this->app->handle($this->authRequest('GET', '/api/v1/admin/reports/appointments', $this->adminUser, [
             'dentist_id' => 'invalid',
+        ]))->getStatusCode());
+        $this->assertSame(422, $this->app->handle($this->authRequest('GET', '/api/v1/admin/reports/appointments', $this->adminUser, [
+            'patient_id' => 'invalid',
         ]))->getStatusCode());
         $this->assertSame(422, $this->app->handle($this->authRequest('GET', '/api/v1/admin/reports/appointments', $this->adminUser, [
             'status' => 'UNKNOWN_STATUS',

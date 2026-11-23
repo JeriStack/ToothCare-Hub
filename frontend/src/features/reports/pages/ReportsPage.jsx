@@ -49,6 +49,7 @@ export function ReportsPage() {
   const [dentistFilter, setDentistFilter] = useState('');
   const [serviceFilter, setServiceFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [patientSearch, setPatientSearch] = useState('');
   const [page, setPage] = useState(1);
   const [validationError, setValidationError] = useState(null);
 
@@ -74,6 +75,14 @@ export function ReportsPage() {
       if (filters.dentistId) apptParams.dentist_id = filters.dentistId;
       if (filters.serviceId) apptParams.service_id = filters.serviceId;
       if (filters.status) apptParams.status = filters.status;
+      if (filters.patientQuery && filters.patientQuery.trim()) {
+        const q = filters.patientQuery.trim();
+        if (/^\d+$/.test(q)) {
+          apptParams.patient_id = q;
+        } else {
+          apptParams.search = q;
+        }
+      }
       if (filters.page && filters.page > 1) apptParams.page = filters.page;
 
       const [appts, services, dentists, patients] = await Promise.all([
@@ -103,9 +112,10 @@ export function ReportsPage() {
       dentistId: dentistFilter,
       serviceId: serviceFilter,
       status: statusFilter,
+      patientQuery: patientSearch,
       page,
     });
-  }, [fetchReports, startDate, endDate, dentistFilter, serviceFilter, statusFilter, page]);
+  }, [fetchReports, startDate, endDate, dentistFilter, serviceFilter, statusFilter, patientSearch, page]);
 
   const handlePresetChange = (value) => {
     setPresetDays(value);
@@ -122,6 +132,7 @@ export function ReportsPage() {
     setDentistFilter('');
     setServiceFilter('');
     setStatusFilter('');
+    setPatientSearch('');
     setPage(1);
   };
 
@@ -250,7 +261,20 @@ export function ReportsPage() {
             ))}
           </select>
 
-          {(dentistFilter || serviceFilter || statusFilter) && (
+          <label className="sr-only" htmlFor="report-patient-filter">Filter report by patient</label>
+          <input
+            id="report-patient-filter"
+            type="text"
+            value={patientSearch}
+            onChange={(e) => {
+              setPatientSearch(e.target.value);
+              setPage(1);
+            }}
+            placeholder="Patient name or ID..."
+            className="px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 outline-none"
+          />
+
+          {(dentistFilter || serviceFilter || statusFilter || patientSearch) && (
             <button
               type="button"
               onClick={handleClearFilters}
@@ -267,6 +291,7 @@ export function ReportsPage() {
                 dentistId: dentistFilter,
                 serviceId: serviceFilter,
                 status: statusFilter,
+                patientQuery: patientSearch,
                 page,
               })
             }

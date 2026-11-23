@@ -1472,6 +1472,12 @@ paths:
             type: integer
             minimum: 1
         -
+          name: patient_id
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        -
           name: status
           in: query
           schema:
@@ -1482,6 +1488,11 @@ paths:
               - COMPLETED
               - CANCELLED
               - REJECTED
+        -
+          name: search
+          in: query
+          schema:
+            type: string
         -
           name: page
           in: query

@@ -97,7 +97,9 @@ class ReportController
             'end_date' => $range['end_date'],
             'dentist_id' => null,
             'service_id' => null,
+            'patient_id' => null,
             'status' => null,
+            'search' => null,
         ];
 
         // Optional filter: dentist_id
@@ -130,6 +132,21 @@ class ReportController
             $appliedFilters['service_id'] = $serviceId;
         }
 
+        // Optional filter: patient_id
+        $rawPatientId = $request->getQuery('patient_id');
+        if ($rawPatientId !== null && trim((string) $rawPatientId) !== '') {
+            $patientStr = trim((string) $rawPatientId);
+            if (!ctype_digit($patientStr) || (int) $patientStr <= 0) {
+                throw HttpException::unprocessableEntity('Invalid patient_id filter.', [
+                    'patient_id' => ['patient_id must be a positive integer.'],
+                ]);
+            }
+            $patientId = (int) $patientStr;
+            $whereClauses[] = 'a.patient_id = :patient_id';
+            $params[':patient_id'] = $patientId;
+            $appliedFilters['patient_id'] = $patientId;
+        }
+
         // Optional filter: status
         $rawStatus = $request->getQuery('status');
         if ($rawStatus !== null && trim((string) $rawStatus) !== '') {
@@ -145,6 +162,18 @@ class ReportController
                 $params[':status'] = $status;
                 $appliedFilters['status'] = $status;
             }
+        }
+
+        // Optional filter: search (patient name)
+        $rawSearch = $request->getQuery('search');
+        if ($rawSearch !== null && is_string($rawSearch) && trim($rawSearch) !== '') {
+            $cleanSearch = mb_substr(trim($rawSearch), 0, 120);
+            $escaped = str_replace(['%', '_'], ['\\%', '\\_'], $cleanSearch);
+            $term = '%' . $escaped . '%';
+            $whereClauses[] = 'EXISTS (SELECT 1 FROM patients p_f WHERE p_f.id = a.patient_id AND (p_f.first_name LIKE :p_search1 OR p_f.last_name LIKE :p_search2))';
+            $params[':p_search1'] = $term;
+            $params[':p_search2'] = $term;
+            $appliedFilters['search'] = $cleanSearch;
         }
 
         $whereSql = implode(' AND ', $whereClauses);
