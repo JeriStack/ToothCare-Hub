@@ -64,7 +64,12 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
       .list()
       .then((data) => {
         if (!isMounted) return;
-        setAppointments(Array.isArray(data) ? data : []);
+        const list = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.items)
+          ? data.items
+          : [];
+        setAppointments(list);
       })
       .catch((err) => {
         if (!isMounted) return;
