@@ -187,6 +187,42 @@ test('Event validator enforces allowlist and rejects clinical/PII payload fields
     },
   });
   assert.equal(withClinicalLeak.valid, false);
+
+  const schedValid = validatePublishEnvelope({
+    eventId: 'evt-sched-0001',
+    eventType: 'schedule.updated',
+    recipientUserId: 12,
+    payload: {
+      eventId: 'evt-sched-0001',
+      eventType: 'schedule.updated',
+      eventVersion: '1.0',
+      notificationId: 88,
+      appointmentId: null,
+      entityType: 'schedules',
+      entityId: 45,
+      status: 'updated',
+      occurredAt: '2026-11-23T12:00:00Z',
+    },
+  });
+  assert.equal(schedValid.valid, true);
+  assert.equal(schedValid.envelope?.payload.eventVersion, '1.0');
+  assert.equal(schedValid.envelope?.payload.entityType, 'schedules');
+  assert.equal(schedValid.envelope?.payload.entityId, 45);
+
+  const withSmtpLeak = validatePublishEnvelope({
+    eventId: 'evt-cred-0001',
+    eventType: 'account.updated',
+    recipientUserId: 12,
+    payload: {
+      eventId: 'evt-cred-0001',
+      eventType: 'account.updated',
+      notificationId: null,
+      appointmentId: null,
+      smtp_password: 'secret',
+      occurredAt: '2026-11-23T12:00:00Z',
+    },
+  });
+  assert.equal(withSmtpLeak.valid, false);
 });
 
 test('Socket.IO handshake authentication enforces single-use, unexpired, unrevoked, non-query tickets', async () => {

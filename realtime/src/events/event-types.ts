@@ -1,22 +1,43 @@
 /**
- * Centralized Real-Time Event Contract shared between PHP, Node.js, and React.
+ * Centralized Real-Time Event Contract (v1.0) shared between PHP, Node.js, and React.
  */
+
+export const EVENT_CONTRACT_VERSION = '1.0';
 
 export const ALLOWED_EVENT_TYPES = [
   'appointment.requested',
   'appointment.confirmed',
   'appointment.rejected',
   'appointment.cancelled',
+  'appointment.rescheduled',
+  'appointment.updated',
+  'schedule.updated',
+  'service.updated',
+  'account.created',
+  'account.updated',
   'notification.created',
 ] as const;
 
 export type RealtimeEventType = (typeof ALLOWED_EVENT_TYPES)[number];
 
+export const ALLOWED_ENTITY_TYPES = [
+  'appointments',
+  'schedules',
+  'services',
+  'accounts',
+  'notifications',
+] as const;
+
+export type RealtimeEntityType = (typeof ALLOWED_ENTITY_TYPES)[number];
+
 export interface RealtimeEventPayload {
   eventId: string;
   eventType: RealtimeEventType;
+  eventVersion: string;
   notificationId: number | null;
   appointmentId: number | null;
+  entityType: RealtimeEntityType;
+  entityId: number | null;
   status: string | null;
   occurredAt: string;
 }

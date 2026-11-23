@@ -33,6 +33,7 @@ import {
 } from '../features/auth';
 import { LandingPage } from '../features/landing/LandingPage';
 import { NotificationCenter } from '../features/notifications/components/NotificationCenter';
+import { NotificationToastContainer } from '../components/notifications/NotificationToastContainer';
 
 // Phase 18 Performance Hardening: route/role-level code splitting for portal & help pages
 const HelpCenterPage = lazy(() => import('../features/help/pages/HelpCenterPage').then((m) => ({ default: m.HelpCenterPage })));
@@ -113,6 +114,7 @@ function getInitialTab() {
         'audit',
         'reports',
         'system',
+        'notifications',
         'profile',
       ].includes(sub)
     ) {
@@ -121,7 +123,7 @@ function getInitialTab() {
   }
   if (path.startsWith('/dentist/')) {
     const sub = path.replace('/dentist/', '').split('/')[0];
-    if (['dashboard', 'appointments', 'treatment-records', 'profile'].includes(sub)) {
+    if (['dashboard', 'appointments', 'treatment-records', 'notifications', 'profile'].includes(sub)) {
       return sub;
     }
   }
@@ -940,18 +942,43 @@ function AppContent() {
           <div className="flex items-center gap-1 sm:gap-3 shrink-0">
             <ThemeToggle variant="header" />
 
-            {/* In-App Notifications Dropdown */}
-            {(currentRole === 'PATIENT' || currentRole === 'DENTIST') && (
-              <NotificationCenter
-                onViewAllNotifications={() => {
-                  if (currentRole === 'PATIENT') {
-                    handlePatientNav('notifications');
+            {/* Unified In-App Notifications Dropdown (All Four Authenticated Roles) */}
+            <NotificationCenter
+              onSelectNotification={(notif) => {
+                const refType = notif?.reference_type || 'appointments';
+                if (currentRole === 'PATIENT') {
+                  handlePatientNav('appointments');
+                } else if (currentRole === 'DENTIST') {
+                  if (refType === 'schedules') {
+                    handleDentistNav('dashboard');
                   } else {
+                    if (notif?.reference_id) {
+                      setSelectedDentistAppointmentId(notif.reference_id);
+                    }
                     handleDentistNav('appointments');
                   }
-                }}
-              />
-            )}
+                } else {
+                  if (refType === 'schedules') {
+                    handleAdminNav('schedules');
+                  } else if (refType === 'services') {
+                    handleAdminNav('services');
+                  } else if (refType === 'accounts') {
+                    handleAdminNav(currentRole === 'ADMIN' ? 'users' : 'patients');
+                  } else {
+                    handleAdminNav('triage');
+                  }
+                }
+              }}
+              onViewAllNotifications={() => {
+                if (currentRole === 'PATIENT') {
+                  handlePatientNav('notifications');
+                } else if (currentRole === 'DENTIST') {
+                  handleDentistNav('notifications');
+                } else {
+                  handleAdminNav('notifications');
+                }
+              }}
+            />
 
             {/* User Profile Account Dropdown */}
             <div className="relative pl-1.5 sm:pl-2 border-l border-white/10" ref={userMenuRef}>
@@ -1251,7 +1278,7 @@ function AppContent() {
 
               {activeTab === 'notifications' && (
                 <PatientNotificationsPage
-                  onNavigateAppointment={() => handlePatientNav('appointments')}
+                  onNavigateToAppointments={() => handlePatientNav('appointments')}
                 />
               )}
 
@@ -1315,6 +1342,18 @@ function AppContent() {
                 <SystemHealthPage />
               )}
 
+              {activeTab === 'notifications' && (
+                <PatientNotificationsPage
+                  onSelectNotification={(notif) => {
+                    const refType = notif?.reference_type || 'appointments';
+                    if (refType === 'schedules') handleAdminNav('schedules');
+                    else if (refType === 'services') handleAdminNav('services');
+                    else if (refType === 'accounts') handleAdminNav('patients');
+                    else handleAdminNav('triage');
+                  }}
+                />
+              )}
+
               {activeTab === 'profile' && (
                 <StaffProfilePage onProfileUpdated={(msg) => showToast(msg || 'Your staff profile has been updated.')} />
               )}
@@ -1370,6 +1409,18 @@ function AppContent() {
                 <ReportsPage />
               )}
 
+              {activeTab === 'notifications' && (
+                <PatientNotificationsPage
+                  onSelectNotification={(notif) => {
+                    const refType = notif?.reference_type || 'appointments';
+                    if (refType === 'schedules') handleAdminNav('schedules');
+                    else if (refType === 'services') handleAdminNav('services');
+                    else if (refType === 'accounts') handleAdminNav('users');
+                    else handleAdminNav('triage');
+                  }}
+                />
+              )}
+
               {activeTab === 'system' && (
                 <SystemHealthPage />
               )}
@@ -1412,6 +1463,19 @@ function AppContent() {
                 <DentistTreatmentRecordsPage />
               )}
 
+              {activeTab === 'notifications' && (
+                <PatientNotificationsPage
+                  onSelectNotification={(notif) => {
+                    if (notif?.reference_type === 'schedules') {
+                      handleDentistNav('dashboard');
+                    } else {
+                      if (notif?.reference_id) setSelectedDentistAppointmentId(notif.reference_id);
+                      handleDentistNav('appointments');
+                    }
+                  }}
+                />
+              )}
+
               {activeTab === 'profile' && (
                 <DentistProfilePage
                   onProfileUpdated={(message) => {
@@ -1426,6 +1490,9 @@ function AppContent() {
           </Suspense>
         </main>
       </div>
+
+      {/* Real-Time Non-Intrusive Toast Notifications */}
+      <NotificationToastContainer />
 
       {/* Floating Toast Feedback */}
       {toastMessage && (

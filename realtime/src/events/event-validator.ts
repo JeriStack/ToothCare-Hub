@@ -1,6 +1,14 @@
-import { ALLOWED_EVENT_TYPES, InternalPublishEnvelope, RealtimeEventType } from './event-types';
+import {
+  ALLOWED_ENTITY_TYPES,
+  ALLOWED_EVENT_TYPES,
+  EVENT_CONTRACT_VERSION,
+  InternalPublishEnvelope,
+  RealtimeEntityType,
+  RealtimeEventType,
+} from './event-types';
 
 const ALLOWED_SET = new Set<string>(ALLOWED_EVENT_TYPES);
+const ALLOWED_ENTITY_SET = new Set<string>(ALLOWED_ENTITY_TYPES);
 
 /**
  * Fields that MUST NEVER appear in a real-time event payload (privacy & security guard).
@@ -8,6 +16,9 @@ const ALLOWED_SET = new Set<string>(ALLOWED_EVENT_TYPES);
 const FORBIDDEN_FIELDS = new Set<string>([
   'password',
   'password_hash',
+  'passwordHash',
+  'smtp_password',
+  'smtpPassword',
   'token',
   'ticket',
   'session_id',
@@ -17,7 +28,10 @@ const FORBIDDEN_FIELDS = new Set<string>([
   'procedureNotes',
   'clinical_notes',
   'clinicalNotes',
+  'treatment_notes',
+  'treatmentNotes',
   'prescription_notes',
+  'prescriptionNotes',
   'chief_complaint',
   'chiefComplaint',
   'medical_alerts',
@@ -61,7 +75,7 @@ export function validatePublishEnvelope(raw: unknown): EventValidationResult {
 
   const payload = payloadRaw as Record<string, unknown>;
 
-  // Reject any forbidden clinical or PII field at top-level of payload
+  // Reject any forbidden clinical, credential, or PII field at top-level of payload
   for (const key of Object.keys(payload)) {
     if (FORBIDDEN_FIELDS.has(key)) {
       return { valid: false, error: `Forbidden sensitive field in payload: ${key}` };
@@ -78,6 +92,11 @@ export function validatePublishEnvelope(raw: unknown): EventValidationResult {
     return { valid: false, error: 'payload.eventType must match envelope.eventType.' };
   }
 
+  const eventVersion =
+    typeof payload.eventVersion === 'string' && payload.eventVersion.trim() !== ''
+      ? payload.eventVersion.trim()
+      : EVENT_CONTRACT_VERSION;
+
   const notificationId =
     payload.notificationId === null || payload.notificationId === undefined
       ? null
@@ -92,6 +111,24 @@ export function validatePublishEnvelope(raw: unknown): EventValidationResult {
       : Number(payload.appointmentId);
   if (appointmentId !== null && (!Number.isInteger(appointmentId) || appointmentId <= 0)) {
     return { valid: false, error: 'payload.appointmentId must be a positive integer or null.' };
+  }
+
+  const rawEntityType =
+    typeof payload.entityType === 'string' && payload.entityType.trim() !== ''
+      ? payload.entityType.trim().toLowerCase()
+      : appointmentId !== null
+      ? 'appointments'
+      : 'notifications';
+  if (!ALLOWED_ENTITY_SET.has(rawEntityType)) {
+    return { valid: false, error: `Disallowed payload.entityType: ${rawEntityType}` };
+  }
+
+  const entityId =
+    payload.entityId === null || payload.entityId === undefined
+      ? (appointmentId ?? notificationId)
+      : Number(payload.entityId);
+  if (entityId !== null && (!Number.isInteger(entityId) || entityId <= 0)) {
+    return { valid: false, error: 'payload.entityId must be a positive integer or null.' };
   }
 
   const status =
@@ -116,8 +153,11 @@ export function validatePublishEnvelope(raw: unknown): EventValidationResult {
       payload: {
         eventId,
         eventType: eventType as RealtimeEventType,
+        eventVersion,
         notificationId,
         appointmentId,
+        entityType: rawEntityType as RealtimeEntityType,
+        entityId,
         status,
         occurredAt,
       },

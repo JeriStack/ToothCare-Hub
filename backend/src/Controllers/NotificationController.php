@@ -58,6 +58,46 @@ class NotificationController
     }
 
     /**
+     * GET /api/v1/notifications/sync
+     * Cursor-based synchronization of missed notifications + authoritative unread count.
+     */
+    public function sync(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required to synchronize notifications.');
+        }
+
+        $result = $this->notificationService->syncUserNotifications(
+            (int) $user['id'],
+            $request->getQueryParams()
+        );
+
+        return Response::success($result);
+    }
+
+    /**
+     * GET /api/v1/notifications/{id}
+     * Retrieve a single notification with strict server-side ownership enforcement.
+     */
+    public function show(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required to view notifications.');
+        }
+
+        $id = (int) $request->getParam('id');
+        if ($id <= 0) {
+            throw HttpException::badRequest('Invalid notification ID.');
+        }
+
+        $notification = $this->notificationService->getNotificationById((int) $user['id'], $id);
+
+        return Response::success($notification);
+    }
+
+    /**
      * PATCH /api/v1/notifications/{id}/read
      * Mark a single notification as read with strict ownership enforcement.
      */

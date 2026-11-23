@@ -286,6 +286,22 @@ class ReceptionistService
 
         $attendance = $this->attendanceRepo->recordCheckIn($appointmentId, $receptionistUserId, $notes);
 
+        try {
+            $dispatcher = new \App\Services\Notifications\UnifiedNotificationDispatcher($this->database);
+            $dispatcher->dispatchAppointmentEvent(
+                \App\Services\Realtime\RealtimeOutboxService::EVENT_APPOINTMENT_UPDATED,
+                $appt,
+                'CHECKED_IN',
+                $this->database->getConnection(),
+                'RECEPTIONIST',
+                $receptionistUserId,
+                "Appointment #{$appointmentId} has been checked in at the front desk."
+            );
+            $dispatcher->dispatchPendingAfterCommit();
+        } catch (Throwable) {
+            // Never block patient check-in on realtime/notification failure
+        }
+
         $this->auditRepo->record(
             'RECEPTIONIST_PATIENT_CHECKIN',
             'appointments',
@@ -329,6 +345,22 @@ class ReceptionistService
         }
 
         $attendance = $this->attendanceRepo->updateStatus($appointmentId, $upperStatus, $notes);
+
+        try {
+            $dispatcher = new \App\Services\Notifications\UnifiedNotificationDispatcher($this->database);
+            $dispatcher->dispatchAppointmentEvent(
+                \App\Services\Realtime\RealtimeOutboxService::EVENT_APPOINTMENT_UPDATED,
+                $appt,
+                $upperStatus,
+                $this->database->getConnection(),
+                'RECEPTIONIST',
+                $userId > 0 ? $userId : null,
+                "Appointment #{$appointmentId} attendance updated to {$upperStatus}."
+            );
+            $dispatcher->dispatchPendingAfterCommit();
+        } catch (Throwable) {
+            // Never block attendance update on realtime/notification failure
+        }
 
         $this->auditRepo->record(
             'RECEPTIONIST_ATTENDANCE_UPDATE',
@@ -416,7 +448,31 @@ class ReceptionistService
                 'medical_alerts' => $medicalAlerts ?: null,
             ]);
 
+            try {
+                $dispatcher = new \App\Services\Notifications\UnifiedNotificationDispatcher($this->database);
+                $dispatcher->dispatchAccountEvent(
+                    \App\Services\Realtime\RealtimeOutboxService::EVENT_ACCOUNT_CREATED,
+                    $userId,
+                    'PATIENT',
+                    'New Walk-In Patient Registered',
+                    "A new walk-in patient account (#{$userId}) was registered at the front desk.",
+                    'created',
+                    $receptionistUserId,
+                    false,
+                    $pdo
+                );
+            } catch (Throwable) {
+                // Never break walk-in registration in minimal test schemas
+            }
+
             $pdo->commit();
+
+            try {
+                (new \App\Services\Notifications\UnifiedNotificationDispatcher($this->database))
+                    ->dispatchPendingAfterCommit();
+            } catch (Throwable) {
+                // Outage-resilient
+            }
 
             $this->auditRepo->record(
                 'RECEPTIONIST_PATIENT_REGISTER',
@@ -532,61 +588,23 @@ class ReceptionistService
             ');
             $histStmt->execute([$apptId, $receptionistUserId]);
 
-            // Persist in-app notifications and enqueue real-time outbox events atomically
+            // Persist in-app notifications and enqueue real-time outbox events atomically across all authorized roles
             try {
-                $notificationService = new NotificationService(
-                    new \App\Repositories\NotificationRepository($this->database)
+                $dispatcher = new \App\Services\Notifications\UnifiedNotificationDispatcher($this->database);
+                $dispatcher->dispatchAppointmentEvent(
+                    \App\Services\Realtime\RealtimeOutboxService::EVENT_APPOINTMENT_CONFIRMED,
+                    [
+                        'id' => $apptId,
+                        'service_name' => (string) ($service['name'] ?? 'Dental Consultation'),
+                        'start_at' => $startFormatted,
+                        'patient_user_id' => !empty($patient['user_id']) ? (int) $patient['user_id'] : 0,
+                        'dentist_user_id' => !empty($dentist['user_id']) ? (int) $dentist['user_id'] : 0,
+                    ],
+                    'CONFIRMED',
+                    $pdo,
+                    'RECEPTIONIST',
+                    $receptionistUserId
                 );
-                $realtimeOutbox = new \App\Services\Realtime\RealtimeOutboxService(
-                    null,
-                    null,
-                    null,
-                    null,
-                    $this->database
-                );
-                $serviceName = (string) ($service['name'] ?? 'Dental Consultation');
-
-                if (!empty($patient['user_id'])) {
-                    $pUid = (int) $patient['user_id'];
-                    $pNotifId = $notificationService->createNotification(
-                        $pUid,
-                        'PATIENT',
-                        'APPOINTMENT_CONFIRMED',
-                        'Appointment Confirmed',
-                        "Your appointment for {$serviceName} on {$startFormatted} has been booked and confirmed by the front desk.",
-                        'appointments',
-                        $apptId,
-                        $pdo
-                    );
-                    $realtimeOutbox->enqueue(
-                        \App\Services\Realtime\RealtimeOutboxService::EVENT_APPOINTMENT_CONFIRMED,
-                        $pUid,
-                        $pNotifId > 0 ? $pNotifId : null,
-                        ['appointmentId' => $apptId, 'status' => 'confirmed'],
-                        $pdo
-                    );
-                }
-
-                if (!empty($dentist['user_id'])) {
-                    $dUid = (int) $dentist['user_id'];
-                    $dNotifId = $notificationService->createNotification(
-                        $dUid,
-                        'DENTIST',
-                        'APPOINTMENT_CONFIRMED',
-                        'New Confirmed Appointment',
-                        "Appointment #{$apptId} ({$serviceName}) on {$startFormatted} was booked and confirmed at the front desk.",
-                        'appointments',
-                        $apptId,
-                        $pdo
-                    );
-                    $realtimeOutbox->enqueue(
-                        \App\Services\Realtime\RealtimeOutboxService::EVENT_APPOINTMENT_CONFIRMED,
-                        $dUid,
-                        $dNotifId > 0 ? $dNotifId : null,
-                        ['appointmentId' => $apptId, 'status' => 'confirmed'],
-                        $pdo
-                    );
-                }
             } catch (Throwable) {
                 // Never break front-desk booking in minimal test schemas lacking realtime tables
             }
@@ -594,8 +612,8 @@ class ReceptionistService
             $pdo->commit();
 
             try {
-                (new \App\Services\Realtime\RealtimeOutboxService(null, null, null, null, $this->database))
-                    ->dispatchPendingBestEffort();
+                (new \App\Services\Notifications\UnifiedNotificationDispatcher($this->database))
+                    ->dispatchPendingAfterCommit();
             } catch (Throwable) {
                 // Outage-resilient: realtime-worker will retry
             }

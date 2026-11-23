@@ -83,8 +83,48 @@ class NotificationService
         $rawPerPage = $params['per_page'] ?? $params['limit'] ?? 20;
         $perPage = max(1, min(100, (int) $rawPerPage));
         $role = isset($params['role']) ? (string) $params['role'] : null;
+        $unreadOnly = !empty($params['unread_only']) && in_array(strtolower((string) $params['unread_only']), ['1', 'true', 'yes'], true);
 
-        return $this->notificationRepo->findByUser($userId, $role, $page, $perPage);
+        return $this->notificationRepo->findByUser($userId, $role, $page, $perPage, $unreadOnly);
+    }
+
+    /**
+     * Retrieve a single notification with strict server-side ownership enforcement.
+     *
+     * @return array<string, mixed>
+     * @throws HttpException
+     */
+    public function getNotificationById(int $userId, int $notificationId): array
+    {
+        $notification = $this->notificationRepo->findById($notificationId);
+        if (!$notification) {
+            throw HttpException::notFound('Notification not found.');
+        }
+
+        if ((int) $notification['user_id'] !== $userId) {
+            throw HttpException::forbidden('You do not have permission to access this notification.');
+        }
+
+        return $notification;
+    }
+
+    /**
+     * Incremental REST synchronization for missed notifications after disconnect/tab wake.
+     *
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    public function syncUserNotifications(int $userId, array $params = []): array
+    {
+        $afterId = isset($params['after_id']) ? max(0, (int) $params['after_id']) : 0;
+        $since = isset($params['since']) && is_string($params['since']) ? trim($params['since']) : null;
+        $limit = isset($params['limit']) ? max(1, min(100, (int) $params['limit'])) : 50;
+
+        if ($since !== null && $since !== '' && strtotime($since) === false) {
+            throw HttpException::badRequest('Invalid since timestamp format.');
+        }
+
+        return $this->notificationRepo->syncSince($userId, $afterId, $since, $limit);
     }
 
     /**

@@ -171,7 +171,32 @@ class AuthService
                 ]
             );
 
+            // 8b. Atomically notify authorized administrators of new patient registration
+            try {
+                $notifDispatcher = new \App\Services\Notifications\UnifiedNotificationDispatcher($this->database);
+                $notifDispatcher->dispatchAccountEvent(
+                    \App\Services\Realtime\RealtimeOutboxService::EVENT_ACCOUNT_CREATED,
+                    $userId,
+                    'PATIENT',
+                    'New Patient Registered',
+                    "A new patient account (#{$userId}) has registered and is awaiting email verification.",
+                    'created',
+                    $userId,
+                    false,
+                    $this->database->getConnection()
+                );
+            } catch (\Throwable) {
+                // Never fail registration when optional realtime tables are absent in isolated tests
+            }
+
             $this->database->commit();
+
+            try {
+                (new \App\Services\Notifications\UnifiedNotificationDispatcher($this->database))
+                    ->dispatchPendingAfterCommit();
+            } catch (\Throwable) {
+                // Outage-resilient: realtime-worker will deliver queued events
+            }
 
             return [
                 'id' => $userId,

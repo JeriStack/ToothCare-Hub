@@ -12,6 +12,8 @@ import {
   ArrowRight,
   Filter,
   RefreshCw,
+  Settings,
+  UserPlus,
 } from 'lucide-react';
 import notificationsApi from '../api';
 import { NotificationSkeleton } from '../../../components/skeletons';
@@ -23,6 +25,7 @@ function getNotificationIcon(type) {
     case 'APPOINTMENT_REQUESTED':
       return <Clock className="w-5 h-5 text-amber-500 dark:text-amber-400" />;
     case 'APPOINTMENT_CONFIRMED':
+    case 'APPOINTMENT_UPDATED':
       return <CheckCircle2 className="w-5 h-5 text-[#0D9488] dark:text-[#2DD4BF]" />;
     case 'APPOINTMENT_REJECTED':
       return <XCircle className="w-5 h-5 text-rose-500 dark:text-rose-400" />;
@@ -31,13 +34,19 @@ function getNotificationIcon(type) {
     case 'APPOINTMENT_COMPLETED':
       return <Sparkles className="w-5 h-5 text-teal-600 dark:text-[#2DD4BF]" />;
     case 'APPOINTMENT_RESCHEDULED':
+    case 'SCHEDULE_UPDATED':
       return <Calendar className="w-5 h-5 text-sky-500 dark:text-sky-400" />;
+    case 'SERVICE_UPDATED':
+      return <Settings className="w-5 h-5 text-[#0D9488] dark:text-[#2DD4BF]" />;
+    case 'ACCOUNT_CREATED':
+    case 'ACCOUNT_UPDATED':
+      return <UserPlus className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />;
     default:
       return <Bell className="w-5 h-5 text-[#0D9488] dark:text-[#2DD4BF]" />;
   }
 }
 
-export function PatientNotificationsPage({ onNavigateToAppointments }) {
+export function PatientNotificationsPage({ onNavigateToAppointments, onSelectNotification }) {
   const [filter, setFilter] = useState('ALL'); // 'ALL' or 'UNREAD'
   const [notifications, setNotifications] = useState([]);
   const [total, setTotal] = useState(0);
@@ -237,16 +246,20 @@ export function PatientNotificationsPage({ onNavigateToAppointments }) {
                       <span>Mark read</span>
                     </button>
                   )}
-                  {notif.reference_type === 'appointments' && notif.reference_id && (
+                  {notif.reference_id && (onSelectNotification || (notif.reference_type === 'appointments' && onNavigateToAppointments)) && (
                     <button
                       type="button"
                       onClick={() => {
                         if (isUnread) handleMarkAsRead(notif.id);
-                        onNavigateToAppointments?.(notif.reference_id);
+                        if (onSelectNotification) {
+                          onSelectNotification(notif);
+                        } else {
+                          onNavigateToAppointments?.(notif.reference_id);
+                        }
                       }}
                       className="px-3 py-1.5 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-teal-600 text-white text-xs font-semibold transition-colors flex items-center gap-1 shadow-2xs"
                     >
-                      <span>View Visit</span>
+                      <span>{notif.reference_type === 'appointments' ? 'View Visit' : 'Open'}</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   )}

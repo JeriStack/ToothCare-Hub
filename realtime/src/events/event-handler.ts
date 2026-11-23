@@ -51,8 +51,9 @@ export class RealtimeEventHandler {
     this.seenEvents.set(envelope.eventId, now + this.dedupTtlMs);
 
     // Emit the specific event type AND notify listeners subscribed to the normalized contract
+    const emitStart = Date.now();
     this.io.to(targetRoom).emit(envelope.eventType, envelope.payload);
-    this.metrics.recordDelivered(envelope.eventType);
+    this.metrics.recordDelivered(envelope.eventType, Date.now() - emitStart);
 
     this.logger.info('Delivered realtime event to authorized user room', {
       correlationId,

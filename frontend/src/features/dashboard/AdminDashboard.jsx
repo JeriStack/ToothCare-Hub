@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 import { dashboardApi } from './api';
 import { DashboardSkeleton } from '../../components/skeletons/DashboardSkeleton';
+import { useDashboardSync } from '../../hooks/useDashboardSync';
+import { DASHBOARD_SYNC_DOMAINS } from '../../services/realtime/dashboardSync';
 
 const EMPTY_ADMIN_COUNTS = {
   patients: { total: 0, active: 0, inactive: 0 },
@@ -71,30 +73,49 @@ export function AdminDashboard({ onNavigateTab }) {
     return () => clearInterval(timer);
   }, []);
 
-  const fetchMetrics = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const fetchMetrics = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const data = await dashboardApi.getMetrics();
       if (data && data.counts) {
         setMetrics(data);
-      } else {
+        setError(null);
+      } else if (!silent) {
         setError('Dashboard metrics response was empty. Please retry.');
       }
     } catch (err) {
-      setError(
-        err?.response?.data?.error?.message ||
-          err?.message ||
-          'Unable to load live clinic metrics from the database.'
-      );
+      if (!silent) {
+        setError(
+          err?.response?.data?.error?.message ||
+            err?.message ||
+            'Unable to load live clinic metrics from the database.'
+        );
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     fetchMetrics();
   }, [fetchMetrics]);
+
+  useDashboardSync({
+    role: 'ADMIN',
+    domains: [
+      DASHBOARD_SYNC_DOMAINS.ADMIN_DASHBOARD,
+      DASHBOARD_SYNC_DOMAINS.APPOINTMENTS,
+      DASHBOARD_SYNC_DOMAINS.SERVICES,
+      DASHBOARD_SYNC_DOMAINS.SCHEDULES,
+      DASHBOARD_SYNC_DOMAINS.ACCOUNTS,
+    ],
+    onRefresh: () => fetchMetrics(true),
+  });
 
   const counts = metrics?.counts || EMPTY_ADMIN_COUNTS;
   const recent = metrics?.recent || { patients: [], services: [] };

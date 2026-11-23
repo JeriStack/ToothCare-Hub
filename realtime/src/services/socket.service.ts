@@ -134,6 +134,7 @@ export function createRealtimeService(
     }
 
     registry.register(socket, identity);
+    metrics.connectionsTotal += 1;
     metrics.activeConnections = registry.totalConnections();
 
     await RoomManager.assignAuthorizedRooms(socket, identity);

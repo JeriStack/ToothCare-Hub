@@ -15,11 +15,16 @@ export class RealtimeMetrics {
   public sessionRevocationsTotal = 0;
   public socketErrorsTotal = 0;
   public unauthorizedClientEventsTotal = 0;
+  public connectionsTotal = 0;
+  public eventDeliveryDurationMsSum = 0;
+  public eventDeliveryDurationCount = 0;
 
   private readonly deliveredByType = new Map<string, number>();
 
-  recordDelivered(eventType: string): void {
+  recordDelivered(eventType: string, durationMs: number = 0): void {
     this.eventsDeliveredTotal += 1;
+    this.eventDeliveryDurationCount += 1;
+    this.eventDeliveryDurationMsSum += Math.max(0, durationMs);
     const safeType = eventType.replace(/[^a-zA-Z0-9_.-]/g, '_');
     this.deliveredByType.set(safeType, (this.deliveredByType.get(safeType) ?? 0) + 1);
   }
@@ -66,6 +71,15 @@ export class RealtimeMetrics {
       '# HELP toothcare_realtime_unauthorized_client_events_total Total blocked client-emitted privileged or room events',
       '# TYPE toothcare_realtime_unauthorized_client_events_total counter',
       `toothcare_realtime_unauthorized_client_events_total ${this.unauthorizedClientEventsTotal}`,
+      '# HELP toothcare_realtime_connections_total Total authenticated Socket.IO connections established since startup',
+      '# TYPE toothcare_realtime_connections_total counter',
+      `toothcare_realtime_connections_total ${this.connectionsTotal}`,
+      '# HELP toothcare_realtime_event_delivery_duration_ms_sum Cumulative event delivery processing duration in milliseconds',
+      '# TYPE toothcare_realtime_event_delivery_duration_ms_sum counter',
+      `toothcare_realtime_event_delivery_duration_ms_sum ${this.eventDeliveryDurationMsSum.toFixed(2)}`,
+      '# HELP toothcare_realtime_event_delivery_duration_ms_count Total event deliveries timed',
+      '# TYPE toothcare_realtime_event_delivery_duration_ms_count counter',
+      `toothcare_realtime_event_delivery_duration_ms_count ${this.eventDeliveryDurationCount}`,
     ];
 
     if (this.deliveredByType.size > 0) {

@@ -24,6 +24,8 @@ import {
 import { schedulesApi } from '../schedules/api';
 import { appointmentsApi } from '../appointments/api';
 import { DashboardSkeleton } from '../../components/skeletons/DashboardSkeleton';
+import { useDashboardSync } from '../../hooks/useDashboardSync';
+import { DASHBOARD_SYNC_DOMAINS } from '../../services/realtime/dashboardSync';
 
 const DAYS_OF_WEEK = [
   { id: 1, name: 'Monday' },
@@ -203,6 +205,16 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
   useEffect(() => {
     fetchDashboard();
   }, [dentistId]);
+
+  useDashboardSync({
+    role: 'DENTIST',
+    domains: [
+      DASHBOARD_SYNC_DOMAINS.DENTIST_DASHBOARD,
+      DASHBOARD_SYNC_DOMAINS.APPOINTMENTS,
+      DASHBOARD_SYNC_DOMAINS.SCHEDULES,
+    ],
+    onRefresh: () => fetchDashboard(true),
+  });
 
   // Handle Leave Request Submission
   const handleLeaveSubmit = async (e) => {

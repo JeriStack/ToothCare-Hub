@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 import { appointmentsApi } from '../appointments/api';
 import { DashboardSkeleton } from '../../components/skeletons/DashboardSkeleton';
+import { useDashboardSync } from '../../hooks/useDashboardSync';
+import { DASHBOARD_SYNC_DOMAINS } from '../../services/realtime/dashboardSync';
 
 import { DialogOverlay } from '../../components/ui/DialogOverlay';
 const STATUS_BADGE = {
@@ -187,6 +189,15 @@ export function PatientDashboard({
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
+
+  useDashboardSync({
+    role: 'PATIENT',
+    domains: [
+      DASHBOARD_SYNC_DOMAINS.PATIENT_DASHBOARD,
+      DASHBOARD_SYNC_DOMAINS.APPOINTMENTS,
+    ],
+    onRefresh: () => fetchDashboardData(true),
+  });
 
   const patientName = user?.patient?.first_name
     ? user.patient.first_name

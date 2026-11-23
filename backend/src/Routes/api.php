@@ -266,9 +266,11 @@ $router->group('/api/v1', function (Router $r): void {
     $r->get('/patients', $notImplemented('GET /api/v1/patients'));
     $r->post('/patients', $notImplemented('POST /api/v1/patients'));
 
-    // Notifications Group (Phase 11 Persistent In-App Notifications)
+    // Notifications Group (Unified Persistent In-App Notifications & Sync)
     $r->get('/notifications', [NotificationController::class, 'index'], $patientAuth);
     $r->get('/notifications/unread-count', [NotificationController::class, 'unreadCount'], $patientAuth);
+    $r->get('/notifications/sync', [NotificationController::class, 'sync'], $patientAuth);
+    $r->get('/notifications/{id}', [NotificationController::class, 'show'], $patientAuth);
     $r->patch('/notifications/{id}/read', [NotificationController::class, 'markRead'], $patientAuth);
     $r->post('/notifications/read-all', [NotificationController::class, 'markAllRead'], $patientAuth);
     $r->patch('/notifications/read-all', [NotificationController::class, 'markAllRead'], $patientAuth);
