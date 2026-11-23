@@ -374,7 +374,7 @@ export function BookAppointmentPage({
                   </div>
 
                   {srv.description && (
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2 w-full">{srv.description}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2 w-full text-justify">{srv.description}</p>
                   )}
 
                   <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 mt-3 pt-3 border-t border-slate-100 dark:border-gray-700 font-medium w-full">
