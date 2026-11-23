@@ -692,11 +692,11 @@ export function RegisterForm({ onNavigateLogin, onNavigateTerms, onNavigatePriva
           aria-expanded={showOptionalFields}
           aria-controls="reg-optional-fields"
           onClick={() => setShowOptionalFields(!showOptionalFields)}
-          className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-gray-900/60 border border-slate-200/90 dark:border-gray-700 text-xs font-semibold text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+          className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-gray-900/60 border border-slate-200/90 dark:border-gray-700 text-xs sm:text-[11px] font-semibold text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
         >
-          <span className="flex items-center gap-2">
+          <span className="flex items-center gap-1.5 min-w-0 text-left sm:whitespace-nowrap">
             <HeartPulse className="w-4 h-4 text-[#0D9488] dark:text-teal-400 shrink-0" />
-            Address, Medical History & Emergency Contact (Optional)
+            <span>Address, Medical History &amp; Emergency Contact (Optional)</span>
           </span>
           {showOptionalFields ? <ChevronUp className="w-4 h-4 shrink-0" /> : <ChevronDown className="w-4 h-4 shrink-0" />}
         </button>
@@ -952,7 +952,7 @@ export function RegisterForm({ onNavigateLogin, onNavigateTerms, onNavigatePriva
 
       {/* Terms and Privacy Checkbox */}
       <div>
-        <div className="flex items-start gap-2.5 text-xs text-slate-600 dark:text-gray-300 leading-relaxed">
+        <div className="flex items-start sm:items-center gap-2 text-xs sm:text-[10.5px] sm:tracking-[-0.01em] text-slate-600 dark:text-gray-300 leading-relaxed">
           <input
             id="reg-agree-terms"
             name="agreeTerms"
@@ -961,10 +961,10 @@ export function RegisterForm({ onNavigateLogin, onNavigateTerms, onNavigatePriva
             onChange={(e) => handleChange('agreeTerms', e.target.checked)}
             aria-invalid={Boolean(fieldErrors.agreeTerms)}
             aria-describedby={fieldErrors.agreeTerms ? 'reg-agree-terms-error' : undefined}
-            className="tch-check mt-0.5 shrink-0 rounded border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-[#0D9488] focus:ring-[#0D9488]"
+            className="tch-check mt-0.5 sm:mt-0 shrink-0 rounded border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-[#0D9488] focus:ring-[#0D9488]"
           />
-          <label htmlFor="reg-agree-terms" className="cursor-pointer select-none min-w-0">
-            I agree to the ToothCare Hub{' '}
+          <label htmlFor="reg-agree-terms" className="cursor-pointer select-none min-w-0 sm:whitespace-nowrap">
+            I agree to the{' '}
             <a
               href="/terms-of-service"
               onClick={(e) => {
@@ -976,7 +976,7 @@ export function RegisterForm({ onNavigateLogin, onNavigateTerms, onNavigatePriva
             >
               Terms of Service
             </a>{' '}
-            and acknowledge that I have read the{' '}
+            and acknowledge the{' '}
             <a
               href="/privacy-policy"
               onClick={(e) => {
