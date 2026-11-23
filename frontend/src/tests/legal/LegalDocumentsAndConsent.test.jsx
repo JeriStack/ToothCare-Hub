@@ -279,4 +279,62 @@ describe('Legal Documents & User Consent Management UI', () => {
       expect(onCompleted).toHaveBeenCalledTimes(1);
     });
   });
+
+  it('supports formal document utilities (Print, Copy link), active TOC selection, and accessible landmarks', async () => {
+    const printSpy = vi.spyOn(window, 'print').mockImplementation(() => {});
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: writeTextMock },
+    });
+
+    render(
+      <ThemeProvider>
+        <AuthProvider>
+          <PrivacyPolicyPage
+            onNavigateHome={vi.fn()}
+            onNavigateRegister={vi.fn()}
+            onNavigateTerms={vi.fn()}
+            onNavigatePrivacy={vi.fn()}
+            onNavigateLogin={vi.fn()}
+          />
+        </AuthProvider>
+      </ThemeProvider>
+    );
+
+    const h1 = await screen.findByRole('heading', { level: 1, name: /privacy policy/i });
+    expect(h1).toHaveAttribute('id', 'legal-document-title');
+    expect(h1).toHaveAttribute('tabindex', '-1');
+
+    // Primary legal nav should not duplicate the "navigation" role word and marks Privacy Policy current
+    const legalNav = screen.getByRole('navigation', { name: /^legal documents$/i });
+    const activePrivacyLink = legalNav.querySelector('a[href="/privacy-policy"]');
+    expect(activePrivacyLink).toHaveAttribute('aria-current', 'page');
+
+    // Verbatim structured sub-clause rendering in Sections 3 & 13 keeps exact markers & wording
+    expect(screen.getAllByText('(a)').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText('(e)')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: /3\. personal information collected/i })).toBeInTheDocument();
+
+    // Print action calls window.print
+    fireEvent.click(screen.getByRole('button', { name: /^print$/i }));
+    expect(printSpy).toHaveBeenCalledTimes(1);
+
+    // Copy link action copies current URL and exposes copied feedback
+    fireEvent.click(screen.getByRole('button', { name: /copy link/i }));
+    await waitFor(() => {
+      expect(writeTextMock).toHaveBeenCalledTimes(1);
+      expect(screen.getByText('Link copied')).toBeInTheDocument();
+      expect(screen.getByText(/privacy policy link copied to clipboard/i)).toBeInTheDocument();
+    });
+
+    // TOC navigation marks clicked section with aria-current="location"
+    const tocNav = screen.getByRole('navigation', { name: /table of contents/i });
+    const rightsLink = tocNav.querySelector('a[href="#data-subject-rights"]');
+    expect(rightsLink).toBeTruthy();
+    fireEvent.click(rightsLink);
+    expect(rightsLink).toHaveAttribute('aria-current', 'location');
+
+    printSpy.mockRestore();
+  });
 });
