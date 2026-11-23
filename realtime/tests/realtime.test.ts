@@ -346,3 +346,29 @@ test('Room isolation, signed publishing, replay protection, idempotency, client 
     await service.close();
   }
 });
+
+test('Realtime CORS allows private LAN dev origins in development but rejects them in production', async () => {
+  const { isAllowedRealtimeOrigin } = await import('../src/config/socket.config');
+
+  const devEnv = loadEnvironment({
+    NODE_ENV: 'development',
+    REALTIME_INTERNAL_SECRET: 'dev_test_secret_1234567890123456789012',
+    ALLOWED_ORIGINS: 'http://localhost:5173,http://127.0.0.1:5173',
+  });
+
+  assert.equal(isAllowedRealtimeOrigin('http://localhost:5173', devEnv), true);
+  assert.equal(isAllowedRealtimeOrigin('http://192.168.1.56:5173', devEnv), true);
+  assert.equal(isAllowedRealtimeOrigin('http://10.0.0.12:5173', devEnv), true);
+  assert.equal(isAllowedRealtimeOrigin('http://localhost:5174', devEnv), true);
+  assert.equal(isAllowedRealtimeOrigin('https://evil.example.com', devEnv), false);
+
+  const prodEnv = loadEnvironment({
+    NODE_ENV: 'production',
+    REALTIME_INTERNAL_SECRET: 'prod_test_secret_123456789012345678901',
+    ALLOWED_ORIGINS: 'https://clinic.toothcare.example',
+  });
+
+  assert.equal(isAllowedRealtimeOrigin('https://clinic.toothcare.example', prodEnv), true);
+  assert.equal(isAllowedRealtimeOrigin('http://192.168.1.56:5173', prodEnv), false);
+  assert.equal(isAllowedRealtimeOrigin('http://localhost:5173', prodEnv), false);
+});
