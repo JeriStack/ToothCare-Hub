@@ -93,4 +93,64 @@ describe('RegisterForm Name Input Restrictions', () => {
     expect(lastNameInput).toHaveAttribute('aria-describedby', 'reg-last-name-error');
     expect(firstNameInput).toHaveFocus();
   });
+
+  it('prevents words/letters in Phone number and Emergency contact phone, and blocks numbers in Emergency contact name', async () => {
+    await renderReadyForm();
+
+    const phoneInput = screen.getByLabelText(/^phone number$/i);
+    const letterOnPhone = new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true });
+    phoneInput.dispatchEvent(letterOnPhone);
+    expect(letterOnPhone.defaultPrevented).toBe(true);
+
+    const digitOnPhone = new KeyboardEvent('keydown', { key: '9', bubbles: true, cancelable: true });
+    phoneInput.dispatchEvent(digitOnPhone);
+    expect(digitOnPhone.defaultPrevented).toBe(false);
+
+    fireEvent.change(phoneInput, { target: { value: 'call +63 917 abc 123 4567' } });
+    expect(phoneInput).toHaveValue('+63 917  123 4567');
+
+    // Expand optional section
+    const optionalToggle = screen.getByRole('button', { name: /address, medical history & emergency contact/i });
+    expect(optionalToggle).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(optionalToggle);
+    expect(optionalToggle).toHaveAttribute('aria-expanded', 'true');
+
+    const emergencyNameInput = screen.getByLabelText(/emergency contact name/i);
+    const emergencyPhoneInput = screen.getByLabelText(/emergency contact phone/i);
+
+    const digitOnEmergencyName = new KeyboardEvent('keydown', { key: '4', bubbles: true, cancelable: true });
+    emergencyNameInput.dispatchEvent(digitOnEmergencyName);
+    expect(digitOnEmergencyName.defaultPrevented).toBe(true);
+
+    fireEvent.change(emergencyNameInput, { target: { value: 'Juan99 Santos (Spouse) 2' } });
+    expect(emergencyNameInput).toHaveValue('Juan Santos (Spouse) ');
+
+    const letterOnEmergencyPhone = new KeyboardEvent('keydown', { key: 'x', bubbles: true, cancelable: true });
+    emergencyPhoneInput.dispatchEvent(letterOnEmergencyPhone);
+    expect(letterOnEmergencyPhone.defaultPrevented).toBe(true);
+
+    fireEvent.change(emergencyPhoneInput, { target: { value: 'tel +63 918 xyz 765 4321' } });
+    expect(emergencyPhoneInput).toHaveValue('+63 918  765 4321');
+  });
+
+  it('validates email, password mismatch on blur, and displays live match indicator', async () => {
+    await renderReadyForm();
+
+    const emailInput = screen.getByLabelText(/email address/i);
+    fireEvent.change(emailInput, { target: { value: 'invalid-email' } });
+    fireEvent.blur(emailInput);
+    expect(screen.getByText('Please enter a valid email address.')).toBeInTheDocument();
+
+    const passwordInput = screen.getByLabelText(/^password$/i);
+    const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
+
+    fireEvent.change(passwordInput, { target: { value: 'StrongPass123!' } });
+    fireEvent.change(confirmPasswordInput, { target: { value: 'DifferentPass1!' } });
+    fireEvent.blur(confirmPasswordInput);
+    expect(screen.getByText('Passwords do not match.')).toBeInTheDocument();
+
+    fireEvent.change(confirmPasswordInput, { target: { value: 'StrongPass123!' } });
+    expect(screen.queryByText('Passwords do not match.')).not.toBeInTheDocument();
+    expect(screen.getByText('Passwords match')).toBeInTheDocument();
+  });
 });

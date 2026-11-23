@@ -73,9 +73,10 @@ class AuthValidator
 
         // 5. Phone
         $phone = isset($data['phone']) ? trim((string) $data['phone']) : '';
+        $phoneDigits = preg_replace('/\D/', '', $phone) ?? '';
         if ($phone === '') {
             $errors['phone'] = 'Phone number is required.';
-        } elseif (!preg_match('/^[0-9+\s\-()]{7,30}$/', $phone)) {
+        } elseif (!preg_match('/^[0-9+\s\-()]{7,30}$/', $phone) || strlen($phoneDigits) < 7 || strlen($phoneDigits) > 15) {
             $errors['phone'] = 'Phone number format is invalid.';
         }
 
@@ -100,22 +101,37 @@ class AuthValidator
         }
 
         // Optional demographic fields
-        $address = isset($data['address']) ? trim((string) $data['address']) : null;
+        $rawAddress = isset($data['address']) ? trim((string) $data['address']) : '';
+        $address = $rawAddress !== '' ? $rawAddress : null;
         if ($address !== null && mb_strlen($address) > 255) {
             $errors['address'] = 'Address cannot exceed 255 characters.';
         }
 
-        $emergencyContactName = isset($data['emergency_contact_name']) ? trim((string) $data['emergency_contact_name']) : null;
-        if ($emergencyContactName !== null && mb_strlen($emergencyContactName) > 150) {
-            $errors['emergency_contact_name'] = 'Emergency contact name cannot exceed 150 characters.';
+        $rawEmergencyName = isset($data['emergency_contact_name']) ? trim((string) $data['emergency_contact_name']) : '';
+        $emergencyContactName = $rawEmergencyName !== '' ? $rawEmergencyName : null;
+        if ($emergencyContactName !== null) {
+            if (mb_strlen($emergencyContactName) > 150) {
+                $errors['emergency_contact_name'] = 'Emergency contact name cannot exceed 150 characters.';
+            } elseif (preg_match('/\p{Nd}/u', $emergencyContactName) === 1) {
+                $errors['emergency_contact_name'] = 'Emergency contact name cannot contain numbers.';
+            }
         }
 
-        $emergencyContactPhone = isset($data['emergency_contact_phone']) ? trim((string) $data['emergency_contact_phone']) : null;
-        if ($emergencyContactPhone !== null && !preg_match('/^[0-9+\s\-()]{7,30}$/', $emergencyContactPhone)) {
-            $errors['emergency_contact_phone'] = 'Emergency contact phone format is invalid.';
+        $rawEmergencyPhone = isset($data['emergency_contact_phone']) ? trim((string) $data['emergency_contact_phone']) : '';
+        $emergencyContactPhone = $rawEmergencyPhone !== '' ? $rawEmergencyPhone : null;
+        if ($emergencyContactPhone !== null) {
+            $emergencyPhoneDigits = preg_replace('/\D/', '', $emergencyContactPhone) ?? '';
+            if (
+                !preg_match('/^[0-9+\s\-()]{7,30}$/', $emergencyContactPhone) ||
+                strlen($emergencyPhoneDigits) < 7 ||
+                strlen($emergencyPhoneDigits) > 15
+            ) {
+                $errors['emergency_contact_phone'] = 'Emergency contact phone format is invalid.';
+            }
         }
 
-        $medicalAlerts = isset($data['medical_alerts']) ? trim((string) $data['medical_alerts']) : null;
+        $rawMedicalAlerts = isset($data['medical_alerts']) ? trim((string) $data['medical_alerts']) : '';
+        $medicalAlerts = $rawMedicalAlerts !== '' ? $rawMedicalAlerts : null;
 
         if (!empty($errors)) {
             throw HttpException::unprocessableEntity('Validation failed for registration input.', $errors);

@@ -21,12 +21,50 @@ import { useAuth } from '../context/AuthContext';
 import {
   PASSWORD_RULES,
   sanitizeNameInput,
+  sanitizePhoneInput,
   validateName,
   validatePassword,
   validateEmail,
   validatePhone,
   validateDateOfBirth,
 } from '../schemas/authSchema';
+
+const SHORT_PASSWORD_RULE_LABELS = {
+  length: '8+ chars',
+  uppercase: 'Uppercase',
+  lowercase: 'Lowercase',
+  number: 'Number',
+  symbol: 'Symbol',
+};
+
+const OPTIONAL_FIELD_KEYS = new Set([
+  'address',
+  'emergencyContactName',
+  'emergencyContactPhone',
+  'medicalAlerts',
+]);
+
+const FIELD_ID_MAP = {
+  firstName: 'reg-first-name',
+  lastName: 'reg-last-name',
+  email: 'reg-email',
+  phone: 'reg-phone',
+  dateOfBirth: 'reg-dob',
+  address: 'reg-address',
+  emergencyContactName: 'reg-emergency-name',
+  emergencyContactPhone: 'reg-emergency-phone',
+  password: 'reg-password',
+  confirmPassword: 'reg-confirm-password',
+  agreeTerms: 'reg-agree-terms',
+};
+
+function getTodayIsoLocal() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 export function RegisterForm({ onNavigateLogin, onSuccess }) {
   const { register, resendVerification, isLoading } = useAuth();
@@ -56,11 +94,16 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
   const [resendStatus, setResendStatus] = useState(null);
 
   const passwordAnalysis = validatePassword(formData.password);
+  const todayIso = getTodayIsoLocal();
+  const passwordsMatch = Boolean(formData.password && formData.confirmPassword && formData.password === formData.confirmPassword);
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (fieldErrors[field]) {
       setFieldErrors((prev) => ({ ...prev, [field]: null }));
+    }
+    if (field === 'password' && fieldErrors.confirmPassword && value === formData.confirmPassword) {
+      setFieldErrors((prev) => ({ ...prev, confirmPassword: null }));
     }
     setFormError(null);
   };
@@ -78,12 +121,85 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
     handleChange(field, sanitizeNameInput(rawValue));
   };
 
-  const handleNameBlur = (field, label) => {
+  const handleNameBlur = (field, label, options) => {
     const value = formData[field];
     if (value.trim() !== '') {
-      const err = validateName(value, label);
+      const err = validateName(value, label, options);
       if (err) {
         setFieldErrors((prev) => ({ ...prev, [field]: err }));
+      }
+    }
+  };
+
+  const handlePhoneKeyDown = (e) => {
+    if (e.nativeEvent?.isComposing || e.ctrlKey || e.metaKey || e.altKey) {
+      return;
+    }
+    const key = e.key;
+    if (!key || key.length > 1) {
+      return;
+    }
+    if (!/^[0-9+\s\-()]$/.test(key)) {
+      e.preventDefault();
+      return;
+    }
+    if (key === '+') {
+      const input = e.currentTarget;
+      const start = input.selectionStart ?? 0;
+      const end = input.selectionEnd ?? 0;
+      const value = input.value ?? '';
+      const remaining = value.slice(0, start) + value.slice(end);
+      if (start !== 0 || remaining.includes('+')) {
+        e.preventDefault();
+      }
+    }
+  };
+
+  const handlePhoneChange = (field, rawValue) => {
+    handleChange(field, sanitizePhoneInput(rawValue));
+  };
+
+  const handleFieldBlur = (field) => {
+    const value = formData[field];
+    if (typeof value !== 'string' || value.trim() === '') return;
+
+    let err = null;
+    if (field === 'email') {
+      err = validateEmail(value);
+    } else if (field === 'phone') {
+      err = validatePhone(value);
+    } else if (field === 'emergencyContactPhone') {
+      err = validatePhone(value, { required: false }) ? 'Emergency phone format is invalid.' : null;
+    } else if (field === 'dateOfBirth') {
+      err = validateDateOfBirth(value);
+    } else if (field === 'address' && value.trim().length > 255) {
+      err = 'Address cannot exceed 255 characters.';
+    } else if (field === 'password' && !validatePassword(value).isValid) {
+      err = 'Password does not meet the security criteria.';
+    } else if (field === 'confirmPassword' && value !== formData.password) {
+      err = 'Passwords do not match.';
+    }
+
+    if (err) {
+      setFieldErrors((prev) => ({ ...prev, [field]: err }));
+    }
+  };
+
+  const focusFirstInvalidField = (errorsObj) => {
+    const firstErrorField = Object.keys(errorsObj)[0];
+    if (!firstErrorField) return;
+    if (Object.keys(errorsObj).some((key) => OPTIONAL_FIELD_KEYS.has(key))) {
+      setShowOptionalFields(true);
+    }
+    const targetId = FIELD_ID_MAP[firstErrorField];
+    if (targetId) {
+      const targetEl = document.getElementById(targetId);
+      if (targetEl) {
+        targetEl.focus();
+      } else {
+        requestAnimationFrame(() => {
+          document.getElementById(targetId)?.focus();
+        });
       }
     }
   };
@@ -108,8 +224,20 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
     const dobErr = validateDateOfBirth(formData.dateOfBirth);
     if (dobErr) errors.dateOfBirth = dobErr;
 
+    if (formData.address?.trim() && formData.address.trim().length > 255) {
+      errors.address = 'Address cannot exceed 255 characters.';
+    }
+
+    if (formData.emergencyContactName?.trim()) {
+      const emergencyNameErr = validateName(formData.emergencyContactName, 'Emergency contact name', {
+        required: false,
+        maxLength: 150,
+      });
+      if (emergencyNameErr) errors.emergencyContactName = emergencyNameErr;
+    }
+
     if (formData.emergencyContactPhone?.trim()) {
-      const emergencyPhoneErr = validatePhone(formData.emergencyContactPhone);
+      const emergencyPhoneErr = validatePhone(formData.emergencyContactPhone, { required: false });
       if (emergencyPhoneErr) errors.emergencyContactPhone = 'Emergency phone format is invalid.';
     }
 
@@ -129,21 +257,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
-      const firstErrorField = Object.keys(errors)[0];
-      const fieldIdMap = {
-        firstName: 'reg-first-name',
-        lastName: 'reg-last-name',
-        email: 'reg-email',
-        phone: 'reg-phone',
-        dateOfBirth: 'reg-dob',
-        emergencyContactPhone: 'reg-emergency-phone',
-        password: 'reg-password',
-        confirmPassword: 'reg-confirm-password',
-      };
-      const targetId = fieldIdMap[firstErrorField];
-      if (targetId) {
-        document.getElementById(targetId)?.focus();
-      }
+      focusFirstInvalidField(errors);
       return;
     }
     setFieldErrors({});
@@ -164,7 +278,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
 
     const res = await register(payload);
     if (res.success) {
-      setRegisteredSuccessEmail(formData.email);
+      setRegisteredSuccessEmail(formData.email.trim());
       onSuccess?.(res.data);
     } else {
       if (res.details && typeof res.details === 'object') {
@@ -174,6 +288,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
           mappedErrors[camelKey] = msg;
         }
         setFieldErrors(mappedErrors);
+        focusFirstInvalidField(mappedErrors);
       }
       setFormError(res.error || 'Failed to register. Please check your information.');
     }
@@ -333,18 +448,25 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
             name="email"
             type="email"
             autoComplete="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            maxLength={255}
+            enterKeyHint="next"
             required
             value={formData.email}
             onChange={(e) => handleChange('email', e.target.value)}
+            onBlur={() => handleFieldBlur('email')}
             placeholder="maria.santos@example.com"
             aria-invalid={Boolean(fieldErrors.email)}
+            aria-describedby={fieldErrors.email ? 'reg-email-error' : undefined}
             className={`w-full pl-12 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
               fieldErrors.email ? 'border-rose-400 dark:border-rose-500 bg-rose-50/20 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600 hover:border-slate-400 dark:hover:border-gray-500'
             }`}
           />
         </div>
         {fieldErrors.email && (
-          <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.email}</p>
+          <p id="reg-email-error" className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.email}</p>
         )}
       </div>
 
@@ -361,19 +483,26 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
             id="reg-phone"
             name="phone"
             type="tel"
+            inputMode="tel"
             autoComplete="tel"
+            maxLength={30}
+            pattern="[0-9+\s\-()]{7,30}"
+            enterKeyHint="next"
             required
             value={formData.phone}
-            onChange={(e) => handleChange('phone', e.target.value)}
+            onKeyDown={handlePhoneKeyDown}
+            onChange={(e) => handlePhoneChange('phone', e.target.value)}
+            onBlur={() => handleFieldBlur('phone')}
             placeholder="+63 917 123 4567"
             aria-invalid={Boolean(fieldErrors.phone)}
+            aria-describedby={fieldErrors.phone ? 'reg-phone-error' : undefined}
             className={`w-full pl-12 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
               fieldErrors.phone ? 'border-rose-400 dark:border-rose-500 bg-rose-50/20 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600 hover:border-slate-400 dark:hover:border-gray-500'
             }`}
           />
         </div>
         {fieldErrors.phone && (
-          <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.phone}</p>
+          <p id="reg-phone-error" className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.phone}</p>
         )}
       </div>
 
@@ -391,22 +520,27 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
               id="reg-dob"
               name="dateOfBirth"
               type={formData.dateOfBirth ? 'date' : 'text'}
+              autoComplete="bday"
+              min="1900-01-01"
+              max={todayIso}
               onFocus={(e) => (e.target.type = 'date')}
               onBlur={(e) => {
                 if (!e.target.value) e.target.type = 'text';
+                handleFieldBlur('dateOfBirth');
               }}
               required
               value={formData.dateOfBirth}
               onChange={(e) => handleChange('dateOfBirth', e.target.value)}
               placeholder="yyyy-mm-dd"
               aria-invalid={Boolean(fieldErrors.dateOfBirth)}
+              aria-describedby={fieldErrors.dateOfBirth ? 'reg-dob-error' : undefined}
               className={`w-full pl-12 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer ${
                 fieldErrors.dateOfBirth ? 'border-rose-400 dark:border-rose-500 bg-rose-50/20 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600 hover:border-slate-400 dark:hover:border-gray-500'
               }`}
             />
           </div>
           {fieldErrors.dateOfBirth && (
-            <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.dateOfBirth}</p>
+            <p id="reg-dob-error" className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.dateOfBirth}</p>
           )}
         </div>
 
@@ -437,18 +571,23 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
       <div className="pt-1">
         <button
           type="button"
+          aria-expanded={showOptionalFields}
+          aria-controls="reg-optional-fields"
           onClick={() => setShowOptionalFields(!showOptionalFields)}
           className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-gray-900/60 border border-slate-200/90 dark:border-gray-700 text-xs font-semibold text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
         >
           <span className="flex items-center gap-2">
-            <HeartPulse className="w-4 h-4 text-[#0D9488] dark:text-teal-400" />
+            <HeartPulse className="w-4 h-4 text-[#0D9488] dark:text-teal-400 shrink-0" />
             Address, Medical History & Emergency Contact (Optional)
           </span>
-          {showOptionalFields ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          {showOptionalFields ? <ChevronUp className="w-4 h-4 shrink-0" /> : <ChevronDown className="w-4 h-4 shrink-0" />}
         </button>
 
         {showOptionalFields && (
-          <div className="mt-3 p-4 rounded-2xl bg-[#F8FAFC] dark:bg-gray-900/70 border border-slate-200/80 dark:border-gray-700 space-y-3.5 tch-animate-fade-in">
+          <div
+            id="reg-optional-fields"
+            className="mt-3 p-4 rounded-2xl bg-[#F8FAFC] dark:bg-gray-900/70 border border-slate-200/80 dark:border-gray-700 space-y-3.5 tch-animate-fade-in"
+          >
             {/* Address */}
             <div>
               <label htmlFor="reg-address" className="block text-[11px] font-bold text-[#12304A] dark:text-gray-200 mb-1">
@@ -462,12 +601,22 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
                   id="reg-address"
                   name="address"
                   type="text"
+                  autoComplete="street-address"
+                  maxLength={255}
                   value={formData.address}
                   onChange={(e) => handleChange('address', e.target.value)}
+                  onBlur={() => handleFieldBlur('address')}
                   placeholder="Unit, Street, Barangay, City / Municipality"
-                  className="w-full pl-11 pr-3 py-2 rounded-xl border border-slate-300 dark:border-gray-600 text-xs text-slate-800 dark:text-gray-100 bg-white dark:bg-gray-800 placeholder:text-slate-400 dark:placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                  aria-invalid={Boolean(fieldErrors.address)}
+                  aria-describedby={fieldErrors.address ? 'reg-address-error' : undefined}
+                  className={`w-full pl-11 pr-3 py-2 rounded-xl border text-xs text-slate-800 dark:text-gray-100 bg-white dark:bg-gray-800 placeholder:text-slate-400 dark:placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
+                    fieldErrors.address ? 'border-rose-400 dark:border-rose-500 bg-rose-50/20 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600'
+                  }`}
                 />
               </div>
+              {fieldErrors.address && (
+                <p id="reg-address-error" className="mt-1 text-[11px] text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.address}</p>
+              )}
             </div>
 
             {/* Emergency Contact Name & Phone */}
@@ -480,11 +629,22 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
                   id="reg-emergency-name"
                   name="emergencyContactName"
                   type="text"
+                  maxLength={150}
+                  pattern="[^0-9]+"
                   value={formData.emergencyContactName}
-                  onChange={(e) => handleChange('emergencyContactName', e.target.value)}
+                  onKeyDown={handleNameKeyDown}
+                  onChange={(e) => handleNameChange('emergencyContactName', e.target.value)}
+                  onBlur={() => handleNameBlur('emergencyContactName', 'Emergency contact name', { required: false, maxLength: 150 })}
                   placeholder="e.g. Juan Santos (Spouse)"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-gray-600 text-xs text-slate-800 dark:text-gray-100 bg-white dark:bg-gray-800 placeholder:text-slate-400 dark:placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                  aria-invalid={Boolean(fieldErrors.emergencyContactName)}
+                  aria-describedby={fieldErrors.emergencyContactName ? 'reg-emergency-name-error' : undefined}
+                  className={`w-full px-3 py-2 rounded-xl border text-xs text-slate-800 dark:text-gray-100 bg-white dark:bg-gray-800 placeholder:text-slate-400 dark:placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
+                    fieldErrors.emergencyContactName ? 'border-rose-400 dark:border-rose-500 bg-rose-50/20 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600'
+                  }`}
                 />
+                {fieldErrors.emergencyContactName && (
+                  <p id="reg-emergency-name-error" className="mt-1 text-[11px] text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.emergencyContactName}</p>
+                )}
               </div>
 
               <div>
@@ -495,13 +655,22 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
                   id="reg-emergency-phone"
                   name="emergencyContactPhone"
                   type="tel"
+                  inputMode="tel"
+                  maxLength={30}
+                  pattern="[0-9+\s\-()]{7,30}"
                   value={formData.emergencyContactPhone}
-                  onChange={(e) => handleChange('emergencyContactPhone', e.target.value)}
+                  onKeyDown={handlePhoneKeyDown}
+                  onChange={(e) => handlePhoneChange('emergencyContactPhone', e.target.value)}
+                  onBlur={() => handleFieldBlur('emergencyContactPhone')}
                   placeholder="+63 918 765 4321"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-gray-600 text-xs text-slate-800 dark:text-gray-100 bg-white dark:bg-gray-800 placeholder:text-slate-400 dark:placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                  aria-invalid={Boolean(fieldErrors.emergencyContactPhone)}
+                  aria-describedby={fieldErrors.emergencyContactPhone ? 'reg-emergency-phone-error' : undefined}
+                  className={`w-full px-3 py-2 rounded-xl border text-xs text-slate-800 dark:text-gray-100 bg-white dark:bg-gray-800 placeholder:text-slate-400 dark:placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
+                    fieldErrors.emergencyContactPhone ? 'border-rose-400 dark:border-rose-500 bg-rose-50/20 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600'
+                  }`}
                 />
                 {fieldErrors.emergencyContactPhone && (
-                  <p className="mt-1 text-[11px] text-rose-600 dark:text-rose-400">{fieldErrors.emergencyContactPhone}</p>
+                  <p id="reg-emergency-phone-error" className="mt-1 text-[11px] text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.emergencyContactPhone}</p>
                 )}
               </div>
             </div>
@@ -514,11 +683,12 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
               <textarea
                 id="reg-medical-alerts"
                 name="medicalAlerts"
-                rows={2}
+                rows={3}
+                maxLength={1000}
                 value={formData.medicalAlerts}
                 onChange={(e) => handleChange('medicalAlerts', e.target.value)}
                 placeholder="List any drug allergies (e.g. Penicillin), medical conditions (hypertension, diabetes), bleeding disorders, or current medications."
-                className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-gray-600 text-xs text-slate-800 dark:text-gray-100 bg-white dark:bg-gray-800 placeholder:text-slate-400 dark:placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] resize-none text-justify placeholder:text-justify"
+                className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-gray-600 text-xs text-slate-800 dark:text-gray-100 bg-white dark:bg-gray-800 placeholder:text-slate-400 dark:placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] resize-y leading-relaxed"
               />
             </div>
           </div>
@@ -539,11 +709,15 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
             name="password"
             type={showPassword ? 'text' : 'password'}
             autoComplete="new-password"
+            minLength={8}
+            enterKeyHint="next"
             required
             value={formData.password}
             onChange={(e) => handleChange('password', e.target.value)}
+            onBlur={() => handleFieldBlur('password')}
             placeholder="At least 8 characters"
             aria-invalid={Boolean(fieldErrors.password)}
+            aria-describedby={fieldErrors.password ? 'reg-password-rules reg-password-error' : 'reg-password-rules'}
             className={`w-full min-w-0 pl-12 pr-12 py-2.5 rounded-xl border text-base sm:text-sm text-slate-800 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
               fieldErrors.password ? 'border-rose-400 dark:border-rose-500 bg-rose-50/20 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600 hover:border-slate-400 dark:hover:border-gray-500'
             }`}
@@ -551,6 +725,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
+            aria-pressed={showPassword}
             aria-label={showPassword ? 'Hide password' : 'Show password'}
             className="absolute right-1.5 top-1/2 -translate-y-1/2 w-10 h-10 inline-flex items-center justify-center text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded-lg"
           >
@@ -559,7 +734,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
         </div>
 
         {/* Password Strength Progress Bar & Requirements */}
-        <div className="mt-2 space-y-1.5">
+        <div className="mt-2 space-y-2">
           <div
             className="flex gap-1.5"
             role="progressbar"
@@ -579,16 +754,34 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
               />
             ))}
           </div>
-          <p
-            className={`text-[11px] text-justify leading-relaxed transition-colors ${
-              passwordAnalysis.isValid ? 'text-emerald-700 dark:text-emerald-400 font-medium' : 'text-rose-500 dark:text-rose-400'
-            }`}
+          <ul
+            id="reg-password-rules"
+            className="flex flex-wrap gap-1.5"
+            aria-label="Password requirements"
           >
-            Min. 8 characters, 1 lowercase, 1 uppercase and 1 number. ONLY the following special characters are allowed: !@#$%^&*
-          </p>
+            {PASSWORD_RULES.map((rule) => {
+              const passed = rule.test(formData.password);
+              const showWarning = Boolean(fieldErrors.password) && !passed;
+              return (
+                <li
+                  key={rule.id}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border transition-colors ${
+                    passed
+                      ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'
+                      : showWarning
+                        ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-300'
+                        : 'bg-slate-50 dark:bg-gray-800/70 border-slate-200 dark:border-gray-700 text-slate-500 dark:text-gray-400'
+                  }`}
+                >
+                  <Check className={`w-3 h-3 ${passed ? 'opacity-100' : 'opacity-30'}`} aria-hidden="true" />
+                  <span>{SHORT_PASSWORD_RULE_LABELS[rule.id] || rule.label}</span>
+                </li>
+              );
+            })}
+          </ul>
         </div>
         {fieldErrors.password && (
-          <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.password}</p>
+          <p id="reg-password-error" className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.password}</p>
         )}
       </div>
 
@@ -606,11 +799,14 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
             name="confirmPassword"
             type={showConfirmPassword ? 'text' : 'password'}
             autoComplete="new-password"
+            enterKeyHint="done"
             required
             value={formData.confirmPassword}
             onChange={(e) => handleChange('confirmPassword', e.target.value)}
+            onBlur={() => handleFieldBlur('confirmPassword')}
             placeholder="Repeat your password"
             aria-invalid={Boolean(fieldErrors.confirmPassword)}
+            aria-describedby={fieldErrors.confirmPassword ? 'reg-confirm-password-error' : undefined}
             className={`w-full min-w-0 pl-12 pr-12 py-2.5 rounded-xl border text-base sm:text-sm text-slate-800 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
               fieldErrors.confirmPassword ? 'border-rose-400 dark:border-rose-500 bg-rose-50/20 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600 hover:border-slate-400 dark:hover:border-gray-500'
             }`}
@@ -618,14 +814,21 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
           <button
             type="button"
             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            aria-pressed={showConfirmPassword}
             aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
             className="absolute right-1.5 top-1/2 -translate-y-1/2 w-10 h-10 inline-flex items-center justify-center text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded-lg"
           >
             {showConfirmPassword ? <EyeOff className="w-4 h-4 stroke-[2]" /> : <Eye className="w-4 h-4 stroke-[2]" />}
           </button>
         </div>
+        {passwordsMatch && !fieldErrors.confirmPassword && (
+          <p className="mt-1 text-xs text-emerald-700 dark:text-emerald-400 font-medium inline-flex items-center gap-1">
+            <Check className="w-3.5 h-3.5" aria-hidden="true" />
+            Passwords match
+          </p>
+        )}
         {fieldErrors.confirmPassword && (
-          <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.confirmPassword}</p>
+          <p id="reg-confirm-password-error" className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.confirmPassword}</p>
         )}
       </div>
 
@@ -633,9 +836,12 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
       <div>
         <label className="flex items-start gap-2 cursor-pointer text-xs text-slate-600 dark:text-gray-300 select-none">
           <input
+            id="reg-agree-terms"
             type="checkbox"
             checked={formData.agreeTerms}
             onChange={(e) => handleChange('agreeTerms', e.target.checked)}
+            aria-invalid={Boolean(fieldErrors.agreeTerms)}
+            aria-describedby={fieldErrors.agreeTerms ? 'reg-agree-terms-error' : undefined}
             className="tch-check mt-0.5 rounded border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-[#0D9488] focus:ring-[#0D9488]"
           />
           <span>
@@ -646,7 +852,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
           </span>
         </label>
         {fieldErrors.agreeTerms && (
-          <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.agreeTerms}</p>
+          <p id="reg-agree-terms-error" className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.agreeTerms}</p>
         )}
       </div>
 

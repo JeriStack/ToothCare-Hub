@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   sanitizeNameInput,
+  sanitizePhoneInput,
   validateName,
   validateEmail,
   validatePassword,
@@ -124,16 +125,26 @@ describe('authSchema Validation Rules', () => {
     });
   });
 
-  describe('validatePhone', () => {
+  describe('sanitizePhoneInput & validatePhone', () => {
+    it('strips letters and invalid symbols while preserving leading plus and phone punctuation', () => {
+      expect(sanitizePhoneInput('abc +63 917 def 123-4567')).toBe('+63 917  123-4567');
+      expect(sanitizePhoneInput('hello world')).toBe(' ');
+      expect(sanitizePhoneInput('0917+123+4567')).toBe('09171234567');
+      expect(sanitizePhoneInput('(02) 8123-4567 ext')).toBe('(02) 8123-4567 ');
+    });
+
     it('returns error when phone number is empty', () => {
       expect(validatePhone('')).toBe('Phone number is required.');
       expect(validatePhone('   ')).toBe('Phone number is required.');
       expect(validatePhone(null)).toBe('Phone number is required.');
+      expect(validatePhone('', { required: false })).toBeNull();
     });
 
-    it('returns error for invalid characters or insufficient length', () => {
+    it('returns error for invalid characters, punctuation-only, or insufficient digits', () => {
       expect(validatePhone('123')).toBe('Please enter a valid phone number (e.g. +63 917 123 4567).');
       expect(validatePhone('phone-number-here')).toBe('Please enter a valid phone number (e.g. +63 917 123 4567).');
+      expect(validatePhone('-------')).toBe('Please enter a valid phone number (e.g. +63 917 123 4567).');
+      expect(validatePhone('1234567890123456')).toBe('Please enter a valid phone number (e.g. +63 917 123 4567).');
     });
 
     it('accepts standard Philippine and international phone formats', () => {
@@ -150,9 +161,10 @@ describe('authSchema Validation Rules', () => {
       expect(validateDateOfBirth(null)).toBe('Date of birth is required.');
     });
 
-    it('returns error for invalid date strings', () => {
+    it('returns error for invalid date strings and impossible calendar dates', () => {
       expect(validateDateOfBirth('not-a-date')).toBe('Please enter a valid date in YYYY-MM-DD format.');
       expect(validateDateOfBirth('2025-13-45')).toBe('Please enter a valid date in YYYY-MM-DD format.');
+      expect(validateDateOfBirth('2025-02-31')).toBe('Please enter a valid date in YYYY-MM-DD format.');
     });
 
     it('rejects future dates of birth', () => {
