@@ -1594,6 +1594,11 @@ paths:
             type: integer
             maximum: 100
             minimum: 1
+        -
+          name: unread_only
+          in: query
+          schema:
+            type: boolean
       responses:
         '200':
           description: 'Paginated notifications'
@@ -1611,6 +1616,67 @@ paths:
       responses:
         '200':
           description: 'Unread count'
+      security:
+        -
+          CookieAuth: []
+  /notifications/sync:
+    get:
+      tags:
+        - Notifications
+      summary: 'Cursor-Based Incremental Notification Synchronization'
+      operationId: syncNotifications
+      parameters:
+        -
+          name: after_id
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+        -
+          name: since
+          in: query
+          schema:
+            type: string
+            format: date-time
+        -
+          name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+            minimum: 1
+      responses:
+        '200':
+          description: 'Incremental missed notifications and authoritative unread count'
+        '400':
+          description: 'Invalid since timestamp'
+        '401':
+          description: Unauthenticated
+      security:
+        -
+          CookieAuth: []
+  '/notifications/{id}':
+    get:
+      tags:
+        - Notifications
+      summary: 'Retrieve Single Notification (Strict Ownership)'
+      operationId: getNotificationById
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: 'Notification record'
+        '403':
+          description: 'Forbidden (not owner)'
+        '404':
+          description: 'Not found'
       security:
         -
           CookieAuth: []
