@@ -88,54 +88,54 @@ export function PatientDentistsPage({ onBookDentist }) {
               Licensed Dental Practitioners
             </div>
             <h1 className="text-2xl font-bold text-[#12304A] dark:text-slate-50">Meet Our Dentists</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
-              Our licensed practitioners provide comprehensive dental care—from routine checkups to orthodontics and restorative surgery.
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              Comprehensive care from routine checkups to specialized treatments.
             </p>
           </div>
         </div>
 
-        {/* Search & Filter Toolbar */}
-        <div className="mt-6 flex flex-col md:flex-row gap-3 pt-6 border-t border-slate-100 dark:border-gray-700">
+        {/* Search & Specialty Dropdown Toolbar */}
+        <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-3 pt-6 border-t border-slate-100 dark:border-gray-700">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search dentist or specialty"
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-gray-600 text-xs sm:text-sm bg-slate-50/50 dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:bg-white dark:focus:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-[#2DD4BF] focus:border-transparent transition-all"
+              className="w-full min-h-11 sm:min-h-0 pl-10 pr-14 py-2.5 rounded-xl border border-slate-200 dark:border-gray-600 text-xs sm:text-sm bg-slate-50/50 dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:bg-white dark:focus:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-[#2DD4BF] focus:border-transparent transition-all"
             />
             {search && (
               <button
                 type="button"
                 onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs font-semibold"
               >
                 Clear
               </button>
             )}
           </div>
-        </div>
 
-        {/* Specialization Filter Pills */}
-        {specializations.length > 2 && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {specializations.map((spec) => (
-              <button
-                key={spec}
-                type="button"
-                onClick={() => setSelectedSpecialization(spec)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-                  selectedSpecialization === spec
-                    ? 'bg-[#0D9488] dark:bg-[#0F766E] text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-gray-700 hover:bg-slate-200 dark:hover:bg-gray-600 text-slate-600 dark:text-slate-300'
-                }`}
-              >
-                {spec === 'ALL' ? 'All Specialties' : spec}
-              </button>
-            ))}
+          {/* Specialty Dropdown */}
+          <div className="sm:w-64 shrink-0">
+            <label htmlFor="patient-dentist-specialty" className="sr-only">
+              Filter by specialty
+            </label>
+            <select
+              id="patient-dentist-specialty"
+              aria-label="Filter by specialty"
+              value={selectedSpecialization}
+              onChange={(e) => setSelectedSpecialization(e.target.value)}
+              className="w-full min-h-11 sm:min-h-0 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-gray-600 text-xs sm:text-sm font-medium bg-slate-50/50 dark:bg-gray-700 text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-[#2DD4BF] focus:border-transparent transition-all"
+            >
+              {specializations.map((spec) => (
+                <option key={spec} value={spec}>
+                  {spec === 'ALL' ? 'All Specialties' : spec}
+                </option>
+              ))}
+            </select>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Error Alert */}
@@ -229,7 +229,7 @@ export function PatientDentistsPage({ onBookDentist }) {
                     </div>
                   )}
 
-                  <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-3 mb-4 leading-relaxed">
+                  <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-3 mb-4 leading-relaxed text-justify">
                     {dentist.bio || 'Dedicated dental practitioner committed to providing high-quality, patient-centered oral health care and dental hygiene consultations.'}
                   </p>
                 </div>
@@ -330,7 +330,7 @@ export function PatientDentistsPage({ onBookDentist }) {
 
               <div>
                 <h4 className="font-bold text-slate-900 dark:text-slate-50 mb-1 text-sm">About the Practitioner</h4>
-                <p className="leading-relaxed text-slate-600 dark:text-slate-300 whitespace-pre-line">
+                <p className="leading-relaxed text-slate-600 dark:text-slate-300 whitespace-pre-line text-justify">
                   {detailDentist.bio ||
                     'Dr. ' +
                       detailDentist.first_name +
