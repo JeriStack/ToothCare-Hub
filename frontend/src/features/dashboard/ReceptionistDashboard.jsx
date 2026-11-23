@@ -24,7 +24,10 @@ import {
 } from 'lucide-react';
 import { receptionistApi } from '../receptionist/api';
 import { DashboardSkeleton } from '../../components/skeletons/DashboardSkeleton';
-
+import { useDashboardSync } from '../../hooks/useDashboardSync';
+import { DASHBOARD_SYNC_DOMAINS } from '../../services/realtime/dashboardSync';
+
+
 import { DialogOverlay } from '../../components/ui/DialogOverlay';
 export function ReceptionistDashboard({ user, onNavigateTab }) {
   const [data, setData] = useState(null);
@@ -90,6 +93,18 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
+
+  useDashboardSync({
+    role: 'RECEPTIONIST',
+    domains: [
+      DASHBOARD_SYNC_DOMAINS.RECEPTIONIST_DASHBOARD,
+      DASHBOARD_SYNC_DOMAINS.APPOINTMENTS,
+      DASHBOARD_SYNC_DOMAINS.SCHEDULES,
+      DASHBOARD_SYNC_DOMAINS.SERVICES,
+      DASHBOARD_SYNC_DOMAINS.ACCOUNTS,
+    ],
+    onRefresh: () => fetchDashboardData(true),
+  });
 
   // Handle Quick Check-In
   const handlePerformCheckIn = async (e) => {

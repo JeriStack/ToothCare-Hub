@@ -14,6 +14,7 @@ use App\Repositories\PatientRepository;
 use App\Repositories\ServiceRepository;
 use App\Repositories\UserRepository;
 use App\Services\Email\EmailOutboxService;
+use App\Services\Notifications\UnifiedNotificationDispatcher;
 use App\Services\Realtime\RealtimeOutboxService;
 use App\Validators\AppointmentValidator;
 use DateTimeImmutable;
@@ -645,10 +646,13 @@ class AppointmentService
             if ($txAppointment) {
                 $this->emailService->queueAppointmentEvent(EmailOutboxService::EVENT_COMPLETED, $txAppointment, $historyId);
                 $this->persistAndQueueAppointmentNotifications(
-                    RealtimeOutboxService::EVENT_NOTIFICATION_CREATED,
+                    RealtimeOutboxService::EVENT_APPOINTMENT_UPDATED,
                     $txAppointment,
                     'COMPLETED',
-                    $pdo
+                    $pdo,
+                    'ADMIN',
+                    false,
+                    $adminUserId
                 );
             }
 
@@ -829,12 +833,13 @@ class AppointmentService
             if ($txNewAppointment) {
                 $this->emailService->queueAppointmentEvent(EmailOutboxService::EVENT_REQUESTED, $txNewAppointment, $newHistoryId);
                 $this->persistAndQueueAppointmentNotifications(
-                    RealtimeOutboxService::EVENT_APPOINTMENT_REQUESTED,
+                    RealtimeOutboxService::EVENT_APPOINTMENT_RESCHEDULED,
                     $txNewAppointment,
                     'PENDING',
                     $pdo,
-                    null,
-                    true
+                    $userRole,
+                    true,
+                    $userId
                 );
             }
 
@@ -1258,10 +1263,13 @@ class AppointmentService
             if ($txAppointment) {
                 $this->emailService->queueAppointmentEvent(EmailOutboxService::EVENT_COMPLETED, $txAppointment, $historyId);
                 $this->persistAndQueueAppointmentNotifications(
-                    RealtimeOutboxService::EVENT_NOTIFICATION_CREATED,
+                    RealtimeOutboxService::EVENT_APPOINTMENT_UPDATED,
                     $txAppointment,
                     'COMPLETED',
-                    $pdo
+                    $pdo,
+                    'DENTIST',
+                    false,
+                    $userId
                 );
             }
 
@@ -1586,152 +1594,28 @@ class AppointmentService
         string $status,
         PDO $pdo,
         ?string $cancelledByRole = null,
-        bool $isRescheduled = false
+        bool $isRescheduled = false,
+        ?int $actorUserId = null
     ): void {
-        $appointmentId = (int) ($appointment['id'] ?? 0);
-        if ($appointmentId <= 0) {
-            return;
-        }
+        $resolvedEvent = $isRescheduled && $eventType === RealtimeOutboxService::EVENT_APPOINTMENT_REQUESTED
+            ? RealtimeOutboxService::EVENT_APPOINTMENT_RESCHEDULED
+            : $eventType;
 
-        $serviceName = (string) ($appointment['service_name'] ?? 'Dental Consultation');
-        $startAt = (string) ($appointment['start_at'] ?? '');
-        $patientUserId = !empty($appointment['patient_user_id']) ? (int) $appointment['patient_user_id'] : 0;
-        $dentistUserId = !empty($appointment['dentist_user_id']) ? (int) $appointment['dentist_user_id'] : 0;
+        $dispatcher = new UnifiedNotificationDispatcher(
+            $this->database,
+            $this->notificationService,
+            $this->realtimeOutbox,
+            $this->logger
+        );
 
-        /** @var list<array{user_id: int, role: string, type: string, title: string, message: string}> $targets */
-        $targets = [];
-
-        if ($eventType === RealtimeOutboxService::EVENT_APPOINTMENT_REQUESTED) {
-            if ($patientUserId > 0) {
-                $targets[] = [
-                    'user_id' => $patientUserId,
-                    'role' => 'PATIENT',
-                    'type' => $isRescheduled ? 'APPOINTMENT_RESCHEDULED' : 'APPOINTMENT_REQUESTED',
-                    'title' => $isRescheduled ? 'Appointment Rescheduled' : 'Appointment Request Submitted',
-                    'message' => $isRescheduled
-                        ? "Your appointment has been rescheduled to {$startAt}."
-                        : "Your appointment request for {$serviceName} on {$startAt} has been received.",
-                ];
-            }
-            if ($dentistUserId > 0) {
-                $targets[] = [
-                    'user_id' => $dentistUserId,
-                    'role' => 'DENTIST',
-                    'type' => 'APPOINTMENT_REQUESTED',
-                    'title' => 'New Appointment Request',
-                    'message' => "A new appointment request for {$serviceName} on {$startAt} has been assigned.",
-                ];
-            }
-            foreach ($this->findActiveOperationalStaffRecipients($pdo, ['RECEPTIONIST', 'ADMIN']) as $staff) {
-                $targets[] = [
-                    'user_id' => $staff['id'],
-                    'role' => $staff['role'],
-                    'type' => 'APPOINTMENT_REQUESTED',
-                    'title' => 'New Appointment Pending Review',
-                    'message' => "Appointment request #{$appointmentId} ({$serviceName}) for {$startAt} requires front-desk review.",
-                ];
-            }
-        } elseif ($eventType === RealtimeOutboxService::EVENT_APPOINTMENT_CONFIRMED) {
-            if ($patientUserId > 0) {
-                $targets[] = [
-                    'user_id' => $patientUserId,
-                    'role' => 'PATIENT',
-                    'type' => 'APPOINTMENT_CONFIRMED',
-                    'title' => 'Appointment Confirmed',
-                    'message' => "Your appointment for {$serviceName} on {$startAt} has been confirmed.",
-                ];
-            }
-            if ($dentistUserId > 0) {
-                $targets[] = [
-                    'user_id' => $dentistUserId,
-                    'role' => 'DENTIST',
-                    'type' => 'APPOINTMENT_CONFIRMED',
-                    'title' => 'Appointment Confirmed',
-                    'message' => "Appointment #{$appointmentId} ({$serviceName}) on {$startAt} has been confirmed.",
-                ];
-            }
-        } elseif ($eventType === RealtimeOutboxService::EVENT_APPOINTMENT_REJECTED) {
-            if ($patientUserId > 0) {
-                $targets[] = [
-                    'user_id' => $patientUserId,
-                    'role' => 'PATIENT',
-                    'type' => 'APPOINTMENT_REJECTED',
-                    'title' => 'Appointment Request Declined',
-                    'message' => "Your appointment request for {$serviceName} could not be approved.",
-                ];
-            }
-        } elseif ($eventType === RealtimeOutboxService::EVENT_APPOINTMENT_CANCELLED) {
-            if ($patientUserId > 0) {
-                $targets[] = [
-                    'user_id' => $patientUserId,
-                    'role' => 'PATIENT',
-                    'type' => 'APPOINTMENT_CANCELLED',
-                    'title' => 'Appointment Cancelled',
-                    'message' => "Your appointment for {$serviceName} on {$startAt} has been cancelled.",
-                ];
-            }
-            if ($dentistUserId > 0) {
-                $targets[] = [
-                    'user_id' => $dentistUserId,
-                    'role' => 'DENTIST',
-                    'type' => 'APPOINTMENT_CANCELLED',
-                    'title' => 'Appointment Cancelled',
-                    'message' => "Appointment #{$appointmentId} ({$serviceName}) on {$startAt} was cancelled.",
-                ];
-            }
-            if ($cancelledByRole === 'PATIENT') {
-                foreach ($this->findActiveOperationalStaffRecipients($pdo, ['RECEPTIONIST']) as $staff) {
-                    $targets[] = [
-                        'user_id' => $staff['id'],
-                        'role' => $staff['role'],
-                        'type' => 'APPOINTMENT_CANCELLED',
-                        'title' => 'Patient Cancelled Appointment',
-                        'message' => "Appointment #{$appointmentId} ({$serviceName}) on {$startAt} was cancelled by the patient.",
-                    ];
-                }
-            }
-        } elseif ($eventType === RealtimeOutboxService::EVENT_NOTIFICATION_CREATED) {
-            if ($patientUserId > 0) {
-                $targets[] = [
-                    'user_id' => $patientUserId,
-                    'role' => 'PATIENT',
-                    'type' => 'APPOINTMENT_COMPLETED',
-                    'title' => 'Appointment Completed',
-                    'message' => "Your visit for {$serviceName} on {$startAt} is complete. Thank you for visiting ToothCare Hub!",
-                ];
-            }
-        }
-
-        $seenUsers = [];
-        foreach ($targets as $target) {
-            $uid = (int) $target['user_id'];
-            if ($uid <= 0 || isset($seenUsers[$uid])) {
-                continue;
-            }
-            $seenUsers[$uid] = true;
-
-            $notificationId = $this->notificationService->createNotification(
-                $uid,
-                $target['role'],
-                $target['type'],
-                $target['title'],
-                $target['message'],
-                'appointments',
-                $appointmentId,
-                $pdo
-            );
-
-            $this->realtimeOutbox->enqueue(
-                $eventType,
-                $uid,
-                $notificationId > 0 ? $notificationId : null,
-                [
-                    'appointmentId' => $appointmentId,
-                    'status' => strtolower($status),
-                ],
-                $pdo
-            );
-        }
+        $dispatcher->dispatchAppointmentEvent(
+            $resolvedEvent,
+            $appointment,
+            $status,
+            $pdo,
+            $cancelledByRole,
+            $actorUserId
+        );
     }
 
     /**

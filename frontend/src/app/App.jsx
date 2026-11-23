@@ -33,9 +33,13 @@ import {
 } from '../features/auth';
 import { LandingPage } from '../features/landing/LandingPage';
 import { NotificationCenter } from '../features/notifications/components/NotificationCenter';
+import { NotificationToastContainer } from '../components/notifications/NotificationToastContainer';
 
 // Phase 18 Performance Hardening: route/role-level code splitting for portal & help pages
 const HelpCenterPage = lazy(() => import('../features/help/pages/HelpCenterPage').then((m) => ({ default: m.HelpCenterPage })));
+const TermsOfServicePage = lazy(() => import('../features/legal/pages/TermsOfServicePage').then((m) => ({ default: m.TermsOfServicePage })));
+const PrivacyPolicyPage = lazy(() => import('../features/legal/pages/PrivacyPolicyPage').then((m) => ({ default: m.PrivacyPolicyPage })));
+const LegalReacceptanceModal = lazy(() => import('../features/legal/components/LegalReacceptanceModal').then((m) => ({ default: m.LegalReacceptanceModal })));
 const PatientDashboard = lazy(() => import('../features/dashboard/PatientDashboard').then((m) => ({ default: m.PatientDashboard })));
 const AdminDashboard = lazy(() => import('../features/dashboard/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
 const ReceptionistDashboard = lazy(() => import('../features/dashboard/ReceptionistDashboard').then((m) => ({ default: m.ReceptionistDashboard })));
@@ -77,6 +81,8 @@ function getInitialRoute() {
   if (path === '/reset-password' || path === '/reset') return 'RESET_PASSWORD';
   if (path === '/verify-email' || path === '/verify') return 'VERIFY_EMAIL';
   if (path === '/help-support' || path === '/help-support/') return 'HELP_SUPPORT';
+  if (path === '/terms-of-service' || path === '/terms-of-service/') return 'TERMS_OF_SERVICE';
+  if (path === '/privacy-policy' || path === '/privacy-policy/') return 'PRIVACY_POLICY';
   if (path.startsWith('/patient')) return 'PATIENT';
   if (path.startsWith('/admin') || path.startsWith('/receptionist')) return 'ADMIN';
   if (path.startsWith('/dentist')) return 'DENTIST';
@@ -108,6 +114,7 @@ function getInitialTab() {
         'audit',
         'reports',
         'system',
+        'notifications',
         'profile',
       ].includes(sub)
     ) {
@@ -116,7 +123,7 @@ function getInitialTab() {
   }
   if (path.startsWith('/dentist/')) {
     const sub = path.replace('/dentist/', '').split('/')[0];
-    if (['dashboard', 'appointments', 'treatment-records', 'profile'].includes(sub)) {
+    if (['dashboard', 'appointments', 'treatment-records', 'notifications', 'profile'].includes(sub)) {
       return sub;
     }
   }
@@ -321,6 +328,7 @@ function AppContent() {
   const [toastMessage, setToastMessage] = useState(null);
   const [bookingPrefill, setBookingPrefill] = useState(null);
   const [selectedDentistAppointmentId, setSelectedDentistAppointmentId] = useState(null);
+  const [legalOriginRoute, setLegalOriginRoute] = useState(null);
   const userMenuRef = useRef(null);
   const userMenuTriggerRef = useRef(null);
   const mobileMenuTriggerRef = useRef(null);
@@ -386,11 +394,23 @@ function AppContent() {
   const navigateTo = (route, path) => {
     setCurrentRoute(route);
     setActiveTab('dashboard');
+    if (route !== 'TERMS_OF_SERVICE' && route !== 'PRIVACY_POLICY') {
+      setLegalOriginRoute(null);
+    }
     if (path && window.location.pathname !== path) {
       window.history.pushState({}, '', path);
     }
     setIsMobileMenuOpen(false);
     setIsUserMenuOpen(false);
+  };
+
+  const navigateToLegal = (targetRoute, path, origin = null) => {
+    if (origin) {
+      setLegalOriginRoute(origin);
+    } else if (currentRoute === 'REGISTER') {
+      setLegalOriginRoute('REGISTER');
+    }
+    navigateTo(targetRoute, path);
   };
 
   // Sign out handler
@@ -622,6 +642,8 @@ function AppContent() {
         }}
         onNavigateLogin={() => navigateTo('LOGIN', '/login')}
         onNavigateHome={() => navigateTo('LANDING', '/')}
+        onNavigateTerms={() => navigateToLegal('TERMS_OF_SERVICE', '/terms-of-service', 'REGISTER')}
+        onNavigatePrivacy={() => navigateToLegal('PRIVACY_POLICY', '/privacy-policy', 'REGISTER')}
       />
     );
   }
@@ -728,7 +750,80 @@ function AppContent() {
             navigateTo('LOGIN', '/login');
           }
         }}
+        onTermsOfService={() => navigateToLegal('TERMS_OF_SERVICE', '/terms-of-service')}
+        onPrivacyPolicy={() => navigateToLegal('PRIVACY_POLICY', '/privacy-policy')}
       />
+      </Suspense>
+    );
+  }
+
+  // 2a. Public Legal Document Pages (accessible without authentication)
+  if (currentRoute === 'TERMS_OF_SERVICE' || currentRoute === 'PRIVACY_POLICY') {
+    const LegalPageComponent =
+      currentRoute === 'PRIVACY_POLICY' ? PrivacyPolicyPage : TermsOfServicePage;
+    return (
+      <Suspense
+        fallback={
+          <div className="min-h-dvh flex items-center justify-center bg-[#F5F8FA] dark:bg-gray-900">
+            <div
+              role="status"
+              aria-label="Loading legal document"
+              className="w-8 h-8 rounded-full border-2 border-[#0D9488] border-t-transparent animate-spin"
+            />
+          </div>
+        }
+      >
+        <LegalPageComponent
+          cameFromRegister={legalOriginRoute === 'REGISTER'}
+          onNavigateHome={() => navigateTo('LANDING', '/')}
+          onNavigateRegister={() => navigateTo('REGISTER', '/register')}
+          onNavigateTerms={() => navigateToLegal('TERMS_OF_SERVICE', '/terms-of-service', legalOriginRoute)}
+          onNavigatePrivacy={() => navigateToLegal('PRIVACY_POLICY', '/privacy-policy', legalOriginRoute)}
+          onHelpSupport={() => navigateTo('HELP_SUPPORT', '/help-support')}
+          onNavigateLandingSection={(sectionId) => {
+            navigateTo('LANDING', '/');
+            window.requestAnimationFrame?.(() => {
+              window.setTimeout(() => {
+                const target = document.getElementById(sectionId);
+                if (target) {
+                  target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+              }, 60);
+            });
+          }}
+          onBookAppointment={(service, dentist) => {
+            if (service || dentist) {
+              setBookingPrefill({ service, dentist });
+            }
+            if (isAuthenticated) {
+              const role = user?.role?.toUpperCase();
+              if (role === 'PATIENT') {
+                navigateTo('PATIENT', '/patient');
+                setActiveTab('book');
+              } else {
+                navigateTo(role, role === 'ADMIN' ? '/admin' : '/dentist');
+              }
+            } else {
+              navigateTo('LOGIN', '/login');
+              showToast('Please sign in or create an account to schedule an appointment.');
+            }
+          }}
+          onNavigateLogin={() => {
+            if (isAuthenticated) {
+              const role = user?.role?.toUpperCase() || 'PATIENT';
+              navigateTo(role, `/${role.toLowerCase()}`);
+            } else {
+              navigateTo('LOGIN', '/login');
+            }
+          }}
+          onAdminLogin={() => {
+            if (isAuthenticated && user?.role === 'ADMIN') {
+              navigateTo('ADMIN', '/admin');
+            } else {
+              navigateTo('LOGIN', '/login');
+            }
+          }}
+        />
       </Suspense>
     );
   }
@@ -738,6 +833,8 @@ function AppContent() {
     return (
       <LandingPage
         onHelpSupport={() => navigateTo('HELP_SUPPORT', '/help-support')}
+        onTermsOfService={() => navigateToLegal('TERMS_OF_SERVICE', '/terms-of-service')}
+        onPrivacyPolicy={() => navigateToLegal('PRIVACY_POLICY', '/privacy-policy')}
         onBookAppointment={(service, dentist) => {
           if (service || dentist) {
             setBookingPrefill({ service, dentist });
@@ -845,18 +942,43 @@ function AppContent() {
           <div className="flex items-center gap-1 sm:gap-3 shrink-0">
             <ThemeToggle variant="header" />
 
-            {/* In-App Notifications Dropdown */}
-            {(currentRole === 'PATIENT' || currentRole === 'DENTIST') && (
-              <NotificationCenter
-                onViewAllNotifications={() => {
-                  if (currentRole === 'PATIENT') {
-                    handlePatientNav('notifications');
+            {/* Unified In-App Notifications Dropdown (All Four Authenticated Roles) */}
+            <NotificationCenter
+              onSelectNotification={(notif) => {
+                const refType = notif?.reference_type || 'appointments';
+                if (currentRole === 'PATIENT') {
+                  handlePatientNav('appointments');
+                } else if (currentRole === 'DENTIST') {
+                  if (refType === 'schedules') {
+                    handleDentistNav('dashboard');
                   } else {
+                    if (notif?.reference_id) {
+                      setSelectedDentistAppointmentId(notif.reference_id);
+                    }
                     handleDentistNav('appointments');
                   }
-                }}
-              />
-            )}
+                } else {
+                  if (refType === 'schedules') {
+                    handleAdminNav('schedules');
+                  } else if (refType === 'services') {
+                    handleAdminNav('services');
+                  } else if (refType === 'accounts') {
+                    handleAdminNav(currentRole === 'ADMIN' ? 'users' : 'patients');
+                  } else {
+                    handleAdminNav('triage');
+                  }
+                }
+              }}
+              onViewAllNotifications={() => {
+                if (currentRole === 'PATIENT') {
+                  handlePatientNav('notifications');
+                } else if (currentRole === 'DENTIST') {
+                  handleDentistNav('notifications');
+                } else {
+                  handleAdminNav('notifications');
+                }
+              }}
+            />
 
             {/* User Profile Account Dropdown */}
             <div className="relative pl-1.5 sm:pl-2 border-l border-white/10" ref={userMenuRef}>
@@ -1156,7 +1278,7 @@ function AppContent() {
 
               {activeTab === 'notifications' && (
                 <PatientNotificationsPage
-                  onNavigateAppointment={() => handlePatientNav('appointments')}
+                  onNavigateToAppointments={() => handlePatientNav('appointments')}
                 />
               )}
 
@@ -1220,6 +1342,18 @@ function AppContent() {
                 <SystemHealthPage />
               )}
 
+              {activeTab === 'notifications' && (
+                <PatientNotificationsPage
+                  onSelectNotification={(notif) => {
+                    const refType = notif?.reference_type || 'appointments';
+                    if (refType === 'schedules') handleAdminNav('schedules');
+                    else if (refType === 'services') handleAdminNav('services');
+                    else if (refType === 'accounts') handleAdminNav('patients');
+                    else handleAdminNav('triage');
+                  }}
+                />
+              )}
+
               {activeTab === 'profile' && (
                 <StaffProfilePage onProfileUpdated={(msg) => showToast(msg || 'Your staff profile has been updated.')} />
               )}
@@ -1275,6 +1409,18 @@ function AppContent() {
                 <ReportsPage />
               )}
 
+              {activeTab === 'notifications' && (
+                <PatientNotificationsPage
+                  onSelectNotification={(notif) => {
+                    const refType = notif?.reference_type || 'appointments';
+                    if (refType === 'schedules') handleAdminNav('schedules');
+                    else if (refType === 'services') handleAdminNav('services');
+                    else if (refType === 'accounts') handleAdminNav('users');
+                    else handleAdminNav('triage');
+                  }}
+                />
+              )}
+
               {activeTab === 'system' && (
                 <SystemHealthPage />
               )}
@@ -1317,6 +1463,19 @@ function AppContent() {
                 <DentistTreatmentRecordsPage />
               )}
 
+              {activeTab === 'notifications' && (
+                <PatientNotificationsPage
+                  onSelectNotification={(notif) => {
+                    if (notif?.reference_type === 'schedules') {
+                      handleDentistNav('dashboard');
+                    } else {
+                      if (notif?.reference_id) setSelectedDentistAppointmentId(notif.reference_id);
+                      handleDentistNav('appointments');
+                    }
+                  }}
+                />
+              )}
+
               {activeTab === 'profile' && (
                 <DentistProfilePage
                   onProfileUpdated={(message) => {
@@ -1332,6 +1491,9 @@ function AppContent() {
         </main>
       </div>
 
+      {/* Real-Time Non-Intrusive Toast Notifications */}
+      <NotificationToastContainer />
+
       {/* Floating Toast Feedback */}
       {toastMessage && (
         <div
@@ -1344,9 +1506,47 @@ function AppContent() {
         </div>
       )}
 
+      {/* Authenticated Legal Re-Acceptance Workflow (only triggered on material policy updates) */}
+      {isAuthenticated && user?.legal_status?.requires_reacceptance && (
+        <Suspense fallback={null}>
+          <LegalReacceptanceModal
+            isOpen={true}
+            onCompleted={async () => {
+              await refreshUser?.({ silent: true });
+              showToast('Thank you. Your updated legal confirmation has been recorded.');
+            }}
+            onSignOut={handleSignOut}
+          />
+        </Suspense>
+      )}
+
       {/* FOOTER */}
-      <footer className="bg-white dark:bg-gray-900 border-t border-slate-200 dark:border-gray-800 mt-auto py-4 text-center text-xs text-slate-400 dark:text-gray-400">
-        ToothCare Hub &copy; 2026. Real-Time Clinical Management System.
+      <footer className="bg-white dark:bg-gray-900 border-t border-slate-200 dark:border-gray-800 mt-auto py-4 px-4 text-center text-xs text-slate-400 dark:text-gray-400">
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+          <span>ToothCare Hub &copy; 2026. Real-Time Clinical Management System.</span>
+          <span aria-hidden="true">•</span>
+          <a
+            href="/terms-of-service"
+            onClick={(e) => {
+              e.preventDefault();
+              navigateToLegal('TERMS_OF_SERVICE', '/terms-of-service');
+            }}
+            className="hover:text-[#0D9488] dark:hover:text-teal-400 underline underline-offset-2 transition-colors"
+          >
+            Terms of Service
+          </a>
+          <span aria-hidden="true">•</span>
+          <a
+            href="/privacy-policy"
+            onClick={(e) => {
+              e.preventDefault();
+              navigateToLegal('PRIVACY_POLICY', '/privacy-policy');
+            }}
+            className="hover:text-[#0D9488] dark:hover:text-teal-400 underline underline-offset-2 transition-colors"
+          >
+            Privacy Policy
+          </a>
+        </div>
       </footer>
     </div>
   );

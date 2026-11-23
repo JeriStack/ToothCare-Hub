@@ -13,7 +13,14 @@ import { ContactSection } from './components/ContactSection';
 import { LandingFooter } from './components/LandingFooter';
 import { useScrollReveal } from './hooks/useScrollReveal';
 
-export function LandingPage({ onBookAppointment, onLogin, onAdminLogin, onHelpSupport }) {
+export function LandingPage({
+  onBookAppointment,
+  onLogin,
+  onAdminLogin,
+  onHelpSupport,
+  onTermsOfService,
+  onPrivacyPolicy,
+}) {
   const landingRootRef = useRef(null);
   useScrollReveal(landingRootRef);
 
@@ -91,6 +98,8 @@ export function LandingPage({ onBookAppointment, onLogin, onAdminLogin, onHelpSu
         onBookAppointment={() => onBookAppointment?.()}
         onAdminLogin={() => onAdminLogin?.()}
         onHelpSupport={() => onHelpSupport?.()}
+        onTermsOfService={() => onTermsOfService?.()}
+        onPrivacyPolicy={() => onPrivacyPolicy?.()}
       />
     </div>
   );

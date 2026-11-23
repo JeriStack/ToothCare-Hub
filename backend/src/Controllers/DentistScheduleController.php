@@ -108,6 +108,20 @@ class DentistScheduleController
             ]
         );
 
+        try {
+            $dispatcher = new \App\Services\Notifications\UnifiedNotificationDispatcher();
+            $dispatcher->dispatchScheduleUpdated(
+                $dentistId,
+                $id,
+                "Weekly schedule shift added for Dentist #{$dentistId} ({$validated['start_time']}–{$validated['end_time']}).",
+                'created',
+                $adminUser ? (int) $adminUser['id'] : null
+            );
+            $dispatcher->dispatchPendingAfterCommit();
+        } catch (\Throwable) {
+            // Outage-resilient
+        }
+
         return Response::created($schedule);
     }
 
@@ -157,6 +171,20 @@ class DentistScheduleController
             ]
         );
 
+        try {
+            $dispatcher = new \App\Services\Notifications\UnifiedNotificationDispatcher();
+            $dispatcher->dispatchScheduleUpdated(
+                $dentistId,
+                $scheduleId,
+                "Weekly schedule shift #{$scheduleId} updated for Dentist #{$dentistId}.",
+                'updated',
+                $adminUser ? (int) $adminUser['id'] : null
+            );
+            $dispatcher->dispatchPendingAfterCommit();
+        } catch (\Throwable) {
+            // Outage-resilient
+        }
+
         return Response::success($updated);
     }
 
@@ -186,6 +214,20 @@ class DentistScheduleController
             $request->getHeader('user-agent'),
             ['dentist_id' => $dentistId, 'schedule_id' => $scheduleId]
         );
+
+        try {
+            $dispatcher = new \App\Services\Notifications\UnifiedNotificationDispatcher();
+            $dispatcher->dispatchScheduleUpdated(
+                $dentistId,
+                $scheduleId,
+                "Weekly schedule shift #{$scheduleId} was removed for Dentist #{$dentistId}.",
+                'deleted',
+                $adminUser ? (int) $adminUser['id'] : null
+            );
+            $dispatcher->dispatchPendingAfterCommit();
+        } catch (\Throwable) {
+            // Outage-resilient
+        }
 
         return Response::success(null);
     }

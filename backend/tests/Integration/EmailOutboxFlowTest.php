@@ -133,7 +133,8 @@ class EmailOutboxFlowTest extends TestCase
     private function registrationPayload(string $email): array
     {
         return ['email' => $email, 'password' => 'StrongP@ssw0rd123!', 'first_name' => 'Maria', 'last_name' => 'Santos',
-            'phone' => '+639171234567', 'date_of_birth' => '1995-05-15', 'gender' => 'FEMALE'];
+            'phone' => '+639171234567', 'date_of_birth' => '1995-05-15', 'gender' => 'FEMALE',
+            'accept_legal' => true, 'terms_version' => '1.0', 'privacy_version' => '1.0'];
     }
     private function enqueueSimple(string $key = 'k1', ?OutboxSettings $settings = null): int
     {

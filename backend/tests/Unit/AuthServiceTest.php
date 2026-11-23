@@ -46,9 +46,22 @@ class AuthServiceTest extends TestCase
         $this->authService = new AuthService();
     }
 
+    /**
+     * @param array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
+    private function withLegalAcceptance(array $overrides): array
+    {
+        return array_merge([
+            'accept_legal' => true,
+            'terms_version' => '1.0',
+            'privacy_version' => '1.0',
+        ], $overrides);
+    }
+
     public function testRegistrationSuccessAndServerRoleEnforcement(): void
     {
-        $payload = [
+        $payload = $this->withLegalAcceptance([
             'email' => 'Maria.Santos@Example.COM',
             'password' => 'StrongP@ssw0rd123!',
             'first_name' => 'Maria',
@@ -57,7 +70,7 @@ class AuthServiceTest extends TestCase
             'date_of_birth' => '1995-05-15',
             'gender' => 'FEMALE',
             'role' => 'ADMIN', // Deliberate privilege escalation attempt
-        ];
+        ]);
 
         $result = $this->authService->register($payload, '192.168.1.100');
 
@@ -87,14 +100,14 @@ class AuthServiceTest extends TestCase
 
     public function testRegistrationRejectsDuplicateEmail(): void
     {
-        $payload = [
+        $payload = $this->withLegalAcceptance([
             'email' => 'duplicate@example.com',
             'password' => 'StrongP@ssw0rd123!',
             'first_name' => 'Juan',
             'last_name' => 'Dela Cruz',
             'phone' => '+639171234568',
             'date_of_birth' => '1990-01-01',
-        ];
+        ]);
 
         $this->authService->register($payload);
 
@@ -108,14 +121,14 @@ class AuthServiceTest extends TestCase
 
     public function testRegistrationRejectsWeakPassword(): void
     {
-        $payload = [
+        $payload = $this->withLegalAcceptance([
             'email' => 'weakpass@example.com',
             'password' => 'short1!', // Less than 12 characters
             'first_name' => 'Ana',
             'last_name' => 'Reyes',
             'phone' => '+639171234569',
             'date_of_birth' => '1992-03-10',
-        ];
+        ]);
 
         $this->expectException(HttpException::class);
         $this->expectExceptionCode(422);
@@ -125,14 +138,14 @@ class AuthServiceTest extends TestCase
 
     public function testLoginSuccessWithValidCredentials(): void
     {
-        $this->authService->register([
+        $this->authService->register($this->withLegalAcceptance([
             'email' => 'patient.login@example.com',
             'password' => 'SecureP@ssw0rd999!',
             'first_name' => 'Clara',
             'last_name' => 'Rivera',
             'phone' => '+639171112233',
             'date_of_birth' => '1988-12-20',
-        ]);
+        ]));
 
         $loginResult = $this->authService->login([
             'email' => 'PATIENT.LOGIN@example.com',
@@ -147,14 +160,14 @@ class AuthServiceTest extends TestCase
 
     public function testLoginFailsWithInvalidPasswordReturnsGeneric401(): void
     {
-        $this->authService->register([
+        $this->authService->register($this->withLegalAcceptance([
             'email' => 'patient.wrongpass@example.com',
             'password' => 'CorrectP@ssword123!',
             'first_name' => 'Pedro',
             'last_name' => 'Gil',
             'phone' => '+639178887766',
             'date_of_birth' => '1985-07-22',
-        ]);
+        ]));
 
         $this->expectException(HttpException::class);
         $this->expectExceptionCode(401);
@@ -190,14 +203,14 @@ class AuthServiceTest extends TestCase
 
     public function testLoginFailsForDisabledAccount(): void
     {
-        $reg = $this->authService->register([
+        $reg = $this->authService->register($this->withLegalAcceptance([
             'email' => 'disabled.user@example.com',
             'password' => 'ValidP@ssword123!',
             'first_name' => 'Disabled',
             'last_name' => 'Account',
             'phone' => '+639179998877',
             'date_of_birth' => '1991-04-12',
-        ]);
+        ]));
 
         // Disable user
         $this->userRepository->updateStatus((int) $reg['id'], 0);
@@ -235,14 +248,14 @@ class AuthServiceTest extends TestCase
 
     public function testEmailVerificationWorkflow(): void
     {
-        $reg = $this->authService->register([
+        $reg = $this->authService->register($this->withLegalAcceptance([
             'email' => 'verify.me@example.com',
             'password' => 'ValidP@ssword123!',
             'first_name' => 'Teresa',
             'last_name' => 'Magbanua',
             'phone' => '+639174443322',
             'date_of_birth' => '1993-09-09',
-        ]);
+        ]));
 
         $userId = (int) $reg['id'];
 
@@ -273,14 +286,14 @@ class AuthServiceTest extends TestCase
     public function testForgotPasswordAntiEnumeration(): void
     {
         // Registered user
-        $this->authService->register([
+        $this->authService->register($this->withLegalAcceptance([
             'email' => 'registered.reset@example.com',
             'password' => 'ValidP@ssword123!',
             'first_name' => 'Jose',
             'last_name' => 'Rizal',
             'phone' => '+639170001122',
             'date_of_birth' => '1980-06-19',
-        ]);
+        ]));
 
         $res1 = $this->authService->forgotPassword('registered.reset@example.com', '127.0.0.1');
         $res2 = $this->authService->forgotPassword('never.existed@example.com', '127.0.0.1');
@@ -293,14 +306,14 @@ class AuthServiceTest extends TestCase
 
     public function testPasswordResetWorkflow(): void
     {
-        $reg = $this->authService->register([
+        $reg = $this->authService->register($this->withLegalAcceptance([
             'email' => 'reset.workflow@example.com',
             'password' => 'OldPassword123!',
             'first_name' => 'Andres',
             'last_name' => 'Bonifacio',
             'phone' => '+639175556677',
             'date_of_birth' => '1982-11-30',
-        ]);
+        ]));
 
         $userId = (int) $reg['id'];
         $rawToken = bin2hex(random_bytes(32));
@@ -348,14 +361,14 @@ class AuthServiceTest extends TestCase
 
     public function testLoginWithRememberMeSetsSessionMetadataAndDetectsExpiration(): void
     {
-        $this->authService->register([
+        $this->authService->register($this->withLegalAcceptance([
             'email' => 'remember.patient@example.com',
             'password' => 'SecureP@ssw0rd999!',
             'first_name' => 'Elena',
             'last_name' => 'Mendoza',
             'phone' => '+639171112244',
             'date_of_birth' => '1991-04-12',
-        ]);
+        ]));
 
         $loginResult = $this->authService->login([
             'email' => 'remember.patient@example.com',

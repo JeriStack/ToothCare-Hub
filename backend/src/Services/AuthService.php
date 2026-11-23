@@ -32,6 +32,7 @@ class AuthService
     private RateLimitRepository $rateLimitRepository;
     private RoleRepository $roleRepository;
     private EmailOutboxService $emailService;
+    private LegalService $legalService;
     private Database $database;
     private Config $config;
     private Logger $logger;
@@ -47,7 +48,8 @@ class AuthService
         ?Database $database = null,
         ?Config $config = null,
         ?Logger $logger = null,
-        ?RoleRepository $roleRepository = null
+        ?RoleRepository $roleRepository = null,
+        ?LegalService $legalService = null
     ) {
         $this->database = $database ?? Database::getInstance();
         $this->config = $config ?? Config::getInstance();
@@ -60,6 +62,7 @@ class AuthService
         $this->rateLimitRepository = $rateLimitRepository ?? new RateLimitRepository($this->database);
         $this->roleRepository = $roleRepository ?? new RoleRepository($this->database);
         $this->emailService = $emailService ?? new EmailOutboxService(null, null, null, $this->logger, null, $this->database);
+        $this->legalService = $legalService ?? new LegalService(null, null, $this->auditLogRepository, $this->database);
     }
 
     /**
@@ -81,9 +84,12 @@ class AuthService
             throw HttpException::tooManyRequests('Too many registration attempts. Please try again later.');
         }
 
-        // 2. Validate input and enforce server-side constraints
+        // 2. Validate input and enforce server-side constraints (including legal acceptance)
         $validated = AuthValidator::validateRegister($payload);
         $email = $validated['email'];
+
+        // 2b. Verify submitted legal document versions strictly match currently PUBLISHED active versions
+        $resolvedLegalDocs = $this->legalService->resolveRegistrationDocuments($validated);
 
         // 3. Duplicate email detection
         $existing = $this->userRepository->findByEmail($email);
@@ -98,7 +104,7 @@ class AuthService
         // 4. Hash password with secure default algorithm
         $passwordHash = password_hash($validated['password'], PASSWORD_DEFAULT);
 
-        // 5. Database transaction for atomic user, patient profile, and verification token creation
+        // 5. Database transaction for atomic user, patient profile, legal acceptances, and verification token creation
         $this->database->beginTransaction();
         try {
             // Role is strictly PATIENT (cannot be escalated from payload)
@@ -127,6 +133,14 @@ class AuthService
 
             $patientId = $this->patientRepository->create($patientData);
 
+            // 5b. Record immutable Terms acceptance and Privacy Policy acknowledgment in the same transaction
+            $legalAcceptances = $this->legalService->recordRegistrationAcceptances(
+                $userId,
+                $resolvedLegalDocs,
+                $clientIp,
+                $userAgent
+            );
+
             // 6. Generate single-use email verification token
             $rawToken = bin2hex(random_bytes(32));
             $tokenHash = hash('sha256', $rawToken);
@@ -134,9 +148,10 @@ class AuthService
 
             $tokenId = $this->tokenRepository->createToken($userId, $tokenHash, 'EMAIL_VERIFY', $tokenTtl);
 
-            // 7. Transactional outbox: queue the verification email atomically with the account.
-            //    A failure here throws and rolls back the registration (no account without a queued email).
+            // 7. Transactional outbox: queue registration acknowledgment and verification email atomically
+            //    with the account. Nothing talks to SMTP inside the transaction.
             $recipientName = "{$validated['first_name']} {$validated['last_name']}";
+            $this->emailService->queueRegistrationReceived($email, $recipientName, $userId, $tokenTtl, true);
             $this->emailService->queueVerification($email, $recipientName, $userId, $rawToken, $tokenId, $tokenTtl);
 
             // 8. Audit log event
@@ -147,10 +162,41 @@ class AuthService
                 $userId,
                 $clientIp,
                 $userAgent,
-                ['email' => $email, 'role' => 'PATIENT', 'patient_id' => $patientId]
+                [
+                    'email' => $email,
+                    'role' => 'PATIENT',
+                    'patient_id' => $patientId,
+                    'terms_version' => (string) $resolvedLegalDocs['terms']['version'],
+                    'privacy_version' => (string) $resolvedLegalDocs['privacy']['version'],
+                ]
             );
 
+            // 8b. Atomically notify authorized administrators of new patient registration
+            try {
+                $notifDispatcher = new \App\Services\Notifications\UnifiedNotificationDispatcher($this->database);
+                $notifDispatcher->dispatchAccountEvent(
+                    \App\Services\Realtime\RealtimeOutboxService::EVENT_ACCOUNT_CREATED,
+                    $userId,
+                    'PATIENT',
+                    'New Patient Registered',
+                    "A new patient account (#{$userId}) has registered and is awaiting email verification.",
+                    'created',
+                    $userId,
+                    false,
+                    $this->database->getConnection()
+                );
+            } catch (\Throwable) {
+                // Never fail registration when optional realtime tables are absent in isolated tests
+            }
+
             $this->database->commit();
+
+            try {
+                (new \App\Services\Notifications\UnifiedNotificationDispatcher($this->database))
+                    ->dispatchPendingAfterCommit();
+            } catch (\Throwable) {
+                // Outage-resilient: realtime-worker will deliver queued events
+            }
 
             return [
                 'id' => $userId,
@@ -160,6 +206,20 @@ class AuthService
                 'patient_id' => $patientId,
                 'first_name' => $validated['first_name'],
                 'last_name' => $validated['last_name'],
+                'legal_acceptances' => [
+                    [
+                        'document_type' => $legalAcceptances[0]['document_type'] ?? 'TERMS_OF_SERVICE',
+                        'document_version' => $legalAcceptances[0]['document_version'] ?? $resolvedLegalDocs['terms']['version'],
+                        'acceptance_action' => $legalAcceptances[0]['acceptance_action'] ?? 'ACCEPTED',
+                        'accepted_at' => $legalAcceptances[0]['accepted_at'] ?? null,
+                    ],
+                    [
+                        'document_type' => $legalAcceptances[1]['document_type'] ?? 'PRIVACY_POLICY',
+                        'document_version' => $legalAcceptances[1]['document_version'] ?? $resolvedLegalDocs['privacy']['version'],
+                        'acceptance_action' => $legalAcceptances[1]['acceptance_action'] ?? 'ACKNOWLEDGED',
+                        'accepted_at' => $legalAcceptances[1]['accepted_at'] ?? null,
+                    ],
+                ],
                 'message' => 'Registration successful. Please check your email to verify your account.',
             ];
         } catch (\Throwable $e) {
@@ -451,6 +511,7 @@ class AuthService
             'permissions' => $this->resolveUserPermissions($role),
             'is_active' => (bool) $user['is_active'],
             'email_verified' => (bool) $user['email_verified'],
+            'legal_status' => $this->legalService->getCompactLegalStatusForUser((int) $user['id']),
             'patient' => $publicPatient,
             'dentist' => $publicDentist,
         ];
@@ -486,11 +547,26 @@ class AuthService
 
         $userId = (int) $tokenRecord['user_id'];
         $tokenId = (int) $tokenRecord['id'];
+        $user = $this->userRepository->findById($userId);
+        $wasAlreadyVerified = $user !== null && (int) ($user['email_verified'] ?? 0) === 1;
 
         $this->database->beginTransaction();
         try {
             $this->tokenRepository->markTokenUsed($tokenId);
+            $this->tokenRepository->invalidateOutstandingTokens($userId, 'EMAIL_VERIFY');
             $this->userRepository->markEmailVerified($userId);
+
+            // Queue idempotent Patient Welcome email strictly after verified transition (PATIENT accounts only)
+            if (!$wasAlreadyVerified && $user !== null && strtoupper((string) ($user['role'] ?? '')) === 'PATIENT') {
+                $patient = $this->patientRepository->findByUserId($userId);
+                $welcomeName = $patient !== null
+                    ? trim((string) ($patient['first_name'] ?? '') . ' ' . (string) ($patient['last_name'] ?? ''))
+                    : trim((string) ($user['first_name'] ?? '') . ' ' . (string) ($user['last_name'] ?? ''));
+                if ($welcomeName === '') {
+                    $welcomeName = 'Valued Patient';
+                }
+                $this->emailService->queuePatientWelcome((string) $user['email'], $welcomeName, $userId);
+            }
 
             $this->auditLogRepository->record(
                 'AUTH_EMAIL_VERIFIED',
@@ -550,6 +626,8 @@ class AuthService
             // either way to prevent account enumeration; failures are logged.
             $this->database->beginTransaction();
             try {
+                // Invalidate previous unused verification tokens before issuing a replacement link
+                $this->tokenRepository->invalidateOutstandingTokens($userId, 'EMAIL_VERIFY');
                 $tokenId = $this->tokenRepository->createToken($userId, $tokenHash, 'EMAIL_VERIFY', $tokenTtl);
                 $this->emailService->queueVerification($normalizedEmail, $name, $userId, $rawToken, $tokenId, $tokenTtl);
                 $this->auditLogRepository->record(

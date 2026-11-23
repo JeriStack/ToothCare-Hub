@@ -6,16 +6,22 @@ export function RegisterPage({
   onSuccess,
   onNavigateLogin,
   onNavigateHome,
+  onNavigateTerms,
+  onNavigatePrivacy,
 }) {
   return (
     <AuthLayout
       onNavigateHome={onNavigateHome}
+      onNavigateTerms={onNavigateTerms}
+      onNavigatePrivacy={onNavigatePrivacy}
       title="Create Patient Account"
       subtitle="Join ToothCare Hub to book dental appointments and access your records"
     >
       <RegisterForm
         onSuccess={onSuccess}
         onNavigateLogin={onNavigateLogin}
+        onNavigateTerms={onNavigateTerms}
+        onNavigatePrivacy={onNavigatePrivacy}
       />
     </AuthLayout>
   );

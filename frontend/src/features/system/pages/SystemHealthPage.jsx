@@ -176,18 +176,27 @@ export function SystemHealthPage() {
                   ? 'bg-emerald-500'
                   : services.realtime?.status === 'unreachable'
                   ? 'bg-rose-500'
+                  : services.realtime?.status === 'disabled'
+                  ? 'bg-slate-400'
                   : 'bg-amber-400'
               }`}
             />
             <span className="text-lg font-bold text-slate-900 dark:text-slate-100 capitalize">
               {services.realtime?.status === 'healthy'
-                ? 'Active'
+                ? 'Operational'
+                : services.realtime?.status === 'disabled'
+                ? 'Disabled'
                 : services.realtime?.status || 'Unverified'}
             </span>
           </div>
           <div className="mt-3 text-xs text-slate-500 dark:text-slate-400 space-y-1">
-            <div>Target: <strong className="text-slate-700 dark:text-slate-200 font-mono">{services.realtime?.host || 'toothcare-realtime'}:{services.realtime?.port || 3001}</strong></div>
-            <div>Transport: <strong className="text-slate-700 dark:text-slate-200">WebSocket / Socket.IO</strong></div>
+            <div>Target: <strong className="text-slate-700 dark:text-slate-200 font-mono">{services.realtime?.host || 'realtime'}:{services.realtime?.port || 4000}</strong></div>
+            <div>
+              Transport: <strong className="text-slate-700 dark:text-slate-200">WebSocket / Socket.IO</strong>
+              {typeof services.realtime?.active_connections === 'number' && (
+                <> · <strong className="text-slate-700 dark:text-slate-200 font-mono">{services.realtime.active_connections}</strong> active</>
+              )}
+            </div>
             <div>
               Reachability:{' '}
               <strong
@@ -196,13 +205,17 @@ export function SystemHealthPage() {
                     ? 'text-emerald-700 dark:text-emerald-400'
                     : services.realtime?.status === 'unreachable'
                     ? 'text-rose-700 dark:text-rose-400'
+                    : services.realtime?.status === 'disabled'
+                    ? 'text-slate-600 dark:text-slate-300'
                     : 'text-amber-700 dark:text-amber-400'
                 }
               >
                 {services.realtime?.status === 'healthy'
-                  ? 'Connected'
+                  ? `Connected${typeof services.realtime?.latency_ms === 'number' ? ` (${services.realtime.latency_ms} ms)` : ''}`
                   : services.realtime?.status === 'unreachable'
                   ? 'Unreachable'
+                  : services.realtime?.status === 'disabled'
+                  ? 'Disabled'
                   : 'Unverified'}
               </strong>
             </div>

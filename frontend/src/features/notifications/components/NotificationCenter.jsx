@@ -10,6 +10,9 @@ import {
   Calendar,
   Sparkles,
   ExternalLink,
+  Settings,
+  UserPlus,
+  RefreshCw,
 } from 'lucide-react';
 import { useNotifications } from '../hooks/useNotifications';
 import { NotificationSkeleton } from '../../../components/skeletons';
@@ -20,6 +23,7 @@ function getNotificationIcon(type) {
     case 'APPOINTMENT_REQUESTED':
       return <Clock className="w-4 h-4 text-amber-500" />;
     case 'APPOINTMENT_CONFIRMED':
+    case 'APPOINTMENT_UPDATED':
       return <CheckCircle2 className="w-4 h-4 text-[#0D9488]" />;
     case 'APPOINTMENT_REJECTED':
       return <XCircle className="w-4 h-4 text-rose-500" />;
@@ -28,7 +32,13 @@ function getNotificationIcon(type) {
     case 'APPOINTMENT_COMPLETED':
       return <Sparkles className="w-4 h-4 text-teal-600" />;
     case 'APPOINTMENT_RESCHEDULED':
+    case 'SCHEDULE_UPDATED':
       return <Calendar className="w-4 h-4 text-sky-500" />;
+    case 'SERVICE_UPDATED':
+      return <Settings className="w-4 h-4 text-[#0D9488]" />;
+    case 'ACCOUNT_CREATED':
+    case 'ACCOUNT_UPDATED':
+      return <UserPlus className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />;
     default:
       return <Bell className="w-4 h-4 text-[#0D9488]" />;
   }
@@ -51,9 +61,13 @@ function formatRelativeTime(dateString) {
   return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
 }
 
-export function NotificationCenter({ onNavigateToAppointments, onViewAllNotifications }) {
+export function NotificationCenter({
+  onNavigateToAppointments,
+  onSelectNotification,
+  onViewAllNotifications,
+}) {
   const [isOpen, setIsOpen] = useState(false);
-  const { notifications, unreadCount, markAsRead, markAllAsRead, loading } = useNotifications(20000);
+  const { notifications, unreadCount, markAsRead, markAllAsRead, loading, error, refresh } = useNotifications(20000);
   const dropdownRef = useRef(null);
   const triggerRef = useRef(null);
 
@@ -86,6 +100,10 @@ export function NotificationCenter({ onNavigateToAppointments, onViewAllNotifica
       markAsRead(notif.id);
     }
     setIsOpen(false);
+    if (onSelectNotification) {
+      onSelectNotification(notif);
+      return;
+    }
     if (notif.reference_type === 'appointments' && onNavigateToAppointments) {
       onNavigateToAppointments(notif.reference_id);
     }
@@ -145,12 +163,24 @@ export function NotificationCenter({ onNavigateToAppointments, onViewAllNotifica
           <div className="max-h-[min(20rem,calc(100dvh-14rem))] overflow-y-auto overscroll-contain divide-y divide-slate-100 dark:divide-gray-700/80">
             {loading && notifications.length === 0 ? (
               <NotificationSkeleton variant="compact" count={3} />
+            ) : error && notifications.length === 0 ? (
+              <div className="p-6 text-center space-y-2" role="alert">
+                <p className="text-xs font-semibold text-rose-600 dark:text-rose-400">{error}</p>
+                <button
+                  type="button"
+                  onClick={refresh}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-gray-700 text-xs font-semibold text-slate-700 dark:text-gray-200 hover:bg-slate-200 dark:hover:bg-gray-600"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>Retry</span>
+                </button>
+              </div>
             ) : notifications.length === 0 ? (
               <div className="p-8 text-center">
                 <Bell className="w-8 h-8 text-slate-300 dark:text-gray-600 mx-auto mb-2 stroke-[1.5]" aria-hidden="true" />
                 <p className="text-xs font-semibold text-slate-600 dark:text-gray-300">No notifications yet</p>
                 <p className="text-[11px] text-slate-500 dark:text-gray-400 mt-0.5">
-                  You will receive updates here about your dental appointments.
+                  Real-time updates about appointments, schedules, and clinic operations will appear here.
                 </p>
               </div>
             ) : (

@@ -679,9 +679,11 @@ paths:
                 - last_name
                 - email
                 - password
-                - password_confirmation
                 - phone
                 - date_of_birth
+                - accept_legal
+                - terms_version
+                - privacy_version
               properties:
                 first_name:
                   type: string
@@ -697,12 +699,9 @@ paths:
                   type: string
                   format: password
                   minLength: 8
-                password_confirmation:
-                  type: string
-                  format: password
                 phone:
                   type: string
-                  example: '09171234567'
+                  example: '+63 917 123 4567'
                 date_of_birth:
                   type: string
                   format: date
@@ -710,6 +709,18 @@ paths:
                 gender:
                   type: string
                   enum: [MALE, FEMALE, OTHER, PREFER_NOT_TO_SAY]
+                accept_legal:
+                  description: 'Explicit acceptance of Terms of Service and acknowledgment of Privacy Policy'
+                  type: boolean
+                  example: true
+                terms_version:
+                  description: 'Must match currently PUBLISHED Terms of Service version'
+                  type: string
+                  example: '1.0'
+                privacy_version:
+                  description: 'Must match currently PUBLISHED Privacy Policy version'
+                  type: string
+                  example: '1.0'
               type: object
       responses:
         '201':
@@ -1171,6 +1182,200 @@ paths:
         -
           CookieAuth: []
           CsrfToken: []
+  /legal/documents:
+    get:
+      tags:
+        - Legal
+      summary: 'List Currently Published Legal Documents (Public)'
+      description: 'Returns version, effective date, approval flag, and metadata for the currently PUBLISHED Terms of Service and Privacy Policy.'
+      operationId: listPublicLegalDocuments
+      responses:
+        '200':
+          description: 'Active published legal documents summary'
+  /legal/terms-of-service:
+    get:
+      tags:
+        - Legal
+      summary: 'Retrieve Active Published Terms of Service (Public)'
+      operationId: getPublicTermsOfService
+      responses:
+        '200':
+          description: 'Active Terms of Service document'
+        '404':
+          description: 'No published Terms of Service found'
+  /legal/privacy-policy:
+    get:
+      tags:
+        - Legal
+      summary: 'Retrieve Active Published Privacy Policy (Public)'
+      operationId: getPublicPrivacyPolicy
+      responses:
+        '200':
+          description: 'Active Privacy Policy document'
+        '404':
+          description: 'No published Privacy Policy found'
+  /legal/acceptances/me:
+    get:
+      tags:
+        - Legal
+      summary: 'Get Authenticated User Legal Acceptance Status & History'
+      operationId: getMyLegalAcceptances
+      responses:
+        '200':
+          description: 'User acceptance history and pending re-acceptance documents'
+        '401':
+          description: Unauthenticated
+      security:
+        -
+          CookieAuth: []
+  /legal/acceptances:
+    post:
+      tags:
+        - Legal
+      summary: 'Submit Authenticated Legal Acceptance or Acknowledgment'
+      description: 'Records server-timestamped acceptance (Terms of Service) or acknowledgment (Privacy Policy) bound strictly to the authenticated session user.'
+      operationId: submitLegalAcceptances
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              required:
+                - acceptances
+              properties:
+                acceptances:
+                  type: array
+                  items: { required: [document_type, document_version], properties: { document_type: { type: string, enum: [TERMS_OF_SERVICE, PRIVACY_POLICY] }, document_version: { type: string, example: '2.0' }, acceptance_action: { type: string, enum: [ACCEPTED, ACKNOWLEDGED] }, accepted: { type: boolean, example: true } }, type: object }
+              type: object
+      responses:
+        '201':
+          description: 'Legal acceptance(s) recorded'
+        '401':
+          description: Unauthenticated
+        '403':
+          description: 'Forbidden (IDOR or CSRF failure)'
+        '422':
+          description: 'Invalid, unpublished, or outdated document version'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /admin/legal/documents:
+    get:
+      tags:
+        - Legal
+      summary: 'List All Legal Documents & Version History (DRBAC: legal_documents.view)'
+      operationId: adminListLegalDocuments
+      responses:
+        '200':
+          description: 'All legal document versions'
+        '403':
+          description: 'Missing legal_documents.view permission'
+      security:
+        -
+          CookieAuth: []
+    post:
+      tags:
+        - Legal
+      summary: 'Create Legal Document Draft (DRBAC: legal_documents.create)'
+      operationId: adminCreateLegalDraft
+      responses:
+        '201':
+          description: 'Draft legal document created'
+        '403':
+          description: 'Missing legal_documents.create permission'
+        '409':
+          description: 'Version already exists'
+        '422':
+          description: 'Validation error'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/admin/legal/documents/{id}':
+    patch:
+      tags:
+        - Legal
+      summary: 'Update Unpublished Legal Document Draft (DRBAC: legal_documents.edit)'
+      operationId: adminUpdateLegalDraft
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Draft updated'
+        '403':
+          description: 'Missing legal_documents.edit permission'
+        '409':
+          description: 'Published/historical document is immutable'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/admin/legal/documents/{id}/publish':
+    post:
+      tags:
+        - Legal
+      summary: 'Publish Approved Legal Document Version (DRBAC: legal_documents.publish)'
+      operationId: adminPublishLegalDocument
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Draft published and previous active version superseded'
+        '403':
+          description: 'Missing explicit legal_documents.publish permission'
+        '409':
+          description: 'Target document is not a draft'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/admin/legal/documents/{id}/withdraw':
+    post:
+      tags:
+        - Legal
+      summary: 'Withdraw Legal Document Version (DRBAC: legal_documents.publish)'
+      operationId: adminWithdrawLegalDocument
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Document marked as WITHDRAWN while preserving history'
+        '403':
+          description: 'Missing explicit legal_documents.publish permission'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /admin/legal/acceptances:
+    get:
+      tags:
+        - Legal
+      summary: 'List User Legal Acceptance Audit Records (DRBAC: legal_acceptances.view)'
+      operationId: adminListLegalAcceptances
+      responses:
+        '200':
+          description: 'Paginated user legal acceptance records'
+        '403':
+          description: 'Missing legal_acceptances.view permission'
+      security:
+        -
+          CookieAuth: []
   /admin/dashboard:
     get:
       tags:
@@ -1389,6 +1594,11 @@ paths:
             type: integer
             maximum: 100
             minimum: 1
+        -
+          name: unread_only
+          in: query
+          schema:
+            type: boolean
       responses:
         '200':
           description: 'Paginated notifications'
@@ -1406,6 +1616,67 @@ paths:
       responses:
         '200':
           description: 'Unread count'
+      security:
+        -
+          CookieAuth: []
+  /notifications/sync:
+    get:
+      tags:
+        - Notifications
+      summary: 'Cursor-Based Incremental Notification Synchronization'
+      operationId: syncNotifications
+      parameters:
+        -
+          name: after_id
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+        -
+          name: since
+          in: query
+          schema:
+            type: string
+            format: date-time
+        -
+          name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+            minimum: 1
+      responses:
+        '200':
+          description: 'Incremental missed notifications and authoritative unread count'
+        '400':
+          description: 'Invalid since timestamp'
+        '401':
+          description: Unauthenticated
+      security:
+        -
+          CookieAuth: []
+  '/notifications/{id}':
+    get:
+      tags:
+        - Notifications
+      summary: 'Retrieve Single Notification (Strict Ownership)'
+      operationId: getNotificationById
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: 'Notification record'
+        '403':
+          description: 'Forbidden (not owner)'
+        '404':
+          description: 'Not found'
       security:
         -
           CookieAuth: []
@@ -3007,3 +3278,6 @@ tags:
   -
     name: Settings
     description: 'Clinic-wide configuration settings'
+  -
+    name: Legal
+    description: 'Public Terms of Service and Privacy Policy documents, versioning, and auditable user legal acceptance records'

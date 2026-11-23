@@ -4,6 +4,7 @@ namespace App\Controllers;
 use App\Core\Request;
 use App\Core\Response;
 use App\Repositories\EmailOutboxRepository;
+use App\Repositories\NotificationRepository;
 use App\Repositories\RealtimeOutboxRepository;
 /**
  * Controller for internal-only application metrics.
@@ -90,6 +91,21 @@ class MetricsController
             $lines[] = 'toothcare_realtime_outbox_retries_total ' . $rtStats['retries'];
         } catch (\Throwable) {
             $lines[] = '# realtime outbox metrics unavailable';
+        }
+
+        try {
+            $notifRepo = new NotificationRepository();
+            $notifMetrics = $notifRepo->aggregateMetrics();
+            $lines[] = '# HELP toothcare_notifications_created_total Total persistent in-app notifications created, by bounded notification type.';
+            $lines[] = '# TYPE toothcare_notifications_created_total counter';
+            foreach ($notifMetrics['by_type'] as $type => $count) {
+                $lines[] = 'toothcare_notifications_created_total{event_type="' . $this->label($type) . '"} ' . $count;
+            }
+            $lines[] = '# HELP toothcare_notifications_unread_total Total unread in-app notifications currently stored (aggregate, no PII).';
+            $lines[] = '# TYPE toothcare_notifications_unread_total gauge';
+            $lines[] = 'toothcare_notifications_unread_total ' . $notifMetrics['unread_total'];
+        } catch (\Throwable) {
+            $lines[] = '# notification metrics unavailable';
         }
 
         return Response::plainText(implode("\n", $lines) . "\n");

@@ -64,6 +64,9 @@ class SecurityApiTest extends TestCase
             'phone' => '+639171239999',
             'date_of_birth' => '1990-01-01',
             'role' => 'ADMIN', // Deliberate injection
+            'accept_legal' => true,
+            'terms_version' => '1.0',
+            'privacy_version' => '1.0',
         ];
 
         $req = Request::create(
@@ -98,6 +101,9 @@ class SecurityApiTest extends TestCase
             'last_name' => 'Alpha',
             'phone' => '+639171110001',
             'date_of_birth' => '1990-02-02',
+            'accept_legal' => true,
+            'terms_version' => '1.0',
+            'privacy_version' => '1.0',
         ]);
         $patientIdA = (int) $regA['patient_id'];
         $userIdA = (int) $regA['id'];
@@ -110,6 +116,9 @@ class SecurityApiTest extends TestCase
             'last_name' => 'Bravo',
             'phone' => '+639171110002',
             'date_of_birth' => '1992-04-04',
+            'accept_legal' => true,
+            'terms_version' => '1.0',
+            'privacy_version' => '1.0',
         ]);
         $patientIdB = (int) $regB['patient_id'];
         $userIdB = (int) $regB['id'];
@@ -160,6 +169,9 @@ class SecurityApiTest extends TestCase
             'last_name' => 'Session',
             'phone' => '+639171114444',
             'date_of_birth' => '1985-05-05',
+            'accept_legal' => true,
+            'terms_version' => '1.0',
+            'privacy_version' => '1.0',
         ]);
 
         $login = $this->authService->login([
@@ -234,6 +246,9 @@ class SecurityApiTest extends TestCase
                 'last_name' => 'Ramos',
                 'phone' => '+639171118888',
                 'date_of_birth' => '1989-08-08',
+                'accept_legal' => true,
+                'terms_version' => '1.0',
+                'privacy_version' => '1.0',
             ])
         );
         $resValid = $this->app->handle($reqValid);
@@ -253,6 +268,9 @@ class SecurityApiTest extends TestCase
             'last_name' => 'Token',
             'phone' => '+639171113333',
             'date_of_birth' => '1987-07-07',
+            'accept_legal' => true,
+            'terms_version' => '1.0',
+            'privacy_version' => '1.0',
         ]);
 
         $pdo = Database::getInstance()->getConnection();
@@ -277,6 +295,9 @@ class SecurityApiTest extends TestCase
             'last_name' => 'Exists',
             'phone' => '+639171116666',
             'date_of_birth' => '1994-04-04',
+            'accept_legal' => true,
+            'terms_version' => '1.0',
+            'privacy_version' => '1.0',
         ]);
 
         $reqExist = Request::create(

@@ -73,7 +73,7 @@ services:
   # 3. Relational Database (MySQL 8.0)
   # ---------------------------------------------------------------------------
   mysql:
-    image: mysql:26.10
+    image: mysql:8.0
     container_name: toothcare-mysql
     environment:
       MYSQL_DATABASE: ${DB_NAME:-toothcare_hub}

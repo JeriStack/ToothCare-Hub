@@ -12,7 +12,7 @@ namespace App\Services\Email;
 final class EmailTemplateRenderer
 {
     public const TEMPLATES = [
-        'verify-email', 'password-reset',
+        'patient-registration-received', 'verify-email', 'patient-welcome', 'password-reset',
         'appointment-requested', 'appointment-confirmed', 'appointment-rejected',
         'appointment-cancelled', 'appointment-reminder', 'appointment-completed',
     ];
@@ -75,6 +75,14 @@ final class EmailTemplateRenderer
         foreach ((array) ($spec['paragraphs'] ?? []) as $p) {
             $out .= '<p style="margin:0 0 14px;line-height:1.5;font-size:15px;">' . $h((string) $p) . '</p>';
         }
+        $bullets = (array) ($spec['bullets'] ?? []);
+        if ($bullets !== []) {
+            $out .= '<ul style="margin:0 0 16px;padding-left:20px;line-height:1.6;font-size:15px;color:#0f172a;">';
+            foreach ($bullets as $item) {
+                $out .= '<li style="margin:0 0 6px;">' . $h((string) $item) . '</li>';
+            }
+            $out .= '</ul>';
+        }
         $details = (array) ($spec['details'] ?? []);
         if ($details !== []) {
             $out .= '<table role="presentation" cellpadding="0" cellspacing="0" style="margin:6px 0 18px;width:100%;border:1px solid #e2e8f0;border-radius:6px;">';
@@ -111,6 +119,13 @@ final class EmailTemplateRenderer
         $lines = [(string) ($spec['heading'] ?? $spec['subject']), ''];
         foreach ((array) ($spec['paragraphs'] ?? []) as $p) {
             $lines[] = (string) $p;
+            $lines[] = '';
+        }
+        $bullets = (array) ($spec['bullets'] ?? []);
+        if ($bullets !== []) {
+            foreach ($bullets as $item) {
+                $lines[] = '- ' . (string) $item;
+            }
             $lines[] = '';
         }
         foreach ((array) ($spec['details'] ?? []) as $label => $value) {

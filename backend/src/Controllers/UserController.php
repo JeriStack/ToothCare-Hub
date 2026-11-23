@@ -151,6 +151,23 @@ class UserController
 
         $freshUser = $this->userRepository->getUserWithProfile($userId);
 
+        try {
+            $dispatcher = new \App\Services\Notifications\UnifiedNotificationDispatcher();
+            $dispatcher->dispatchAccountEvent(
+                \App\Services\Realtime\RealtimeOutboxService::EVENT_ACCOUNT_CREATED,
+                $userId,
+                (string) $validated['role'],
+                'New Staff Account Created',
+                "A new {$validated['role']} account (#{$userId}) has been created.",
+                'created',
+                (int) $admin['id'],
+                false
+            );
+            $dispatcher->dispatchPendingAfterCommit();
+        } catch (\Throwable) {
+            // Outage-resilient
+        }
+
         return Response::created($freshUser);
     }
 
@@ -216,6 +233,23 @@ class UserController
 
         $updated = $this->userRepository->getUserWithProfile($userId);
 
+        try {
+            $dispatcher = new \App\Services\Notifications\UnifiedNotificationDispatcher();
+            $dispatcher->dispatchAccountEvent(
+                \App\Services\Realtime\RealtimeOutboxService::EVENT_ACCOUNT_UPDATED,
+                $userId,
+                (string) $user['role'],
+                $isActive === 1 ? 'User Account Activated' : 'User Account Deactivated',
+                "Account #{$userId} ({$user['role']}) status was set to " . ($isActive === 1 ? 'active' : 'inactive') . '.',
+                $isActive === 1 ? 'activated' : 'deactivated',
+                (int) $admin['id'],
+                $isActive === 1
+            );
+            $dispatcher->dispatchPendingAfterCommit();
+        } catch (\Throwable) {
+            // Outage-resilient
+        }
+
         return Response::success($updated);
     }
 
@@ -279,6 +313,23 @@ class UserController
         );
 
         $updated = $this->userRepository->getUserWithProfile($userId);
+
+        try {
+            $dispatcher = new \App\Services\Notifications\UnifiedNotificationDispatcher();
+            $dispatcher->dispatchAccountEvent(
+                \App\Services\Realtime\RealtimeOutboxService::EVENT_ACCOUNT_UPDATED,
+                $userId,
+                $newRole,
+                'User Role Updated',
+                "Account #{$userId} role was changed from {$currentRole} to {$newRole}.",
+                'role_updated',
+                (int) $admin['id'],
+                true
+            );
+            $dispatcher->dispatchPendingAfterCommit();
+        } catch (\Throwable) {
+            // Outage-resilient
+        }
 
         return Response::success($updated);
     }
