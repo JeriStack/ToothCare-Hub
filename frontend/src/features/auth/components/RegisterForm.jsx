@@ -964,7 +964,7 @@ export function RegisterForm({ onNavigateLogin, onNavigateTerms, onNavigatePriva
 
       {/* Terms and Privacy Checkbox */}
       <div>
-        <div className="flex items-start sm:items-center gap-2 text-xs sm:text-[10.5px] sm:tracking-[-0.01em] text-slate-600 dark:text-gray-300 leading-relaxed">
+        <div className="flex items-start sm:items-center gap-2.5 text-xs sm:text-[11.5px] text-slate-600 dark:text-gray-300 leading-normal">
           <input
             id="reg-agree-terms"
             name="agreeTerms"
@@ -984,7 +984,7 @@ export function RegisterForm({ onNavigateLogin, onNavigateTerms, onNavigatePriva
                 e.stopPropagation();
                 onNavigateTerms?.();
               }}
-              className="tch-tap font-semibold text-[#0D9488] dark:text-teal-400 underline underline-offset-2 hover:text-[#0F766E] dark:hover:text-teal-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded"
+              className="inline font-semibold text-[#0D9488] dark:text-teal-400 underline underline-offset-2 hover:text-[#0F766E] dark:hover:text-teal-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded"
             >
               Terms of Service
             </a>{' '}
@@ -996,7 +996,7 @@ export function RegisterForm({ onNavigateLogin, onNavigateTerms, onNavigatePriva
                 e.stopPropagation();
                 onNavigatePrivacy?.();
               }}
-              className="tch-tap font-semibold text-[#0D9488] dark:text-teal-400 underline underline-offset-2 hover:text-[#0F766E] dark:hover:text-teal-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded"
+              className="inline font-semibold text-[#0D9488] dark:text-teal-400 underline underline-offset-2 hover:text-[#0F766E] dark:hover:text-teal-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded"
             >
               Privacy Policy
             </a>
