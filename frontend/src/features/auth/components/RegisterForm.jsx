@@ -756,7 +756,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
           </div>
           <ul
             id="reg-password-rules"
-            className="flex flex-wrap gap-1.5"
+            className="flex flex-nowrap items-center justify-between gap-1"
             aria-label="Password requirements"
           >
             {PASSWORD_RULES.map((rule) => {
@@ -765,7 +765,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
               return (
                 <li
                   key={rule.id}
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border transition-colors ${
+                  className={`inline-flex items-center justify-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-medium border whitespace-nowrap shrink-0 transition-colors ${
                     passed
                       ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'
                       : showWarning
@@ -773,7 +773,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
                         : 'bg-slate-50 dark:bg-gray-800/70 border-slate-200 dark:border-gray-700 text-slate-500 dark:text-gray-400'
                   }`}
                 >
-                  <Check className={`w-3 h-3 ${passed ? 'opacity-100' : 'opacity-30'}`} aria-hidden="true" />
+                  <Check className={`w-2.5 h-2.5 shrink-0 ${passed ? 'opacity-100' : 'opacity-30'}`} aria-hidden="true" />
                   <span>{SHORT_PASSWORD_RULE_LABELS[rule.id] || rule.label}</span>
                 </li>
               );
