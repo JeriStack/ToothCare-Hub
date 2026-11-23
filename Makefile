@@ -18,10 +18,10 @@ NPM      ?= npm
 SERVICE  ?= php-fpm
 
 .PHONY: help \
-	up up-all up-monitoring build rebuild start stop down restart ps logs validate-compose \
+	up up-all up-monitoring up-docs build rebuild start stop down restart ps logs validate-compose \
 	frontend-install frontend-dev frontend-build frontend-test frontend-audit \
 	backend-install backend-test backend-test-unit backend-test-integration backend-audit \
-	openapi-generate openapi-check \
+	openapi-generate openapi-check docs \
 	realtime-install realtime-typecheck realtime-build realtime-test realtime-audit \
 	migrate seed test ci e2e
 
@@ -35,6 +35,7 @@ help:
 	$(info   make up                  Start core dev stack (Nginx :8080, PHP-FPM, MySQL :3306, Realtime :4000))
 	$(info   make up-all              Start full stack (core + Monitoring + Mailpit + phpMyAdmin))
 	$(info   make up-monitoring       Start core dev stack + Prometheus (:9090) and Grafana (:3001))
+	$(info   make up-docs             Start optional offline standalone Swagger UI container (:8082))
 	$(info   make build               Rebuild images and start full stack)
 	$(info   make rebuild             Force-recreate full stack and renew anonymous volumes (e.g. realtime dist))
 	$(info   make start               Resume stopped containers across all profiles)
@@ -60,6 +61,7 @@ help:
 	$(info   make backend-audit       Validate composer.json and run composer security audit)
 	$(info   make openapi-generate    Regenerate docs/openapi.yaml and backend/openapi/openapi.yaml)
 	$(info   make openapi-check       Verify OpenAPI spec drift and route contract coverage)
+	$(info   make docs                Verify OpenAPI spec and print Swagger UI URLs)
 	$(info )
 	$(info Realtime (Node.js + TypeScript + Socket.IO):)
 	$(info   make realtime-install    Install realtime dependencies cleanly (npm ci))
@@ -87,6 +89,9 @@ up-all:
 
 up-monitoring:
 	$(COMPOSE_MONITORING) up -d --remove-orphans
+
+up-docs:
+	docker compose --profile docs -f compose.yaml -f compose.dev.yaml up -d swagger-ui
 
 build:
 	$(COMPOSE_ALL) up -d --build --remove-orphans
@@ -160,6 +165,13 @@ openapi-generate:
 openapi-check:
 	$(PHP) backend/scripts/generate-openapi.php --check
 	$(PHP) backend/scripts/validate-openapi.php
+
+docs: openapi-check
+	$(info Built-in Swagger UI (auto-CSRF): http://localhost:8080/api-docs)
+	$(info Swagger UI (API path):           http://localhost:8080/api/v1/docs)
+	$(info Raw OpenAPI 3.0.3 YAML:          http://localhost:8080/api/v1/docs/openapi.yaml)
+	$(info Optional standalone container:   make up-docs -> http://127.0.0.1:8082)
+	@:
 
 # -----------------------------------------------------------------------------
 # Realtime (Node.js + TypeScript + Socket.IO)

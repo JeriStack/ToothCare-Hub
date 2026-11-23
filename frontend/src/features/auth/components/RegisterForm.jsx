@@ -20,6 +20,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 import {
   PASSWORD_RULES,
+  sanitizeNameInput,
+  validateName,
   validatePassword,
   validateEmail,
   validatePhone,
@@ -63,13 +65,39 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
     setFormError(null);
   };
 
+  const handleNameKeyDown = (e) => {
+    if (e.nativeEvent?.isComposing || e.ctrlKey || e.metaKey || e.altKey) {
+      return;
+    }
+    if (e.key && /\p{Nd}/u.test(e.key)) {
+      e.preventDefault();
+    }
+  };
+
+  const handleNameChange = (field, rawValue) => {
+    handleChange(field, sanitizeNameInput(rawValue));
+  };
+
+  const handleNameBlur = (field, label) => {
+    const value = formData[field];
+    if (value.trim() !== '') {
+      const err = validateName(value, label);
+      if (err) {
+        setFieldErrors((prev) => ({ ...prev, [field]: err }));
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError(null);
 
     const errors = {};
-    if (!formData.firstName.trim()) errors.firstName = 'First name is required.';
-    if (!formData.lastName.trim()) errors.lastName = 'Last name is required.';
+    const firstNameErr = validateName(formData.firstName, 'First name');
+    if (firstNameErr) errors.firstName = firstNameErr;
+
+    const lastNameErr = validateName(formData.lastName, 'Last name');
+    if (lastNameErr) errors.lastName = lastNameErr;
 
     const emailErr = validateEmail(formData.email);
     if (emailErr) errors.email = emailErr;
@@ -101,6 +129,21 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
+      const firstErrorField = Object.keys(errors)[0];
+      const fieldIdMap = {
+        firstName: 'reg-first-name',
+        lastName: 'reg-last-name',
+        email: 'reg-email',
+        phone: 'reg-phone',
+        dateOfBirth: 'reg-dob',
+        emergencyContactPhone: 'reg-emergency-phone',
+        password: 'reg-password',
+        confirmPassword: 'reg-confirm-password',
+      };
+      const targetId = fieldIdMap[firstErrorField];
+      if (targetId) {
+        document.getElementById(targetId)?.focus();
+      }
       return;
     }
     setFieldErrors({});
@@ -221,18 +264,24 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
               id="reg-first-name"
               name="firstName"
               type="text"
+              autoComplete="given-name"
+              maxLength={100}
+              pattern="[^0-9]+"
               required
               value={formData.firstName}
-              onChange={(e) => handleChange('firstName', e.target.value)}
+              onKeyDown={handleNameKeyDown}
+              onChange={(e) => handleNameChange('firstName', e.target.value)}
+              onBlur={() => handleNameBlur('firstName', 'First name')}
               placeholder="e.g. Maria"
               aria-invalid={Boolean(fieldErrors.firstName)}
+              aria-describedby={fieldErrors.firstName ? 'reg-first-name-error' : undefined}
               className={`w-full pl-12 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
                 fieldErrors.firstName ? 'border-rose-400 dark:border-rose-500 bg-rose-50/20 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600 hover:border-slate-400 dark:hover:border-gray-500'
               }`}
             />
           </div>
           {fieldErrors.firstName && (
-            <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.firstName}</p>
+            <p id="reg-first-name-error" className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.firstName}</p>
           )}
         </div>
 
@@ -248,18 +297,24 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
               id="reg-last-name"
               name="lastName"
               type="text"
+              autoComplete="family-name"
+              maxLength={100}
+              pattern="[^0-9]+"
               required
               value={formData.lastName}
-              onChange={(e) => handleChange('lastName', e.target.value)}
+              onKeyDown={handleNameKeyDown}
+              onChange={(e) => handleNameChange('lastName', e.target.value)}
+              onBlur={() => handleNameBlur('lastName', 'Last name')}
               placeholder="e.g. Santos"
               aria-invalid={Boolean(fieldErrors.lastName)}
+              aria-describedby={fieldErrors.lastName ? 'reg-last-name-error' : undefined}
               className={`w-full pl-12 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-800 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
                 fieldErrors.lastName ? 'border-rose-400 dark:border-rose-500 bg-rose-50/20 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600 hover:border-slate-400 dark:hover:border-gray-500'
               }`}
             />
           </div>
           {fieldErrors.lastName && (
-            <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.lastName}</p>
+            <p id="reg-last-name-error" className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.lastName}</p>
           )}
         </div>
       </div>

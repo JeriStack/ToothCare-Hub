@@ -74,6 +74,34 @@ class AuthValidatorTest extends TestCase
         $this->assertSame('PREFER_NOT_TO_SAY', $validated['gender']);
     }
 
+    public function testRegistrationRejectsNumbersInFirstOrLastName(): void
+    {
+        $data = $this->getValidPatientData();
+        $data['first_name'] = 'Maria123';
+        $data['last_name'] = 'Santos9';
+
+        try {
+            AuthValidator::validateRegister($data);
+            $this->fail('Expected HttpException 422 for numeric characters in name fields');
+        } catch (HttpException $e) {
+            $this->assertSame(422, $e->getStatusCode());
+            $errors = $e->getDetails();
+            $this->assertSame('First name cannot contain numbers.', $errors['first_name'] ?? null);
+            $this->assertSame('Last name cannot contain numbers.', $errors['last_name'] ?? null);
+        }
+    }
+
+    public function testRegistrationAcceptsInternationalAndPunctuatedNames(): void
+    {
+        $data = $this->getValidPatientData();
+        $data['first_name'] = 'José Niño';
+        $data['last_name'] = "De la Cruz-O'Brien Jr.";
+
+        $validated = AuthValidator::validateRegister($data);
+        $this->assertSame('José Niño', $validated['first_name']);
+        $this->assertSame("De la Cruz-O'Brien Jr.", $validated['last_name']);
+    }
+
     public function testRegistrationRejectsInvalidEmailFormat(): void
     {
         $data = $this->getValidPatientData();

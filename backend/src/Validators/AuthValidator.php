@@ -57,6 +57,8 @@ class AuthValidator
             $errors['first_name'] = 'First name is required.';
         } elseif (mb_strlen($firstName) > 100) {
             $errors['first_name'] = 'First name cannot exceed 100 characters.';
+        } elseif (preg_match('/\p{Nd}/u', $firstName) === 1) {
+            $errors['first_name'] = 'First name cannot contain numbers.';
         }
 
         // 4. Last Name
@@ -65,6 +67,8 @@ class AuthValidator
             $errors['last_name'] = 'Last name is required.';
         } elseif (mb_strlen($lastName) > 100) {
             $errors['last_name'] = 'Last name cannot exceed 100 characters.';
+        } elseif (preg_match('/\p{Nd}/u', $lastName) === 1) {
+            $errors['last_name'] = 'Last name cannot contain numbers.';
         }
 
         // 5. Phone

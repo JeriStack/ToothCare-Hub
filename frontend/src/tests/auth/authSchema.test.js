@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
+  sanitizeNameInput,
+  validateName,
   validateEmail,
   validatePassword,
   validatePhone,
@@ -8,6 +10,40 @@ import {
 } from '../../features/auth/schemas/authSchema';
 
 describe('authSchema Validation Rules', () => {
+  describe('sanitizeNameInput & validateName', () => {
+    it('strips ASCII and Unicode digits from name input while preserving valid characters', () => {
+      expect(sanitizeNameInput('Maria123')).toBe('Maria');
+      expect(sanitizeNameInput('456Santos789')).toBe('Santos');
+      expect(sanitizeNameInput("De la Cruz-O'Brien Jr.")).toBe("De la Cruz-O'Brien Jr.");
+      expect(sanitizeNameInput('José Niño 2026')).toBe('José Niño ');
+      expect(sanitizeNameInput('Maria٣٤')).toBe('Maria');
+    });
+
+    it('returns error when name is empty or whitespace', () => {
+      expect(validateName('', 'First name')).toBe('First name is required.');
+      expect(validateName('   ', 'Last name')).toBe('Last name is required.');
+      expect(validateName(null, 'First name')).toBe('First name is required.');
+    });
+
+    it('rejects names containing numbers', () => {
+      expect(validateName('Maria1', 'First name')).toBe('First name cannot contain numbers.');
+      expect(validateName('S4ntos', 'Last name')).toBe('Last name cannot contain numbers.');
+      expect(validateName('12345', 'First name')).toBe('First name cannot contain numbers.');
+    });
+
+    it('rejects names exceeding 100 characters', () => {
+      expect(validateName('A'.repeat(101), 'First name')).toBe('First name cannot exceed 100 characters.');
+    });
+
+    it('accepts valid international and punctuated names', () => {
+      expect(validateName('Maria Clara', 'First name')).toBeNull();
+      expect(validateName('De la Cruz', 'Last name')).toBeNull();
+      expect(validateName("O'Brien-Santos", 'Last name')).toBeNull();
+      expect(validateName('José Niño', 'First name')).toBeNull();
+      expect(validateName('Santos Jr.', 'Last name')).toBeNull();
+    });
+  });
+
   describe('validateEmail', () => {
     it('returns error when email is empty or whitespace', () => {
       expect(validateEmail('')).toBe('Email address is required.');

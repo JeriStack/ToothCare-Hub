@@ -20,6 +20,24 @@ export function validatePassword(password) {
   };
 }
 
+export function sanitizeNameInput(value) {
+  return String(value ?? '').replace(/\p{Nd}+/gu, '');
+}
+
+export function validateName(name, label = 'Name') {
+  const trimmed = (name || '').trim();
+  if (!trimmed) {
+    return `${label} is required.`;
+  }
+  if (trimmed.length > 100) {
+    return `${label} cannot exceed 100 characters.`;
+  }
+  if (/\p{Nd}/u.test(trimmed)) {
+    return `${label} cannot contain numbers.`;
+  }
+  return null;
+}
+
 export function validateEmail(email) {
   const trimmed = (email || '').trim();
   if (!trimmed) {
