@@ -12,6 +12,8 @@ export function RegisterPage({
   return (
     <AuthLayout
       onNavigateHome={onNavigateHome}
+      onNavigateTerms={onNavigateTerms}
+      onNavigatePrivacy={onNavigatePrivacy}
       title="Create Patient Account"
       subtitle="Join ToothCare Hub to book dental appointments and access your records"
     >

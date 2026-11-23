@@ -874,7 +874,7 @@ export function RegisterForm({ onNavigateLogin, onNavigateTerms, onNavigatePriva
           </div>
           <ul
             id="reg-password-rules"
-            className="flex flex-nowrap items-center justify-between gap-1"
+            className="flex flex-wrap sm:flex-nowrap items-center justify-start sm:justify-between gap-1"
             aria-label="Password requirements"
           >
             {PASSWORD_RULES.map((rule) => {

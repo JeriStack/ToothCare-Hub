@@ -2,9 +2,16 @@ import React from 'react';
 import { ArrowLeft, ShieldCheck, HeartHandshake } from 'lucide-react';
 import { ThemeToggle } from '../../../components/ui/ThemeToggle';
 
-export function AuthLayout({ children, onNavigateHome, title, subtitle }) {
+export function AuthLayout({
+  children,
+  onNavigateHome,
+  onNavigateTerms,
+  onNavigatePrivacy,
+  title,
+  subtitle,
+}) {
   return (
-    <div className="min-h-[100dvh] bg-slate-50 dark:bg-gray-900 flex flex-col justify-between selection:bg-[#CCFBF1] selection:text-[#0F766E] dark:selection:bg-teal-900/70 dark:selection:text-teal-100">
+    <div className="min-h-[100dvh] bg-slate-50 dark:bg-gray-900 flex flex-col justify-between overflow-x-clip selection:bg-[#CCFBF1] selection:text-[#0F766E] dark:selection:bg-teal-900/70 dark:selection:text-teal-100">
       {/* Top Minimal Header */}
       <header className="w-full bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-slate-200/90 dark:border-gray-800 py-3 px-3 sm:px-8 sticky top-0 z-40">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-2 sm:gap-3 min-w-0">
@@ -50,7 +57,7 @@ export function AuthLayout({ children, onNavigateHome, title, subtitle }) {
 
       {/* Main Form Center Area */}
       <main className="flex-1 flex items-center justify-center py-10 px-4 sm:px-6">
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md min-w-0">
           {/* Header text if supplied */}
           {(title || subtitle) && (
             <div className="text-center mb-6">
@@ -91,11 +98,33 @@ export function AuthLayout({ children, onNavigateHome, title, subtitle }) {
         <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p>&copy; {new Date().getFullYear()} ToothCare Hub. All rights reserved.</p>
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
-            <a href="#privacy" className="tch-tap hover:text-slate-800 dark:hover:text-gray-200 transition-colors">Privacy Policy</a>
+            <a
+              href="/privacy-policy"
+              onClick={(e) => {
+                if (onNavigatePrivacy) {
+                  e.preventDefault();
+                  onNavigatePrivacy();
+                }
+              }}
+              className="tch-tap hover:text-slate-800 dark:hover:text-gray-200 transition-colors"
+            >
+              Privacy Policy
+            </a>
             <span className="text-slate-300 dark:text-gray-600">&bull;</span>
-            <a href="#terms" className="tch-tap hover:text-slate-800 dark:hover:text-gray-200 transition-colors">Terms of Service</a>
+            <a
+              href="/terms-of-service"
+              onClick={(e) => {
+                if (onNavigateTerms) {
+                  e.preventDefault();
+                  onNavigateTerms();
+                }
+              }}
+              className="tch-tap hover:text-slate-800 dark:hover:text-gray-200 transition-colors"
+            >
+              Terms of Service
+            </a>
             <span className="text-slate-300 dark:text-gray-600">&bull;</span>
-            <a href="#contact" className="tch-tap hover:text-slate-800 dark:hover:text-gray-200 transition-colors">Contact Clinic</a>
+            <a href="/help-support" className="tch-tap hover:text-slate-800 dark:hover:text-gray-200 transition-colors">Help &amp; Support</a>
           </div>
         </div>
       </footer>
