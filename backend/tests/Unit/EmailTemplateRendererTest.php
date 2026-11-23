@@ -49,9 +49,49 @@ class EmailTemplateRendererTest extends TestCase
     public function testVerificationTemplateBuildsLinkFromSealedToken(): void
     {
         $out = $this->r->render('verify-email', ['name' => 'Ana', 'ttl_hours' => 24, 'secure' => ['token' => 'tok_abc123']], $this->clinic);
+        $this->assertSame('Verify Your ToothCare Hub Email Address', $out['subject']);
         $this->assertStringContainsString('https://app.example.test/verify-email?token=tok_abc123', $out['html']);
         $this->assertStringContainsString('https://app.example.test/verify-email?token=tok_abc123', $out['text']);
+        $this->assertStringContainsString('24 hours', $out['text']);
+        $this->assertStringContainsString('Resend Verification Email', $out['text']);
         $this->assertStringNotContainsString('tok_abc123', $out['subject']);
+    }
+
+    public function testRegistrationReceivedTemplateRendersHtmlAndTextWithEscapingAndNextStep(): void
+    {
+        $out = $this->r->render('patient-registration-received', [
+            'name' => 'Maria <script>alert(1)</script> Santos',
+            'verification_required' => true,
+            'ttl_hours' => 12,
+        ], $this->clinic);
+
+        $this->assertSame('Thank You for Registering with ToothCare Hub!', $out['subject']);
+        $this->assertStringStartsWith('<!DOCTYPE html>', $out['html']);
+        $this->assertStringNotContainsString('<script>', $out['html']);
+        $this->assertStringContainsString('&lt;script&gt;', $out['html']);
+        $this->assertStringContainsString('Your registration has been successfully received.', $out['html']);
+        $this->assertStringContainsString('12 hours', $out['text']);
+        $this->assertStringContainsString('unverified until you complete email verification', $out['text']);
+        $this->assertStringNotContainsString('<p>', $out['text']);
+    }
+
+    public function testPatientWelcomeTemplateRendersBulletedCapabilitiesAndSignInLink(): void
+    {
+        $out = $this->r->render('patient-welcome', [
+            'name' => 'Juan Dela Cruz',
+            'diagnosis' => 'never show clinical info',
+            'password' => 'never show password',
+        ], $this->clinic);
+
+        $this->assertSame("Welcome to ToothCare Hub — We're Glad You're Here!", $out['subject']);
+        $this->assertStringContainsString('Hello, Juan Dela Cruz!', $out['html']);
+        $this->assertStringContainsString('Your account has been successfully verified and is ready for use.', $out['text']);
+        $this->assertStringContainsString('<ul ', $out['html']);
+        $this->assertStringContainsString('- Explore available dental services.', $out['text']);
+        $this->assertStringContainsString('https://app.example.test/login', $out['html']);
+        $this->assertStringContainsString('https://app.example.test/login', $out['text']);
+        $this->assertStringNotContainsString('never show clinical info', $out['html'] . $out['text']);
+        $this->assertStringNotContainsString('never show password', $out['html'] . $out['text']);
     }
     public function testPasswordResetTemplate(): void
     {

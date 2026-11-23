@@ -432,10 +432,11 @@ export function RegisterForm({ onNavigateLogin, onNavigateTerms, onNavigatePriva
         </div>
 
         <div>
-          <h2 className="text-xl font-bold text-[#12304A] dark:text-gray-50">Account Created Successfully</h2>
+          <h2 className="text-xl font-bold text-[#12304A] dark:text-gray-50">Registration Received</h2>
           <p className="mt-2 text-xs text-slate-600 dark:text-gray-300 leading-relaxed max-w-sm mx-auto">
-            We sent a verification link to <strong className="text-slate-800 dark:text-white">{registeredSuccessEmail}</strong>.
-            Please verify your email address to confirm your account and book dental appointments.
+            Your account registration was successful. A registration confirmation and verification link have been queued for{' '}
+            <strong className="text-slate-800 dark:text-white">{registeredSuccessEmail}</strong>.
+            Please check your email for the verification link to continue.
           </p>
         </div>
 
@@ -448,9 +449,11 @@ export function RegisterForm({ onNavigateLogin, onNavigateTerms, onNavigatePriva
             Sign In to Your Account
           </button>
 
-          <div className="pt-2">
+          <div className="pt-2 space-y-1.5">
             {resendStatus === 'sent' ? (
-              <p className="text-xs text-[#0D9488] dark:text-teal-400 font-medium">Verification link resent! Check your inbox.</p>
+              <p role="status" className="text-xs text-[#0D9488] dark:text-teal-400 font-medium">
+                If your account is awaiting verification, a new verification link has been queued. Please check your inbox shortly.
+              </p>
             ) : (
               <button
                 type="button"
@@ -458,8 +461,13 @@ export function RegisterForm({ onNavigateLogin, onNavigateTerms, onNavigatePriva
                 onClick={handleResend}
                 className="text-xs text-slate-500 dark:text-gray-400 hover:text-slate-800 dark:hover:text-gray-200 transition-colors underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded"
               >
-                {resendStatus === 'loading' ? 'Sending link...' : "Didn't receive an email? Resend verification"}
+                {resendStatus === 'loading' ? 'Requesting link...' : "Didn't receive an email? Resend verification"}
               </button>
+            )}
+            {resendStatus === 'error' && (
+              <p role="alert" className="text-xs text-rose-600 dark:text-rose-400 font-medium">
+                Unable to queue a new verification email right now. Please try again shortly.
+              </p>
             )}
           </div>
         </div>

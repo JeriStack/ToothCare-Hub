@@ -19,7 +19,9 @@ use InvalidArgumentException;
  */
 class EmailOutboxService
 {
+    public const EVENT_REGISTRATION_RECEIVED = 'PATIENT_REGISTRATION_RECEIVED';
     public const EVENT_VERIFICATION = 'EMAIL_VERIFICATION';
+    public const EVENT_PATIENT_WELCOME = 'PATIENT_WELCOME';
     public const EVENT_PASSWORD_RESET = 'PASSWORD_RESET';
     public const EVENT_REQUESTED = 'APPOINTMENT_REQUESTED';
     public const EVENT_CONFIRMED = 'APPOINTMENT_CONFIRMED';
@@ -29,7 +31,9 @@ class EmailOutboxService
     public const EVENT_REMINDER = 'APPOINTMENT_REMINDER';
     /** @var array<string, array{template: string, subject: string}> */
     public const EVENTS = [
-        self::EVENT_VERIFICATION => ['template' => 'verify-email', 'subject' => 'Verify your ToothCare Hub email address'],
+        self::EVENT_REGISTRATION_RECEIVED => ['template' => 'patient-registration-received', 'subject' => 'Thank You for Registering with ToothCare Hub!'],
+        self::EVENT_VERIFICATION => ['template' => 'verify-email', 'subject' => 'Verify Your ToothCare Hub Email Address'],
+        self::EVENT_PATIENT_WELCOME => ['template' => 'patient-welcome', 'subject' => 'Welcome to ToothCare Hub — We\'re Glad You\'re Here!'],
         self::EVENT_PASSWORD_RESET => ['template' => 'password-reset', 'subject' => 'Reset your ToothCare Hub password'],
         self::EVENT_REQUESTED => ['template' => 'appointment-requested', 'subject' => 'We received your appointment request'],
         self::EVENT_CONFIRMED => ['template' => 'appointment-confirmed', 'subject' => 'Your appointment is confirmed'],
@@ -123,6 +127,28 @@ class EmailOutboxService
         ]);
         return $id;
     }
+    public function queueRegistrationReceived(
+        string $email,
+        string $name,
+        int $userId,
+        int $ttlSeconds = 86400,
+        bool $verificationRequired = true
+    ): ?int {
+        return $this->enqueue(
+            self::EVENT_REGISTRATION_RECEIVED,
+            "patient-registration:{$userId}",
+            $email,
+            $name,
+            [
+                'name' => $name,
+                'verification_required' => $verificationRequired,
+                'ttl_hours' => max(1, (int) round($ttlSeconds / 3600)),
+            ],
+            null,
+            $userId
+        );
+    }
+
     public function queueVerification(string $email, string $name, int $userId, string $rawToken, int $tokenId, int $ttlSeconds): ?int
     {
         return $this->enqueue(
@@ -132,6 +158,19 @@ class EmailOutboxService
             $name,
             ['name' => $name, 'ttl_hours' => max(1, (int) round($ttlSeconds / 3600))],
             ['token' => $rawToken],
+            $userId
+        );
+    }
+
+    public function queuePatientWelcome(string $email, string $name, int $userId): ?int
+    {
+        return $this->enqueue(
+            self::EVENT_PATIENT_WELCOME,
+            "patient-welcome:{$userId}",
+            $email,
+            $name,
+            ['name' => $name],
+            null,
             $userId
         );
     }

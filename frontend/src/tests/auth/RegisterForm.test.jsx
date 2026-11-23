@@ -155,4 +155,32 @@ describe('RegisterForm Name Input Restrictions', () => {
     expect(screen.queryByText('Passwords do not match.')).not.toBeInTheDocument();
     expect(screen.getByText('Passwords match')).toBeInTheDocument();
   });
+
+  it('displays accurate queued registration confirmation and handles resend cleanly without exposing internal errors', async () => {
+    authApi.register.mockResolvedValue({ id: 99, email: 'welcome.patient@example.com' });
+    authApi.resendVerification.mockResolvedValue({ sent: true });
+
+    await renderReadyForm();
+
+    fireEvent.change(screen.getByLabelText(/first name/i), { target: { value: 'Maria' } });
+    fireEvent.change(screen.getByLabelText(/last name/i), { target: { value: 'Santos' } });
+    fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'welcome.patient@example.com' } });
+    fireEvent.change(screen.getByLabelText(/^phone number$/i), { target: { value: '+63 917 123 4567' } });
+    fireEvent.change(screen.getByLabelText(/date of birth/i), { target: { value: '1995-04-12' } });
+    fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: 'StrongPass123!' } });
+    fireEvent.change(screen.getByLabelText(/confirm password/i), { target: { value: 'StrongPass123!' } });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: /create account/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /registration received/i })).toBeInTheDocument();
+    });
+    expect(screen.getByText(/have been queued for/i)).toBeInTheDocument();
+    expect(screen.getByText('welcome.patient@example.com')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /resend verification/i }));
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent(/new verification link has been queued/i);
+    });
+  });
 });

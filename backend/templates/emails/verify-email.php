@@ -2,21 +2,32 @@
 declare(strict_types=1);
 
 return static function (array $d, array $c): array {
-    $name = (string) ($d['name'] ?? 'there');
+    $name = trim((string) ($d['name'] ?? ''));
+    if ($name === '') {
+        $name = 'there';
+    }
     $token = (string) ($d['secure']['token'] ?? '');
     if ($token === '') {
         throw new InvalidArgumentException('token missing');
     }
-    $ttlHours = (int) ($d['ttl_hours'] ?? 24);
+    $clinicName = (string) ($c['name'] ?? 'ToothCare Hub');
+    $ttlHours = max(1, (int) ($d['ttl_hours'] ?? 24));
+    $baseUrl = rtrim((string) ($d['app_url'] ?? 'http://localhost'), '/');
+
     return [
-        'subject' => 'Verify your ToothCare Hub email address',
-        'heading' => 'Welcome to ' . $c['name'] . ', ' . $name,
+        'subject' => 'Verify Your ' . $clinicName . ' Email Address',
+        'heading' => 'Verify your email address, ' . $name,
         'paragraphs' => [
-            'Thank you for creating an account. Please verify your email address to finish setting up your account.',
+            'Thank you for registering with ' . $clinicName . '. Please verify your email address to confirm your account ownership and complete your registration.',
         ],
-        'cta' => ['label' => 'Verify email address', 'url' => rtrim((string) $d['app_url'], '/') . '/verify-email?token=' . rawurlencode($token)],
+        'cta' => [
+            'label' => 'Verify Email Address',
+            'url' => $baseUrl . '/verify-email?token=' . rawurlencode($token),
+        ],
         'closing' => [
-            'This link can be used once and expires in ' . $ttlHours . ' hours. If you did not create this account, you can ignore this email.',
+            'This single-use verification link expires in ' . $ttlHours . ' hours.',
+            'If this link has expired, open the verification page and use the "Resend Verification Email" option to request a new link.',
+            'Security reminder: Never share this link with anyone. If you did not create a ' . $clinicName . ' account, you can safely ignore this email.',
         ],
     ];
 };

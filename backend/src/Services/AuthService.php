@@ -148,9 +148,10 @@ class AuthService
 
             $tokenId = $this->tokenRepository->createToken($userId, $tokenHash, 'EMAIL_VERIFY', $tokenTtl);
 
-            // 7. Transactional outbox: queue the verification email atomically with the account.
-            //    A failure here throws and rolls back the registration (no account without a queued email).
+            // 7. Transactional outbox: queue registration acknowledgment and verification email atomically
+            //    with the account. Nothing talks to SMTP inside the transaction.
             $recipientName = "{$validated['first_name']} {$validated['last_name']}";
+            $this->emailService->queueRegistrationReceived($email, $recipientName, $userId, $tokenTtl, true);
             $this->emailService->queueVerification($email, $recipientName, $userId, $rawToken, $tokenId, $tokenTtl);
 
             // 8. Audit log event
@@ -521,11 +522,26 @@ class AuthService
 
         $userId = (int) $tokenRecord['user_id'];
         $tokenId = (int) $tokenRecord['id'];
+        $user = $this->userRepository->findById($userId);
+        $wasAlreadyVerified = $user !== null && (int) ($user['email_verified'] ?? 0) === 1;
 
         $this->database->beginTransaction();
         try {
             $this->tokenRepository->markTokenUsed($tokenId);
+            $this->tokenRepository->invalidateOutstandingTokens($userId, 'EMAIL_VERIFY');
             $this->userRepository->markEmailVerified($userId);
+
+            // Queue idempotent Patient Welcome email strictly after verified transition (PATIENT accounts only)
+            if (!$wasAlreadyVerified && $user !== null && strtoupper((string) ($user['role'] ?? '')) === 'PATIENT') {
+                $patient = $this->patientRepository->findByUserId($userId);
+                $welcomeName = $patient !== null
+                    ? trim((string) ($patient['first_name'] ?? '') . ' ' . (string) ($patient['last_name'] ?? ''))
+                    : trim((string) ($user['first_name'] ?? '') . ' ' . (string) ($user['last_name'] ?? ''));
+                if ($welcomeName === '') {
+                    $welcomeName = 'Valued Patient';
+                }
+                $this->emailService->queuePatientWelcome((string) $user['email'], $welcomeName, $userId);
+            }
 
             $this->auditLogRepository->record(
                 'AUTH_EMAIL_VERIFIED',
@@ -585,6 +601,8 @@ class AuthService
             // either way to prevent account enumeration; failures are logged.
             $this->database->beginTransaction();
             try {
+                // Invalidate previous unused verification tokens before issuing a replacement link
+                $this->tokenRepository->invalidateOutstandingTokens($userId, 'EMAIL_VERIFY');
                 $tokenId = $this->tokenRepository->createToken($userId, $tokenHash, 'EMAIL_VERIFY', $tokenTtl);
                 $this->emailService->queueVerification($normalizedEmail, $name, $userId, $rawToken, $tokenId, $tokenTtl);
                 $this->auditLogRepository->record(
