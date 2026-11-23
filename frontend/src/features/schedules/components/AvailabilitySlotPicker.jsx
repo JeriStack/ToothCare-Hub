@@ -130,10 +130,12 @@ export function AvailabilitySlotPicker({
         <span className="text-[11px] text-slate-400 dark:text-gray-400">10m turnaround buffer included</span>
       </div>
 
-      <div className="grid grid-cols-2 min-[420px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+      <div className="grid grid-cols-1 min-[420px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
         {slots.map((slot) => {
           const isSelected = selectedSlot?.start_at === slot.start_at || selectedSlot === slot.start_at;
-          const displayTime = formatSlotTime(slot.start_at);
+          const startTime = formatSlotTime(slot.start_at);
+          const endTime = slot.end_at ? formatSlotTime(slot.end_at) : null;
+          const displayRange = endTime ? `${startTime} – ${endTime}` : startTime;
 
           return (
             <button
@@ -142,15 +144,15 @@ export function AvailabilitySlotPicker({
               disabled={disabled}
               aria-pressed={isSelected}
               onClick={() => onSelectSlot && onSelectSlot(slot)}
-              className={`min-h-11 p-2.5 rounded-lg text-xs font-semibold border transition-all text-center flex flex-col items-center justify-center gap-0.5 ${
+              className={`min-h-12 px-3 py-2.5 rounded-lg text-xs font-semibold border transition-all text-center flex flex-col items-center justify-center gap-0.5 ${
                 isSelected
                   ? 'bg-teal-600 dark:bg-[#0F766E] border-teal-600 dark:border-teal-400 text-white shadow-sm ring-2 ring-teal-200 dark:ring-teal-500/40'
                   : 'bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 text-slate-700 dark:text-gray-200 hover:border-teal-500 dark:hover:border-teal-400 hover:bg-teal-50/50 dark:hover:bg-teal-950/40'
               } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
             >
-              <span>{displayTime}</span>
+              <span className="whitespace-nowrap">{displayRange}</span>
               <span className={`text-[10px] ${isSelected ? 'text-teal-100' : 'text-slate-400 dark:text-gray-400'}`}>
-                {slot.duration_minutes}m
+                {slot.duration_minutes} mins
               </span>
             </button>
           );

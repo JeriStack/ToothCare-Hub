@@ -206,7 +206,10 @@ class AvailabilityService
                         continue;
                     }
 
-                    // Generate candidate slots every slotIntervalMinutes
+                    // Step candidate slots by the service duration (minimum configured slotIntervalMinutes)
+                    // so a 60m service offers clean non-overlapping ranges (e.g. 9:00 AM - 10:00 AM, 10:00 AM - 11:00 AM)
+                    // while still advancing by slotIntervalMinutes when skipping over a conflict or advance-notice boundary.
+                    $stepMinutes = max($this->slotIntervalMinutes, $durationMinutes);
                     $cursor = $effectiveStart;
                     while (true) {
                         $slotEnd = $cursor->modify("+{$durationMinutes} minutes");
@@ -255,7 +258,7 @@ class AvailabilityService
                             'available' => true,
                         ];
 
-                        $cursor = $cursor->modify("+{$this->slotIntervalMinutes} minutes");
+                        $cursor = $cursor->modify("+{$stepMinutes} minutes");
                     }
                 }
             }
