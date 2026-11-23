@@ -706,11 +706,38 @@ class AppointmentService
                 throw HttpException::notFound('Original appointment not found.');
             }
 
-            // Ownership check for patients
+            // Ownership & clinic cutoff policy check for patients
             if (strtoupper($userRole) === 'PATIENT') {
                 $patient = $this->patientRepo->findByUserId($userId);
                 if (!$patient || (int) $oldAppointment['patient_id'] !== (int) $patient['id']) {
                     throw HttpException::forbidden('You can only reschedule your own appointments.');
+                }
+
+                // Enforce clinic cancellation/reschedule cutoff policy for CONFIRMED appointments
+                if (strtoupper((string) $oldAppointment['status']) === AppointmentValidator::STATUS_CONFIRMED) {
+                    $cutoffHours = 24;
+                    try {
+                        $settingStmt = $pdo->prepare("SELECT setting_value FROM clinic_settings WHERE setting_key = 'cancellation_cutoff_hours' LIMIT 1");
+                        $settingStmt->execute();
+                        $rawCutoff = $settingStmt->fetchColumn();
+                        if ($rawCutoff !== false && is_numeric($rawCutoff)) {
+                            $cutoffHours = max(0, (int) $rawCutoff);
+                        }
+                    } catch (Throwable) {
+                        $cutoffHours = 24;
+                    }
+
+                    if ($cutoffHours > 0) {
+                        $now = $currentTime ?? new DateTimeImmutable('now', $this->timezone);
+                        $apptStart = new DateTimeImmutable((string) $oldAppointment['start_at'], $this->timezone);
+                        $cutoffBoundary = $now->modify("+{$cutoffHours} hours");
+                        if ($apptStart <= $cutoffBoundary) {
+                            throw HttpException::unprocessableEntity(
+                                "Confirmed appointments cannot be rescheduled within {$cutoffHours} hours of the scheduled time. Please contact the clinic.",
+                                ['appointment_id' => ["Reschedule cutoff is {$cutoffHours} hours prior to appointment start."]]
+                            );
+                        }
+                    }
                 }
             }
 
