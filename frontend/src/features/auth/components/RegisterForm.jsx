@@ -702,11 +702,15 @@ export function RegisterForm({ onNavigateLogin, onNavigateTerms, onNavigatePriva
           onClick={() => setShowOptionalFields(!showOptionalFields)}
           className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-gray-900/60 border border-slate-200/90 dark:border-gray-700 text-xs sm:text-[11px] font-semibold text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
         >
-          <span className="flex items-center gap-1.5 min-w-0 text-left sm:whitespace-nowrap">
-            <HeartPulse className="w-4 h-4 text-[#0D9488] dark:text-teal-400 shrink-0" />
-            <span>Address, Medical History &amp; Emergency Contact (Optional)</span>
+          <HeartPulse className="w-4 h-4 text-[#0D9488] dark:text-teal-400 shrink-0" aria-hidden="true" />
+          <span className="flex-1 min-w-0 text-center sm:whitespace-nowrap">
+            Address, Medical History &amp; Emergency Contact (Optional)
           </span>
-          {showOptionalFields ? <ChevronUp className="w-4 h-4 shrink-0" /> : <ChevronDown className="w-4 h-4 shrink-0" />}
+          {showOptionalFields ? (
+            <ChevronUp className="w-4 h-4 shrink-0" aria-hidden="true" />
+          ) : (
+            <ChevronDown className="w-4 h-4 shrink-0" aria-hidden="true" />
+          )}
         </button>
 
         {showOptionalFields && (
