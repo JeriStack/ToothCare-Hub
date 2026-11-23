@@ -438,7 +438,7 @@ export function BookAppointmentPage({
                     <p className="text-xs text-[#0D9488] dark:text-teal-400 font-medium mt-0.5">{dnt.specialization}</p>
                     <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">License: {dnt.license_number}</p>
                     {dnt.bio && (
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">{dnt.bio}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2 text-justify">{dnt.bio}</p>
                     )}
                   </div>
                 </button>
