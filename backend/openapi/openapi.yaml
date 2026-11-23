@@ -1444,7 +1444,7 @@ paths:
     get:
       tags:
         - Reports
-      summary: 'Appointments Volume & Status Report (Admin)'
+      summary: 'Appointments Volume, Status Counts & Filterable Appointment List Report (Admin)'
       operationId: getAdminAppointmentsReport
       parameters:
         -
@@ -1459,13 +1459,51 @@ paths:
           schema:
             type: string
             format: date
+        -
+          name: dentist_id
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        -
+          name: service_id
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        -
+          name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - PENDING
+              - CONFIRMED
+              - COMPLETED
+              - CANCELLED
+              - REJECTED
+        -
+          name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        -
+          name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 25
+            maximum: 100
+            minimum: 1
       responses:
         '200':
-          description: 'Appointment report'
+          description: 'Appointment counts and filterable appointment list'
         '403':
           description: 'Requires reports.view'
         '422':
-          description: 'Invalid date range'
+          description: 'Invalid date range or filter parameter'
       security:
         -
           CookieAuth: []

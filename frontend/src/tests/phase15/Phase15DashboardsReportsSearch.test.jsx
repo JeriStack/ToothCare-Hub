@@ -109,6 +109,22 @@ describe('Phase 15: Dashboards, Reports, and Appointment Search UI', () => {
       cancellation_rate: 10,
       status_distribution: { COMPLETED: 6, CONFIRMED: 3, CANCELLED: 1 },
       daily_timeline: [{ date: '2026-11-20', status: 'COMPLETED', count: 6 }],
+      appointments: [
+        {
+          id: 501,
+          patient_id: 1,
+          dentist_id: 1,
+          service_id: 1,
+          start_at: '2026-11-20 09:00:00',
+          status: 'COMPLETED',
+          patient_first_name: 'Maria',
+          patient_last_name: 'Santos',
+          dentist_first_name: 'Elena',
+          dentist_last_name: 'Reyes',
+          service_name: 'Oral Prophylaxis',
+        },
+      ],
+      appointments_meta: { total: 1, page: 1, per_page: 25, last_page: 1 },
     });
     reportsApi.getServiceReports.mockResolvedValue({
       services: [
@@ -149,10 +165,21 @@ describe('Phase 15: Dashboards, Reports, and Appointment Search UI', () => {
     render(<ReportsPage />);
 
     expect(await screen.findByText(/Clinic Operational Reports & Analytics/i)).toBeInTheDocument();
-    expect(screen.getByText('Oral Prophylaxis')).toBeInTheDocument();
+    expect(screen.getAllByText('Oral Prophylaxis').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('70%')).toBeInTheDocument();
-    expect(screen.getByText(/Dr\. Elena Reyes/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Dr\. Elena Reyes/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Filtered Appointment Report List/i)).toBeInTheDocument();
+    expect(screen.getByText('#501')).toBeInTheDocument();
+    expect(screen.getByText('Maria Santos')).toBeInTheDocument();
     expect(screen.queryByText(/Realized Revenue/i)).not.toBeInTheDocument();
+
+    // Filter by status in ReportsPage triggers getAppointmentReports with status filter
+    fireEvent.change(screen.getByLabelText(/Filter report by status/i), { target: { value: 'COMPLETED' } });
+    await waitFor(() => {
+      expect(reportsApi.getAppointmentReports).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'COMPLETED' })
+      );
+    });
 
     // Invalid date range (end_date < start_date) displays validation warning
     fireEvent.change(screen.getByLabelText(/Start date/i), { target: { value: '2026-11-25' } });
