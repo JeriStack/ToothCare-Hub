@@ -6,6 +6,8 @@ export function RegisterPage({
   onSuccess,
   onNavigateLogin,
   onNavigateHome,
+  onNavigateTerms,
+  onNavigatePrivacy,
 }) {
   return (
     <AuthLayout
@@ -16,6 +18,8 @@ export function RegisterPage({
       <RegisterForm
         onSuccess={onSuccess}
         onNavigateLogin={onNavigateLogin}
+        onNavigateTerms={onNavigateTerms}
+        onNavigatePrivacy={onNavigatePrivacy}
       />
     </AuthLayout>
   );

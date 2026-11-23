@@ -91,6 +91,8 @@ export function HelpCenterPage({
   onForgotPassword,
   onViewAppointments,
   onAdminLogin,
+  onTermsOfService,
+  onPrivacyPolicy,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const deferredSearchQuery = useDeferredValue(searchQuery);
@@ -1133,6 +1135,8 @@ export function HelpCenterPage({
         onBookAppointment={onBookAppointment}
         onAdminLogin={onAdminLogin}
         onHelpSupport={() => window.scrollTo?.({ top: 0, behavior: 'smooth' })}
+        onTermsOfService={onTermsOfService}
+        onPrivacyPolicy={onPrivacyPolicy}
         onNavigateSection={(sectionId) => {
           if (onNavigateLandingSection) {
             onNavigateLandingSection(sectionId);

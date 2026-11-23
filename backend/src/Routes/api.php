@@ -14,6 +14,7 @@ use App\Controllers\DentistController;
 use App\Controllers\DentistScheduleController;
 use App\Controllers\DentistTimeOffController;
 use App\Controllers\HealthController;
+use App\Controllers\LegalDocumentController;
 use App\Controllers\MetricsController;
 use App\Controllers\NotificationController;
 use App\Controllers\OpenApiDocsController;
@@ -85,6 +86,13 @@ $router->group('/api/v1', function (Router $r): void {
     $r->get('/dentists', [DentistController::class, 'listPublic']);
     $r->get('/dentists/{id}', [DentistController::class, 'showPublic']);
     $r->get('/dentists/{id}/avatar', [DentistController::class, 'serveAvatar']);
+
+    // 3b. Public Legal Documents & Authenticated Consent / Acceptance Endpoints
+    $r->get('/legal/documents', [LegalDocumentController::class, 'listPublicCurrent']);
+    $r->get('/legal/terms-of-service', [LegalDocumentController::class, 'showTermsOfService']);
+    $r->get('/legal/privacy-policy', [LegalDocumentController::class, 'showPrivacyPolicy']);
+    $r->get('/legal/acceptances/me', [LegalDocumentController::class, 'myAcceptances'], [AuthenticationMiddleware::class]);
+    $r->post('/legal/acceptances', [LegalDocumentController::class, 'submitAcceptances'], [AuthenticationMiddleware::class, RateLimitMiddleware::perMinute(30, 'legal_acceptances')]);
 
     // 4. Patients Self-Management Group (Phase 7 & 11 ownership checks)
     $r->get('/patients/me', [PatientController::class, 'me'], [AuthenticationMiddleware::class]);
@@ -208,6 +216,14 @@ $router->group('/api/v1', function (Router $r): void {
 
     // System Health Diagnostics (Administrator Only)
     $r->get('/admin/system/health', [HealthController::class, 'systemHealth'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('system.health', ['ADMIN'])]);
+
+    // Legal Document Lifecycle & Acceptance Audit Endpoints (Strict DRBAC, no role fallback)
+    $r->get('/admin/legal/documents', [LegalDocumentController::class, 'adminListDocuments'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('legal_documents.view')]);
+    $r->post('/admin/legal/documents', [LegalDocumentController::class, 'adminCreateDraft'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('legal_documents.create')]);
+    $r->patch('/admin/legal/documents/{id}', [LegalDocumentController::class, 'adminUpdateDraft'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('legal_documents.edit')]);
+    $r->post('/admin/legal/documents/{id}/publish', [LegalDocumentController::class, 'adminPublishDocument'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('legal_documents.publish')]);
+    $r->post('/admin/legal/documents/{id}/withdraw', [LegalDocumentController::class, 'adminWithdrawDocument'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('legal_documents.publish')]);
+    $r->get('/admin/legal/acceptances', [LegalDocumentController::class, 'adminListAcceptances'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('legal_acceptances.view')]);
 
     // 7. Patient Appointment Booking & Lifecycle (Phase 10)
     $patientAuth = [AuthenticationMiddleware::class];

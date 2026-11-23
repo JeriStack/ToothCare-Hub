@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Eye,
   EyeOff,
@@ -18,6 +18,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import legalApi from '../../legal/api';
 import {
   PASSWORD_RULES,
   sanitizeNameInput,
@@ -28,6 +29,39 @@ import {
   validatePhone,
   validateDateOfBirth,
 } from '../schemas/authSchema';
+
+const REGISTER_DRAFT_STORAGE_KEY = 'toothcare_register_draft';
+const DEFAULT_LEGAL_VERSIONS = { terms: '1.0', privacy: '1.0' };
+
+function readRegisterDraft() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage?.getItem(REGISTER_DRAFT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeRegisterDraft(draft) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage?.setItem(REGISTER_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+  } catch {
+    // Ignore storage quota or restricted browsing context errors
+  }
+}
+
+function clearRegisterDraft() {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage?.removeItem(REGISTER_DRAFT_STORAGE_KEY);
+  } catch {
+    // Ignore storage cleanup errors
+  }
+}
 
 const SHORT_PASSWORD_RULE_LABELS = {
   length: '8+ chars',
@@ -66,32 +100,108 @@ function getTodayIsoLocal() {
   return `${year}-${month}-${day}`;
 }
 
-export function RegisterForm({ onNavigateLogin, onSuccess }) {
+export function RegisterForm({ onNavigateLogin, onNavigateTerms, onNavigatePrivacy, onSuccess }) {
   const { register, resendVerification, isLoading } = useAuth();
+  const initialDraft = readRegisterDraft();
 
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    dateOfBirth: '',
-    gender: '',
-    address: '',
-    emergencyContactName: '',
-    emergencyContactPhone: '',
-    medicalAlerts: '',
+    firstName: initialDraft?.firstName || '',
+    lastName: initialDraft?.lastName || '',
+    email: initialDraft?.email || '',
+    phone: initialDraft?.phone || '',
+    dateOfBirth: initialDraft?.dateOfBirth || '',
+    gender: initialDraft?.gender || '',
+    address: initialDraft?.address || '',
+    emergencyContactName: initialDraft?.emergencyContactName || '',
+    emergencyContactPhone: initialDraft?.emergencyContactPhone || '',
+    medicalAlerts: initialDraft?.medicalAlerts || '',
     password: '',
     confirmPassword: '',
-    agreeTerms: false,
+    agreeTerms: Boolean(initialDraft?.agreeTerms),
   });
 
-  const [showOptionalFields, setShowOptionalFields] = useState(false);
+  const [showOptionalFields, setShowOptionalFields] = useState(Boolean(initialDraft?.showOptionalFields));
+  const [legalVersions, setLegalVersions] = useState(DEFAULT_LEGAL_VERSIONS);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formError, setFormError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
   const [registeredSuccessEmail, setRegisteredSuccessEmail] = useState(null);
   const [resendStatus, setResendStatus] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    legalApi
+      .getPublicDocuments({ background: true })
+      .then((data) => {
+        if (!active || !data) return;
+        const termsVersion = data.terms_of_service?.version;
+        const privacyVersion = data.privacy_policy?.version;
+        if (termsVersion || privacyVersion) {
+          setLegalVersions((prev) => ({
+            terms: termsVersion || prev.terms,
+            privacy: privacyVersion || prev.privacy,
+          }));
+        }
+      })
+      .catch(() => {
+        // Retain default v1.0 versions if public metadata endpoint is temporarily unreachable
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Persist non-sensitive form draft fields in sessionStorage so navigating to Terms/Privacy preserves progress.
+  // Passwords are NEVER stored in browser storage.
+  useEffect(() => {
+    if (registeredSuccessEmail) return;
+    const hasNonSensitiveContent = Boolean(
+      formData.firstName ||
+        formData.lastName ||
+        formData.email ||
+        formData.phone ||
+        formData.dateOfBirth ||
+        formData.gender ||
+        formData.address ||
+        formData.emergencyContactName ||
+        formData.emergencyContactPhone ||
+        formData.medicalAlerts ||
+        formData.agreeTerms
+    );
+    if (!hasNonSensitiveContent) {
+      clearRegisterDraft();
+      return;
+    }
+    writeRegisterDraft({
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      phone: formData.phone,
+      dateOfBirth: formData.dateOfBirth,
+      gender: formData.gender,
+      address: formData.address,
+      emergencyContactName: formData.emergencyContactName,
+      emergencyContactPhone: formData.emergencyContactPhone,
+      medicalAlerts: formData.medicalAlerts,
+      agreeTerms: formData.agreeTerms,
+      showOptionalFields,
+    });
+  }, [
+    formData.firstName,
+    formData.lastName,
+    formData.email,
+    formData.phone,
+    formData.dateOfBirth,
+    formData.gender,
+    formData.address,
+    formData.emergencyContactName,
+    formData.emergencyContactPhone,
+    formData.medicalAlerts,
+    formData.agreeTerms,
+    showOptionalFields,
+    registeredSuccessEmail,
+  ]);
 
   const passwordAnalysis = validatePassword(formData.password);
   const todayIso = getTodayIsoLocal();
@@ -252,7 +362,7 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
     }
 
     if (!formData.agreeTerms) {
-      errors.agreeTerms = 'You must agree to the Terms of Service and Privacy Policy.';
+      errors.agreeTerms = 'Please agree to the Terms of Service and acknowledge the Privacy Policy before creating your account.';
     }
 
     if (Object.keys(errors).length > 0) {
@@ -270,6 +380,9 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
       date_of_birth: formData.dateOfBirth,
       gender: formData.gender || 'PREFER_NOT_TO_SAY',
       password: formData.password,
+      accept_legal: true,
+      terms_version: legalVersions.terms,
+      privacy_version: legalVersions.privacy,
       ...(formData.address?.trim() ? { address: formData.address.trim() } : {}),
       ...(formData.emergencyContactName?.trim() ? { emergency_contact_name: formData.emergencyContactName.trim() } : {}),
       ...(formData.emergencyContactPhone?.trim() ? { emergency_contact_phone: formData.emergencyContactPhone.trim() } : {}),
@@ -278,12 +391,17 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
 
     const res = await register(payload);
     if (res.success) {
+      clearRegisterDraft();
       setRegisteredSuccessEmail(formData.email.trim());
       onSuccess?.(res.data);
     } else {
       if (res.details && typeof res.details === 'object') {
         const mappedErrors = {};
         for (const [key, msg] of Object.entries(res.details)) {
+          if (key === 'accept_legal' || key === 'terms_version' || key === 'privacy_version') {
+            mappedErrors.agreeTerms = msg;
+            continue;
+          }
           const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
           mappedErrors[camelKey] = msg;
         }
@@ -834,25 +952,47 @@ export function RegisterForm({ onNavigateLogin, onSuccess }) {
 
       {/* Terms and Privacy Checkbox */}
       <div>
-        <label className="flex items-start gap-2 cursor-pointer text-xs text-slate-600 dark:text-gray-300 select-none">
+        <div className="flex items-start gap-2.5 text-xs text-slate-600 dark:text-gray-300 leading-relaxed">
           <input
             id="reg-agree-terms"
+            name="agreeTerms"
             type="checkbox"
             checked={formData.agreeTerms}
             onChange={(e) => handleChange('agreeTerms', e.target.checked)}
             aria-invalid={Boolean(fieldErrors.agreeTerms)}
             aria-describedby={fieldErrors.agreeTerms ? 'reg-agree-terms-error' : undefined}
-            className="tch-check mt-0.5 rounded border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-[#0D9488] focus:ring-[#0D9488]"
+            className="tch-check mt-0.5 shrink-0 rounded border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-[#0D9488] focus:ring-[#0D9488]"
           />
-          <span>
+          <label htmlFor="reg-agree-terms" className="cursor-pointer select-none min-w-0">
             I agree to the ToothCare Hub{' '}
-            <a href="#terms" className="tch-tap text-[#0D9488] dark:text-teal-400 underline hover:text-[#0F766E] dark:hover:text-teal-300">Terms of Service</a>{' '}
-            and{' '}
-            <a href="#privacy" className="tch-tap text-[#0D9488] dark:text-teal-400 underline hover:text-[#0F766E] dark:hover:text-teal-300">Privacy Policy</a>.
-          </span>
-        </label>
+            <a
+              href="/terms-of-service"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onNavigateTerms?.();
+              }}
+              className="tch-tap font-semibold text-[#0D9488] dark:text-teal-400 underline underline-offset-2 hover:text-[#0F766E] dark:hover:text-teal-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded"
+            >
+              Terms of Service
+            </a>{' '}
+            and acknowledge that I have read the{' '}
+            <a
+              href="/privacy-policy"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onNavigatePrivacy?.();
+              }}
+              className="tch-tap font-semibold text-[#0D9488] dark:text-teal-400 underline underline-offset-2 hover:text-[#0F766E] dark:hover:text-teal-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded"
+            >
+              Privacy Policy
+            </a>
+            .
+          </label>
+        </div>
         {fieldErrors.agreeTerms && (
-          <p id="reg-agree-terms-error" className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.agreeTerms}</p>
+          <p id="reg-agree-terms-error" className="mt-1.5 text-xs text-rose-600 dark:text-rose-400 font-medium">{fieldErrors.agreeTerms}</p>
         )}
       </div>
 

@@ -1,18 +1,16 @@
-import React, { useState } from 'react';
-import { ArrowUp, ShieldCheck, X } from 'lucide-react';
+import React from 'react';
+import { ArrowUp, ShieldCheck } from 'lucide-react';
 
-
-import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 export function LandingFooter({
   onLogin,
   onBookAppointment,
   onAdminLogin,
   onHelpSupport,
+  onTermsOfService,
+  onPrivacyPolicy,
   onNavigateSection,
   emergencyContactHref = '#contact',
 }) {
-  const [legalModal, setLegalModal] = useState(null); // 'privacy' | 'terms' | null
-
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -149,22 +147,32 @@ export function LandingFooter({
                 </a>
               </li>
               <li>
-                <button
-                  type="button"
-                  onClick={() => setLegalModal('privacy')}
+                <a
+                  href="/privacy-policy"
+                  onClick={(e) => {
+                    if (onPrivacyPolicy) {
+                      e.preventDefault();
+                      onPrivacyPolicy();
+                    }
+                  }}
                   className="tch-tap hover:text-white transition-colors text-center cursor-pointer"
                 >
-                  Patient Privacy Policy
-                </button>
+                  Privacy Policy
+                </a>
               </li>
               <li>
-                <button
-                  type="button"
-                  onClick={() => setLegalModal('terms')}
+                <a
+                  href="/terms-of-service"
+                  onClick={(e) => {
+                    if (onTermsOfService) {
+                      e.preventDefault();
+                      onTermsOfService();
+                    }
+                  }}
                   className="tch-tap hover:text-white transition-colors text-center cursor-pointer"
                 >
-                  Appointment Terms & Conditions
-                </button>
+                  Terms of Service
+                </a>
               </li>
               <li>
                 <a href={emergencyContactHref} className="hover:text-white transition-colors">
@@ -194,64 +202,6 @@ export function LandingFooter({
         </div>
 
       </div>
-
-      {/* LEGAL / PRIVACY MODAL */}
-      {legalModal && (
-        <DialogOverlay
-          onClose={() => setLegalModal(null)} className="fixed inset-0 z-50 bg-slate-900/60 dark:bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 text-slate-800 dark:text-gray-200 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[85dvh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-gray-700 pb-3">
-              <h3 className="font-bold text-slate-900 dark:text-gray-50 text-base">
-                {legalModal === 'privacy' ? 'Patient Privacy Policy' : 'Appointment Terms & Conditions'}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setLegalModal(null)}
-                className="p-1 rounded-lg text-slate-400 dark:text-gray-400 hover:text-slate-600 dark:hover:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="text-xs text-slate-600 dark:text-gray-300 space-y-3 leading-relaxed">
-              {legalModal === 'privacy' ? (
-                <>
-                  <p>
-                    ToothCare Hub prioritizes patient confidentiality and data integrity. All demographic data,
-                    chief complaints, and appointment histories are stored with role-based access control and
-                    pessimistic transactional protection.
-                  </p>
-                  <p>
-                    We never disclose patient personal contact numbers or treatment details to unauthorized third
-                    parties. Sessions use secure HttpOnly cookies with CSRF token authentication.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p>
-                    Online appointment requests are initially recorded with a <strong className="dark:text-white">Pending</strong> status and are
-                    subject to clinic reception verification of operatory chair availability and dentist schedules.
-                  </p>
-                  <p>
-                    Cancellations and rescheduling must be performed prior to consultation time through the patient
-                    dashboard. Estimated procedural fees are snapshotted at booking time for transparent billing.
-                  </p>
-                </>
-              )}
-            </div>
-
-            <div className="pt-3 border-t border-slate-100 dark:border-gray-700 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setLegalModal(null)}
-                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-gray-200 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-gray-600"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </DialogOverlay>
-      )}
     </footer>
   );
 }

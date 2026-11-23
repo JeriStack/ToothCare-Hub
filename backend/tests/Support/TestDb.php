@@ -323,11 +323,17 @@ class TestDb
             (19, "Manage Roles & Permissions", "roles.manage", "security", "Configure DRBAC permissions"),
             (20, "Export Audit Logs", "audit_logs.export", "security", "Export audit logs CSV"),
             (21, "View Reports & Analytics", "reports.view", "reports", "Access reports"),
-            (22, "View System Health", "system.health", "system", "Inspect system health");
+            (22, "View System Health", "system.health", "system", "Inspect system health"),
+            (23, "View Legal Documents", "legal_documents.view", "legal", "View legal documents and history"),
+            (24, "Create Legal Document Drafts", "legal_documents.create", "legal", "Create legal document drafts"),
+            (25, "Edit Legal Document Drafts", "legal_documents.edit", "legal", "Edit unpublished legal document drafts"),
+            (26, "Publish Legal Documents", "legal_documents.publish", "legal", "Publish approved legal document versions"),
+            (27, "View User Legal Acceptances", "legal_acceptances.view", "legal", "Inspect user legal acceptance records");
 
             INSERT INTO role_permissions (role_id, permission_id) VALUES
             (1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6), (1, 7), (1, 8), (1, 9), (1, 10),
             (1, 11), (1, 12), (1, 13), (1, 14), (1, 15), (1, 16), (1, 17), (1, 18), (1, 19), (1, 20), (1, 21), (1, 22),
+            (1, 23), (1, 24), (1, 25), (1, 27),
             (2, 3), (2, 5), (2, 7), (2, 9), (2, 11), (2, 12), (2, 13), (2, 14), (2, 15),
             (3, 5), (3, 7), (3, 9), (3, 10), (3, 13),
             (4, 3), (4, 4), (4, 5), (4, 7), (4, 9), (4, 10), (4, 11);
@@ -398,6 +404,39 @@ class TestDb
                 last_error TEXT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS legal_documents (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                document_type TEXT NOT NULL,
+                version TEXT NOT NULL,
+                title TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT "DRAFT",
+                is_approved INTEGER NOT NULL DEFAULT 0,
+                requires_reacceptance INTEGER NOT NULL DEFAULT 0,
+                effective_date TEXT NOT NULL,
+                published_at TEXT NULL,
+                change_summary TEXT NULL,
+                content_json TEXT NOT NULL,
+                content_sha256 TEXT NOT NULL,
+                created_by_user_id INTEGER NULL,
+                published_by_user_id INTEGER NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(document_type, version)
+            );
+
+            CREATE TABLE IF NOT EXISTS user_legal_acceptances (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                document_id INTEGER NOT NULL,
+                document_type TEXT NOT NULL,
+                document_version TEXT NOT NULL,
+                acceptance_action TEXT NOT NULL,
+                accepted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                ip_address TEXT NULL,
+                user_agent TEXT NULL,
+                UNIQUE(user_id, document_id, acceptance_action)
+            );
+
             INSERT INTO clinic_operating_hours (day_of_week, opening_time, closing_time, is_closed) VALUES
             (1, "08:00:00", "17:00:00", 0),
             (2, "08:00:00", "17:00:00", 0),
@@ -409,6 +448,47 @@ class TestDb
         ');
 
         Database::getInstance()->setConnection($pdo);
+
+        // Seed initial v1.0 DRAFT Terms of Service and Privacy Policy matching migration 033
+        $tosContent = json_encode([
+            'draft_notice' => 'DRAFT — NOT APPROVED FOR PRODUCTION.',
+            'introduction' => 'These Terms of Service govern your access to and use of ToothCare Hub.',
+            'sections' => [
+                ['id' => 'introduction', 'heading' => '1. Introduction', 'paragraphs' => ['ToothCare Hub dental appointment and clinic management platform.']],
+                ['id' => 'acceptance-of-terms', 'heading' => '2. Acceptance of Terms', 'paragraphs' => ['Active checkbox submission records acceptance.']],
+            ],
+        ], JSON_UNESCAPED_UNICODE);
+        $privacyContent = json_encode([
+            'draft_notice' => 'DRAFT — NOT APPROVED FOR PRODUCTION.',
+            'introduction' => 'This Privacy Policy explains how ToothCare Hub processes personal and health-related information.',
+            'sections' => [
+                ['id' => 'introduction', 'heading' => '1. Introduction', 'paragraphs' => ['Verified ToothCare Hub data flows.']],
+                ['id' => 'data-subject-rights', 'heading' => '11. Data Subject Rights', 'paragraphs' => ['Philippine Data Privacy Act of 2012 (RA 10173) rights.']],
+            ],
+        ], JSON_UNESCAPED_UNICODE);
+
+        $seedDoc = $pdo->prepare('
+            INSERT INTO legal_documents (
+                document_type, version, title, status, is_approved, requires_reacceptance,
+                effective_date, published_at, change_summary, content_json, content_sha256
+            ) VALUES (?, ?, ?, "PUBLISHED", 0, 0, "2026-11-23", NOW(), ?, ?, ?)
+        ');
+        $seedDoc->execute([
+            'TERMS_OF_SERVICE',
+            '1.0',
+            'Terms of Service',
+            'Initial v1.0 draft Terms of Service (pending clinic and legal approval).',
+            $tosContent,
+            hash('sha256', (string) $tosContent),
+        ]);
+        $seedDoc->execute([
+            'PRIVACY_POLICY',
+            '1.0',
+            'Privacy Policy',
+            'Initial v1.0 draft Privacy Policy (pending clinic and legal review).',
+            $privacyContent,
+            hash('sha256', (string) $privacyContent),
+        ]);
 
         return $pdo;
     }

@@ -133,6 +133,16 @@ class AuthValidator
         $rawMedicalAlerts = isset($data['medical_alerts']) ? trim((string) $data['medical_alerts']) : '';
         $medicalAlerts = $rawMedicalAlerts !== '' ? $rawMedicalAlerts : null;
 
+        // 8. Mandatory Legal Agreement Acceptance & Version Verification (client timestamps ignored)
+        $legalData = null;
+        try {
+            $legalData = LegalValidator::validateRegistrationLegalInput($data);
+        } catch (HttpException $legalEx) {
+            foreach ($legalEx->getDetails() as $key => $msg) {
+                $errors[$key] = $msg;
+            }
+        }
+
         if (!empty($errors)) {
             throw HttpException::unprocessableEntity('Validation failed for registration input.', $errors);
         }
@@ -149,6 +159,9 @@ class AuthValidator
             'emergency_contact_name' => $emergencyContactName,
             'emergency_contact_phone' => $emergencyContactPhone,
             'medical_alerts' => $medicalAlerts,
+            'accept_legal' => true,
+            'terms_version' => (string) ($legalData['terms_version'] ?? ''),
+            'privacy_version' => (string) ($legalData['privacy_version'] ?? ''),
             // Strictly enforce PATIENT role on server - client input cannot override
             'role' => 'PATIENT',
         ];

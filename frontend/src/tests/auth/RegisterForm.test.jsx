@@ -20,6 +20,8 @@ vi.mock('../../features/auth/api', () => {
 
 describe('RegisterForm Name Input Restrictions', () => {
   beforeEach(() => {
+    sessionStorage.clear();
+    localStorage.clear();
     vi.clearAllMocks();
     authApi.getMe.mockRejectedValue(new Error('No active session'));
   });

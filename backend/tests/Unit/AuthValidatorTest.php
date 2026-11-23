@@ -28,6 +28,9 @@ class AuthValidatorTest extends TestCase
             'emergency_contact_name' => 'Juan Santos',
             'emergency_contact_phone' => '+639179876543',
             'medical_alerts' => 'Penicillin allergy',
+            'accept_legal' => true,
+            'terms_version' => '1.0',
+            'privacy_version' => '1.0',
         ];
     }
 
