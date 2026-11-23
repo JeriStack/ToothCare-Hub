@@ -117,8 +117,9 @@ class AppointmentValidator
     {
         $errors = [];
 
-        // 1. Start At
-        $startAtStr = isset($data['start_at']) ? trim((string) $data['start_at']) : '';
+        // 1. Start At (support both 'start_at' and 'new_start_at')
+        $rawStart = $data['start_at'] ?? $data['new_start_at'] ?? '';
+        $startAtStr = trim((string) $rawStart);
         if ($startAtStr === '') {
             $errors['start_at'] = 'New appointment start date and time is required.';
         } else {

@@ -22,7 +22,8 @@ import { appointmentsApi } from '../api';
 import { AppointmentCard, STATUS_STYLES } from '../components/AppointmentCard';
 import { AvailabilitySlotPicker } from '../../schedules/components/AvailabilitySlotPicker';
 import { AppointmentCardSkeleton } from '../../../components/skeletons/AppointmentCardSkeleton';
-
+
+
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 export function AppointmentHistoryPage({ onNavigateToBook }) {
   const [appointments, setAppointments] = useState([]);
@@ -144,8 +145,10 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
     setRescheduleConflict(false);
 
     try {
+      const resolvedStartAt = rescheduleSlot.start_at || rescheduleSlot.start;
       const payload = {
-        new_start_at: rescheduleSlot.start || rescheduleSlot.start_at,
+        start_at: resolvedStartAt,
+        new_start_at: resolvedStartAt,
         reason: rescheduleReason || 'Patient requested schedule adjustment.',
       };
       const result = await appointmentsApi.reschedule(rescheduleModalAppt.id, payload);

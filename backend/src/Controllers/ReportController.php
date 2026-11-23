@@ -77,7 +77,8 @@ class ReportController
 
     /**
      * GET /api/v1/admin/reports/appointments
-     * Appointment volume metrics, status distributions, and daily breakdown
+     * Appointment volume metrics, status distributions, daily breakdown, and optional filterable appointment list
+     * by date, dentist, service, and status.
      */
     public function appointments(Request $request): Response
     {
@@ -85,14 +86,106 @@ class ReportController
         $pdo = $this->database->getConnection();
         $range = $this->resolveDateRange($request);
 
-        // Status counts in window
-        $stmt = $pdo->prepare('
-            SELECT status, COUNT(*) as count
-            FROM appointments
-            WHERE start_at >= ? AND start_at <= ?
-            GROUP BY status
-        ');
-        $stmt->execute([$range['start_at'], $range['end_at']]);
+        $whereClauses = ['a.start_at >= :start_at', 'a.start_at <= :end_at'];
+        $params = [
+            ':start_at' => $range['start_at'],
+            ':end_at' => $range['end_at'],
+        ];
+
+        $appliedFilters = [
+            'start_date' => $range['start_date'],
+            'end_date' => $range['end_date'],
+            'dentist_id' => null,
+            'service_id' => null,
+            'patient_id' => null,
+            'status' => null,
+            'search' => null,
+        ];
+
+        // Optional filter: dentist_id
+        $rawDentistId = $request->getQuery('dentist_id');
+        if ($rawDentistId !== null && trim((string) $rawDentistId) !== '') {
+            $dentistStr = trim((string) $rawDentistId);
+            if (!ctype_digit($dentistStr) || (int) $dentistStr <= 0) {
+                throw HttpException::unprocessableEntity('Invalid dentist_id filter.', [
+                    'dentist_id' => ['dentist_id must be a positive integer.'],
+                ]);
+            }
+            $dentistId = (int) $dentistStr;
+            $whereClauses[] = 'a.dentist_id = :dentist_id';
+            $params[':dentist_id'] = $dentistId;
+            $appliedFilters['dentist_id'] = $dentistId;
+        }
+
+        // Optional filter: service_id
+        $rawServiceId = $request->getQuery('service_id');
+        if ($rawServiceId !== null && trim((string) $rawServiceId) !== '') {
+            $serviceStr = trim((string) $rawServiceId);
+            if (!ctype_digit($serviceStr) || (int) $serviceStr <= 0) {
+                throw HttpException::unprocessableEntity('Invalid service_id filter.', [
+                    'service_id' => ['service_id must be a positive integer.'],
+                ]);
+            }
+            $serviceId = (int) $serviceStr;
+            $whereClauses[] = 'a.service_id = :service_id';
+            $params[':service_id'] = $serviceId;
+            $appliedFilters['service_id'] = $serviceId;
+        }
+
+        // Optional filter: patient_id
+        $rawPatientId = $request->getQuery('patient_id');
+        if ($rawPatientId !== null && trim((string) $rawPatientId) !== '') {
+            $patientStr = trim((string) $rawPatientId);
+            if (!ctype_digit($patientStr) || (int) $patientStr <= 0) {
+                throw HttpException::unprocessableEntity('Invalid patient_id filter.', [
+                    'patient_id' => ['patient_id must be a positive integer.'],
+                ]);
+            }
+            $patientId = (int) $patientStr;
+            $whereClauses[] = 'a.patient_id = :patient_id';
+            $params[':patient_id'] = $patientId;
+            $appliedFilters['patient_id'] = $patientId;
+        }
+
+        // Optional filter: status
+        $rawStatus = $request->getQuery('status');
+        if ($rawStatus !== null && trim((string) $rawStatus) !== '') {
+            $status = strtoupper(trim((string) $rawStatus));
+            if ($status !== 'ALL') {
+                $validStatuses = ['PENDING', 'CONFIRMED', 'REJECTED', 'CANCELLED', 'COMPLETED'];
+                if (!in_array($status, $validStatuses, true)) {
+                    throw HttpException::unprocessableEntity('Invalid status filter.', [
+                        'status' => ['status must be one of: ' . implode(', ', $validStatuses)],
+                    ]);
+                }
+                $whereClauses[] = 'a.status = :status';
+                $params[':status'] = $status;
+                $appliedFilters['status'] = $status;
+            }
+        }
+
+        // Optional filter: search (patient name)
+        $rawSearch = $request->getQuery('search');
+        if ($rawSearch !== null && is_string($rawSearch) && trim($rawSearch) !== '') {
+            $cleanSearch = mb_substr(trim($rawSearch), 0, 120);
+            $escaped = str_replace(['%', '_'], ['\\%', '\\_'], $cleanSearch);
+            $term = '%' . $escaped . '%';
+            $whereClauses[] = 'EXISTS (SELECT 1 FROM patients p_f WHERE p_f.id = a.patient_id AND (p_f.first_name LIKE :p_search1 OR p_f.last_name LIKE :p_search2))';
+            $params[':p_search1'] = $term;
+            $params[':p_search2'] = $term;
+            $appliedFilters['search'] = $cleanSearch;
+        }
+
+        $whereSql = implode(' AND ', $whereClauses);
+
+        // Status counts in window (respecting dentist/service/status filters)
+        $stmt = $pdo->prepare("
+            SELECT a.status, COUNT(*) as count
+            FROM appointments a
+            WHERE {$whereSql}
+            GROUP BY a.status
+        ");
+        $stmt->execute($params);
         $rawStatusCounts = $stmt->fetchAll(PDO::FETCH_KEY_PAIR) ?: [];
 
         $statusCounts = [];
@@ -100,31 +193,79 @@ class ReportController
             $statusCounts[(string) $k] = (int) $v;
         }
 
-        // Upcoming appointments within selected window
+        // Upcoming appointments within selected window (respecting filters)
+        $upcomingParams = $params;
+        $upcomingParams[':now_str'] = $range['now_str'];
         $upcomingStmt = $pdo->prepare("
             SELECT COUNT(*)
-            FROM appointments
-            WHERE start_at >= ? AND start_at <= ?
-              AND start_at >= ?
-              AND status IN ('PENDING', 'CONFIRMED')
+            FROM appointments a
+            WHERE {$whereSql}
+              AND a.start_at >= :now_str
+              AND a.status IN ('PENDING', 'CONFIRMED')
         ");
-        $upcomingStmt->execute([$range['start_at'], $range['end_at'], $range['now_str']]);
+        $upcomingStmt->execute($upcomingParams);
         $upcomingCount = (int) $upcomingStmt->fetchColumn();
 
         // Daily volume breakdown (SQLite & MySQL compatible SUBSTR(start_at, 1, 10))
-        $dailyStmt = $pdo->prepare('
-            SELECT SUBSTR(start_at, 1, 10) as date, status, COUNT(*) as count
-            FROM appointments
-            WHERE start_at >= ? AND start_at <= ?
-            GROUP BY SUBSTR(start_at, 1, 10), status
+        $dailyStmt = $pdo->prepare("
+            SELECT SUBSTR(a.start_at, 1, 10) as date, a.status, COUNT(*) as count
+            FROM appointments a
+            WHERE {$whereSql}
+            GROUP BY SUBSTR(a.start_at, 1, 10), a.status
             ORDER BY date ASC
-        ');
-        $dailyStmt->execute([$range['start_at'], $range['end_at']]);
+        ");
+        $dailyStmt->execute($params);
         $dailyRows = $dailyStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         foreach ($dailyRows as &$row) {
             $row['count'] = (int) $row['count'];
         }
         unset($row);
+
+        // Filterable appointment list by date, dentist, service, and status (paginated, max 100)
+        $rawPage = $request->getQuery('page');
+        $page = ($rawPage !== null && ctype_digit(trim((string) $rawPage))) ? max(1, (int) $rawPage) : 1;
+        $rawPerPage = $request->getQuery('per_page') ?? $request->getQuery('limit') ?? 25;
+        $perPage = (is_numeric($rawPerPage)) ? max(1, min(100, (int) $rawPerPage)) : 25;
+        $offset = ($page - 1) * $perPage;
+
+        $listStmt = $pdo->prepare("
+            SELECT
+                a.id,
+                a.patient_id,
+                a.dentist_id,
+                a.service_id,
+                a.start_at,
+                a.end_at,
+                a.status,
+                a.duration_snapshot,
+                a.price_snapshot,
+                a.operatory_chair,
+                p.first_name AS patient_first_name,
+                p.last_name AS patient_last_name,
+                d.first_name AS dentist_first_name,
+                d.last_name AS dentist_last_name,
+                d.specialization AS dentist_specialization,
+                s.name AS service_name,
+                s.category AS service_category
+            FROM appointments a
+            LEFT JOIN patients p ON a.patient_id = p.id
+            LEFT JOIN dentists d ON a.dentist_id = d.id
+            LEFT JOIN services s ON a.service_id = s.id
+            WHERE {$whereSql}
+            ORDER BY a.start_at DESC, a.id DESC
+            LIMIT {$perPage} OFFSET {$offset}
+        ");
+        $listStmt->execute($params);
+        $appointmentRows = $listStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        foreach ($appointmentRows as &$appt) {
+            $appt['id'] = (int) $appt['id'];
+            $appt['patient_id'] = (int) $appt['patient_id'];
+            $appt['dentist_id'] = (int) $appt['dentist_id'];
+            $appt['service_id'] = (int) $appt['service_id'];
+            $appt['duration_snapshot'] = (int) ($appt['duration_snapshot'] ?? 30);
+            $appt['price_snapshot'] = (float) ($appt['price_snapshot'] ?? 0);
+        }
+        unset($appt);
 
         $total = array_sum($statusCounts);
         $pending = $statusCounts['PENDING'] ?? 0;
@@ -134,9 +275,11 @@ class ReportController
         $rejected = $statusCounts['REJECTED'] ?? 0;
         $completionRate = $total > 0 ? round(($completed / $total) * 100, 1) : 0.0;
         $cancellationRate = $total > 0 ? round(($cancelled / $total) * 100, 1) : 0.0;
+        $lastPage = max(1, (int) ceil($total / $perPage));
 
         return Response::success([
             'date_range' => ['start_date' => $range['start_date'], 'end_date' => $range['end_date']],
+            'filters' => $appliedFilters,
             'timezone' => 'Asia/Manila',
             'total_appointments' => $total,
             'pending_count' => $pending,
@@ -149,6 +292,13 @@ class ReportController
             'cancellation_rate' => $cancellationRate,
             'status_distribution' => $statusCounts,
             'daily_timeline' => $dailyRows,
+            'appointments' => $appointmentRows,
+            'appointments_meta' => [
+                'total' => $total,
+                'page' => $page,
+                'per_page' => $perPage,
+                'last_page' => $lastPage,
+            ],
         ]);
     }
 

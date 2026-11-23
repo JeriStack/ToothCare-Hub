@@ -31,14 +31,21 @@ final class NotificationsReportsOpsPaths
     #[OA\Get(
         path: '/admin/reports/appointments',
         operationId: 'getAdminAppointmentsReport',
-        summary: 'Appointments Volume & Status Report (Admin)',
+        summary: 'Appointments Volume, Status Counts & Filterable Appointment List Report (Admin)',
         tags: ['Reports'],
         security: [['CookieAuth' => []]],
         parameters: [
             new OA\Parameter(name: 'start_date', in: 'query', schema: new OA\Schema(type: 'string', format: 'date')),
             new OA\Parameter(name: 'end_date', in: 'query', schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'dentist_id', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1)),
+            new OA\Parameter(name: 'service_id', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1)),
+            new OA\Parameter(name: 'patient_id', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1)),
+            new OA\Parameter(name: 'status', in: 'query', schema: new OA\Schema(type: 'string', enum: ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'REJECTED'])),
+            new OA\Parameter(name: 'search', in: 'query', schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'page', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1, default: 1)),
+            new OA\Parameter(name: 'per_page', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1, maximum: 100, default: 25)),
         ],
-        responses: [new OA\Response(response: 200, description: 'Appointment report'), new OA\Response(response: 403, description: 'Requires reports.view'), new OA\Response(response: 422, description: 'Invalid date range')]
+        responses: [new OA\Response(response: 200, description: 'Appointment counts and filterable appointment list'), new OA\Response(response: 403, description: 'Requires reports.view'), new OA\Response(response: 422, description: 'Invalid date range or filter parameter')]
     )]
     public function reportsAppointments(): void {}
 
