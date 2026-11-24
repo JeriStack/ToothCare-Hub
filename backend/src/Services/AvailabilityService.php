@@ -297,6 +297,9 @@ class AvailabilityService
     /**
      * Validate whether a specific requested start date-time slot is strictly available for booking.
      *
+     * Validates against all clinic operating hours, dentist shifts, slot interval alignment,
+     * advance-notice rules, booking horizon, closures, dentist time-off, and existing bookings.
+     *
      * @param int $dentistId
      * @param int $serviceId
      * @param DateTimeImmutable $startAt
@@ -309,23 +312,129 @@ class AvailabilityService
         DateTimeImmutable $startAt,
         ?DateTimeImmutable $currentTime = null
     ): bool {
+        $now = ($currentTime ?? new DateTimeImmutable('now', $this->timezone))
+            ->setTimezone($this->timezone);
         $startAtManila = $startAt->setTimezone($this->timezone);
         $dateStr = $startAtManila->format('Y-m-d');
 
-        try {
-            $result = $this->getAvailability($dentistId, $serviceId, $dateStr, $dateStr, $currentTime);
-        } catch (HttpException $e) {
+        // 1. Verify active dentist and service
+        $dentist = $this->dentistRepo->findById($dentistId);
+        if (!$dentist || (int) $dentist['is_active'] !== 1) {
             return false;
         }
 
-        $requestedIso = $startAtManila->format(DateTimeImmutable::ATOM);
-        foreach ($result['availability'][0]['slots'] ?? [] as $slot) {
-            if ($slot['start_at'] === $requestedIso && !empty($slot['available'])) {
-                return true;
+        $service = $this->serviceRepo->findById($serviceId);
+        if (!$service || (int) $service['is_active'] !== 1) {
+            return false;
+        }
+
+        // 2. Verify date range and advance notice rules
+        $slotDateDt = DateTimeImmutable::createFromFormat('!Y-m-d', $dateStr, $this->timezone);
+        $todayDt = DateTimeImmutable::createFromFormat('!Y-m-d', $now->format('Y-m-d'), $this->timezone);
+        if (!$slotDateDt || !$todayDt) {
+            return false;
+        }
+
+        if ($slotDateDt < $todayDt || $slotDateDt > $todayDt->modify("+{$this->maxBookingHorizonDays} days")) {
+            return false;
+        }
+
+        $minNoticeLimit = $now->modify("+{$this->minAdvanceNoticeMinutes} minutes");
+        if ($startAtManila < $minNoticeLimit) {
+            return false;
+        }
+
+        // 3. Verify clinic operating hours on that day
+        $dayOfWeek = (int) $startAtManila->format('N');
+        $clinicHours = null;
+        foreach ($this->clinicRepo->getOperatingHours() as $oh) {
+            if ((int) $oh['day_of_week'] === $dayOfWeek) {
+                $clinicHours = $oh;
+                break;
+            }
+        }
+        if (!$clinicHours || (bool) $clinicHours['is_closed']) {
+            return false;
+        }
+
+        $clinicOpenDt = DateTimeImmutable::createFromFormat(
+            'Y-m-d H:i:s',
+            "{$dateStr} {$clinicHours['opening_time']}",
+            $this->timezone
+        );
+        $clinicCloseDt = DateTimeImmutable::createFromFormat(
+            'Y-m-d H:i:s',
+            "{$dateStr} {$clinicHours['closing_time']}",
+            $this->timezone
+        );
+        if (!$clinicOpenDt || !$clinicCloseDt) {
+            return false;
+        }
+
+        $durationMinutes = (int) $service['duration_minutes'];
+        $bufferMinutes = $this->defaultBufferMinutes;
+        $blockingEnd = $startAtManila->modify("+{$durationMinutes} minutes")->modify("+{$bufferMinutes} minutes");
+
+        // 4. Verify slot fits within an active dentist shift clamped to clinic hours and aligns to slot interval
+        $fitsShift = false;
+        $intervalSeconds = max(1, $this->slotIntervalMinutes) * 60;
+        foreach ($this->scheduleRepo->findByDentistId($dentistId, true) as $shift) {
+            if ((int) $shift['day_of_week'] !== $dayOfWeek) {
+                continue;
+            }
+            $shiftStartDt = DateTimeImmutable::createFromFormat(
+                'Y-m-d H:i:s',
+                "{$dateStr} {$shift['start_time']}",
+                $this->timezone
+            );
+            $shiftEndDt = DateTimeImmutable::createFromFormat(
+                'Y-m-d H:i:s',
+                "{$dateStr} {$shift['end_time']}",
+                $this->timezone
+            );
+            if (!$shiftStartDt || !$shiftEndDt) {
+                continue;
+            }
+
+            $effectiveStart = $shiftStartDt > $clinicOpenDt ? $shiftStartDt : $clinicOpenDt;
+            $effectiveEnd = $shiftEndDt < $clinicCloseDt ? $shiftEndDt : $clinicCloseDt;
+
+            if ($effectiveStart >= $effectiveEnd) {
+                continue;
+            }
+
+            if ($startAtManila < $effectiveStart || $blockingEnd > $effectiveEnd) {
+                continue;
+            }
+
+            $offsetSeconds = $startAtManila->getTimestamp() - $effectiveStart->getTimestamp();
+            if ($offsetSeconds % $intervalSeconds === 0) {
+                $fitsShift = true;
+                break;
             }
         }
 
-        return false;
+        if (!$fitsShift) {
+            return false;
+        }
+
+        // 5. Verify no overlap with clinic closures, dentist time-off, or blocking appointments
+        $rangeStartStr = $slotDateDt->format('Y-m-d 00:00:00');
+        $rangeEndStr = $slotDateDt->format('Y-m-d 23:59:59');
+
+        if ($this->hasIntervalOverlap($startAtManila, $blockingEnd, $this->clinicRepo->getClosures($dateStr, $dateStr))) {
+            return false;
+        }
+
+        if ($this->hasIntervalOverlap($startAtManila, $blockingEnd, $this->timeOffRepo->findByDentistId($dentistId, $rangeStartStr, $rangeEndStr))) {
+            return false;
+        }
+
+        if ($this->hasIntervalOverlap($startAtManila, $blockingEnd, $this->appointmentRepo->findBlockingByDentistAndRange($dentistId, $rangeStartStr, $rangeEndStr))) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
