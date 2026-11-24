@@ -989,9 +989,10 @@ function AppContent() {
                 aria-expanded={isUserMenuOpen}
                 aria-controls="user-account-menu"
                 aria-label={`${userDisplayName} account menu`}
-                className="flex items-center gap-2.5 min-h-11 px-1.5 sm:px-2 py-1.5 rounded-xl hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 cursor-pointer"
+                title={userDisplayName}
+                className="flex items-center justify-center min-h-11 min-w-11 p-1 rounded-full hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 cursor-pointer"
               >
-                <div className="w-8 h-8 rounded-full bg-[#0D9488]/30 border border-[#14B8A6] text-teal-200 flex items-center justify-center font-semibold text-xs shrink-0 overflow-hidden">
+                <div className="w-9 h-9 rounded-full bg-[#0D9488]/30 border border-[#14B8A6] text-teal-200 flex items-center justify-center font-semibold text-xs shrink-0 overflow-hidden">
                   {showUserAvatar ? (
                     <img
                       src={userAvatarUrl}
@@ -1003,20 +1004,6 @@ function AppContent() {
                     userInitials
                   )}
                 </div>
-                <div className="hidden md:block text-left">
-                  <p className="text-xs font-semibold leading-tight text-white">
-                    {userDisplayName}
-                  </p>
-                  <p className="text-[10px] text-teal-200/80">
-                    {userRoleLabel}
-                  </p>
-                </div>
-                <ChevronDown
-                  aria-hidden="true"
-                  className={`hidden sm:block w-4 h-4 text-teal-200/80 transition-transform duration-150 motion-reduce:transition-none ${
-                    isUserMenuOpen ? 'rotate-180' : ''
-                  }`}
-                />
               </button>
 
               {isUserMenuOpen && (
