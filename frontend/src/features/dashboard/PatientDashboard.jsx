@@ -12,6 +12,7 @@ import {
   FileText,
   ShieldCheck,
   Award,
+  ChevronDown,
   ChevronRight,
   X,
   AlertTriangle,
@@ -122,6 +123,7 @@ export function PatientDashboard({
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [activeListTab, setActiveListTab] = useState('upcoming');
+  const [isRecentActivityExpanded, setIsRecentActivityExpanded] = useState(false);
   const appointmentsSectionRef = useRef(null);
 
   const focusScheduleTab = (tab) => {
@@ -1044,42 +1046,79 @@ export function PatientDashboard({
           </div>
 
           {/* 6. Recent Appointment Activity Section (Phase 7) */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200/80 dark:border-gray-700 shadow-xs p-5 space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-gray-700 pb-3">
-              <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                <h3 className="text-sm font-bold text-[#12304A] dark:text-slate-100">Recent Appointment Activity</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200/80 dark:border-gray-700 shadow-xs overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setIsRecentActivityExpanded((prev) => !prev)}
+              aria-expanded={isRecentActivityExpanded}
+              aria-controls="patient-recent-activity-panel"
+              className="w-full px-5 py-4 flex items-center justify-between gap-3 text-left hover:bg-slate-50/80 dark:hover:bg-gray-700/40 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <Activity className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" aria-hidden="true" />
+                <h3 className="text-sm font-bold text-[#12304A] dark:text-slate-100 truncate">
+                  Recent Appointment Activity
+                </h3>
+                {recentActivity.length > 0 && (
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-teal-50 dark:bg-teal-900/50 text-[#0F766E] dark:text-teal-300 border border-teal-200/70 dark:border-teal-700/60 tabular-nums">
+                    {recentActivity.length}
+                  </span>
+                )}
               </div>
-              <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">Latest patient updates</span>
-            </div>
+              <div className="flex items-center gap-2.5 shrink-0">
+                <span className="hidden sm:inline text-[11px] text-slate-400 dark:text-slate-500 font-medium">
+                  Latest patient updates
+                </span>
+                <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 dark:bg-gray-700/80 text-slate-500 dark:text-slate-300">
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={`w-4 h-4 transition-transform duration-200 motion-reduce:transition-none ${
+                      isRecentActivityExpanded ? 'rotate-180' : ''
+                    }`}
+                  />
+                </span>
+                <span className="sr-only">
+                  {isRecentActivityExpanded ? 'Minimize recent appointment activity' : 'Expand recent appointment activity'}
+                </span>
+              </div>
+            </button>
 
-            {recentActivity.length === 0 ? (
-              <p className="text-xs text-slate-400 dark:text-slate-500 italic py-2">No recent appointment activity recorded.</p>
-            ) : (
-              <div className="divide-y divide-slate-100 dark:divide-gray-700">
-                {recentActivity.map((act) => (
-                  <div key={act.id} className="py-2.5 flex items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-2 h-2 rounded-full bg-teal-500 dark:bg-teal-400 shrink-0" />
-                      <div>
-                        <span className="font-semibold text-slate-800 dark:text-slate-100">
-                          {act.service_name || 'Appointment'}
+            {isRecentActivityExpanded && (
+              <div
+                id="patient-recent-activity-panel"
+                className="px-5 pb-4 pt-1 border-t border-slate-100 dark:border-gray-700"
+              >
+                {recentActivity.length === 0 ? (
+                  <p className="text-xs text-slate-400 dark:text-slate-500 italic py-2">
+                    No recent appointment activity recorded.
+                  </p>
+                ) : (
+                  <div className="divide-y divide-slate-100 dark:divide-gray-700">
+                    {recentActivity.map((act) => (
+                      <div key={act.id} className="py-2.5 flex items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-2 h-2 rounded-full bg-teal-500 dark:bg-teal-400 shrink-0" />
+                          <div>
+                            <span className="font-semibold text-slate-800 dark:text-slate-100">
+                              {act.service_name || 'Appointment'}
+                            </span>
+                            <span className="text-slate-500 dark:text-slate-400">
+                              {' '}
+                              transitioned to{' '}
+                              <strong className="text-teal-700 dark:text-teal-300">{act.new_status}</strong>
+                            </span>
+                            {act.dentist_last_name && (
+                              <span className="text-slate-400 dark:text-slate-500"> (Dr. {act.dentist_last_name})</span>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-[11px] text-slate-400 dark:text-slate-500 shrink-0 font-mono">
+                          {formatManilaDate(act.created_at)}
                         </span>
-                        <span className="text-slate-500 dark:text-slate-400">
-                          {' '}
-                          transitioned to{' '}
-                          <strong className="text-teal-700 dark:text-teal-300">{act.new_status}</strong>
-                        </span>
-                        {act.dentist_last_name && (
-                          <span className="text-slate-400 dark:text-slate-500"> (Dr. {act.dentist_last_name})</span>
-                        )}
                       </div>
-                    </div>
-                    <span className="text-[11px] text-slate-400 dark:text-slate-500 shrink-0 font-mono">
-                      {formatManilaDate(act.created_at)}
-                    </span>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
             )}
           </div>
