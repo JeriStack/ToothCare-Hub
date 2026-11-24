@@ -115,6 +115,31 @@ function normalizeDateTimeLocalPayload(val) {
   return cleaned.length === 16 ? `${cleaned}:00` : cleaned;
 }
 
+function getCurrentManilaDayOfWeek() {
+  try {
+    const weekday = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Manila',
+      weekday: 'short',
+    }).format(new Date());
+    const map = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
+    return map[weekday] || 1;
+  } catch {
+    const jsDay = new Date().getDay();
+    return jsDay === 0 ? 7 : jsDay;
+  }
+}
+
+function getOperatingBarStyle(openingTime, closingTime) {
+  const scaleStart = 6 * 60; // 6:00 AM
+  const scaleEnd = 21 * 60; // 9:00 PM
+  const totalSpan = scaleEnd - scaleStart;
+  const startMin = Math.max(scaleStart, Math.min(scaleEnd, timeToMinutes(openingTime)));
+  const endMin = Math.max(startMin, Math.min(scaleEnd, timeToMinutes(closingTime)));
+  const leftPct = ((startMin - scaleStart) / totalSpan) * 100;
+  const widthPct = Math.max(6, ((endMin - startMin) / totalSpan) * 100);
+  return { left: `${leftPct}%`, width: `${Math.min(100 - leftPct, widthPct)}%` };
+}
+
 export function AdminSchedulePage() {
   const { user, hasPermission } = useAuth();
   const canManageClinic = Boolean(
@@ -532,6 +557,8 @@ export function AdminSchedulePage() {
     }
   };
 
+  const todayDayOfWeek = useMemo(() => getCurrentManilaDayOfWeek(), []);
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -698,47 +725,64 @@ export function AdminSchedulePage() {
                 )}
               </div>
 
-              <div className="divide-y divide-slate-100 dark:divide-gray-700/70">
-                {DAYS_OF_WEEK.map((day) => {
-                  const hourRecord = clinicHours.find((h) => h.day_of_week === day.id) || {
-                    day_of_week: day.id,
-                    opening_time: '08:00:00',
-                    closing_time: '17:00:00',
-                    is_closed: 0,
-                  };
-                  const isOpen = !Boolean(hourRecord.is_closed);
-                  const rowError = clinicHoursErrors[day.id];
-                  const durationLabel = isOpen
-                    ? formatDurationLabel(hourRecord.opening_time, hourRecord.closing_time)
-                    : null;
+              {/* 7-Day Modern Weekly Calendar Grid */}
+              <div className="p-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3">
+                  {DAYS_OF_WEEK.map((day) => {
+                    const hourRecord = clinicHours.find((h) => h.day_of_week === day.id) || {
+                      day_of_week: day.id,
+                      opening_time: '08:00:00',
+                      closing_time: '17:00:00',
+                      is_closed: 0,
+                    };
+                    const isOpen = !Boolean(hourRecord.is_closed);
+                    const isToday = day.id === todayDayOfWeek;
+                    const rowError = clinicHoursErrors[day.id];
+                    const durationLabel = isOpen
+                      ? formatDurationLabel(hourRecord.opening_time, hourRecord.closing_time)
+                      : null;
+                    const barStyle = isOpen && !rowError
+                      ? getOperatingBarStyle(hourRecord.opening_time, hourRecord.closing_time)
+                      : null;
 
-                  return (
-                    <div
-                      key={day.id}
-                      className={`px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${
-                        rowError
-                          ? 'bg-rose-50/50 dark:bg-rose-950/20'
-                          : isOpen
-                          ? 'bg-white dark:bg-gray-800/95'
-                          : 'bg-slate-50/60 dark:bg-gray-900/35'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 min-w-[140px]">
-                        <span
-                          className={`w-2 h-2 rounded-full shrink-0 ${
-                            isOpen ? 'bg-teal-500 dark:bg-teal-400' : 'bg-slate-300 dark:bg-gray-600'
-                          }`}
-                          aria-hidden="true"
-                        />
-                        <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">
-                          {day.name}
-                        </span>
-                      </div>
+                    return (
+                      <div
+                        key={day.id}
+                        className={`rounded-2xl border p-3.5 flex flex-col justify-between gap-3 transition-colors ${
+                          rowError
+                            ? 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-300 dark:border-rose-700/80'
+                            : isToday
+                            ? 'bg-teal-50/35 dark:bg-teal-950/25 border-[#0D9488]/60 dark:border-teal-400/50 ring-1 ring-[#0D9488]/15 dark:ring-teal-400/20'
+                            : isOpen
+                            ? 'bg-white dark:bg-gray-900/50 border-slate-200/90 dark:border-gray-700/80 hover:border-slate-300 dark:hover:border-gray-600'
+                            : 'bg-slate-50/75 dark:bg-gray-900/30 border-slate-200/75 dark:border-gray-800'
+                        }`}
+                      >
+                        {/* Day Calendar Column Header */}
+                        <div className="flex items-start justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-gray-700/70">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={`text-[10px] font-bold uppercase tracking-widest ${
+                                  isToday
+                                    ? 'text-[#0F766E] dark:text-teal-300'
+                                    : 'text-slate-400 dark:text-slate-500'
+                                }`}
+                              >
+                                {day.short}
+                              </span>
+                              {isToday && (
+                                <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-[#0D9488]/15 dark:bg-teal-400/15 text-[#0F766E] dark:text-teal-300">
+                                  Today
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-0.5 truncate">
+                              {day.name}
+                            </p>
+                          </div>
 
-                      {canManageClinic ? (
-                        <div className="flex flex-col sm:items-end gap-1.5">
-                          <div className="flex flex-wrap items-center gap-3">
-                            {/* Intuitive Open / Closed Toggle Switch (ON = Open, OFF = Closed) */}
+                          {canManageClinic ? (
                             <button
                               type="button"
                               role="switch"
@@ -747,7 +791,8 @@ export function AdminSchedulePage() {
                               onClick={() =>
                                 handleClinicHourChange(day.id, 'is_closed', isOpen ? 1 : 0)
                               }
-                              className="inline-flex items-center gap-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded-full"
+                              className="inline-flex items-center cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] rounded-full mt-0.5 shrink-0"
+                              title={isOpen ? 'Open (click to mark closed)' : 'Closed (click to mark open)'}
                             >
                               <span
                                 className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-150 ${
@@ -763,87 +808,136 @@ export function AdminSchedulePage() {
                                   }`}
                                 />
                               </span>
-                              <span
-                                className={`text-xs font-semibold min-w-[52px] text-left ${
-                                  isOpen
-                                    ? 'text-teal-700 dark:text-teal-300'
-                                    : 'text-slate-500 dark:text-slate-400'
-                                }`}
-                              >
-                                {isOpen ? 'Open' : 'Closed'}
-                              </span>
                             </button>
+                          ) : (
+                            <span
+                              className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+                                isOpen ? 'bg-teal-500 dark:bg-teal-400' : 'bg-slate-300 dark:bg-gray-600'
+                              }`}
+                              aria-hidden="true"
+                            />
+                          )}
+                        </div>
 
-                            {isOpen ? (
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="time"
-                                  aria-label={`${day.name} opening time`}
-                                  value={hourRecord.opening_time.substring(0, 5)}
-                                  onChange={(e) =>
-                                    handleClinicHourChange(day.id, 'opening_time', `${e.target.value}:00`)
-                                  }
-                                  className={`px-2.5 py-1.5 text-xs tabular-nums bg-white dark:bg-gray-700 border rounded-lg text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/30 ${
-                                    rowError
-                                      ? 'border-rose-400 dark:border-rose-500'
-                                      : 'border-slate-200 dark:border-gray-600'
-                                  }`}
-                                />
-                                <span className="text-xs text-slate-400 dark:text-slate-500">to</span>
-                                <input
-                                  type="time"
-                                  aria-label={`${day.name} closing time`}
-                                  value={hourRecord.closing_time.substring(0, 5)}
-                                  onChange={(e) =>
-                                    handleClinicHourChange(day.id, 'closing_time', `${e.target.value}:00`)
-                                  }
-                                  className={`px-2.5 py-1.5 text-xs tabular-nums bg-white dark:bg-gray-700 border rounded-lg text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/30 ${
-                                    rowError
-                                      ? 'border-rose-400 dark:border-rose-500'
-                                      : 'border-slate-200 dark:border-gray-600'
-                                  }`}
-                                />
+                        {/* Day Calendar Body */}
+                        {isOpen ? (
+                          <div className="flex-1 flex flex-col justify-between gap-3">
+                            {/* Operating Window Event Block */}
+                            <div className="rounded-xl border border-teal-200/75 dark:border-teal-500/25 border-l-[3px] border-l-[#0D9488] dark:border-l-teal-400 bg-teal-50/55 dark:bg-teal-500/10 p-2.5 space-y-2">
+                              <div className="flex items-center justify-between gap-1.5">
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-teal-700 dark:text-teal-300">
+                                  Open
+                                </span>
                                 {durationLabel && (
-                                  <span className="hidden md:inline-block min-w-[42px] text-right text-[11px] font-medium text-slate-400 dark:text-slate-500 tabular-nums">
+                                  <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-white/80 dark:bg-gray-900/60 text-teal-800 dark:text-teal-200 border border-teal-200/60 dark:border-teal-500/25 tabular-nums">
                                     {durationLabel}
                                   </span>
                                 )}
                               </div>
-                            ) : (
-                              <span className="text-xs text-slate-400 dark:text-slate-500 italic">
-                                Closed all day
-                              </span>
+
+                              <p className="text-xs font-bold text-slate-900 dark:text-slate-50 tabular-nums leading-snug">
+                                {formatTime12h(hourRecord.opening_time)} – {formatTime12h(hourRecord.closing_time)}
+                              </p>
+
+                              {/* Proportional Day Timeline Bar (6 AM – 9 PM) */}
+                              {barStyle && (
+                                <div className="pt-0.5 space-y-1">
+                                  <div className="relative h-1.5 w-full rounded-full bg-slate-200/80 dark:bg-gray-800 overflow-hidden">
+                                    <span
+                                      aria-hidden="true"
+                                      style={barStyle}
+                                      className="absolute inset-y-0 rounded-full bg-[#0D9488] dark:bg-teal-400"
+                                    />
+                                  </div>
+                                  <div className="flex items-center justify-between text-[9px] text-slate-400 dark:text-slate-500 tabular-nums">
+                                    <span>6 AM</span>
+                                    <span>12 PM</span>
+                                    <span>9 PM</span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Admin Inline Time Pickers */}
+                            {canManageClinic && (
+                              <div className="space-y-2 pt-0.5">
+                                <div>
+                                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
+                                    Opens
+                                  </label>
+                                  <input
+                                    type="time"
+                                    aria-label={`${day.name} opening time`}
+                                    value={hourRecord.opening_time.substring(0, 5)}
+                                    onChange={(e) =>
+                                      handleClinicHourChange(day.id, 'opening_time', `${e.target.value}:00`)
+                                    }
+                                    className={`w-full px-2 py-1.5 text-xs tabular-nums bg-white dark:bg-gray-800 border rounded-lg text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/30 ${
+                                      rowError
+                                        ? 'border-rose-400 dark:border-rose-500'
+                                        : 'border-slate-200 dark:border-gray-600'
+                                    }`}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
+                                    Closes
+                                  </label>
+                                  <input
+                                    type="time"
+                                    aria-label={`${day.name} closing time`}
+                                    value={hourRecord.closing_time.substring(0, 5)}
+                                    onChange={(e) =>
+                                      handleClinicHourChange(day.id, 'closing_time', `${e.target.value}:00`)
+                                    }
+                                    className={`w-full px-2 py-1.5 text-xs tabular-nums bg-white dark:bg-gray-800 border rounded-lg text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/30 ${
+                                      rowError
+                                        ? 'border-rose-400 dark:border-rose-500'
+                                        : 'border-slate-200 dark:border-gray-600'
+                                    }`}
+                                  />
+                                </div>
+                                {rowError && (
+                                  <p role="alert" className="text-[11px] font-medium text-rose-600 dark:text-rose-400 leading-snug">
+                                    {rowError}
+                                  </p>
+                                )}
+                              </div>
                             )}
                           </div>
-                          {rowError && (
-                            <p role="alert" className="text-[11px] font-medium text-rose-600 dark:text-rose-400">
-                              {rowError}
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-3">
-                          {isOpen ? (
-                            <>
-                              <span className="text-xs font-medium text-slate-800 dark:text-slate-100 tabular-nums">
-                                {formatTime12h(hourRecord.opening_time)} – {formatTime12h(hourRecord.closing_time)}
-                              </span>
-                              {durationLabel && (
-                                <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-200/70 dark:border-teal-500/25 tabular-nums">
-                                  {durationLabel}
-                                </span>
-                              )}
-                            </>
-                          ) : (
-                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-gray-700">
+                        ) : (
+                          <div className="flex-1 flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 dark:border-gray-700/80 bg-slate-100/50 dark:bg-gray-900/40 px-3 py-6 text-center">
+                            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                               Closed All Day
                             </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                              No clinic bookings
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Calendar Legend Footer */}
+              <div className="px-5 py-3 border-t border-slate-100 dark:border-gray-700/80 bg-slate-50/50 dark:bg-gray-900/35 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                <span>Timezone: Asia/Manila (PST)</span>
+                <div className="flex items-center gap-4">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-teal-500 dark:bg-teal-400" aria-hidden="true" />
+                    Open
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-gray-600" aria-hidden="true" />
+                    Closed
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-xs border border-[#0D9488] bg-teal-500/20" aria-hidden="true" />
+                    Today
+                  </span>
+                </div>
               </div>
             </section>
 
