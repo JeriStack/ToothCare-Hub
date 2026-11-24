@@ -243,13 +243,13 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                 Live Desk
               </span>
             </div>
+            <p className="text-slate-300 text-sm flex items-center gap-2">
+              <Clock className="w-4 h-4 text-teal-400 shrink-0" />
+              <span>Clinic Time: {data?.clinic_time || 'Asia/Manila (PST)'}</span>
+            </p>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
               Welcome back, {receptionistName}
             </h1>
-            <p className="text-slate-300 text-sm flex items-center gap-2">
-              <Clock className="w-4 h-4 text-teal-400" />
-              <span>Clinic Time: {data?.clinic_time || 'Asia/Manila (PST)'}</span>
-            </p>
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
