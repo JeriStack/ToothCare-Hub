@@ -85,8 +85,7 @@ describe('AdminAppointmentsPage Component', () => {
     render(<AdminAppointmentsPage />);
 
     expect(screen.getByText('Appointment Triage & Management')).toBeInTheDocument();
-    expect(screen.getByLabelText(/From Date/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/To Date/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Appointment date/i)).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByText('#101')).toBeInTheDocument();
@@ -96,7 +95,7 @@ describe('AdminAppointmentsPage Component', () => {
     });
   });
 
-  it('validates invalid date ranges and prevents fetching when To Date is earlier than From Date', async () => {
+  it('filters appointments by a single selected calendar date and resets via Clear Filters', async () => {
     appointmentsApi.listAdmin.mockResolvedValue({
       data: [],
       meta: { total: 0, page: 1, per_page: 15, last_page: 1 },
@@ -107,10 +106,18 @@ describe('AdminAppointmentsPage Component', () => {
       expect(appointmentsApi.listAdmin).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.change(screen.getByLabelText(/From Date/i), { target: { value: '2026-11-30' } });
-    fireEvent.change(screen.getByLabelText(/To Date/i), { target: { value: '2026-11-20' } });
+    fireEvent.change(screen.getByLabelText(/Appointment date/i), { target: { value: '2026-11-25' } });
 
-    expect(screen.getByRole('alert')).toHaveTextContent('End date cannot be earlier than start date.');
+    await waitFor(() => {
+      expect(appointmentsApi.listAdmin).toHaveBeenCalledWith(
+        expect.objectContaining({ start_date: '2026-11-25', end_date: '2026-11-25', per_page: 15 })
+      );
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Clear Filters/i }));
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Appointment date/i)).toHaveValue('');
+    });
   });
 
   it('disables Confirm on a conflicting pending appointment, shows conflict warning, and prefills editable rejection reason', async () => {

@@ -19,7 +19,6 @@ import {
   ShieldAlert,
   ShieldCheck,
   CalendarClock,
-  SlidersHorizontal,
 } from 'lucide-react';
 import { appointmentsApi } from '../api';
 import { dentistsApi } from '../../dentists/api';
@@ -199,9 +198,7 @@ export function AdminAppointmentsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [dentistId, setDentistId] = useState('');
   const [serviceId, setServiceId] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [filterError, setFilterError] = useState(null);
+  const [selectedDate, setSelectedDate] = useState('');
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -261,12 +258,6 @@ export function AdminAppointmentsPage() {
 
   // Fetch paginated appointments + backend summary & availability checks
   const fetchAppointments = useCallback(() => {
-    if (dateFrom && dateTo && dateTo < dateFrom) {
-      setFilterError('End date cannot be earlier than start date.');
-      return;
-    }
-
-    setFilterError(null);
     setLoading(true);
     setError(null);
     const currentSeq = ++requestSeqRef.current;
@@ -279,8 +270,10 @@ export function AdminAppointmentsPage() {
     if (debouncedSearch) params.search = debouncedSearch;
     if (dentistId) params.dentist_id = dentistId;
     if (serviceId) params.service_id = serviceId;
-    if (dateFrom) params.start_date = dateFrom;
-    if (dateTo) params.end_date = dateTo;
+    if (selectedDate) {
+      params.start_date = selectedDate;
+      params.end_date = selectedDate;
+    }
 
     appointmentsApi
       .listAdmin(params)
@@ -310,7 +303,7 @@ export function AdminAppointmentsPage() {
           setLoading(false);
         }
       });
-  }, [page, statusFilter, debouncedSearch, dentistId, serviceId, dateFrom, dateTo, refreshKey]);
+  }, [page, statusFilter, debouncedSearch, dentistId, serviceId, selectedDate, refreshKey]);
 
   useEffect(() => {
     fetchAppointments();
@@ -520,20 +513,11 @@ export function AdminAppointmentsPage() {
     setDebouncedSearch('');
     setDentistId('');
     setServiceId('');
-    setDateFrom('');
-    setDateTo('');
-    setFilterError(null);
+    setSelectedDate('');
     setPage(1);
   };
 
-  const clearDateRange = () => {
-    setDateFrom('');
-    setDateTo('');
-    setFilterError(null);
-    setPage(1);
-  };
-
-  const hasAnyFilter = Boolean(statusFilter || searchInput || dentistId || serviceId || dateFrom || dateTo);
+  const hasAnyFilter = Boolean(statusFilter || searchInput || dentistId || serviceId || selectedDate);
   const clinicTodayIso = getClinicTodayIso();
 
   const isApprovalBlocked = Boolean(approvalValidation && approvalValidation.available === false);
@@ -653,17 +637,11 @@ export function AdminAppointmentsPage() {
           <button
             type="button"
             onClick={() => {
-              if (dateFrom === clinicTodayIso && dateTo === clinicTodayIso) {
-                clearDateRange();
-              } else {
-                setDateFrom(clinicTodayIso);
-                setDateTo(clinicTodayIso);
-                setFilterError(null);
-                setPage(1);
-              }
+              setSelectedDate(selectedDate === clinicTodayIso ? '' : clinicTodayIso);
+              setPage(1);
             }}
             className={`text-left p-4 rounded-2xl border transition-colors cursor-pointer ${
-              dateFrom === clinicTodayIso && dateTo === clinicTodayIso
+              selectedDate === clinicTodayIso
                 ? 'bg-teal-50/70 dark:bg-teal-500/10 border-teal-300 dark:border-teal-500/40'
                 : 'bg-white dark:bg-gray-800/95 border-slate-200/90 dark:border-gray-700/80 hover:border-slate-300 dark:hover:border-gray-600'
             }`}
@@ -723,35 +701,29 @@ export function AdminAppointmentsPage() {
         </div>
       )}
 
-      {/* Search & Filter Workspace */}
-      <div className="bg-white dark:bg-gray-800/95 p-4 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 shadow-xs space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3">
+      {/* Filter and Triage Bar */}
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-sm space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
           {/* Search Input */}
-          <div className="xl:col-span-4 space-y-1">
-            <label htmlFor="admin-appt-search" className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Search
-            </label>
-            <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
-              <input
-                id="admin-appt-search"
-                type="text"
-                value={searchInput}
-                onChange={(e) => {
-                  setSearchInput(e.target.value);
-                  setPage(1);
-                }}
-                placeholder="Patient name, phone, email, or ref #..."
-                className="w-full min-h-10 pl-9 pr-3 py-2 bg-white dark:bg-gray-900/60 border border-slate-200 dark:border-gray-600 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
-              />
-            </div>
+          <div className="relative">
+            <label htmlFor="admin-appt-search" className="sr-only">Search patient, email, or service</label>
+            <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
+            <input
+              id="admin-appt-search"
+              type="text"
+              value={searchInput}
+              onChange={(e) => {
+                setSearchInput(e.target.value);
+                setPage(1);
+              }}
+              placeholder="Search patient, email, service..."
+              className="w-full pl-9 pr-3 py-2 bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400"
+            />
           </div>
 
-          {/* Status Filter */}
-          <div className="xl:col-span-2 space-y-1">
-            <label htmlFor="admin-appt-status" className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Status
-            </label>
+          {/* Status Select */}
+          <div>
+            <label htmlFor="admin-appt-status" className="sr-only">Filter by status</label>
             <select
               id="admin-appt-status"
               aria-label="Filter by status"
@@ -760,7 +732,7 @@ export function AdminAppointmentsPage() {
                 setStatusFilter(e.target.value);
                 setPage(1);
               }}
-              className="w-full min-h-10 px-3 py-2 border border-slate-200 dark:border-gray-600 rounded-xl text-xs bg-white dark:bg-gray-900/60 text-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
+              className="w-full px-3 py-2 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400 bg-white dark:bg-gray-700 text-slate-700 dark:text-slate-100"
             >
               <option value="">All Statuses</option>
               <option value="PENDING">Pending Review</option>
@@ -771,11 +743,9 @@ export function AdminAppointmentsPage() {
             </select>
           </div>
 
-          {/* Dentist Filter */}
-          <div className="xl:col-span-3 space-y-1">
-            <label htmlFor="admin-appt-dentist" className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Dentist
-            </label>
+          {/* Dentist Select */}
+          <div>
+            <label htmlFor="admin-appt-dentist" className="sr-only">Filter by dentist</label>
             <select
               id="admin-appt-dentist"
               aria-label="Filter by dentist"
@@ -784,7 +754,7 @@ export function AdminAppointmentsPage() {
                 setDentistId(e.target.value);
                 setPage(1);
               }}
-              className="w-full min-h-10 px-3 py-2 border border-slate-200 dark:border-gray-600 rounded-xl text-xs bg-white dark:bg-gray-900/60 text-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
+              className="w-full px-3 py-2 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400 bg-white dark:bg-gray-700 text-slate-700 dark:text-slate-100"
             >
               <option value="">All Dentists</option>
               {dentists.map((d) => (
@@ -795,11 +765,9 @@ export function AdminAppointmentsPage() {
             </select>
           </div>
 
-          {/* Service Filter */}
-          <div className="xl:col-span-3 space-y-1">
-            <label htmlFor="admin-appt-service" className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Service
-            </label>
+          {/* Dental Service Select */}
+          <div>
+            <label htmlFor="admin-appt-service" className="sr-only">Filter by dental service</label>
             <select
               id="admin-appt-service"
               aria-label="Filter by dental service"
@@ -808,7 +776,7 @@ export function AdminAppointmentsPage() {
                 setServiceId(e.target.value);
                 setPage(1);
               }}
-              className="w-full min-h-10 px-3 py-2 border border-slate-200 dark:border-gray-600 rounded-xl text-xs bg-white dark:bg-gray-900/60 text-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
+              className="w-full px-3 py-2 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400 bg-white dark:bg-gray-700 text-slate-700 dark:text-slate-100"
             >
               <option value="">All Services</option>
               {services.map((s) => (
@@ -818,92 +786,34 @@ export function AdminAppointmentsPage() {
               ))}
             </select>
           </div>
+
+          {/* Single Calendar Date Filter */}
+          <div>
+            <label htmlFor="admin-appt-date" className="sr-only">Appointment date</label>
+            <input
+              id="admin-appt-date"
+              type="date"
+              value={selectedDate}
+              onChange={(e) => {
+                setSelectedDate(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400 text-slate-700 dark:text-slate-100"
+              aria-label="Appointment date"
+            />
+          </div>
         </div>
 
-        {/* Dedicated Appointment Date Range Row */}
-        <div className="pt-3 border-t border-slate-100 dark:border-gray-700/80 flex flex-col lg:flex-row lg:items-end justify-between gap-3">
-          <div className="flex flex-col sm:flex-row sm:items-end gap-3 flex-1">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 pb-2 shrink-0">
-              <Calendar className="w-3.5 h-3.5 text-[#0D9488] dark:text-teal-400" aria-hidden="true" />
-              <span>Appointment Date Range</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 max-w-lg">
-              <div className="space-y-1">
-                <label htmlFor="admin-appt-date-from" className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                  From Date<span className="sr-only"> (Start date)</span>
-                </label>
-                <input
-                  id="admin-appt-date-from"
-                  type="date"
-                  value={dateFrom}
-                  max={dateTo || undefined}
-                  onChange={(e) => {
-                    const nextFrom = e.target.value;
-                    setDateFrom(nextFrom);
-                    if (nextFrom && dateTo && dateTo < nextFrom) {
-                      setFilterError('End date cannot be earlier than start date.');
-                    } else {
-                      setFilterError(null);
-                      setPage(1);
-                    }
-                  }}
-                  className="w-full min-h-9 px-3 py-1.5 bg-white dark:bg-gray-900/60 border border-slate-200 dark:border-gray-600 rounded-xl text-xs text-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D9488] tabular-nums"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label htmlFor="admin-appt-date-to" className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                  To Date<span className="sr-only"> (End date)</span>
-                </label>
-                <input
-                  id="admin-appt-date-to"
-                  type="date"
-                  value={dateTo}
-                  min={dateFrom || undefined}
-                  onChange={(e) => {
-                    const nextTo = e.target.value;
-                    setDateTo(nextTo);
-                    if (dateFrom && nextTo && nextTo < dateFrom) {
-                      setFilterError('End date cannot be earlier than start date.');
-                    } else {
-                      setFilterError(null);
-                      setPage(1);
-                    }
-                  }}
-                  className="w-full min-h-9 px-3 py-1.5 bg-white dark:bg-gray-900/60 border border-slate-200 dark:border-gray-600 rounded-xl text-xs text-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D9488] tabular-nums"
-                />
-              </div>
-            </div>
-
-            {(dateFrom || dateTo) && (
-              <button
-                type="button"
-                onClick={clearDateRange}
-                className="inline-flex items-center gap-1 px-2.5 py-2 rounded-lg text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors cursor-pointer self-start sm:self-end"
-              >
-                <X className="w-3.5 h-3.5" aria-hidden="true" />
-                Clear Range
-              </button>
-            )}
-          </div>
-
-          {hasAnyFilter && (
+        {hasAnyFilter && (
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400 pt-1">
+            <span>Filters currently applied</span>
             <button
               type="button"
               onClick={resetFilters}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-gray-700 text-xs font-semibold text-[#0F766E] dark:text-teal-400 hover:bg-teal-50/60 dark:hover:bg-teal-950/30 transition-colors cursor-pointer self-start lg:self-end"
+              className="text-[#0D9488] dark:text-teal-400 font-semibold hover:underline cursor-pointer"
             >
-              <SlidersHorizontal className="w-3.5 h-3.5" aria-hidden="true" />
               Clear Filters
             </button>
-          )}
-        </div>
-
-        {filterError && (
-          <div role="alert" className="text-xs text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl px-3.5 py-2.5 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span>{filterError}</span>
           </div>
         )}
       </div>
