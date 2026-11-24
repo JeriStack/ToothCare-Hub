@@ -288,15 +288,38 @@ class AppointmentController
 
         $result = $this->appointmentService->listAdminAppointments($queryParams, $page, $perPage);
 
-        return Response::paginated(
-            $result['items'] ?? [],
-            [
-                'total' => $result['total'] ?? 0,
-                'page' => $result['page'] ?? $page,
-                'per_page' => $result['per_page'] ?? $perPage,
-                'last_page' => $result['total_pages'] ?? 1,
-            ]
-        );
+        $meta = [
+            'total' => $result['total'] ?? 0,
+            'page' => $result['page'] ?? $page,
+            'per_page' => $result['per_page'] ?? $perPage,
+            'last_page' => $result['total_pages'] ?? 1,
+        ];
+        if (isset($result['summary'])) {
+            $meta['summary'] = $result['summary'];
+        }
+
+        return Response::paginated($result['items'] ?? [], $meta);
+    }
+
+    /**
+     * GET /api/v1/admin/appointments/{id}/availability
+     * Revalidate dentist & clinic availability for a pending appointment prior to approval.
+     */
+    public function checkAvailability(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required.');
+        }
+
+        $id = (int) $request->getParam('id');
+        if ($id <= 0) {
+            throw HttpException::badRequest('Invalid appointment ID.');
+        }
+
+        $validation = $this->appointmentService->validateAppointmentForApproval($id);
+
+        return Response::success($validation);
     }
 
     /**

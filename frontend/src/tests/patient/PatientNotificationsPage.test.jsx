@@ -10,6 +10,7 @@ const { mockNotificationsApi } = vi.hoisted(() => {
       getUnreadCount: vi.fn(),
       markAsRead: vi.fn(),
       markAllAsRead: vi.fn(),
+      deleteNotification: vi.fn(),
     },
   };
 });
@@ -54,6 +55,7 @@ describe('PatientNotificationsPage Component', () => {
     mockNotificationsApi.getUnreadCount.mockResolvedValue(1);
     mockNotificationsApi.markAsRead.mockResolvedValue({ id: 1, read_at: new Date().toISOString() });
     mockNotificationsApi.markAllAsRead.mockResolvedValue({ success: true });
+    mockNotificationsApi.deleteNotification.mockResolvedValue({ success: true, deleted_id: 1 });
   });
 
   it('renders notifications list and shows unread badge', async () => {
@@ -80,16 +82,32 @@ describe('PatientNotificationsPage Component', () => {
     expect(screen.queryByText('Booking Request Received')).toBeNull();
   });
 
-  it('marks individual notification as read when clicking mark read button', async () => {
+  it('marks individual notification as read when clicking Mark as Read button', async () => {
     render(<PatientNotificationsPage onNavigateToAppointments={vi.fn()} />);
 
     await waitFor(() => {
       expect(screen.getByText('Appointment Confirmed')).toBeDefined();
     });
 
-    const markReadBtn = screen.getByRole('button', { name: /Mark read/i });
+    const markReadBtn = screen.getByRole('button', { name: /Mark as Read/i });
     fireEvent.click(markReadBtn);
 
     expect(mockNotificationsApi.markAsRead).toHaveBeenCalledWith(1);
+  });
+
+  it('deletes a notification when clicking Delete button', async () => {
+    render(<PatientNotificationsPage onNavigateToAppointments={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Appointment Confirmed')).toBeDefined();
+    });
+
+    const deleteBtn = screen.getByRole('button', { name: /Delete notification: Appointment Confirmed/i });
+    fireEvent.click(deleteBtn);
+
+    await waitFor(() => {
+      expect(mockNotificationsApi.deleteNotification).toHaveBeenCalledWith(1);
+      expect(screen.queryByText('Appointment Confirmed')).toBeNull();
+    });
   });
 });

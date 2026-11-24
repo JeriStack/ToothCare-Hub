@@ -335,6 +335,17 @@ describe('Legal Documents & User Consent Management UI', () => {
     fireEvent.click(rightsLink);
     expect(rightsLink).toHaveAttribute('aria-current', 'location');
 
+    // Minimize and expand desktop Table of Contents rail
+    const minimizeBtn = screen.getByRole('button', { name: /minimize table of contents/i });
+    expect(minimizeBtn).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(minimizeBtn);
+    expect(screen.queryByRole('navigation', { name: /table of contents/i })).not.toBeInTheDocument();
+
+    const expandBtn = screen.getByRole('button', { name: /expand table of contents/i });
+    expect(expandBtn).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(expandBtn);
+    expect(screen.getByRole('navigation', { name: /table of contents/i })).toBeInTheDocument();
+
     printSpy.mockRestore();
   });
 });

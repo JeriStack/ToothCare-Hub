@@ -227,6 +227,14 @@ class AppointmentValidator
             }
         }
 
+        $conflictReasonCode = null;
+        if (isset($data['conflict_reason_code']) && trim((string) $data['conflict_reason_code']) !== '') {
+            $rawCode = strtoupper(trim((string) $data['conflict_reason_code']));
+            if (preg_match('/^[A-Z0-9_]{2,64}$/', $rawCode) === 1) {
+                $conflictReasonCode = $rawCode;
+            }
+        }
+
         if (!empty($errors)) {
             throw HttpException::unprocessableEntity(
                 'Rejection validation failed.',
@@ -234,7 +242,10 @@ class AppointmentValidator
             );
         }
 
-        return ['reason' => $reason];
+        return [
+            'reason' => $reason,
+            'conflict_reason_code' => $conflictReasonCode,
+        ];
     }
 
     /**

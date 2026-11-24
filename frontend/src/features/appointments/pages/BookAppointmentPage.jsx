@@ -64,6 +64,7 @@ export function BookAppointmentPage({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [isConflict, setIsConflict] = useState(false);
+  const [slotRefreshKey, setSlotRefreshKey] = useState(0);
   const [createdAppointment, setCreatedAppointment] = useState(null);
 
   // On phones the "Next" button sits far below the fold; without this the new step would
@@ -184,6 +185,7 @@ export function BookAppointmentPage({
       setSubmitError(msg);
       if (status === 409) {
         setIsConflict(true);
+        setSlotRefreshKey((k) => k + 1);
       }
     } finally {
       setSubmitting(false);
@@ -306,18 +308,20 @@ export function BookAppointmentPage({
           <div className="flex-1 text-xs">
             <h4 className="font-bold text-amber-950 dark:text-amber-100 text-sm">Selected Time Slot No Longer Available</h4>
             <p className="mt-1">
-              Another patient just reserved this appointment slot. Please return to Step 3 and pick another available time.
+              {submitError || 'Availability changed since you selected this slot. Please return to Step 3 and choose another available time.'}
             </p>
             <button
               type="button"
               onClick={() => {
                 setSelectedSlot(null);
                 setIsConflict(false);
+                setSubmitError(null);
+                setSlotRefreshKey((k) => k + 1);
                 setStep(3);
               }}
-              className="mt-3 inline-flex items-center justify-center gap-1.5 min-h-11 sm:min-h-0 w-full sm:w-auto px-3 py-1.5 bg-amber-600 text-white rounded-lg font-semibold hover:bg-amber-700 transition-colors"
+              className="mt-3 inline-flex items-center justify-center gap-1.5 min-h-11 sm:min-h-0 w-full sm:w-auto px-3 py-1.5 bg-amber-600 text-white rounded-lg font-semibold hover:bg-amber-700 transition-colors cursor-pointer"
             >
-              <RefreshCw className="w-3.5 h-3.5" /> Select Another Time Slot
+              <RefreshCw className="w-3.5 h-3.5" /> Refresh &amp; Select Another Slot
             </button>
           </div>
         </div>
@@ -504,10 +508,20 @@ export function BookAppointmentPage({
               serviceId={selectedService?.id}
               selectedDate={selectedDate}
               selectedSlot={selectedSlot}
+              refreshTrigger={slotRefreshKey}
               onSelectSlot={(slot) => {
                 setSelectedSlot(slot);
                 setIsConflict(false);
                 setSubmitError(null);
+              }}
+              onSelectAlternativeDate={(altDate) => {
+                handleDateChange(altDate);
+              }}
+              onSelectAlternativeDentist={(altDentistId) => {
+                const matched = dentists.find((d) => Number(d.id) === Number(altDentistId));
+                if (matched) {
+                  handleDentistChange(matched);
+                }
               }}
             />
           </div>

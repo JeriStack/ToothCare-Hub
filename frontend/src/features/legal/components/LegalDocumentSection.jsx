@@ -38,7 +38,7 @@ function renderParagraphContent(paragraph) {
     if (items.length >= 2) {
       return (
         <div className="space-y-3">
-          <p className="legal-prose">{renderVerbatimText(intro)}</p>
+          <p className="legal-prose text-justify hyphens-auto">{renderVerbatimText(intro)}</p>
           <ol className="space-y-2.5 pl-4 sm:pl-5 border-l-2 border-slate-200 dark:border-gray-700/80 list-none">
             {items.map((item, idx) => {
               const cleaned = idx < items.length - 1 ? `${item};` : item;
@@ -49,12 +49,12 @@ function renderParagraphContent(paragraph) {
                     <span className="font-semibold text-[#12304A] dark:text-teal-300 tabular-nums shrink-0">
                       {markerMatch[1]}
                     </span>
-                    <span className="min-w-0">{renderVerbatimText(markerMatch[2])}</span>
+                    <span className="min-w-0 flex-1 text-justify hyphens-auto">{renderVerbatimText(markerMatch[2])}</span>
                   </li>
                 );
               }
               return (
-                <li key={idx} className="legal-prose">
+                <li key={idx} className="legal-prose text-justify hyphens-auto">
                   {renderVerbatimText(cleaned)}
                 </li>
               );
@@ -65,7 +65,7 @@ function renderParagraphContent(paragraph) {
     }
   }
 
-  return <p className="legal-prose">{renderVerbatimText(str)}</p>;
+  return <p className="legal-prose text-justify hyphens-auto">{renderVerbatimText(str)}</p>;
 }
 
 /**
@@ -102,7 +102,7 @@ export function LegalDocumentSection({ section, isFirst = false }) {
         {renderSectionHeading(section.heading)}
       </h2>
 
-      <div className="space-y-4 text-[0.9375rem] sm:text-[1rem] leading-[1.75] text-slate-700 dark:text-gray-300 max-w-[68ch] break-words">
+      <div className="space-y-4 text-[0.9375rem] sm:text-[1rem] leading-[1.78] text-slate-700 dark:text-gray-300 break-words">
         {paragraphs.map((paragraph, index) => (
           <React.Fragment key={index}>{renderParagraphContent(paragraph)}</React.Fragment>
         ))}
@@ -110,7 +110,7 @@ export function LegalDocumentSection({ section, isFirst = false }) {
         {items.length > 0 && (
           <ul className="list-disc pl-5 sm:pl-6 space-y-2 marker:text-slate-400 dark:marker:text-gray-500">
             {items.map((item, idx) => (
-              <li key={idx} className="legal-prose">
+              <li key={idx} className="legal-prose text-justify hyphens-auto">
                 {renderVerbatimText(item)}
               </li>
             ))}

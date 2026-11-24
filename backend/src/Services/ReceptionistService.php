@@ -531,7 +531,6 @@ class ReceptionistService
 
         $duration = (int) ($service['duration_minutes'] ?? 30);
         $price = (float) ($service['price'] ?? 0);
-        $chair = $dentist['default_operatory_chair'] ?? 'Operatory Chair 1';
 
         $startAt = new DateTimeImmutable($startAtStr, $this->timezone);
         $endAt = $startAt->modify("+{$duration} minutes");
@@ -539,21 +538,41 @@ class ReceptionistService
         $startFormatted = $startAt->format('Y-m-d H:i:s');
         $endFormatted = $endAt->format('Y-m-d H:i:s');
 
-        // Check availability
-        $conflicts = $this->appointmentRepo->findOverlappingAppointments(
-            $dentistId,
-            $startFormatted,
-            $endFormatted
-        );
-
-        if (!empty($conflicts)) {
-            throw HttpException::conflict("Dr. {$dentist['last_name']} already has an appointment scheduled during this time slot.");
-        }
-
         $pdo = $this->database->getConnection();
         $pdo->beginTransaction();
 
         try {
+            $this->appointmentRepo->lockDentist($dentistId, $pdo);
+
+            // Authoritative centralized availability & conflict validation inside transaction
+            $validation = $this->availabilityService->validateSlot(
+                $dentistId,
+                $serviceId,
+                $startAt,
+                null,
+                null,
+                false,
+                false,
+                $duration,
+                null,
+                $pdo,
+                false
+            );
+
+            if (!$validation['available']) {
+                throw HttpException::conflict(
+                    $validation['message'],
+                    $validation['reason_code'],
+                    [
+                        'reason_code' => $validation['reason_code'],
+                        'availability_status' => $validation['availability_status'],
+                        'conflict_context' => $validation['conflict_context'],
+                    ]
+                );
+            }
+
+            $chair = $validation['operatory_chair'] ?: ($dentist['default_operatory_chair'] ?? 'Operatory Chair 1');
+
             $stmt = $pdo->prepare('
                 INSERT INTO appointments (
                     patient_id, dentist_id, service_id, start_at, end_at, duration_snapshot,
@@ -581,12 +600,15 @@ class ReceptionistService
             $this->attendanceRepo->updateStatus($apptId, 'NOT_ARRIVED', 'Created at front desk');
 
             // Record status history
-            $histStmt = $pdo->prepare('
-                INSERT INTO appointment_status_history (
-                    appointment_id, from_status, to_status, reason, changed_by_user_id, created_at
-                ) VALUES (?, NULL, "CONFIRMED", "Booked directly by front desk staff", ?, NOW())
-            ');
-            $histStmt->execute([$apptId, $receptionistUserId]);
+            $this->appointmentRepo->recordStatusHistory(
+                $apptId,
+                null,
+                'CONFIRMED',
+                $receptionistUserId,
+                'Booked directly by front desk staff',
+                ['availability_verified' => true],
+                $pdo
+            );
 
             // Persist in-app notifications and enqueue real-time outbox events atomically across all authorized roles
             try {

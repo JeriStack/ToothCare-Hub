@@ -148,6 +148,17 @@ final class NotificationsReportsOpsPaths
     )]
     public function notificationShow(): void {}
 
+    #[OA\Delete(
+        path: '/notifications/{id}',
+        operationId: 'deleteNotificationById',
+        summary: 'Delete Single Notification (Strict Ownership)',
+        tags: ['Notifications'],
+        security: [['CookieAuth' => [], 'CsrfToken' => []]],
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer', minimum: 1))],
+        responses: [new OA\Response(response: 200, description: 'Notification deleted'), new OA\Response(response: 400, description: 'Invalid notification ID'), new OA\Response(response: 401, description: 'Unauthenticated'), new OA\Response(response: 403, description: 'Forbidden (not owner)'), new OA\Response(response: 404, description: 'Not found')]
+    )]
+    public function deleteNotification(): void {}
+
     #[OA\Patch(
         path: '/notifications/{id}/read',
         operationId: 'markNotificationRead',

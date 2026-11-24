@@ -8,6 +8,7 @@ import {
   Mail,
   Phone,
   MapPin,
+  AlertTriangle,
 } from 'lucide-react';
 import { useAuth } from '../../auth';
 import { ThemeToggle } from '../../../components/ui/ThemeToggle';
@@ -278,12 +279,25 @@ export function LegalDocumentLayout({
               {CLINIC_CONTACT.isDevPlaceholderContact ? (
                 <div
                   role="note"
-                  className="legal-notice border-l-[3px] border-amber-600/80 dark:border-amber-400/80 bg-amber-50/60 dark:bg-amber-950/30 px-4 py-3 rounded-r-md text-[0.875rem] leading-[1.65] text-amber-950 dark:text-amber-100 max-w-[68ch]"
+                  className="legal-notice rounded-xl border border-amber-200/90 dark:border-amber-500/25 border-l-4 border-l-amber-500 dark:border-l-amber-400 bg-amber-50/75 dark:bg-amber-500/[0.08] px-5 py-4 text-[0.875rem] leading-[1.72] text-amber-950 dark:text-amber-100"
                 >
-                  <strong className="font-semibold">Pending Clinic Confirmation:</strong> Official
-                  clinic contact details, registered physical address, and designated Data
-                  Protection Officer (DPO) contact information must be configured via production
-                  environment settings and approved by clinic leadership before deployment.
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle
+                      className="w-4 h-4 mt-0.5 text-amber-600 dark:text-amber-400 shrink-0"
+                      aria-hidden="true"
+                    />
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <p className="font-semibold text-[0.78rem] uppercase tracking-[0.07em] text-amber-900 dark:text-amber-300">
+                        Pending Clinic Confirmation
+                      </p>
+                      <p className="text-amber-950/90 dark:text-amber-100/90 legal-prose text-justify hyphens-auto">
+                        Official clinic contact details, registered physical address, and designated
+                        Data Protection Officer (DPO) contact information must be configured via
+                        production environment settings and approved by clinic leadership before
+                        deployment.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <ul className="space-y-2.5 text-[0.9375rem] text-slate-700 dark:text-gray-300">

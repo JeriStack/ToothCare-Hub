@@ -120,7 +120,15 @@ export const appointmentsApi = {
   },
 
   /**
-   * Confirm a pending appointment (Admin)
+   * Revalidate dentist & clinic availability for a pending appointment prior to approval
+   */
+  async checkAvailability(id) {
+    const res = await apiClient.get(`/admin/appointments/${id}/availability`);
+    return res.data?.data;
+  },
+
+  /**
+   * Confirm a pending appointment (Admin / Receptionist)
    */
   async confirm(id) {
     const res = await apiClient.patch(`/admin/appointments/${id}/confirm`);
@@ -128,10 +136,14 @@ export const appointmentsApi = {
   },
 
   /**
-   * Reject a pending appointment with reason (Admin)
+   * Reject a pending appointment with reason and optional conflict category (Admin / Receptionist)
    */
-  async reject(id, reason = '') {
-    const res = await apiClient.patch(`/admin/appointments/${id}/reject`, { reason });
+  async reject(id, reason = '', conflictReasonCode = null) {
+    const payload = { reason };
+    if (conflictReasonCode) {
+      payload.conflict_reason_code = conflictReasonCode;
+    }
+    const res = await apiClient.patch(`/admin/appointments/${id}/reject`, payload);
     return res.data?.data;
   },
 

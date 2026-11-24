@@ -211,13 +211,18 @@ describe('Phase 15: Dashboards, Reports, and Appointment Search UI', () => {
       );
     });
 
-    // Invalid date range shows alert
-    fireEvent.change(screen.getByLabelText(/Start date/i), { target: { value: '2026-12-20' } });
-    fireEvent.change(screen.getByLabelText(/End date/i), { target: { value: '2026-12-01' } });
-    expect(await screen.findByText(/End date cannot be earlier than start date\./i)).toBeInTheDocument();
+    // Single calendar date filter sends matching start_date and end_date
+    fireEvent.change(screen.getByLabelText(/Appointment date/i), { target: { value: '2026-12-20' } });
+    await waitFor(() => {
+      expect(appointmentsApi.listAdmin).toHaveBeenCalledWith(
+        expect.objectContaining({ service_id: '2', start_date: '2026-12-20', end_date: '2026-12-20', per_page: 15 })
+      );
+    });
 
     // Clear Filters resets everything
     fireEvent.click(screen.getByRole('button', { name: /Clear Filters/i }));
-    expect(screen.queryByText(/End date cannot be earlier than start date\./i)).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Appointment date/i)).toHaveValue('');
+    });
   });
 });

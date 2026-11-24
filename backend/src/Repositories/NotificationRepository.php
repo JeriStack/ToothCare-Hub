@@ -318,4 +318,27 @@ class NotificationRepository
 
         return $stmt->rowCount();
     }
+
+    /**
+     * Permanently delete a single notification owned by the user.
+     *
+     * @param int $id
+     * @param int $userId
+     * @return bool
+     */
+    public function deleteById(int $id, int $userId): bool
+    {
+        $conn = $this->database->getConnection();
+        $stmt = $conn->prepare('
+            DELETE FROM notifications
+            WHERE id = :id AND user_id = :user_id
+        ');
+
+        $stmt->execute([
+            'id' => $id,
+            'user_id' => $userId,
+        ]);
+
+        return $stmt->rowCount() > 0;
+    }
 }

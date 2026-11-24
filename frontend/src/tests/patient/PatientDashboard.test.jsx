@@ -180,4 +180,28 @@ describe('PatientDashboard Component', () => {
     expect(onDentists).toHaveBeenCalledTimes(1);
     expect(onProfile).toHaveBeenCalledTimes(1);
   });
+
+  it('minimizes Recent Appointment Activity by default and toggles open/closed on click', async () => {
+    appointmentsApi.list.mockResolvedValueOnce([]);
+
+    render(
+      <PatientDashboard
+        user={mockUser}
+        onNavigateToBook={vi.fn()}
+        onNavigateToAppointments={vi.fn()}
+      />
+    );
+
+    const toggleBtn = await screen.findByRole('button', { name: /Recent Appointment Activity/i });
+    expect(toggleBtn).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText(/No recent appointment activity recorded\./i)).toBeNull();
+
+    fireEvent.click(toggleBtn);
+    expect(toggleBtn).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText(/No recent appointment activity recorded\./i)).toBeDefined();
+
+    fireEvent.click(toggleBtn);
+    expect(toggleBtn).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText(/No recent appointment activity recorded\./i)).toBeNull();
+  });
 });

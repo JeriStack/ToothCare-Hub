@@ -147,41 +147,36 @@ class AppointmentService
 
             $endAtDt = $startAtDt->modify("+{$durationMinutes} minutes");
 
-            // 6. Validate Availability Engine Rules Inside the Transaction
-            $isAvailable = $this->availabilityService->isSlotAvailable(
+            // 6. Validate Centralized Availability Engine Rules Inside the Locked Transaction
+            $validation = $this->availabilityService->validateSlot(
                 $dentistId,
                 $serviceId,
                 $startAtDt,
-                $currentTime
-            );
-
-            if (!$isAvailable) {
-                throw HttpException::conflict(
-                    'The requested appointment slot is not available or falls outside clinic/dentist operating hours.',
-                    'SLOT_UNAVAILABLE'
-                );
-            }
-
-            // 7. Recheck for Any Overlapping Blocking Appointments on Locked Connection
-            // Buffer time is 10 minutes by default
-            $blockingEndDt = $endAtDt->modify('+10 minutes');
-            $overlaps = $this->appointmentRepo->findBlockingByDentistAndRange(
-                $dentistId,
-                $startAtDt->format('Y-m-d H:i:s'),
-                $blockingEndDt->format('Y-m-d H:i:s'),
+                $currentTime,
                 null,
-                $pdo
+                true,
+                true,
+                $durationMinutes,
+                null,
+                $pdo,
+                true
             );
 
-            if (!empty($overlaps)) {
+            if (!$validation['available']) {
                 throw HttpException::conflict(
-                    'The selected appointment time slot has already been booked by another patient.',
-                    'SLOT_CONFLICT'
+                    $validation['message'],
+                    $validation['reason_code'],
+                    [
+                        'reason_code' => $validation['reason_code'],
+                        'availability_status' => $validation['availability_status'],
+                        'conflict_context' => $validation['conflict_context'],
+                        'alternatives_available' => true,
+                    ]
                 );
             }
 
-            // 8. Insert Appointment Record
-            $chair = $dentist['default_operatory_chair'] ?? 'Chair 1';
+            // 7. Insert Appointment Record using authoritative shift operatory chair
+            $chair = $validation['operatory_chair'] ?: ($dentist['default_operatory_chair'] ?? 'Chair 1');
             $appointmentId = $this->appointmentRepo->create([
                 'patient_id' => (int) $patient['id'],
                 'dentist_id' => $dentistId,
@@ -263,57 +258,90 @@ class AppointmentService
     }
 
     /**
-     * Administrative approval of a pending appointment.
+     * Administrative approval of a pending appointment with full transactional revalidation
+     * and dentist row-locking to prevent concurrent double-approval race conditions.
      *
      * @param int $adminUserId
      * @param int $appointmentId
+     * @param DateTimeImmutable|null $currentTime
      * @return array<string, mixed>
      * @throws HttpException
      */
-    public function confirmAppointment(int $adminUserId, int $appointmentId): array
-    {
+    public function confirmAppointment(
+        int $adminUserId,
+        int $appointmentId,
+        ?DateTimeImmutable $currentTime = null
+    ): array {
+        // Resolve dentist ID upfront so lock ordering stays consistent: dentists -> appointments
+        $initialSnapshot = $this->appointmentRepo->findById($appointmentId);
+        if (!$initialSnapshot) {
+            throw HttpException::notFound('Appointment not found.');
+        }
+
         $pdo = $this->database->getConnection();
         $pdo->beginTransaction();
 
         try {
+            // 1. Lock dentist anchor first (consistent with bookAppointment/rescheduleAppointment)
+            $this->appointmentRepo->lockDentist((int) $initialSnapshot['dentist_id'], $pdo);
+
+            // 2. Lock appointment row for atomic status transition
             $appointment = $this->appointmentRepo->findByIdForUpdate($appointmentId, $pdo);
             if (!$appointment) {
                 throw HttpException::notFound('Appointment not found.');
             }
 
-            // Verify lifecycle state transition
+            // If dentist changed prior to lock acquisition, lock the current dentist as well
+            if ((int) $appointment['dentist_id'] !== (int) $initialSnapshot['dentist_id']) {
+                $this->appointmentRepo->lockDentist((int) $appointment['dentist_id'], $pdo);
+            }
+
+            // 3. Verify lifecycle state transition
             AppointmentValidator::validateStatusTransition(
                 $appointment['status'],
                 AppointmentValidator::STATUS_CONFIRMED
             );
 
-            // Verify dentist is active
-            $dentist = $this->dentistRepo->findById((int) $appointment['dentist_id']);
-            if (!$dentist || (int) $dentist['is_active'] !== 1) {
+            // 4. Revalidate full authoritative dentist & clinic availability inside the locked transaction
+            $startAtDt = AppointmentValidator::parseDateTime((string) $appointment['start_at'], $this->timezone);
+            if ($startAtDt === null) {
                 throw HttpException::conflict(
-                    'Cannot confirm appointment because the assigned dentist is currently inactive.',
-                    'DENTIST_INACTIVE'
+                    'Appointment start time could not be validated.',
+                    AvailabilityService::REASON_APPOINTMENT_NO_LONGER_ELIGIBLE
                 );
             }
 
-            // Verify no other appointment was confirmed in this interval
-            $blockingEndDt = (new DateTimeImmutable($appointment['end_at'], $this->timezone))->modify('+10 minutes');
-            $overlaps = $this->appointmentRepo->findBlockingByDentistAndRange(
+            $durationSnapshot = (int) ($appointment['duration_snapshot'] ?? 0);
+            $validation = $this->availabilityService->validateSlot(
                 (int) $appointment['dentist_id'],
-                $appointment['start_at'],
-                $blockingEndDt->format('Y-m-d H:i:s'),
+                (int) $appointment['service_id'],
+                $startAtDt,
+                $currentTime,
                 $appointmentId,
-                $pdo
+                false,
+                false,
+                $durationSnapshot > 0 ? $durationSnapshot : null,
+                isset($appointment['operatory_chair']) ? (string) $appointment['operatory_chair'] : null,
+                $pdo,
+                false
             );
 
-            if (!empty($overlaps)) {
+            if (!$validation['available']) {
                 throw HttpException::conflict(
-                    'Cannot confirm appointment due to a scheduling conflict with another existing booking.',
-                    'CONFIRM_OVERLAP_CONFLICT'
+                    $validation['message'],
+                    $validation['reason_code'],
+                    [
+                        'appointment_id' => $appointmentId,
+                        'reason_code' => $validation['reason_code'],
+                        'availability_status' => $validation['availability_status'],
+                        'suggested_rejection_reason' => $validation['suggested_rejection_reason'],
+                        'conflict_context' => $validation['conflict_context'],
+                        'appointment_remains_pending' => true,
+                    ]
                 );
             }
 
-            // Update status
+            // 5. Update status atomically
             $this->appointmentRepo->updateStatus(
                 $appointmentId,
                 AppointmentValidator::STATUS_CONFIRMED,
@@ -328,8 +356,8 @@ class AppointmentService
                 $appointment['status'],
                 AppointmentValidator::STATUS_CONFIRMED,
                 $adminUserId,
-                'Approved by clinic administration',
-                null,
+                'Approved by clinic administration after availability verification',
+                ['availability_verified' => true],
                 $pdo
             );
 
@@ -341,7 +369,7 @@ class AppointmentService
                 $adminUserId,
                 null,
                 null,
-                ['previous_status' => $appointment['status']]
+                ['previous_status' => $appointment['status'], 'availability_verified' => true]
             );
 
             // Transactional outbox: queue email, persistent notifications, and realtime outbox atomically
@@ -352,7 +380,10 @@ class AppointmentService
                     RealtimeOutboxService::EVENT_APPOINTMENT_CONFIRMED,
                     $txAppointment,
                     'CONFIRMED',
-                    $pdo
+                    $pdo,
+                    null,
+                    false,
+                    $adminUserId
                 );
             }
 
@@ -375,6 +406,48 @@ class AppointmentService
         $updated = $this->appointmentRepo->findById($appointmentId);
 
         return $updated ?? [];
+    }
+
+    /**
+     * Revalidate a single appointment's dentist & clinic availability for triage review.
+     *
+     * @return array<string, mixed>
+     */
+    public function validateAppointmentForApproval(
+        int $appointmentId,
+        ?DateTimeImmutable $currentTime = null
+    ): array {
+        $appointment = $this->appointmentRepo->findById($appointmentId);
+        if (!$appointment) {
+            throw HttpException::notFound('Appointment not found.');
+        }
+
+        $now = ($currentTime ?? new DateTimeImmutable('now', $this->timezone))
+            ->setTimezone($this->timezone);
+
+        if (strtoupper((string) $appointment['status']) !== AppointmentValidator::STATUS_PENDING) {
+            return [
+                'appointment_id' => $appointmentId,
+                'status' => $appointment['status'],
+                'eligible_for_approval' => false,
+                'available' => false,
+                'availability_status' => AvailabilityService::STATUS_REQUIRES_REVIEW,
+                'reason_code' => AvailabilityService::REASON_APPOINTMENT_NO_LONGER_ELIGIBLE,
+                'message' => "This appointment is already {$appointment['status']} and is no longer eligible for approval.",
+                'suggested_rejection_reason' => null,
+                'conflict_context' => null,
+                'checked_at' => $now->format(DateTimeImmutable::ATOM),
+            ];
+        }
+
+        $validation = $this->evaluateAppointmentAvailability($appointment, $now);
+
+        return array_merge([
+            'appointment_id' => $appointmentId,
+            'status' => $appointment['status'],
+            'eligible_for_approval' => $validation['available'],
+            'checked_at' => $now->format(DateTimeImmutable::ATOM),
+        ], $validation);
     }
 
     /**
@@ -412,15 +485,24 @@ class AppointmentService
                 $pdo
             );
 
+            $historyMeta = $validated['conflict_reason_code'] !== null
+                ? ['conflict_reason_code' => $validated['conflict_reason_code']]
+                : null;
+
             $historyId = $this->appointmentRepo->recordStatusHistory(
                 $appointmentId,
                 $appointment['status'],
                 AppointmentValidator::STATUS_REJECTED,
                 $adminUserId,
                 $validated['reason'],
-                null,
+                $historyMeta,
                 $pdo
             );
+
+            $auditMeta = ['reason' => $validated['reason']];
+            if ($validated['conflict_reason_code'] !== null) {
+                $auditMeta['conflict_reason_code'] = $validated['conflict_reason_code'];
+            }
 
             $this->auditRepo->record(
                 'APPOINTMENT_REJECTED',
@@ -429,7 +511,7 @@ class AppointmentService
                 $adminUserId,
                 null,
                 null,
-                ['reason' => $validated['reason']]
+                $auditMeta
             );
 
             // Transactional outbox: queue email, persistent notifications, and realtime outbox atomically
@@ -440,7 +522,11 @@ class AppointmentService
                     RealtimeOutboxService::EVENT_APPOINTMENT_REJECTED,
                     $txAppointment,
                     'REJECTED',
-                    $pdo
+                    $pdo,
+                    null,
+                    false,
+                    $adminUserId,
+                    $validated['reason']
                 );
             }
 
@@ -701,13 +787,18 @@ class AppointmentService
         $pdo->beginTransaction();
 
         try {
+            $upperRole = strtoupper(trim($userRole));
+            if (!in_array($upperRole, ['PATIENT', 'ADMIN', 'RECEPTIONIST'], true)) {
+                throw HttpException::forbidden('You are not authorized to reschedule or reassign appointments.');
+            }
+
             $oldAppointment = $this->appointmentRepo->findByIdForUpdate($appointmentId, $pdo);
             if (!$oldAppointment) {
                 throw HttpException::notFound('Original appointment not found.');
             }
 
             // Ownership & clinic cutoff policy check for patients
-            if (strtoupper($userRole) === 'PATIENT') {
+            if ($upperRole === 'PATIENT') {
                 $patient = $this->patientRepo->findByUserId($userId);
                 if (!$patient || (int) $oldAppointment['patient_id'] !== (int) $patient['id']) {
                     throw HttpException::forbidden('You can only reschedule your own appointments.');
@@ -739,6 +830,9 @@ class AppointmentService
                         }
                     }
                 }
+            } else {
+                // Staff role (ADMIN / RECEPTIONIST): verify DRBAC permission if RBAC tables are seeded
+                $this->assertStaffPermissionIfSeeded($pdo, $upperRole, 'appointments.manage');
             }
 
             // Can only reschedule PENDING or CONFIRMED appointments
@@ -774,40 +868,43 @@ class AppointmentService
             }
             $endAtDt = $startAtDt->modify("+{$durationMinutes} minutes");
 
-            // 3. Check Availability Engine Rules
-            $isAvailable = $this->availabilityService->isSlotAvailable(
+            // 3. Check Centralized Availability Engine Rules (excluding current appointment ID)
+            $isPatientActor = $upperRole === 'PATIENT';
+            $validation = $this->availabilityService->validateSlot(
                 $targetDentistId,
                 $targetServiceId,
                 $startAtDt,
-                $currentTime
-            );
-
-            if (!$isAvailable) {
-                throw HttpException::conflict(
-                    'The new requested appointment slot is not available.',
-                    'SLOT_UNAVAILABLE'
-                );
-            }
-
-            // 4. Overlap Check (Excluding current appointment ID if same dentist)
-            $blockingEndDt = $endAtDt->modify('+10 minutes');
-            $overlaps = $this->appointmentRepo->findBlockingByDentistAndRange(
-                $targetDentistId,
-                $startAtDt->format('Y-m-d H:i:s'),
-                $blockingEndDt->format('Y-m-d H:i:s'),
+                $currentTime,
                 $appointmentId,
-                $pdo
+                $isPatientActor,
+                true,
+                $durationMinutes,
+                null,
+                $pdo,
+                true
             );
 
-            if (!empty($overlaps)) {
+            if (!$validation['available']) {
                 throw HttpException::conflict(
-                    'The new requested time slot conflicts with an existing booking.',
-                    'SLOT_CONFLICT'
+                    $validation['message'],
+                    $validation['reason_code'],
+                    [
+                        'reason_code' => $validation['reason_code'],
+                        'availability_status' => $validation['availability_status'],
+                        'conflict_context' => $validation['conflict_context'],
+                    ]
                 );
             }
 
             // 5. Cancel Old Appointment Atomically
-            $cancelReason = "Rescheduled to new slot on {$startAtDt->format('Y-m-d H:i:s')}: {$validated['reason']}";
+            $effectiveReason = ($validated['reason'] === 'Patient requested reschedule' && !$isPatientActor)
+                ? 'Rescheduled by clinic staff'
+                : $validated['reason'];
+            $cancelReason = mb_substr(
+                "Rescheduled to new slot on {$startAtDt->format('Y-m-d H:i:s')}: {$effectiveReason}",
+                0,
+                255
+            );
             $this->appointmentRepo->updateStatus(
                 $appointmentId,
                 AppointmentValidator::STATUS_CANCELLED,
@@ -822,7 +919,12 @@ class AppointmentService
                 AppointmentValidator::STATUS_CANCELLED,
                 $userId,
                 $cancelReason,
-                ['rescheduled_to_slot' => $startAtDt->format('Y-m-d H:i:s')],
+                [
+                    'rescheduled_to_slot' => $startAtDt->format('Y-m-d H:i:s'),
+                    'rescheduled_by_role' => $upperRole,
+                    'previous_dentist_id' => (int) $oldAppointment['dentist_id'],
+                    'new_dentist_id' => $targetDentistId,
+                ],
                 $pdo
             );
 
@@ -830,7 +932,7 @@ class AppointmentService
             $this->emailService->cancelObsoleteReminders($appointmentId);
 
             // 6. Create New Appointment Linked via rescheduled_from_id
-            $chair = $dentist['default_operatory_chair'] ?? 'Chair 1';
+            $chair = $validation['operatory_chair'] ?: ($dentist['default_operatory_chair'] ?? 'Chair 1');
             $newAppointmentId = $this->appointmentRepo->create([
                 'patient_id' => (int) $oldAppointment['patient_id'],
                 'dentist_id' => $targetDentistId,
@@ -851,7 +953,12 @@ class AppointmentService
                 AppointmentValidator::STATUS_PENDING,
                 $userId,
                 "Rescheduled from appointment #{$appointmentId}",
-                ['rescheduled_from_id' => $appointmentId],
+                [
+                    'rescheduled_from_id' => $appointmentId,
+                    'rescheduled_by_role' => $upperRole,
+                    'previous_dentist_id' => (int) $oldAppointment['dentist_id'],
+                    'new_dentist_id' => $targetDentistId,
+                ],
                 $pdo
             );
 
@@ -926,6 +1033,13 @@ class AppointmentService
 
         $history = $this->appointmentRepo->getStatusHistory($appointmentId);
         $appointment['status_history'] = $history;
+
+        if (
+            in_array(strtoupper($userRole), ['ADMIN', 'RECEPTIONIST'], true)
+            && strtoupper((string) ($appointment['status'] ?? '')) === AppointmentValidator::STATUS_PENDING
+        ) {
+            $appointment['availability_check'] = $this->evaluateAppointmentAvailability($appointment);
+        }
 
         return $appointment;
     }
@@ -1086,7 +1200,8 @@ class AppointmentService
     }
 
     /**
-     * List appointments for administrators with filters and pagination.
+     * List appointments for administrators with filters, pagination, live availability validation
+     * on pending records, and authoritative operational summary counts.
      *
      * @param array<string, mixed> $filters
      * @param int $page
@@ -1099,7 +1214,117 @@ class AppointmentService
         $page = max(1, $page);
         $perPage = max(1, min(100, $perPage));
 
-        return $this->appointmentRepo->findAllFiltered($normalized, $page, $perPage);
+        $result = $this->appointmentRepo->findAllFiltered($normalized, $page, $perPage);
+        $now = new DateTimeImmutable('now', $this->timezone);
+
+        // Batch-evaluate live availability for PENDING items on the current page (no N+1 queries)
+        $pendingOnPage = array_values(array_filter(
+            $result['items'],
+            static fn (array $item): bool => strtoupper((string) ($item['status'] ?? '')) === AppointmentValidator::STATUS_PENDING
+        ));
+        $pageEvaluations = $this->availabilityService->evaluateAppointmentsBatch($pendingOnPage, $now);
+
+        foreach ($result['items'] as &$item) {
+            if (strtoupper((string) ($item['status'] ?? '')) === AppointmentValidator::STATUS_PENDING) {
+                $itemId = (int) ($item['id'] ?? 0);
+                $item['availability_check'] = $pageEvaluations[$itemId] ?? $this->evaluateAppointmentAvailability($item, $now);
+            } else {
+                $item['availability_check'] = null;
+            }
+        }
+        unset($item);
+
+        // Compute authoritative operational summary counts across ALL pending appointments (no 200-record cap)
+        $todayDate = $now->format('Y-m-d');
+        $summaryCounts = $this->appointmentRepo->getTriageSummaryCounts(
+            $todayDate . ' 00:00:00',
+            $todayDate . ' 23:59:59'
+        );
+
+        $schedulingConflicts = $summaryCounts['pending_review'] > 0
+            ? $this->availabilityService->countPendingConflicts($now)
+            : 0;
+
+        $result['summary'] = [
+            'pending_review' => $summaryCounts['pending_review'],
+            'confirmed' => $summaryCounts['confirmed'],
+            'today_appointments' => $summaryCounts['today_appointments'],
+            'scheduling_conflicts' => $schedulingConflicts,
+            'refreshed_at' => $now->format(DateTimeImmutable::ATOM),
+        ];
+
+        return $result;
+    }
+
+    /**
+     * Verify staff DRBAC permission when RBAC tables are present and seeded.
+     */
+    private function assertStaffPermissionIfSeeded(PDO $pdo, string $roleSlug, string $permissionSlug): void
+    {
+        if (strtoupper($roleSlug) === 'ADMIN') {
+            return;
+        }
+
+        try {
+            $hasRoleRows = (int) $pdo->query('SELECT COUNT(*) FROM role_permissions')->fetchColumn();
+            if ($hasRoleRows === 0) {
+                return;
+            }
+
+            $stmt = $pdo->prepare('
+                SELECT COUNT(*)
+                FROM roles r
+                INNER JOIN role_permissions rp ON rp.role_id = r.id
+                INNER JOIN permissions p ON p.id = rp.permission_id
+                WHERE LOWER(r.slug) = LOWER(?)
+                  AND p.slug = ?
+            ');
+            $stmt->execute([$roleSlug, $permissionSlug]);
+            if ((int) $stmt->fetchColumn() <= 0) {
+                throw HttpException::forbidden("Access denied. Missing required permission: {$permissionSlug}.");
+            }
+        } catch (HttpException $e) {
+            throw $e;
+        } catch (Throwable) {
+            // Minimal test schemas may omit RBAC tables
+        }
+    }
+
+    /**
+     * Evaluate availability for an appointment row using the centralized AvailabilityService.
+     *
+     * @param array<string, mixed> $appointment
+     * @return array<string, mixed>
+     */
+    private function evaluateAppointmentAvailability(array $appointment, ?DateTimeImmutable $now = null): array
+    {
+        $startAtDt = AppointmentValidator::parseDateTime((string) ($appointment['start_at'] ?? ''), $this->timezone);
+        if ($startAtDt === null) {
+            return [
+                'available' => false,
+                'availability_status' => AvailabilityService::STATUS_REQUIRES_REVIEW,
+                'reason_code' => AvailabilityService::REASON_UNAVAILABLE_PERIOD,
+                'message' => 'Appointment time could not be parsed for availability validation.',
+                'suggested_rejection_reason' => AvailabilityService::getSuggestedRejectionReason(AvailabilityService::REASON_UNAVAILABLE_PERIOD),
+                'operatory_chair' => $appointment['operatory_chair'] ?? null,
+                'conflict_context' => null,
+            ];
+        }
+
+        $durationSnapshot = (int) ($appointment['duration_snapshot'] ?? 0);
+        return $this->availabilityService->validateSlot(
+            (int) $appointment['dentist_id'],
+            (int) $appointment['service_id'],
+            $startAtDt,
+            $now,
+            (int) $appointment['id'],
+            false,
+            false,
+            $durationSnapshot > 0 ? $durationSnapshot : null,
+            isset($appointment['operatory_chair']) ? (string) $appointment['operatory_chair'] : null,
+            null,
+            false
+        );
     }
 
     /**
@@ -1622,7 +1847,8 @@ class AppointmentService
         PDO $pdo,
         ?string $cancelledByRole = null,
         bool $isRescheduled = false,
-        ?int $actorUserId = null
+        ?int $actorUserId = null,
+        ?string $customSummary = null
     ): void {
         $resolvedEvent = $isRescheduled && $eventType === RealtimeOutboxService::EVENT_APPOINTMENT_REQUESTED
             ? RealtimeOutboxService::EVENT_APPOINTMENT_RESCHEDULED
@@ -1641,7 +1867,8 @@ class AppointmentService
             $status,
             $pdo,
             $cancelledByRole,
-            $actorUserId
+            $actorUserId,
+            $customSummary
         );
     }
 
