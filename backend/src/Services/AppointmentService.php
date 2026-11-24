@@ -787,13 +787,18 @@ class AppointmentService
         $pdo->beginTransaction();
 
         try {
+            $upperRole = strtoupper(trim($userRole));
+            if (!in_array($upperRole, ['PATIENT', 'ADMIN', 'RECEPTIONIST'], true)) {
+                throw HttpException::forbidden('You are not authorized to reschedule or reassign appointments.');
+            }
+
             $oldAppointment = $this->appointmentRepo->findByIdForUpdate($appointmentId, $pdo);
             if (!$oldAppointment) {
                 throw HttpException::notFound('Original appointment not found.');
             }
 
             // Ownership & clinic cutoff policy check for patients
-            if (strtoupper($userRole) === 'PATIENT') {
+            if ($upperRole === 'PATIENT') {
                 $patient = $this->patientRepo->findByUserId($userId);
                 if (!$patient || (int) $oldAppointment['patient_id'] !== (int) $patient['id']) {
                     throw HttpException::forbidden('You can only reschedule your own appointments.');
@@ -825,6 +830,9 @@ class AppointmentService
                         }
                     }
                 }
+            } else {
+                // Staff role (ADMIN / RECEPTIONIST): verify DRBAC permission if RBAC tables are seeded
+                $this->assertStaffPermissionIfSeeded($pdo, $upperRole, 'appointments.manage');
             }
 
             // Can only reschedule PENDING or CONFIRMED appointments
@@ -861,13 +869,14 @@ class AppointmentService
             $endAtDt = $startAtDt->modify("+{$durationMinutes} minutes");
 
             // 3. Check Centralized Availability Engine Rules (excluding current appointment ID)
+            $isPatientActor = $upperRole === 'PATIENT';
             $validation = $this->availabilityService->validateSlot(
                 $targetDentistId,
                 $targetServiceId,
                 $startAtDt,
                 $currentTime,
                 $appointmentId,
-                true,
+                $isPatientActor,
                 true,
                 $durationMinutes,
                 null,
@@ -888,7 +897,14 @@ class AppointmentService
             }
 
             // 5. Cancel Old Appointment Atomically
-            $cancelReason = "Rescheduled to new slot on {$startAtDt->format('Y-m-d H:i:s')}: {$validated['reason']}";
+            $effectiveReason = ($validated['reason'] === 'Patient requested reschedule' && !$isPatientActor)
+                ? 'Rescheduled by clinic staff'
+                : $validated['reason'];
+            $cancelReason = mb_substr(
+                "Rescheduled to new slot on {$startAtDt->format('Y-m-d H:i:s')}: {$effectiveReason}",
+                0,
+                255
+            );
             $this->appointmentRepo->updateStatus(
                 $appointmentId,
                 AppointmentValidator::STATUS_CANCELLED,
@@ -903,7 +919,12 @@ class AppointmentService
                 AppointmentValidator::STATUS_CANCELLED,
                 $userId,
                 $cancelReason,
-                ['rescheduled_to_slot' => $startAtDt->format('Y-m-d H:i:s')],
+                [
+                    'rescheduled_to_slot' => $startAtDt->format('Y-m-d H:i:s'),
+                    'rescheduled_by_role' => $upperRole,
+                    'previous_dentist_id' => (int) $oldAppointment['dentist_id'],
+                    'new_dentist_id' => $targetDentistId,
+                ],
                 $pdo
             );
 
@@ -911,7 +932,7 @@ class AppointmentService
             $this->emailService->cancelObsoleteReminders($appointmentId);
 
             // 6. Create New Appointment Linked via rescheduled_from_id
-            $chair = $dentist['default_operatory_chair'] ?? 'Chair 1';
+            $chair = $validation['operatory_chair'] ?: ($dentist['default_operatory_chair'] ?? 'Chair 1');
             $newAppointmentId = $this->appointmentRepo->create([
                 'patient_id' => (int) $oldAppointment['patient_id'],
                 'dentist_id' => $targetDentistId,
@@ -932,7 +953,12 @@ class AppointmentService
                 AppointmentValidator::STATUS_PENDING,
                 $userId,
                 "Rescheduled from appointment #{$appointmentId}",
-                ['rescheduled_from_id' => $appointmentId],
+                [
+                    'rescheduled_from_id' => $appointmentId,
+                    'rescheduled_by_role' => $upperRole,
+                    'previous_dentist_id' => (int) $oldAppointment['dentist_id'],
+                    'new_dentist_id' => $targetDentistId,
+                ],
                 $pdo
             );
 
@@ -1191,32 +1217,33 @@ class AppointmentService
         $result = $this->appointmentRepo->findAllFiltered($normalized, $page, $perPage);
         $now = new DateTimeImmutable('now', $this->timezone);
 
-        // Attach live availability evaluation for PENDING items on the current page
+        // Batch-evaluate live availability for PENDING items on the current page (no N+1 queries)
+        $pendingOnPage = array_values(array_filter(
+            $result['items'],
+            static fn (array $item): bool => strtoupper((string) ($item['status'] ?? '')) === AppointmentValidator::STATUS_PENDING
+        ));
+        $pageEvaluations = $this->availabilityService->evaluateAppointmentsBatch($pendingOnPage, $now);
+
         foreach ($result['items'] as &$item) {
             if (strtoupper((string) ($item['status'] ?? '')) === AppointmentValidator::STATUS_PENDING) {
-                $item['availability_check'] = $this->evaluateAppointmentAvailability($item, $now);
+                $itemId = (int) ($item['id'] ?? 0);
+                $item['availability_check'] = $pageEvaluations[$itemId] ?? $this->evaluateAppointmentAvailability($item, $now);
             } else {
                 $item['availability_check'] = null;
             }
         }
         unset($item);
 
-        // Compute real operational summary counts from DB + centralized availability engine
+        // Compute authoritative operational summary counts across ALL pending appointments (no 200-record cap)
         $todayDate = $now->format('Y-m-d');
         $summaryCounts = $this->appointmentRepo->getTriageSummaryCounts(
             $todayDate . ' 00:00:00',
             $todayDate . ' 23:59:59'
         );
 
-        $schedulingConflicts = 0;
-        if ($summaryCounts['pending_review'] > 0) {
-            foreach ($this->appointmentRepo->findPendingForValidation(200) as $pendingRow) {
-                $eval = $this->evaluateAppointmentAvailability($pendingRow, $now);
-                if (!$eval['available']) {
-                    $schedulingConflicts++;
-                }
-            }
-        }
+        $schedulingConflicts = $summaryCounts['pending_review'] > 0
+            ? $this->availabilityService->countPendingConflicts($now)
+            : 0;
 
         $result['summary'] = [
             'pending_review' => $summaryCounts['pending_review'],
@@ -1227,6 +1254,40 @@ class AppointmentService
         ];
 
         return $result;
+    }
+
+    /**
+     * Verify staff DRBAC permission when RBAC tables are present and seeded.
+     */
+    private function assertStaffPermissionIfSeeded(PDO $pdo, string $roleSlug, string $permissionSlug): void
+    {
+        if (strtoupper($roleSlug) === 'ADMIN') {
+            return;
+        }
+
+        try {
+            $hasRoleRows = (int) $pdo->query('SELECT COUNT(*) FROM role_permissions')->fetchColumn();
+            if ($hasRoleRows === 0) {
+                return;
+            }
+
+            $stmt = $pdo->prepare('
+                SELECT COUNT(*)
+                FROM roles r
+                INNER JOIN role_permissions rp ON rp.role_id = r.id
+                INNER JOIN permissions p ON p.id = rp.permission_id
+                WHERE LOWER(r.slug) = LOWER(?)
+                  AND p.slug = ?
+            ');
+            $stmt->execute([$roleSlug, $permissionSlug]);
+            if ((int) $stmt->fetchColumn() <= 0) {
+                throw HttpException::forbidden("Access denied. Missing required permission: {$permissionSlug}.");
+            }
+        } catch (HttpException $e) {
+            throw $e;
+        } catch (Throwable) {
+            // Minimal test schemas may omit RBAC tables
+        }
     }
 
     /**

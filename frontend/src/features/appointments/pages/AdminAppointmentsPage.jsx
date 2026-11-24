@@ -23,6 +23,7 @@ import {
 import { appointmentsApi } from '../api';
 import { dentistsApi } from '../../dentists/api';
 import { servicesApi } from '../../services/api';
+import { AvailabilitySlotPicker } from '../../schedules/components/AvailabilitySlotPicker';
 import { useOptionalAuth } from '../../auth/context/AuthContext';
 import { useDashboardSync } from '../../../hooks/useDashboardSync';
 import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
@@ -236,6 +237,15 @@ export function AdminAppointmentsPage() {
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState(null);
 
+  // Reschedule / Reassign Modal State (reuses POST /appointments/{id}/reschedule + AvailabilitySlotPicker)
+  const [rescheduleModalAppt, setRescheduleModalAppt] = useState(null);
+  const [rescheduleDentistId, setRescheduleDentistId] = useState('');
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleSlot, setRescheduleSlot] = useState(null);
+  const [rescheduleReason, setRescheduleReason] = useState('');
+  const [rescheduling, setRescheduling] = useState(false);
+  const [rescheduleError, setRescheduleError] = useState(null);
+
   // Debounce text search
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -366,6 +376,27 @@ export function AdminAppointmentsPage() {
     setRejectAdditionalNote('');
     setRejectConflictCode(isBlockedConflict && check.reason_code ? check.reason_code : null);
     setRejectError(null);
+  };
+
+  // Open Compact Staff Reschedule / Reassign Modal (explicit dentist & validated slot selection)
+  const openRescheduleModal = (appt, conflictResult = null) => {
+    const todayIso = getClinicTodayIso();
+    const currentApptDate = appt?.start_at ? String(appt.start_at).slice(0, 10) : '';
+    const initialDate = /^\d{4}-\d{2}-\d{2}$/.test(currentApptDate) && currentApptDate >= todayIso
+      ? currentApptDate
+      : todayIso;
+    const conflictCode = conflictResult?.reason_code || appt?.availability_check?.reason_code || null;
+
+    setRescheduleModalAppt(appt);
+    setRescheduleDentistId(appt?.dentist_id ? String(appt.dentist_id) : '');
+    setRescheduleDate(initialDate);
+    setRescheduleSlot(null);
+    setRescheduleReason(
+      conflictCode
+        ? `Rescheduled by clinic desk due to schedule conflict (${CONFLICT_CATEGORY_LABELS[conflictCode] || conflictCode}).`
+        : 'Rescheduled by clinic desk upon schedule review.'
+    );
+    setRescheduleError(null);
   };
 
   // Open Details / Audit Drawer
@@ -504,6 +535,40 @@ export function AdminAppointmentsPage() {
       setCancelError(err.response?.data?.error?.message || err.message || 'Failed to cancel appointment.');
     } finally {
       setCancelling(false);
+    }
+  };
+
+  // Reschedule / Reassign Action Handler (revalidates server-side via POST /appointments/{id}/reschedule)
+  const handleRescheduleAction = async () => {
+    if (!rescheduleModalAppt) return;
+    if (!rescheduleDentistId || !rescheduleSlot?.start_at) {
+      setRescheduleError('Please select a dentist, date, and available time slot before confirming.');
+      return;
+    }
+
+    setRescheduling(true);
+    setRescheduleError(null);
+    try {
+      const created = await appointmentsApi.reschedule(rescheduleModalAppt.id, {
+        dentist_id: Number(rescheduleDentistId),
+        start_at: rescheduleSlot.start_at,
+        reason: rescheduleReason.trim() || 'Rescheduled by clinic desk',
+      });
+      const reassigned = Number(rescheduleDentistId) !== Number(rescheduleModalAppt.dentist_id);
+      setRescheduleModalAppt(null);
+      setNotification({
+        type: 'success',
+        message: `Appointment #${rescheduleModalAppt.id} ${reassigned ? 'reassigned and rescheduled' : 'rescheduled'}${created?.id ? ` to #${created.id}` : ''}.`,
+      });
+      setRefreshKey((k) => k + 1);
+    } catch (err) {
+      const message = err.response?.data?.error?.message || err.message || 'Failed to reschedule appointment.';
+      setRescheduleError(message);
+      if (err.response?.status === 409) {
+        setRescheduleSlot(null);
+      }
+    } finally {
+      setRescheduling(false);
     }
   };
 
@@ -1484,20 +1549,38 @@ export function AdminAppointmentsPage() {
                 )}
 
                 {isApprovalBlocked ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const targetAppt = confirmModalAppt;
-                      const conflictData = approvalValidation;
-                      setConfirmModalAppt(null);
-                      setApprovalValidation(null);
-                      openRejectModal(targetAppt, conflictData);
-                    }}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
-                  >
-                    <XCircle className="w-3.5 h-3.5" aria-hidden="true" />
-                    Reject Appointment
-                  </button>
+                  <>
+                    {canManageAppointments && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const targetAppt = confirmModalAppt;
+                          const conflictData = approvalValidation;
+                          setConfirmModalAppt(null);
+                          setApprovalValidation(null);
+                          openRescheduleModal(targetAppt, conflictData);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-teal-200 dark:border-teal-700/80 bg-teal-50/70 dark:bg-teal-950/40 text-[#0F766E] dark:text-teal-300 hover:bg-teal-100/80 dark:hover:bg-teal-900/50 text-xs font-semibold transition-colors cursor-pointer"
+                      >
+                        <CalendarClock className="w-3.5 h-3.5" aria-hidden="true" />
+                        Reschedule / Reassign
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const targetAppt = confirmModalAppt;
+                        const conflictData = approvalValidation;
+                        setConfirmModalAppt(null);
+                        setApprovalValidation(null);
+                        openRejectModal(targetAppt, conflictData);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                    >
+                      <XCircle className="w-3.5 h-3.5" aria-hidden="true" />
+                      Reject Appointment
+                    </button>
+                  </>
                 ) : (
                   <button
                     type="button"
@@ -1762,6 +1845,195 @@ export function AdminAppointmentsPage() {
               >
                 {cancelling && <RefreshCw className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}
                 {cancelling ? 'Cancelling...' : 'Confirm Cancellation'}
+              </button>
+            </div>
+          </div>
+        </DialogOverlay>
+      )}
+
+      {/* STAFF RESCHEDULE / REASSIGN MODAL (REUSES EXISTING RESCHEDULE WORKFLOW & SLOT PICKER) */}
+      {rescheduleModalAppt && (
+        <DialogOverlay
+          onClose={() => {
+            if (!rescheduling) setRescheduleModalAppt(null);
+          }}
+          dismissible={!rescheduling}
+          className="fixed inset-0 z-50 bg-slate-900/45 dark:bg-black/65 backdrop-blur-xs flex items-center justify-center p-4"
+        >
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-2xl max-w-2xl w-full max-h-[90dvh] flex flex-col overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/60 dark:bg-gray-900/40 flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-500/15 text-[#0D9488] dark:text-teal-400 flex items-center justify-center shrink-0">
+                  <CalendarClock className="w-5 h-5" aria-hidden="true" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base">
+                    Reschedule / Reassign Appointment #{rescheduleModalAppt.id}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Select a validated schedule slot and optionally reassign to an available dentist. Original appointment history is preserved.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={rescheduling}
+                onClick={() => setRescheduleModalAppt(null)}
+                aria-label="Close reschedule dialog"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-gray-700 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-4 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-xl bg-slate-50/80 dark:bg-gray-900/50 border border-slate-200/80 dark:border-gray-700/80">
+                <div>
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500 block">Patient</span>
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">
+                    {rescheduleModalAppt.patient_first_name} {rescheduleModalAppt.patient_last_name}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500 block">Service</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{rescheduleModalAppt.service_name}</span>
+                </div>
+                <div>
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500 block">Current Dentist</span>
+                  <span className="font-medium text-slate-700 dark:text-slate-200">
+                    Dr. {rescheduleModalAppt.dentist_first_name} {rescheduleModalAppt.dentist_last_name}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500 block">Current Slot</span>
+                  <span className="font-medium text-slate-700 dark:text-slate-200 tabular-nums">
+                    {formatReadableDate(rescheduleModalAppt.start_at)} · {formatTime12h(rescheduleModalAppt.start_at)}
+                  </span>
+                </div>
+              </div>
+
+              {rescheduleError && (
+                <div role="alert" className="bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/70 text-rose-700 dark:text-rose-200 p-3 rounded-xl text-xs">
+                  {rescheduleError}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="reschedule-dentist-select" className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">
+                    Assigned Dentist
+                  </label>
+                  <select
+                    id="reschedule-dentist-select"
+                    value={rescheduleDentistId}
+                    disabled={rescheduling}
+                    onChange={(e) => {
+                      setRescheduleDentistId(e.target.value);
+                      setRescheduleSlot(null);
+                      if (rescheduleError) setRescheduleError(null);
+                    }}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
+                  >
+                    {!dentists.some((d) => String(d.id) === String(rescheduleModalAppt.dentist_id)) && rescheduleModalAppt.dentist_id && (
+                      <option value={String(rescheduleModalAppt.dentist_id)}>
+                        Dr. {rescheduleModalAppt.dentist_first_name} {rescheduleModalAppt.dentist_last_name} (Current)
+                      </option>
+                    )}
+                    {dentists.map((d) => (
+                      <option key={d.id} value={String(d.id)}>
+                        Dr. {d.first_name} {d.last_name}
+                        {String(d.id) === String(rescheduleModalAppt.dentist_id) ? ' (Current)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="reschedule-date-input" className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">
+                    New Appointment Date
+                  </label>
+                  <input
+                    id="reschedule-date-input"
+                    type="date"
+                    min={clinicTodayIso}
+                    value={rescheduleDate}
+                    disabled={rescheduling}
+                    onChange={(e) => {
+                      setRescheduleDate(e.target.value);
+                      setRescheduleSlot(null);
+                      if (rescheduleError) setRescheduleError(null);
+                    }}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
+                  />
+                </div>
+              </div>
+
+              {Number(rescheduleDentistId) > 0 && Number(rescheduleDentistId) !== Number(rescheduleModalAppt.dentist_id) && (
+                <div className="p-3 rounded-xl bg-amber-50/80 dark:bg-amber-950/35 border border-amber-200 dark:border-amber-800/70 text-amber-800 dark:text-amber-200 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                  <span>
+                    Explicit dentist reassignment selected. The new appointment will be linked to #{rescheduleModalAppt.id} in the audit trail.
+                  </span>
+                </div>
+              )}
+
+              <div>
+                <AvailabilitySlotPicker
+                  dentistId={rescheduleDentistId ? Number(rescheduleDentistId) : null}
+                  serviceId={rescheduleModalAppt.service_id ? Number(rescheduleModalAppt.service_id) : null}
+                  selectedDate={rescheduleDate}
+                  selectedSlot={rescheduleSlot}
+                  onSelectSlot={(slot) => {
+                    setRescheduleSlot(slot);
+                    if (rescheduleError) setRescheduleError(null);
+                  }}
+                  onSelectAlternativeDate={(altDate) => {
+                    setRescheduleDate(altDate);
+                    setRescheduleSlot(null);
+                  }}
+                  onSelectAlternativeDentist={(altDentistId) => {
+                    setRescheduleDentistId(String(altDentistId));
+                    setRescheduleSlot(null);
+                  }}
+                  disabled={rescheduling}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="reschedule-reason-input" className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">
+                  Reschedule Reason (Recorded in History &amp; Patient Notice)
+                </label>
+                <input
+                  id="reschedule-reason-input"
+                  type="text"
+                  maxLength={255}
+                  value={rescheduleReason}
+                  disabled={rescheduling}
+                  onChange={(e) => setRescheduleReason(e.target.value)}
+                  placeholder="Provide reason for rescheduling or reassignment..."
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-900/60 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
+                />
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-slate-100 dark:border-gray-700 bg-slate-50/60 dark:bg-gray-900/40 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setRescheduleModalAppt(null)}
+                disabled={rescheduling}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-gray-600 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-gray-700 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRescheduleAction}
+                disabled={rescheduling || !rescheduleSlot?.start_at || !rescheduleDentistId}
+                aria-busy={rescheduling}
+                className="px-4 py-2 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] text-white text-xs font-semibold shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5 cursor-pointer"
+              >
+                {rescheduling && <RefreshCw className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}
+                {rescheduling ? 'Rescheduling...' : 'Confirm Reschedule'}
               </button>
             </div>
           </div>

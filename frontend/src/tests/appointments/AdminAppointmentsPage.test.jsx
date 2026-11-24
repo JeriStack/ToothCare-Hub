@@ -5,6 +5,7 @@ import { AdminAppointmentsPage } from '../../features/appointments/pages/AdminAp
 import { appointmentsApi } from '../../features/appointments/api';
 import { dentistsApi } from '../../features/dentists/api';
 import { servicesApi } from '../../features/services/api';
+import { schedulesApi } from '../../features/schedules/api';
 
 vi.mock('../../features/appointments/api', () => ({
   appointmentsApi: {
@@ -13,8 +14,15 @@ vi.mock('../../features/appointments/api', () => ({
     checkAvailability: vi.fn(),
     confirm: vi.fn(),
     reject: vi.fn(),
+    reschedule: vi.fn(),
     complete: vi.fn(),
     cancel: vi.fn(),
+  },
+}));
+
+vi.mock('../../features/schedules/api', () => ({
+  schedulesApi: {
+    getAvailability: vi.fn(),
   },
 }));
 
@@ -35,10 +43,26 @@ describe('AdminAppointmentsPage Component', () => {
     vi.clearAllMocks();
     dentistsApi.getPublicDentists.mockResolvedValue([
       { id: 1, first_name: 'Sarah', last_name: 'Jenkins' },
+      { id: 2, first_name: 'Roberto', last_name: 'Reyes' },
     ]);
     servicesApi.getPublicServices.mockResolvedValue([
       { id: 1, name: 'Dental Cleaning' },
     ]);
+    schedulesApi.getAvailability.mockResolvedValue({
+      availability: [
+        {
+          date: '2026-11-26',
+          is_clinic_open: true,
+          slots: [
+            {
+              start_at: '2026-11-26T09:00:00+08:00',
+              end_at: '2026-11-26T09:45:00+08:00',
+              duration_minutes: 45,
+            },
+          ],
+        },
+      ],
+    });
   });
 
   it('renders triage header, operational summary cards, explicit date range labels, and table records', async () => {
@@ -190,6 +214,82 @@ describe('AdminAppointmentsPage Component', () => {
         205,
         'Dr. Jenkins is fully booked at 10:00 AM. Please choose an afternoon slot.',
         'APPOINTMENT_CONFLICT'
+      );
+    });
+  });
+
+  it('allows receptionist to launch Reschedule / Reassign from the Conflict Warning dialog and submit validated slot', async () => {
+    const conflictCheck = {
+      available: false,
+      availability_status: 'DENTIST_UNAVAILABLE',
+      reason_code: 'APPROVED_LEAVE',
+      message: 'Dr. Sarah Jenkins is on approved leave during the requested slot.',
+      suggested_rejection_reason: 'The selected dentist is unavailable on your requested date.',
+    };
+
+    appointmentsApi.listAdmin.mockResolvedValue({
+      data: [
+        {
+          id: 210,
+          dentist_id: 1,
+          service_id: 1,
+          patient_first_name: 'Maria',
+          patient_last_name: 'Garcia',
+          patient_phone: '09170001111',
+          service_name: 'Dental Cleaning',
+          price_snapshot: 1500,
+          duration_snapshot: 45,
+          dentist_first_name: 'Sarah',
+          dentist_last_name: 'Jenkins',
+          operatory_chair: 'Operatory Chair 1',
+          start_at: '2026-11-26 10:00:00',
+          end_at: '2026-11-26 10:45:00',
+          status: 'PENDING',
+          availability_check: conflictCheck,
+        },
+      ],
+      meta: { total: 1, page: 1, per_page: 15, last_page: 1 },
+    });
+    appointmentsApi.checkAvailability.mockResolvedValue(conflictCheck);
+    appointmentsApi.reschedule.mockResolvedValue({ id: 211, status: 'PENDING', rescheduled_from_id: 210 });
+
+    render(<AdminAppointmentsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('#210')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Inspect conflict for appointment #210/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Reschedule \/ Reassign/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Reschedule \/ Reassign/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Reschedule \/ Reassign Appointment #210/i)).toBeInTheDocument();
+    });
+
+    // Explicitly reassign to Dr. Roberto Reyes (id: 2)
+    fireEvent.change(screen.getByLabelText(/Assigned Dentist/i), { target: { value: '2' } });
+    expect(screen.getByText(/Explicit dentist reassignment selected/i)).toBeInTheDocument();
+
+    // Pick validated slot returned by AvailabilitySlotPicker
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /9:00 AM/i })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /9:00 AM/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /Confirm Reschedule/i }));
+
+    await waitFor(() => {
+      expect(appointmentsApi.reschedule).toHaveBeenCalledWith(
+        210,
+        expect.objectContaining({
+          dentist_id: 2,
+          start_at: '2026-11-26T09:00:00+08:00',
+        })
       );
     });
   });

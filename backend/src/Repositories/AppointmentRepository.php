@@ -226,25 +226,103 @@ class AppointmentRepository
     }
 
     /**
-     * Retrieve bounded pending appointments for triage scheduling conflict counting.
+     * Stream PENDING appointments using keyset pagination (WHERE status = 'PENDING' AND id > :after_id).
+     * Avoids offset degradation and eliminates arbitrary record caps while keeping memory bounded.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function findPendingChunkAfterId(int $afterId = 0, int $chunkSize = 500): array
+    {
+        $pdo = $this->database->getConnection();
+        $chunkSize = max(1, min(1000, $chunkSize));
+        $stmt = $pdo->prepare("
+            SELECT id, dentist_id, service_id, start_at, end_at, duration_snapshot, operatory_chair, status
+            FROM appointments
+            WHERE status = 'PENDING'
+              AND id > :after_id
+            ORDER BY id ASC
+            LIMIT :limit
+        ");
+        $stmt->bindValue(':after_id', max(0, $afterId), PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $chunkSize, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Batch-fetch blocking appointments (PENDING/CONFIRMED) overlapping [minStartAt, maxEndAt]
+     * for any of the specified dentist IDs or operatory chairs in a single query.
+     *
+     * @param list<int> $dentistIds
+     * @param list<string> $operatoryChairs
+     * @return list<array<string, mixed>>
+     */
+    public function findBlockingForBatch(
+        array $dentistIds,
+        array $operatoryChairs,
+        string $minStartAt,
+        string $maxEndAt
+    ): array {
+        $cleanDentists = array_values(array_unique(array_filter(array_map('intval', $dentistIds), static fn (int $id): bool => $id > 0)));
+        $cleanChairs = array_values(array_unique(array_filter(array_map(static fn ($c): string => trim((string) $c), $operatoryChairs), static fn (string $c): bool => $c !== '')));
+
+        if (empty($cleanDentists) && empty($cleanChairs)) {
+            return [];
+        }
+
+        $pdo = $this->database->getConnection();
+        $orParts = [];
+        $params = [
+            ':max_end' => $maxEndAt,
+            ':min_start' => $minStartAt,
+        ];
+
+        if (!empty($cleanDentists)) {
+            $placeholders = [];
+            foreach ($cleanDentists as $i => $dId) {
+                $key = ":d_{$i}";
+                $placeholders[] = $key;
+                $params[$key] = $dId;
+            }
+            $orParts[] = 'dentist_id IN (' . implode(', ', $placeholders) . ')';
+        }
+
+        if (!empty($cleanChairs)) {
+            $placeholders = [];
+            foreach ($cleanChairs as $i => $chair) {
+                $key = ":c_{$i}";
+                $placeholders[] = $key;
+                $params[$key] = $chair;
+            }
+            $orParts[] = 'operatory_chair IN (' . implode(', ', $placeholders) . ')';
+        }
+
+        $scopeClause = implode(' OR ', $orParts);
+        $sql = "
+            SELECT id, dentist_id, service_id, start_at, end_at, duration_snapshot, status, operatory_chair
+            FROM appointments
+            WHERE status IN ('PENDING', 'CONFIRMED')
+              AND start_at < :max_end
+              AND end_at > :min_start
+              AND ({$scopeClause})
+            ORDER BY start_at ASC
+        ";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Retrieve bounded pending appointments (retained for backward compatibility).
      *
      * @return list<array<string, mixed>>
      */
     public function findPendingForValidation(int $limit = 200): array
     {
-        $pdo = $this->database->getConnection();
-        $limit = max(1, min(500, $limit));
-        $stmt = $pdo->prepare("
-            SELECT id, dentist_id, service_id, start_at, end_at, duration_snapshot, operatory_chair, status
-            FROM appointments
-            WHERE status = 'PENDING'
-            ORDER BY start_at ASC, id ASC
-            LIMIT :limit
-        ");
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-        $stmt->execute();
-
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $this->findPendingChunkAfterId(0, $limit);
     }
 
     /**

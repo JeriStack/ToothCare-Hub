@@ -855,6 +855,559 @@ class AvailabilityService
     }
 
     /**
+     * Evaluate a batch of appointment rows against the exact same authoritative availability rules
+     * using preloaded reference schedules and set-based SQL queries (eliminates N+1 queries).
+     *
+     * @param list<array<string, mixed>> $appointments
+     * @param array<string, mixed>|null $referenceCache Optional preloaded clinic reference cache
+     * @return array<int, array<string, mixed>> Map of appointment_id => validation result
+     */
+    public function evaluateAppointmentsBatch(
+        array $appointments,
+        ?DateTimeImmutable $currentTime = null,
+        ?array $referenceCache = null
+    ): array {
+        if (empty($appointments)) {
+            return [];
+        }
+
+        $now = ($currentTime ?? new DateTimeImmutable('now', $this->timezone))
+            ->setTimezone($this->timezone);
+        $refs = $referenceCache ?? $this->loadClinicReferenceCache();
+
+        $dentistIds = [];
+        $chairs = [];
+        $minDate = null;
+        $maxDate = null;
+        $parsedStarts = [];
+
+        foreach ($appointments as $appt) {
+            $id = (int) ($appt['id'] ?? 0);
+            $dId = (int) ($appt['dentist_id'] ?? 0);
+            if ($dId > 0) {
+                $dentistIds[$dId] = $dId;
+            }
+            $chair = trim((string) ($appt['operatory_chair'] ?? ''));
+            if ($chair !== '') {
+                $chairs[$chair] = $chair;
+            } elseif (isset($refs['dentists'][$dId]['default_operatory_chair'])) {
+                $defaultChair = trim((string) $refs['dentists'][$dId]['default_operatory_chair']);
+                if ($defaultChair !== '') {
+                    $chairs[$defaultChair] = $defaultChair;
+                }
+            }
+            foreach ($refs['shifts_by_dentist'][$dId] ?? [] as $dayShifts) {
+                foreach ($dayShifts as $sh) {
+                    $shChair = trim((string) ($sh['operatory_chair'] ?? ''));
+                    if ($shChair !== '') {
+                        $chairs[$shChair] = $shChair;
+                    }
+                }
+            }
+
+            $dt = \App\Validators\AppointmentValidator::parseDateTime((string) ($appt['start_at'] ?? ''), $this->timezone);
+            $parsedStarts[$id] = $dt;
+            if ($dt !== null) {
+                $dStr = $dt->setTimezone($this->timezone)->format('Y-m-d');
+                if ($minDate === null || $dStr < $minDate) {
+                    $minDate = $dStr;
+                }
+                if ($maxDate === null || $dStr > $maxDate) {
+                    $maxDate = $dStr;
+                }
+            }
+        }
+
+        $closures = [];
+        $timeOffByDentist = [];
+        $exceptionsByDentistDate = [];
+        $blockingByDentistDate = [];
+        $blockingByChairDate = [];
+
+        if ($minDate !== null && $maxDate !== null) {
+            $rangeStart = $minDate . ' 00:00:00';
+            $rangeEnd = $maxDate . ' 23:59:59';
+            $dentistIdList = array_values($dentistIds);
+            $chairList = array_values($chairs);
+
+            // 1. Clinic closures in chunk date span
+            $closures = $this->clinicRepo->getClosures($minDate, $maxDate);
+
+            // 2. Dentist time-off in chunk date span
+            $timeOffByDentist = $this->batchLoadTimeOff($dentistIdList, $rangeStart, $rangeEnd);
+
+            // 3. Date-specific dentist schedule exceptions in chunk date span
+            $exceptionsByDentistDate = $this->batchLoadScheduleExceptions($dentistIdList, $minDate, $maxDate);
+
+            // 4. Blocking appointments (PENDING/CONFIRMED) overlapping chunk date span, bucketed by date for O(1) lookup
+            $blockingRows = $this->appointmentRepo->findBlockingForBatch(
+                $dentistIdList,
+                $chairList,
+                $rangeStart,
+                $rangeEnd
+            );
+            foreach ($blockingRows as $bRow) {
+                $startDateKey = substr((string) ($bRow['start_at'] ?? ''), 0, 10);
+                $endDateKey = substr((string) ($bRow['end_at'] ?? ''), 0, 10);
+                $dateKeys = $endDateKey !== '' && $endDateKey !== $startDateKey
+                    ? [$startDateKey, $endDateKey]
+                    : [$startDateKey];
+
+                $bDentistId = (int) ($bRow['dentist_id'] ?? 0);
+                $bChair = trim((string) ($bRow['operatory_chair'] ?? ''));
+
+                foreach ($dateKeys as $dKey) {
+                    if ($dKey === '') {
+                        continue;
+                    }
+                    if ($bDentistId > 0) {
+                        $blockingByDentistDate[$bDentistId][$dKey][] = $bRow;
+                    }
+                    if ($bChair !== '') {
+                        $blockingByChairDate[$bChair][$dKey][] = $bRow;
+                    }
+                }
+            }
+        }
+
+        $results = [];
+        foreach ($appointments as $appt) {
+            $id = (int) ($appt['id'] ?? 0);
+            $startAtDt = $parsedStarts[$id] ?? null;
+            if ($startAtDt === null) {
+                $results[$id] = $this->buildValidationResult(
+                    false,
+                    self::REASON_UNAVAILABLE_PERIOD,
+                    'Appointment time could not be parsed for availability validation.',
+                    $appt['operatory_chair'] ?? null
+                );
+                continue;
+            }
+
+            $dId = (int) ($appt['dentist_id'] ?? 0);
+            $sId = (int) ($appt['service_id'] ?? 0);
+            $durationSnapshot = (int) ($appt['duration_snapshot'] ?? 0);
+            $overrideChair = isset($appt['operatory_chair']) ? (string) $appt['operatory_chair'] : null;
+            $apptDateKey = $startAtDt->format('Y-m-d');
+
+            $results[$id] = $this->evaluateApprovalAgainstBatchContext(
+                $id,
+                $dId,
+                $sId,
+                $startAtDt,
+                $durationSnapshot > 0 ? $durationSnapshot : null,
+                $overrideChair,
+                $refs,
+                $closures,
+                $timeOffByDentist[$dId] ?? [],
+                $exceptionsByDentistDate[$dId] ?? [],
+                $blockingByDentistDate[$dId][$apptDateKey] ?? [],
+                $blockingByChairDate
+            );
+        }
+
+        return $results;
+    }
+
+    /**
+     * Count ALL pending appointments with scheduling or availability conflicts across the entire
+     * database using keyset-paginated chunk streaming (no 200-row cap, bounded memory, exact
+     * authoritative availability rules).
+     */
+    public function countPendingConflicts(?DateTimeImmutable $currentTime = null, int $chunkSize = 500): int
+    {
+        $now = ($currentTime ?? new DateTimeImmutable('now', $this->timezone))
+            ->setTimezone($this->timezone);
+        $refs = $this->loadClinicReferenceCache();
+
+        $conflictCount = 0;
+        $lastId = 0;
+        $safeChunkSize = max(50, min(1000, $chunkSize));
+
+        while (true) {
+            $chunk = $this->appointmentRepo->findPendingChunkAfterId($lastId, $safeChunkSize);
+            if (empty($chunk)) {
+                break;
+            }
+
+            $evaluations = $this->evaluateAppointmentsBatch($chunk, $now, $refs);
+            foreach ($evaluations as $result) {
+                if (!($result['available'] ?? false)) {
+                    $conflictCount++;
+                }
+            }
+
+            $lastRow = end($chunk);
+            $lastId = (int) ($lastRow['id'] ?? 0);
+            if (count($chunk) < $safeChunkSize) {
+                break;
+            }
+        }
+
+        return $conflictCount;
+    }
+
+    /**
+     * Preload compact, bounded clinic-wide reference data once per batch/conflict-count sweep.
+     *
+     * @return array<string, mixed>
+     */
+    private function loadClinicReferenceCache(): array
+    {
+        $pdo = $this->database->getConnection();
+
+        $operatingHoursByDay = [];
+        foreach ($this->clinicRepo->getOperatingHours() as $oh) {
+            $operatingHoursByDay[(int) $oh['day_of_week']] = $oh;
+        }
+
+        $dentists = [];
+        $dStmt = $pdo->query('
+            SELECT d.id, d.first_name, d.last_name, d.default_operatory_chair, d.is_active,
+                   u.is_active AS user_active
+            FROM dentists d
+            LEFT JOIN users u ON u.id = d.user_id
+        ');
+        foreach ($dStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $dentists[(int) $row['id']] = $row;
+        }
+
+        $services = [];
+        $sStmt = $pdo->query('SELECT id, name, duration_minutes, is_active FROM services');
+        foreach ($sStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $services[(int) $row['id']] = $row;
+        }
+
+        $shiftsByDentist = [];
+        $shStmt = $pdo->query('
+            SELECT dentist_id, day_of_week, start_time, end_time, operatory_chair
+            FROM dentist_schedules
+            WHERE is_active = 1
+            ORDER BY dentist_id ASC, day_of_week ASC, start_time ASC
+        ');
+        foreach ($shStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $dId = (int) $row['dentist_id'];
+            $dow = (int) $row['day_of_week'];
+            $shiftsByDentist[$dId][$dow][] = $row;
+        }
+
+        return [
+            'operating_hours' => $operatingHoursByDay,
+            'dentists' => $dentists,
+            'services' => $services,
+            'shifts_by_dentist' => $shiftsByDentist,
+        ];
+    }
+
+    /**
+     * @param list<int> $dentistIds
+     * @return array<int, list<array<string, mixed>>>
+     */
+    private function batchLoadTimeOff(array $dentistIds, string $rangeStart, string $rangeEnd): array
+    {
+        if (empty($dentistIds)) {
+            return [];
+        }
+        $pdo = $this->database->getConnection();
+        $placeholders = implode(', ', array_fill(0, count($dentistIds), '?'));
+        $stmt = $pdo->prepare("
+            SELECT dentist_id, start_at, end_at, reason
+            FROM dentist_time_off
+            WHERE dentist_id IN ({$placeholders})
+              AND end_at >= ?
+              AND start_at <= ?
+            ORDER BY start_at ASC
+        ");
+        $stmt->execute(array_merge($dentistIds, [$rangeStart, $rangeEnd]));
+
+        $grouped = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $grouped[(int) $row['dentist_id']][] = $row;
+        }
+        return $grouped;
+    }
+
+    /**
+     * @param list<int> $dentistIds
+     * @return array<int, array<string, list<array<string, mixed>>>>
+     */
+    private function batchLoadScheduleExceptions(array $dentistIds, string $minDate, string $maxDate): array
+    {
+        if (empty($dentistIds)) {
+            return [];
+        }
+        try {
+            $pdo = $this->database->getConnection();
+            $placeholders = implode(', ', array_fill(0, count($dentistIds), '?'));
+            $stmt = $pdo->prepare("
+                SELECT dentist_id, exception_date, start_time, end_time, is_unavailable, reason
+                FROM dentist_schedule_exceptions
+                WHERE dentist_id IN ({$placeholders})
+                  AND exception_date >= ?
+                  AND exception_date <= ?
+                ORDER BY exception_date ASC, start_time ASC
+            ");
+            $stmt->execute(array_merge($dentistIds, [$minDate, $maxDate]));
+
+            $grouped = [];
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $grouped[(int) $row['dentist_id']][(string) $row['exception_date']][] = $row;
+            }
+            return $grouped;
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    /**
+     * Authoritative approval-mode evaluator operating on preloaded batch context.
+     * Mirrors validateSlot(..., enforceAdvanceNotice: false, enforceIntervalAlignment: false, enforceDateHorizon: false)
+     * identically without simplifying any conflict rule.
+     *
+     * @param array<string, mixed> $refs
+     * @param list<array<string, mixed>> $closures
+     * @param list<array<string, mixed>> $timeOffList
+     * @param array<string, list<array<string, mixed>>> $exceptionsByDate
+     * @param list<array<string, mixed>> $dentistBlockingAppts
+     * @param array<string, list<array<string, mixed>>> $blockingByChair
+     * @return array<string, mixed>
+     */
+    private function evaluateApprovalAgainstBatchContext(
+        int $appointmentId,
+        int $dentistId,
+        int $serviceId,
+        DateTimeImmutable $startAt,
+        ?int $overrideDurationMinutes,
+        ?string $overrideOperatoryChair,
+        array $refs,
+        array $closures,
+        array $timeOffList,
+        array $exceptionsByDate,
+        array $dentistBlockingAppts,
+        array $blockingByChair
+    ): array {
+        $startAtManila = $startAt->setTimezone($this->timezone);
+        $dateStr = $startAtManila->format('Y-m-d');
+
+        // 1. Dentist active status
+        $dentist = $refs['dentists'][$dentistId] ?? null;
+        if (
+            !$dentist
+            || (int) $dentist['is_active'] !== 1
+            || (isset($dentist['user_active']) && (int) $dentist['user_active'] !== 1)
+        ) {
+            return $this->buildValidationResult(
+                false,
+                self::REASON_DENTIST_INACTIVE,
+                'The assigned dentist is currently inactive and cannot accept appointments.'
+            );
+        }
+        $dentistLabel = 'Dr. ' . trim(($dentist['first_name'] ?? '') . ' ' . ($dentist['last_name'] ?? ''));
+
+        // 2. Service active status
+        $service = $refs['services'][$serviceId] ?? null;
+        if (!$service || (int) $service['is_active'] !== 1) {
+            return $this->buildValidationResult(
+                false,
+                self::REASON_SERVICE_INACTIVE,
+                'The requested dental service is currently inactive and cannot be scheduled.'
+            );
+        }
+
+        // 3. Clinic operating hours
+        $dayOfWeek = (int) $startAtManila->format('N');
+        $clinicHours = $refs['operating_hours'][$dayOfWeek] ?? null;
+        if (!$clinicHours || (bool) $clinicHours['is_closed']) {
+            $dayName = self::DAY_NAMES[$dayOfWeek] ?? 'this day';
+            return $this->buildValidationResult(
+                false,
+                self::REASON_CLINIC_CLOSED,
+                "The clinic is closed on {$dayName}."
+            );
+        }
+
+        $clinicOpenDt = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', "{$dateStr} {$clinicHours['opening_time']}", $this->timezone);
+        $clinicCloseDt = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', "{$dateStr} {$clinicHours['closing_time']}", $this->timezone);
+        if (!$clinicOpenDt || !$clinicCloseDt) {
+            return $this->buildValidationResult(
+                false,
+                self::REASON_CLINIC_CLOSED,
+                'Clinic operating hours are not configured for this day.'
+            );
+        }
+
+        $durationMinutes = $overrideDurationMinutes !== null && $overrideDurationMinutes > 0
+            ? $overrideDurationMinutes
+            : (int) $service['duration_minutes'];
+        $bufferMinutes = $this->defaultBufferMinutes;
+        $serviceEndDt = $startAtManila->modify("+{$durationMinutes} minutes");
+        $blockingEnd = $serviceEndDt->modify("+{$bufferMinutes} minutes");
+
+        // 4. Clinic closures
+        $overlappingClosure = $this->findFirstOverlap($startAtManila, $blockingEnd, $closures);
+        if ($overlappingClosure !== null) {
+            $closureTitle = trim((string) ($overlappingClosure['title'] ?? 'Scheduled Closure'));
+            return $this->buildValidationResult(
+                false,
+                self::REASON_UNAVAILABLE_PERIOD,
+                "The clinic is closed during the requested time ({$closureTitle}).",
+                null,
+                [
+                    'type' => 'clinic_closure',
+                    'window' => $this->formatIntervalWindow($overlappingClosure['start_at'] ?? null, $overlappingClosure['end_at'] ?? null),
+                ]
+            );
+        }
+
+        // 5. Dentist approved leave / time-off
+        $overlappingLeave = $this->findFirstOverlap($startAtManila, $blockingEnd, $timeOffList);
+        if ($overlappingLeave !== null) {
+            return $this->buildValidationResult(
+                false,
+                self::REASON_APPROVED_LEAVE,
+                "{$dentistLabel} is on approved leave/time off during the requested appointment window.",
+                null,
+                [
+                    'type' => 'approved_leave',
+                    'window' => $this->formatIntervalWindow($overlappingLeave['start_at'] ?? null, $overlappingLeave['end_at'] ?? null),
+                ]
+            );
+        }
+
+        // 6. Dentist shifts & date-specific exceptions
+        $dayShifts = $refs['shifts_by_dentist'][$dentistId][$dayOfWeek] ?? [];
+        $effectiveShifts = $this->resolveEffectiveShiftsForDay(
+            $dayShifts,
+            $exceptionsByDate[$dateStr] ?? [],
+            $dentist['default_operatory_chair'] ?? 'Chair 1'
+        );
+
+        if ($effectiveShifts['marked_unavailable']) {
+            return $this->buildValidationResult(
+                false,
+                self::REASON_UNAVAILABLE_PERIOD,
+                "{$dentistLabel} has a date-specific unavailability override on {$dateStr}."
+            );
+        }
+        if (empty($effectiveShifts['shifts'])) {
+            $dayName = self::DAY_NAMES[$dayOfWeek] ?? 'this day';
+            return $this->buildValidationResult(
+                false,
+                self::REASON_NOT_WORKING_DAY,
+                "{$dentistLabel} is not scheduled to work on {$dayName}."
+            );
+        }
+
+        $matchedShift = null;
+        $startedInsideAShift = false;
+        $earliestShiftStart = null;
+        $latestShiftEnd = null;
+
+        foreach ($effectiveShifts['shifts'] as $shift) {
+            $shiftStartDt = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', "{$dateStr} {$shift['start_time']}", $this->timezone);
+            $shiftEndDt = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', "{$dateStr} {$shift['end_time']}", $this->timezone);
+            if (!$shiftStartDt || !$shiftEndDt) {
+                continue;
+            }
+            $effectiveStart = $shiftStartDt > $clinicOpenDt ? $shiftStartDt : $clinicOpenDt;
+            $effectiveEnd = $shiftEndDt < $clinicCloseDt ? $shiftEndDt : $clinicCloseDt;
+            if ($effectiveStart >= $effectiveEnd) {
+                continue;
+            }
+            if ($earliestShiftStart === null || $effectiveStart < $earliestShiftStart) {
+                $earliestShiftStart = $effectiveStart;
+            }
+            if ($latestShiftEnd === null || $effectiveEnd > $latestShiftEnd) {
+                $latestShiftEnd = $effectiveEnd;
+            }
+            if ($startAtManila >= $effectiveStart && $startAtManila < $effectiveEnd) {
+                $startedInsideAShift = true;
+                if ($blockingEnd <= $effectiveEnd) {
+                    $matchedShift = $shift;
+                    break;
+                }
+            }
+        }
+
+        if ($matchedShift === null) {
+            if ($startedInsideAShift) {
+                return $this->buildValidationResult(
+                    false,
+                    self::REASON_SERVICE_DURATION_CONFLICT,
+                    "The {$durationMinutes}-minute procedure (including {$bufferMinutes}m sterilization buffer) extends past {$dentistLabel}'s scheduled shift."
+                );
+            }
+            if ($earliestShiftStart !== null && $latestShiftEnd !== null && $startAtManila >= $earliestShiftStart && $startAtManila < $latestShiftEnd) {
+                return $this->buildValidationResult(
+                    false,
+                    self::REASON_NOT_ON_DUTY,
+                    "{$dentistLabel} is not on duty (scheduled break period) during the requested time."
+                );
+            }
+            return $this->buildValidationResult(
+                false,
+                self::REASON_OUTSIDE_WORKING_HOURS,
+                "The requested time falls outside {$dentistLabel}'s working hours on this date."
+            );
+        }
+
+        $resolvedChair = trim((string) (
+            $overrideOperatoryChair
+            ?: ($matchedShift['operatory_chair'] ?? ($dentist['default_operatory_chair'] ?? 'Chair 1'))
+        ));
+        if ($resolvedChair === '') {
+            $resolvedChair = 'Chair 1';
+        }
+
+        // 7. Overlapping appointments for same dentist (excluding self)
+        $otherDentistAppts = array_values(array_filter(
+            $dentistBlockingAppts,
+            static fn (array $row): bool => (int) ($row['id'] ?? 0) !== $appointmentId
+        ));
+        $overlappingAppt = $this->findFirstOverlap($startAtManila, $serviceEndDt, $otherDentistAppts);
+        if ($overlappingAppt !== null) {
+            return $this->buildValidationResult(
+                false,
+                self::REASON_APPOINTMENT_CONFLICT,
+                "{$dentistLabel} already has another scheduled appointment overlapping this time slot.",
+                $resolvedChair,
+                [
+                    'type' => 'existing_appointment',
+                    'status' => $overlappingAppt['status'] ?? 'CONFIRMED',
+                    'window' => $this->formatIntervalWindow($overlappingAppt['start_at'] ?? null, $overlappingAppt['end_at'] ?? null),
+                ]
+            );
+        }
+
+        // 8. Operatory room conflict across other practitioners (excluding self, same-day bucket)
+        $chairCandidates = array_values(array_filter(
+            $blockingByChair[$resolvedChair][$dateStr] ?? [],
+            static fn (array $row): bool => (int) ($row['id'] ?? 0) !== $appointmentId && (int) ($row['dentist_id'] ?? 0) !== $dentistId
+        ));
+        $overlappingRoom = $this->findFirstOverlap($startAtManila, $serviceEndDt, $chairCandidates);
+        if ($overlappingRoom !== null) {
+            return $this->buildValidationResult(
+                false,
+                self::REASON_ROOM_CONFLICT,
+                "Assigned room ({$resolvedChair}) is already occupied by another appointment during this time.",
+                $resolvedChair,
+                [
+                    'type' => 'room_conflict',
+                    'operatory_chair' => $resolvedChair,
+                    'window' => $this->formatIntervalWindow($overlappingRoom['start_at'] ?? null, $overlappingRoom['end_at'] ?? null),
+                ]
+            );
+        }
+
+        return $this->buildValidationResult(
+            true,
+            self::REASON_AVAILABLE,
+            'Dentist and clinic schedule are available for this appointment.',
+            $resolvedChair
+        );
+    }
+
+    /**
      * Boolean convenience wrapper around validateSlot() — preserves exact backward compatibility.
      */
     public function isSlotAvailable(

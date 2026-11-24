@@ -312,4 +312,143 @@ class AppointmentAvailabilityValidationTest extends TestCase
         $this->assertSame(1, $list['summary']['pending_review']);
         $this->assertSame(1, $list['summary']['scheduling_conflicts']);
     }
+
+    public function testCountPendingConflictsExceeds200AppointmentThreshold(): void
+    {
+        // Insert 260 synthetic pending appointments:
+        // - First 215 on valid, non-overlapping Monday/Wednesday slots for Dentist 1 (all clean)
+        // - Next 45 (rows #216..#260, beyond the legacy 200 cap) on Tuesday for Dentist 1 (NOT_WORKING_DAY conflicts)
+        $insert = $this->pdo->prepare("
+            INSERT INTO appointments (
+                patient_id, dentist_id, service_id, operatory_chair,
+                start_at, end_at, status, price_snapshot, duration_snapshot
+            ) VALUES (
+                1, 1, 1, 'Chair 1', :start_at, :end_at, 'PENDING', 1500.00, 30
+            )
+        ");
+
+        $slotHours = ['08:00:00', '09:00:00', '10:00:00', '11:00:00', '13:00:00', '14:00:00', '15:00:00', '16:00:00'];
+        $cursor = new DateTimeImmutable('2026-12-07 00:00:00', $this->tz); // Monday
+        $cleanCreated = 0;
+
+        while ($cleanCreated < 215) {
+            $dow = (int) $cursor->format('N');
+            if ($dow === 1 || $dow === 3) {
+                $dateStr = $cursor->format('Y-m-d');
+                foreach ($slotHours as $timeStr) {
+                    if ($cleanCreated >= 215) {
+                        break;
+                    }
+                    $start = new DateTimeImmutable("{$dateStr} {$timeStr}", $this->tz);
+                    $end = $start->modify('+30 minutes');
+                    $insert->execute([
+                        ':start_at' => $start->format('Y-m-d H:i:s'),
+                        ':end_at' => $end->format('Y-m-d H:i:s'),
+                    ]);
+                    $cleanCreated++;
+                }
+            }
+            $cursor = $cursor->modify('+1 day');
+        }
+
+        // Now add 45 conflicting pending appointments (Dentist 1 does NOT work Tuesdays) at IDs > 215
+        $tuesday = new DateTimeImmutable('2026-12-08 00:00:00', $this->tz); // Tuesday
+        $conflictsCreated = 0;
+        while ($conflictsCreated < 45) {
+            $dateStr = $tuesday->format('Y-m-d');
+            foreach ($slotHours as $timeStr) {
+                if ($conflictsCreated >= 45) {
+                    break;
+                }
+                $start = new DateTimeImmutable("{$dateStr} {$timeStr}", $this->tz);
+                $end = $start->modify('+30 minutes');
+                $insert->execute([
+                    ':start_at' => $start->format('Y-m-d H:i:s'),
+                    ':end_at' => $end->format('Y-m-d H:i:s'),
+                ]);
+                $conflictsCreated++;
+            }
+            $tuesday = $tuesday->modify('+7 days');
+        }
+
+        // Force multi-chunk streaming (chunkSize = 100 -> 3 chunks across 260 rows)
+        $exactCount = $this->availabilityService->countPendingConflicts($this->simulatedNow, 100);
+        $this->assertSame(45, $exactCount, 'countPendingConflicts must count conflicts beyond the legacy 200-row cap.');
+
+        // Verify listAdminAppointments summary exposes the exact unbounded count regardless of pagination (per_page = 15)
+        $list = $this->appointmentService->listAdminAppointments(['status' => 'PENDING'], 1, 15);
+        $this->assertCount(15, $list['items']);
+        $this->assertSame(260, $list['summary']['pending_review']);
+        $this->assertSame(45, $list['summary']['scheduling_conflicts']);
+    }
+
+    public function testStaffRescheduleReassignsDentistAndEnforcesRoleAuthorization(): void
+    {
+        $appt = $this->appointmentService->bookAppointment(10, [
+            'dentist_id' => 1,
+            'service_id' => 1,
+            'start_at' => '2026-11-18 09:00:00',
+        ], $this->simulatedNow);
+
+        // Dentist 1 subsequently takes approved leave covering Wednesday
+        $this->timeOffRepo->create([
+            'dentist_id' => 1,
+            'start_at' => '2026-11-18 08:00:00',
+            'end_at' => '2026-11-18 17:00:00',
+            'reason' => 'Conference',
+            'approved_by_user_id' => 99,
+        ]);
+
+        // 1. Unauthorized role (DENTIST) MUST receive 403 Forbidden
+        try {
+            $this->appointmentService->rescheduleAppointment(30, 'DENTIST', (int) $appt['id'], [
+                'dentist_id' => 2,
+                'start_at' => '2026-11-17 09:00:00',
+                'reason' => 'Unauthorized reschedule attempt',
+            ], $this->simulatedNow);
+            $this->fail('Expected DENTIST reschedule attempt to be rejected with 403.');
+        } catch (HttpException $e) {
+            $this->assertSame(403, $e->getStatusCode());
+            $this->assertSame('FORBIDDEN', $e->getErrorCode());
+        }
+
+        // 2. Receptionist attempting to reschedule into a conflicting/unavailable slot MUST receive 409 Conflict
+        try {
+            $this->appointmentService->rescheduleAppointment(99, 'RECEPTIONIST', (int) $appt['id'], [
+                'dentist_id' => 1,
+                'start_at' => '2026-11-18 10:00:00', // Still covered by approved leave
+                'reason' => 'Attempt conflicting slot',
+            ], $this->simulatedNow);
+            $this->fail('Expected reschedule into approved leave slot to fail with 409.');
+        } catch (HttpException $e) {
+            $this->assertSame(409, $e->getStatusCode());
+        }
+
+        // 3. Receptionist rescheduling & reassigning to Dentist 2 on valid Tuesday slot MUST succeed
+        $rescheduled = $this->appointmentService->rescheduleAppointment(99, 'RECEPTIONIST', (int) $appt['id'], [
+            'dentist_id' => 2,
+            'start_at' => '2026-11-17 09:00:00',
+            'reason' => 'Reassigned to Dr. Reyes due to approved leave',
+        ], $this->simulatedNow);
+
+        $this->assertSame((int) $appt['id'], (int) $rescheduled['rescheduled_from_id']);
+        $this->assertSame(2, (int) $rescheduled['dentist_id']);
+        $this->assertSame('Chair 2', $rescheduled['operatory_chair']);
+        $this->assertSame('PENDING', $rescheduled['status']);
+
+        $original = $this->appointmentRepo->findById((int) $appt['id']);
+        $this->assertSame('CANCELLED', $original['status']);
+
+        $originalHistory = $this->appointmentRepo->getStatusHistory((int) $appt['id']);
+        $origMeta = json_decode((string) end($originalHistory)['metadata'], true);
+        $this->assertSame('RECEPTIONIST', $origMeta['rescheduled_by_role']);
+        $this->assertSame(1, (int) $origMeta['previous_dentist_id']);
+        $this->assertSame(2, (int) $origMeta['new_dentist_id']);
+
+        $newHistory = $this->appointmentRepo->getStatusHistory((int) $rescheduled['id']);
+        $lastMeta = json_decode((string) end($newHistory)['metadata'], true);
+        $this->assertSame('RECEPTIONIST', $lastMeta['rescheduled_by_role']);
+        $this->assertSame(1, (int) $lastMeta['previous_dentist_id']);
+        $this->assertSame(2, (int) $lastMeta['new_dentist_id']);
+    }
 }
