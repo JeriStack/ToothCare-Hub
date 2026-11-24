@@ -113,7 +113,7 @@ describe('Receptionist vs Admin RBAC Enforcement across Dentists, Services, and 
     patientsApi.getPatient.mockResolvedValue(samplePatient);
   });
 
-  it('keeps Clinic Dentist Roster strictly view-only for Receptionists while Admins retain full write access', async () => {
+  it('hides dentist email/phone clutter in the table, keeps Clinic Dentist Roster view-only for Receptionists, and lets Admins manage dentists', async () => {
     mockUseAuth.mockReturnValue(receptionistAuth);
     const { unmount } = render(<DentistListPage />);
 
@@ -121,22 +121,29 @@ describe('Receptionist vs Admin RBAC Enforcement across Dentists, Services, and 
       expect(screen.getByText('Dr. Maria Santos')).toBeInTheDocument();
     });
 
+    // Email and phone are NOT rendered inline in the table row
+    expect(screen.queryByText('dr.santos@toothcare.local')).not.toBeInTheDocument();
+    expect(screen.queryByText('+639175551234')).not.toBeInTheDocument();
+
     expect(screen.getByText('View-Only Access')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Add Licensed Dentist/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Edit Dr\. Maria Santos/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Deactivate Dr\. Maria Santos/i })).not.toBeInTheDocument();
 
-    // Receptionist can open read-only details modal
+    // Receptionist can open read-only details modal to inspect contact info & bio
     fireEvent.click(screen.getByRole('button', { name: /View Dr\. Maria Santos/i }));
+    expect(screen.getByText('dr.santos@toothcare.local')).toBeInTheDocument();
+    expect(screen.getByText('+639175551234')).toBeInTheDocument();
     expect(screen.getByText('Lead clinic dentist specializing in preventive care.')).toBeInTheDocument();
     unmount();
 
-    // Admin retains Add, Edit, and Deactivate controls
+    // Admin retains View, Add, Edit, and Deactivate controls
     mockUseAuth.mockReturnValue(adminAuth);
     render(<DentistListPage />);
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Add Licensed Dentist/i })).toBeInTheDocument();
     });
+    expect(screen.getByRole('button', { name: /View Dr\. Maria Santos/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Edit Dr\. Maria Santos/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Deactivate Dr\. Maria Santos/i })).toBeInTheDocument();
   });
