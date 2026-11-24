@@ -131,6 +131,20 @@ export function useNotifications(pollIntervalMs = 30000) {
     }
   };
 
+  const deleteNotification = async (id) => {
+    const target = notifications.find((n) => n.id === id);
+    try {
+      await notificationsApi.deleteNotification(id);
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+      seenNotificationIdsRef.current.delete(id);
+      if (target && !target.read_at) {
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+    } catch {
+      fetchNotifications();
+    }
+  };
+
   return {
     notifications,
     unreadCount,
@@ -141,5 +155,6 @@ export function useNotifications(pollIntervalMs = 30000) {
     sync: syncMissedNotifications,
     markAsRead,
     markAllAsRead,
+    deleteNotification,
   };
 }

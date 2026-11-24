@@ -274,6 +274,7 @@ $router->group('/api/v1', function (Router $r): void {
     $r->patch('/notifications/{id}/read', [NotificationController::class, 'markRead'], $patientAuth);
     $r->post('/notifications/read-all', [NotificationController::class, 'markAllRead'], $patientAuth);
     $r->patch('/notifications/read-all', [NotificationController::class, 'markAllRead'], $patientAuth);
+    $r->delete('/notifications/{id}', [NotificationController::class, 'destroy'], $patientAuth);
 
     // Reports Group
     $r->get('/reports/overview', $notImplemented('GET /api/v1/reports/overview'));

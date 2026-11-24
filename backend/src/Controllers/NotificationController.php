@@ -134,4 +134,25 @@ class NotificationController
 
         return Response::success($result);
     }
+
+    /**
+     * DELETE /api/v1/notifications/{id}
+     * Delete a single notification with strict ownership enforcement.
+     */
+    public function destroy(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required.');
+        }
+
+        $id = (int) $request->getParam('id');
+        if ($id <= 0) {
+            throw HttpException::badRequest('Invalid notification ID.');
+        }
+
+        $result = $this->notificationService->deleteNotification((int) $user['id'], $id);
+
+        return Response::success($result);
+    }
 }

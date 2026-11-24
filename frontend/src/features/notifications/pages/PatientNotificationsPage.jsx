@@ -12,6 +12,7 @@ import {
   ArrowRight,
   Search,
   X,
+  Trash2,
   RefreshCw,
   Settings,
   UserPlus,
@@ -57,6 +58,7 @@ export function PatientNotificationsPage({ onNavigateToAppointments, onSelectNot
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   const fetchList = useCallback(async (pageNum = 1, silent = false) => {
     if (!silent) {
@@ -115,6 +117,22 @@ export function PatientNotificationsPage({ onNavigateToAppointments, onSelectNot
       setUnreadCount(0);
     } catch {
       fetchList(page);
+    }
+  };
+
+  const handleDelete = async (notif) => {
+    setDeletingId(notif.id);
+    try {
+      await notificationsApi.deleteNotification(notif.id);
+      setNotifications((prev) => prev.filter((n) => n.id !== notif.id));
+      setTotal((prev) => Math.max(0, prev - 1));
+      if (!notif.read_at) {
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+    } catch {
+      fetchList(page);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -260,17 +278,38 @@ export function PatientNotificationsPage({ onNavigateToAppointments, onSelectNot
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                  {isUnread && (
+                <div className="flex flex-wrap items-center gap-2 self-end sm:self-center shrink-0">
+                  {isUnread ? (
                     <button
                       type="button"
                       onClick={() => handleMarkAsRead(notif.id)}
-                      className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-slate-50 dark:hover:bg-gray-600 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors flex items-center gap-1"
+                      title="Mark as read"
+                      aria-label={`Mark as read: ${notif.title}`}
+                      className="w-9 h-9 rounded-xl border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-slate-50 dark:hover:bg-gray-600 text-[#0D9488] dark:text-[#2DD4BF] transition-colors inline-flex items-center justify-center cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
                     >
-                      <Check className="w-3.5 h-3.5 text-[#0D9488] dark:text-[#2DD4BF]" />
-                      <span>Mark read</span>
+                      <Check className="w-4 h-4" aria-hidden="true" />
                     </button>
+                  ) : (
+                    <span
+                      title="Read"
+                      aria-label="Read"
+                      className="w-9 h-9 rounded-xl border border-slate-200/80 dark:border-gray-700 bg-slate-50 dark:bg-gray-800/70 text-[#0D9488] dark:text-[#2DD4BF] inline-flex items-center justify-center select-none"
+                    >
+                      <CheckCheck className="w-4 h-4" aria-hidden="true" />
+                    </span>
                   )}
+
+                  <button
+                    type="button"
+                    disabled={deletingId === notif.id}
+                    onClick={() => handleDelete(notif)}
+                    title={deletingId === notif.id ? 'Deleting...' : 'Delete notification'}
+                    aria-label={`Delete notification: ${notif.title}`}
+                    className="w-9 h-9 rounded-xl border border-rose-200 dark:border-rose-800/70 bg-rose-50/70 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 transition-colors inline-flex items-center justify-center disabled:opacity-50 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                  >
+                    <Trash2 className={`w-4 h-4 ${deletingId === notif.id ? 'animate-pulse' : ''}`} aria-hidden="true" />
+                  </button>
+
                   {notif.reference_id && (onSelectNotification || (notif.reference_type === 'appointments' && onNavigateToAppointments)) && (
                     <button
                       type="button"
@@ -282,7 +321,7 @@ export function PatientNotificationsPage({ onNavigateToAppointments, onSelectNot
                           onNavigateToAppointments?.(notif.reference_id);
                         }
                       }}
-                      className="px-3 py-1.5 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-teal-600 text-white text-xs font-semibold transition-colors flex items-center gap-1 shadow-2xs"
+                      className="px-3 py-1.5 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-teal-600 text-white text-xs font-semibold transition-colors flex items-center gap-1 shadow-2xs cursor-pointer"
                     >
                       <span>{notif.reference_type === 'appointments' ? 'View Visit' : 'Open'}</span>
                       <ArrowRight className="w-3.5 h-3.5" />

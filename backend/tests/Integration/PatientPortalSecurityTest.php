@@ -428,4 +428,32 @@ class PatientPortalSecurityTest extends TestCase
             @unlink($tmpLarge);
         }
     }
+
+    public function testPatientCanDeleteOwnNotificationAndCannotDeleteAnotherPatientsNotification(): void
+    {
+        $notifId = $this->notificationRepo->create([
+            'user_id' => (int) $this->patientUserA['id'],
+            'role' => 'PATIENT',
+            'type' => 'APPOINTMENT_CONFIRMED',
+            'title' => 'Visit Confirmed',
+            'message' => 'Your cleaning appointment is confirmed.',
+            'reference_type' => 'appointments',
+            'reference_id' => 101,
+        ]);
+
+        // Patient B attempts to delete Patient A's notification (IDOR)
+        $idorReq = $this->makeJsonRequest('DELETE', "/api/v1/notifications/{$notifId}", null, $this->patientUserB);
+        $idorRes = $this->app->handle($idorReq);
+        $this->assertSame(403, $idorRes->getStatusCode());
+        $this->assertNotNull($this->notificationRepo->findById($notifId));
+
+        // Patient A deletes own notification
+        $deleteReq = $this->makeJsonRequest('DELETE', "/api/v1/notifications/{$notifId}", null, $this->patientUserA);
+        $deleteRes = $this->app->handle($deleteReq);
+        $this->assertSame(200, $deleteRes->getStatusCode());
+        $payload = json_decode($deleteRes->getBody(), true);
+        $this->assertTrue((bool) ($payload['data']['success'] ?? false));
+        $this->assertSame($notifId, (int) ($payload['data']['deleted_id'] ?? 0));
+        $this->assertNull($this->notificationRepo->findById($notifId));
+    }
 }

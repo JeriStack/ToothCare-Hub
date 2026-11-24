@@ -186,4 +186,32 @@ class NotificationService
             'updated_count' => $updatedCount,
         ];
     }
+
+    /**
+     * Delete a single notification with strict ownership verification.
+     *
+     * @param int $userId
+     * @param int $notificationId
+     * @return array<string, mixed>
+     * @throws HttpException
+     */
+    public function deleteNotification(int $userId, int $notificationId): array
+    {
+        $notification = $this->notificationRepo->findById($notificationId);
+        if (!$notification) {
+            throw HttpException::notFound('Notification not found.');
+        }
+
+        if ((int) $notification['user_id'] !== $userId) {
+            throw HttpException::forbidden('You do not have permission to delete this notification.');
+        }
+
+        $this->notificationRepo->deleteById($notificationId, $userId);
+
+        return [
+            'success' => true,
+            'message' => 'Notification deleted.',
+            'deleted_id' => $notificationId,
+        ];
+    }
 }

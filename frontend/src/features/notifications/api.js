@@ -66,6 +66,14 @@ export const notificationsApi = {
     const res = await apiClient.post('/notifications/read-all');
     return res.data?.data;
   },
+
+  /**
+   * Delete a single notification owned by the authenticated user
+   */
+  async deleteNotification(id) {
+    const res = await apiClient.delete(`/notifications/${id}`);
+    return res.data?.data;
+  },
 };
 
 export default notificationsApi;
