@@ -120,49 +120,26 @@ export function DentistAppointmentsPage({ onSelectAppointment }) {
         </div>
       </div>
 
-      {/* Filter and Search Controls */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-slate-200 dark:border-gray-700 p-4 shadow-xs space-y-4">
-        {/* Status Tab Filter */}
-        <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-100 dark:border-gray-700 pb-3">
-          {[
-            { id: 'ALL', label: 'All Visits' },
-            { id: 'CONFIRMED', label: 'Confirmed' },
-            { id: 'PENDING', label: 'Pending' },
-            { id: 'COMPLETED', label: 'Completed' },
-            { id: 'CANCELLED', label: 'Cancelled' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => {
-                setStatusFilter(tab.id);
-                setPage(1);
-              }}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                statusFilter === tab.id
-                  ? 'bg-[#0D9488] dark:bg-[#0F766E] text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-gray-700/70'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Search Bar */}
-        <form onSubmit={handleSearchSubmit} className="flex gap-2">
+      {/* Search and Status Filter Controls */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 p-4 shadow-xs">
+        <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            <label htmlFor="dentist-appt-search" className="sr-only">
+              Search patient, phone, or service
+            </label>
+            <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden="true" />
             <input
+              id="dentist-appt-search"
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search patient, phone, service"
-              className="w-full pl-9 pr-8 py-2 text-xs bg-white dark:bg-gray-700 border border-slate-300 dark:border-gray-600 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400"
+              className="w-full min-h-11 sm:min-h-0 pl-9 pr-8 py-2.5 text-xs sm:text-sm bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400"
             />
             {searchQuery && (
               <button
                 type="button"
+                aria-label="Clear search"
                 onClick={() => {
                   setSearchQuery('');
                   setPage(1);
@@ -174,9 +151,32 @@ export function DentistAppointmentsPage({ onSelectAppointment }) {
               </button>
             )}
           </div>
+
+          <div className="sm:w-48 shrink-0">
+            <label htmlFor="dentist-appt-status" className="sr-only">
+              Filter appointments by status
+            </label>
+            <select
+              id="dentist-appt-status"
+              aria-label="Filter appointments by status"
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
+              className="w-full min-h-11 sm:min-h-0 px-3.5 py-2.5 rounded-xl bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400"
+            >
+              <option value="ALL">All Visits</option>
+              <option value="CONFIRMED">Confirmed</option>
+              <option value="PENDING">Pending</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+          </div>
+
           <button
             type="submit"
-            className="px-4 py-2 bg-slate-800 dark:bg-[#0F766E] hover:bg-slate-900 dark:hover:bg-[#0D9488] text-white text-xs font-semibold rounded-lg transition-colors"
+            className="min-h-11 sm:min-h-0 px-4 py-2.5 bg-slate-800 dark:bg-[#0F766E] hover:bg-slate-900 dark:hover:bg-[#0D9488] text-white text-xs sm:text-sm font-semibold rounded-xl transition-colors shrink-0"
           >
             Search
           </button>

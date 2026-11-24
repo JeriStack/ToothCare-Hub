@@ -18,7 +18,14 @@ export const appointmentsApi = {
    */
   async list(params = {}) {
     const res = await apiClient.get('/appointments', { params });
-    return res.data?.data;
+    const rawData = res.data?.data;
+    if (Array.isArray(rawData)) {
+      return rawData;
+    }
+    if (Array.isArray(rawData?.items)) {
+      return rawData.items;
+    }
+    return [];
   },
 
   /**

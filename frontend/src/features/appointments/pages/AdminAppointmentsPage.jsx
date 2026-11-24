@@ -288,41 +288,13 @@ export function AdminAppointmentsPage() {
       </div>
 
       {/* Filter and Triage Bar */}
-      <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-sm space-y-4">
-        {/* Status Filter Chips */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-100 dark:border-gray-700">
-          {[
-            { id: '', label: 'All Statuses' },
-            { id: 'PENDING', label: 'Pending Review' },
-            { id: 'CONFIRMED', label: 'Confirmed' },
-            { id: 'COMPLETED', label: 'Completed' },
-            { id: 'CANCELLED', label: 'Cancelled' },
-            { id: 'REJECTED', label: 'Declined' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => {
-                setStatusFilter(tab.id);
-                setPage(1);
-              }}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                statusFilter === tab.id
-                  ? 'bg-[#CCFBF1] dark:bg-teal-950/70 text-[#0F766E] dark:text-teal-300 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-gray-700/70'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Search & Select Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-sm space-y-3">
+        {/* Search & Filter Dropdowns */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 text-xs">
           {/* Search Input */}
           <div className="relative">
             <label htmlFor="admin-appt-search" className="sr-only">Search patient, email, or service</label>
-            <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden="true" />
             <input
               id="admin-appt-search"
               type="text"
@@ -334,6 +306,28 @@ export function AdminAppointmentsPage() {
               placeholder="Search patient, email, service..."
               className="w-full pl-9 pr-3 py-2 bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400"
             />
+          </div>
+
+          {/* Status Select */}
+          <div>
+            <label htmlFor="admin-appt-status" className="sr-only">Filter by status</label>
+            <select
+              id="admin-appt-status"
+              aria-label="Filter by status"
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-3 py-2 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400 bg-white dark:bg-gray-700 text-slate-700 dark:text-slate-100"
+            >
+              <option value="">All Statuses</option>
+              <option value="PENDING">Pending Review</option>
+              <option value="CONFIRMED">Confirmed</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="CANCELLED">Cancelled</option>
+              <option value="REJECTED">Declined</option>
+            </select>
           </div>
 
           {/* Dentist Select */}

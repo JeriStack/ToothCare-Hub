@@ -10,7 +10,8 @@ import {
   Calendar,
   Sparkles,
   ArrowRight,
-  Filter,
+  Search,
+  X,
   RefreshCw,
   Settings,
   UserPlus,
@@ -48,6 +49,7 @@ function getNotificationIcon(type) {
 
 export function PatientNotificationsPage({ onNavigateToAppointments, onSelectNotification }) {
   const [filter, setFilter] = useState('ALL'); // 'ALL' or 'UNREAD'
+  const [searchQuery, setSearchQuery] = useState('');
   const [notifications, setNotifications] = useState([]);
   const [total, setTotal] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -116,8 +118,15 @@ export function PatientNotificationsPage({ onNavigateToAppointments, onSelectNot
     }
   };
 
-  const displayedNotifications =
-    filter === 'UNREAD' ? notifications.filter((n) => !n.read_at) : notifications;
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const displayedNotifications = notifications.filter((n) => {
+    if (filter === 'UNREAD' && n.read_at) return false;
+    if (!normalizedQuery) return true;
+    return (
+      (n.title || '').toLowerCase().includes(normalizedQuery) ||
+      (n.message || '').toLowerCase().includes(normalizedQuery)
+    );
+  });
 
   return (
     <div className="space-y-6">
@@ -144,35 +153,51 @@ export function PatientNotificationsPage({ onNavigateToAppointments, onSelectNot
         )}
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-gray-700 pb-2">
-        <button
-          type="button"
-          onClick={() => setFilter('ALL')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-            filter === 'ALL'
-              ? 'bg-[#12304A] dark:bg-[#0F766E] text-white'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-gray-800'
-          }`}
-        >
-          All Notifications ({total})
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilter('UNREAD')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
-            filter === 'UNREAD'
-              ? 'bg-[#12304A] dark:bg-[#0F766E] text-white'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-gray-800'
-          }`}
-        >
-          <span>Unread</span>
-          {unreadCount > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-bold">
-              {unreadCount}
-            </span>
+      {/* Search & Category Filter Bar */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="relative flex-1">
+          <label htmlFor="notifications-search" className="sr-only">
+            Search notifications
+          </label>
+          <Search
+            className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2"
+            aria-hidden="true"
+          />
+          <input
+            id="notifications-search"
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search notifications by title or message"
+            className="w-full min-h-11 sm:min-h-0 pl-10 pr-9 py-2.5 text-sm border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:border-transparent"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              aria-label="Clear notification search"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            >
+              <X className="w-4 h-4" />
+            </button>
           )}
-        </button>
+        </div>
+
+        <div className="sm:w-56 shrink-0">
+          <label htmlFor="notifications-filter" className="sr-only">
+            Filter notifications
+          </label>
+          <select
+            id="notifications-filter"
+            aria-label="Filter notifications"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="w-full min-h-11 sm:min-h-0 px-3.5 py-2.5 rounded-xl bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400"
+          >
+            <option value="ALL">All Notifications ({total})</option>
+            <option value="UNREAD">Unread ({unreadCount})</option>
+          </select>
+        </div>
       </div>
 
       {/* Content */}

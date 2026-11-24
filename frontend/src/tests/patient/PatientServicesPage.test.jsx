@@ -73,6 +73,23 @@ describe('PatientServicesPage Component', () => {
     expect(screen.getByText('Composite Tooth Filling')).toBeDefined();
   });
 
+  it('filters services by category dropdown beside the search bar', async () => {
+    servicesApi.getPublicServices.mockResolvedValueOnce(mockServices);
+
+    render(<PatientServicesPage onBookService={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Dental Cleaning (Prophylaxis)')).toBeDefined();
+      expect(screen.getByText('Composite Tooth Filling')).toBeDefined();
+    });
+
+    const categorySelect = screen.getByLabelText(/Filter by category/i);
+    fireEvent.change(categorySelect, { target: { value: 'Restorative' } });
+
+    expect(screen.queryByText('Dental Cleaning (Prophylaxis)')).toBeNull();
+    expect(screen.getByText('Composite Tooth Filling')).toBeDefined();
+  });
+
   it('triggers onBookService when patient clicks Book This Service', async () => {
     servicesApi.getPublicServices.mockResolvedValueOnce(mockServices);
     const onBookMock = vi.fn();

@@ -58,7 +58,8 @@ describe('ServicesSection Component', () => {
     const desc = screen.getByText(/Chairside laser-activated/i);
     expect(desc.className).toContain('text-justify');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cosmetic' }));
+    const categorySelect = screen.getByLabelText(/Filter dental services by category/i);
+    fireEvent.change(categorySelect, { target: { value: 'Cosmetic' } });
     expect(screen.getByText('In-Office Teeth Whitening')).toBeInTheDocument();
     expect(screen.queryByText('Dental Prophylaxis (Cleaning)')).not.toBeInTheDocument();
 

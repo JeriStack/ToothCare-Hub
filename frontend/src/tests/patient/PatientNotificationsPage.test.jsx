@@ -66,15 +66,15 @@ describe('PatientNotificationsPage Component', () => {
     });
   });
 
-  it('filters notifications by unread tab', async () => {
+  it('filters notifications by unread dropdown option', async () => {
     render(<PatientNotificationsPage onNavigateToAppointments={vi.fn()} />);
 
     await waitFor(() => {
       expect(screen.getByText('Appointment Confirmed')).toBeDefined();
     });
 
-    const unreadTab = screen.getByRole('button', { name: /Unread/i });
-    fireEvent.click(unreadTab);
+    const filterSelect = screen.getByLabelText(/Filter notifications/i);
+    fireEvent.change(filterSelect, { target: { value: 'UNREAD' } });
 
     expect(screen.getByText('Appointment Confirmed')).toBeDefined();
     expect(screen.queryByText('Booking Request Received')).toBeNull();

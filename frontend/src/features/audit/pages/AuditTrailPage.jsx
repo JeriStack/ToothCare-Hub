@@ -13,7 +13,8 @@ import {
 } from 'lucide-react';
 import { auditApi } from '../api';
 import { TableSkeleton } from '../../../components/skeletons';
-
+
+
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 export function AuditTrailPage() {
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'security'
@@ -120,43 +121,15 @@ export function AuditTrailPage() {
         </button>
       </div>
 
-      {/* Mode Switch Tabs */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-gray-700 pb-3">
-        <button
-          onClick={() => {
-            setActiveTab('all');
-            setPage(1);
-          }}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
-            activeTab === 'all'
-              ? 'bg-[#CCFBF1] dark:bg-teal-950/70 text-[#0F766E] dark:text-teal-300'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-gray-800'
-          }`}
-        >
-          <Activity className="w-4 h-4" />
-          All Audit Events
-        </button>
-        <button
-          onClick={() => {
-            setActiveTab('security');
-            setPage(1);
-          }}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
-            activeTab === 'security'
-              ? 'bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-gray-800'
-          }`}
-        >
-          <ShieldAlert className="w-4 h-4" />
-          Security & Failed Logins
-        </button>
-      </div>
-
       {/* Filters Toolbar */}
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
         <div className="relative lg:col-span-2">
-          <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <label htmlFor="audit-trail-search" className="sr-only">
+            Search action, email, or IP
+          </label>
+          <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" aria-hidden="true" />
           <input
+            id="audit-trail-search"
             type="text"
             placeholder="Search action, email, or IP"
             value={search}
@@ -169,6 +142,22 @@ export function AuditTrailPage() {
         </div>
 
         <select
+          id="audit-trail-view"
+          aria-label="Filter audit log view"
+          value={activeTab}
+          onChange={(e) => {
+            setActiveTab(e.target.value);
+            setPage(1);
+          }}
+          className="px-3 py-2 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl text-sm text-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400"
+        >
+          <option value="all">All Audit Events</option>
+          <option value="security">Security &amp; Failed Logins</option>
+        </select>
+
+        <select
+          id="audit-trail-module"
+          aria-label="Filter by module"
           value={targetType}
           onChange={(e) => {
             setTargetType(e.target.value);
