@@ -16,20 +16,62 @@ import {
   Calendar,
   HeartPulse,
   Shield,
-  FileText
+  FileText,
+  Eye,
+  MapPin
 } from 'lucide-react';
 import { patientsApi } from '../api';
 import { useAuth } from '../../auth';
 import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
 import { MobileSortControl } from '../../../components/ui/MobileSortControl';
-
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
+
 const GENDER_OPTIONS = [
   { value: 'MALE', label: 'Male' },
   { value: 'FEMALE', label: 'Female' },
   { value: 'OTHER', label: 'Other' },
   { value: 'PREFER_NOT_TO_SAY', label: 'Prefer not to say' },
 ];
+
+function getPatientInitials(firstName, lastName) {
+  const f = String(firstName || '').trim().charAt(0);
+  const l = String(lastName || '').trim().charAt(0);
+  return (f + l).toUpperCase() || 'PT';
+}
+
+function formatReadableDate(dateStr) {
+  if (!dateStr) return '—';
+  const clean = String(dateStr).split(' ')[0];
+  const d = new Date(`${clean}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return clean;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function calculateAge(dateStr) {
+  if (!dateStr) return null;
+  const clean = String(dateStr).split(' ')[0];
+  const dob = new Date(`${clean}T00:00:00`);
+  if (Number.isNaN(dob.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age -= 1;
+  return age >= 0 ? age : null;
+}
+
+function formatGenderLabel(gender) {
+  if (!gender) return 'Not specified';
+  return String(gender)
+    .toLowerCase()
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function hasClinicalAlert(alerts) {
+  const trimmed = String(alerts || '').trim();
+  if (!trimmed) return false;
+  return !/^(none|none recorded|none reported|n\/a|na|-)$/i.test(trimmed);
+}
 
 export function PatientListPage() {
   const { user, hasPermission } = useAuth();
@@ -54,6 +96,8 @@ export function PatientListPage() {
   const [page, setPage] = useState(1);
 
   // Modal State for View & Edit
+  const [viewingPatient, setViewingPatient] = useState(null);
+  const [loadingViewId, setLoadingViewId] = useState(null);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -122,6 +166,19 @@ export function PatientListPage() {
       setSortDir('ASC');
     }
     setPage(1);
+  };
+
+  const openViewModal = async (patient) => {
+    setLoadingViewId(patient.id);
+    try {
+      const full = await patientsApi.getPatient(patient.id);
+      setViewingPatient(full || patient);
+    } catch (err) {
+      console.error('Failed to load patient details:', err);
+      setViewingPatient(patient);
+    } finally {
+      setLoadingViewId(null);
+    }
   };
 
   const openDetailsModal = async (patient) => {
@@ -305,22 +362,25 @@ export function PatientListPage() {
           columns={['w-12', 'w-48', 'w-28', 'w-32', 'w-28', 'w-20', 'w-24']}
         />
       ) : (
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-slate-200 dark:border-gray-700 shadow-sm overflow-hidden transition-colors">
+      <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 shadow-xs overflow-hidden transition-colors">
         {error ? (
           <div className="p-12 text-center">
             <AlertTriangle className="w-8 h-8 text-rose-500 dark:text-rose-400 mx-auto mb-3" />
             <p className="text-slate-800 dark:text-slate-100 font-medium">{error}</p>
             <button
+              type="button"
               onClick={fetchPatients}
-              className="mt-4 px-4 py-2 bg-slate-100 dark:bg-gray-700 hover:bg-slate-200 dark:hover:bg-gray-600 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-lg transition-colors"
+              className="mt-4 px-4 py-2 bg-slate-100 dark:bg-gray-700 hover:bg-slate-200 dark:hover:bg-gray-600 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-lg transition-colors cursor-pointer"
             >
               Try Again
             </button>
           </div>
         ) : patients.length === 0 ? (
           <div className="p-12 text-center">
-            <User className="w-8 h-8 text-slate-400 dark:text-slate-500 mx-auto mb-3" />
-            <h3 className="text-slate-800 dark:text-slate-100 font-medium">No patient records found</h3>
+            <div className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-gray-900/80 border border-slate-200/80 dark:border-gray-700 flex items-center justify-center mx-auto mb-3 text-slate-400 dark:text-slate-500">
+              <User className="w-5 h-5" />
+            </div>
+            <h3 className="text-slate-800 dark:text-slate-100 font-semibold">No patient records found</h3>
             <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
               {search || genderFilter || statusFilter !== ''
                 ? 'Try adjusting your search criteria or filters.'
@@ -333,23 +393,23 @@ export function PatientListPage() {
           <div className="overflow-x-auto">
             <table role="table" className="tch-responsive-table w-full text-left border-collapse">
               <thead role="rowgroup">
-                <tr role="row" className="bg-slate-50/80 dark:bg-gray-900/50 border-b border-slate-200 dark:border-gray-700 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                  <th role="columnheader" tabIndex={0} aria-sort={sortBy === 'id' ? (sortDir === 'ASC' ? 'ascending' : 'descending') : 'none'} className="py-3.5 px-4 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]" onClick={() => handleSort('id')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('id'); } }}>
+                <tr role="row" className="bg-slate-50/75 dark:bg-gray-900/45 border-b border-slate-100 dark:border-gray-700/80 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th role="columnheader" tabIndex={0} aria-sort={sortBy === 'id' ? (sortDir === 'ASC' ? 'ascending' : 'descending') : 'none'} className="py-3.5 px-5 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]" onClick={() => handleSort('id')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('id'); } }}>
                     <div className="flex items-center gap-1.5">
                       ID
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                      <ArrowUpDown className="w-3 h-3 text-slate-400 dark:text-slate-500" />
                     </div>
                   </th>
                   <th role="columnheader" tabIndex={0} aria-sort={sortBy === 'name' ? (sortDir === 'ASC' ? 'ascending' : 'descending') : 'none'} className="py-3.5 px-4 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]" onClick={() => handleSort('name')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('name'); } }}>
                     <div className="flex items-center gap-1.5">
-                      Patient Name & Email
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                      Patient
+                      <ArrowUpDown className="w-3 h-3 text-slate-400 dark:text-slate-500" />
                     </div>
                   </th>
                   <th role="columnheader" tabIndex={0} aria-sort={sortBy === 'date_of_birth' ? (sortDir === 'ASC' ? 'ascending' : 'descending') : 'none'} className="py-3.5 px-4 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]" onClick={() => handleSort('date_of_birth')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('date_of_birth'); } }}>
                     <div className="flex items-center gap-1.5">
-                      DOB & Gender
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                      DOB &amp; Gender
+                      <ArrowUpDown className="w-3 h-3 text-slate-400 dark:text-slate-500" />
                     </div>
                   </th>
                   <th role="columnheader" className="py-3.5 px-4">Contact Phone</th>
@@ -357,83 +417,117 @@ export function PatientListPage() {
                   <th role="columnheader" tabIndex={0} aria-sort={sortBy === 'is_active' ? (sortDir === 'ASC' ? 'ascending' : 'descending') : 'none'} className="py-3.5 px-4 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]" onClick={() => handleSort('is_active')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('is_active'); } }}>
                     <div className="flex items-center gap-1.5">
                       Account Status
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                      <ArrowUpDown className="w-3 h-3 text-slate-400 dark:text-slate-500" />
                     </div>
                   </th>
-                  <th role="columnheader" className="py-3.5 px-4 text-right">Actions</th>
+                  <th role="columnheader" className="py-3.5 px-5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody role="rowgroup" className="divide-y divide-slate-100 dark:divide-gray-700 text-sm">
-                {patients.map((patient) => (
-                  <tr role="row" key={patient.id} className="hover:bg-slate-50/60 dark:hover:bg-gray-700/40 transition-colors">
-                    <td role="cell" data-label="ID" className="py-3.5 px-4 font-mono text-xs text-slate-500 dark:text-slate-400">#{patient.id}</td>
-                    <td role="cell" data-label="Patient Name & Email" className="py-3.5 px-4">
-                      <div className="font-medium text-slate-900 dark:text-slate-50">
-                        {patient.first_name} {patient.last_name}
-                      </div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5">
-                        <Mail className="w-3 h-3 text-slate-400 dark:text-slate-500" />
-                        {patient.email}
-                      </div>
-                    </td>
-                    <td role="cell" data-label="DOB & Gender" className="py-3.5 px-4">
-                      <div className="text-slate-800 dark:text-slate-200 text-xs font-medium">{patient.date_of_birth}</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 capitalize">
-                        {patient.gender ? patient.gender.toLowerCase().replace(/_/g, ' ') : 'Not specified'}
-                      </div>
-                    </td>
-                    <td role="cell" data-label="Contact Phone" className="py-3.5 px-4 font-mono text-xs text-slate-700 dark:text-slate-300">{patient.phone}</td>
-                    <td role="cell" data-label="Medical Alerts" className="py-3.5 px-4">
-                      {patient.medical_alerts ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                          <HeartPulse className="w-3 h-3 text-rose-500 dark:text-rose-400" />
-                          Alerts Listed
+              <tbody role="rowgroup" className="divide-y divide-slate-100 dark:divide-gray-700/70 text-sm">
+                {patients.map((patient) => {
+                  const age = calculateAge(patient.date_of_birth);
+                  const alertFlag = hasClinicalAlert(patient.medical_alerts);
+                  return (
+                    <tr role="row" key={patient.id} className="hover:bg-slate-50/75 dark:hover:bg-gray-700/30 transition-colors">
+                      <td role="cell" data-label="ID" className="py-3.5 px-5 font-mono text-xs text-slate-400 dark:text-slate-500 tabular-nums">
+                        #{patient.id}
+                      </td>
+                      <td role="cell" data-label="Patient" className="py-3.5 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-gray-900/80 border border-slate-200/80 dark:border-gray-700 text-slate-700 dark:text-slate-200 flex items-center justify-center text-[11px] font-semibold shrink-0">
+                            {getPatientInitials(patient.first_name, patient.last_name)}
+                          </div>
+                          <span className="font-semibold text-slate-900 dark:text-slate-50">
+                            {patient.first_name} {patient.last_name}
+                          </span>
+                        </div>
+                      </td>
+                      <td role="cell" data-label="DOB & Gender" className="py-3.5 px-4">
+                        <div className="text-slate-800 dark:text-slate-200 text-xs font-medium tabular-nums">
+                          {formatReadableDate(patient.date_of_birth)}
+                          {age !== null && (
+                            <span className="text-slate-400 dark:text-slate-500 font-normal ml-1.5">({age} yrs)</span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          {formatGenderLabel(patient.gender)}
+                        </div>
+                      </td>
+                      <td role="cell" data-label="Contact Phone" className="py-3.5 px-4">
+                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 tabular-nums">
+                          <Phone className="w-3 h-3 text-slate-400 dark:text-slate-500 shrink-0" aria-hidden="true" />
+                          {patient.phone || '—'}
                         </span>
-                      ) : (
-                        <span className="text-xs text-slate-400 dark:text-slate-500">None reported</span>
-                      )}
-                    </td>
-                    <td role="cell" data-label="Account Status" className="py-3.5 px-4">
-                      {patient.is_active ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
-                          <CheckCircle className="w-3 h-3" />
-                          Active
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-slate-300">
-                          <XCircle className="w-3 h-3" />
-                          Disabled
-                        </span>
-                      )}
-                    </td>
-                    <td role="cell" data-label="Actions" className="py-3.5 px-4 text-right space-x-1">
-                      <button
-                        type="button"
-                        onClick={() => openDetailsModal(patient)}
-                        className="p-1.5 text-slate-600 dark:text-slate-300 hover:text-teal-600 dark:hover:text-teal-300 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
-                        title={canManagePatients ? 'View & Edit Patient' : 'View Patient'}
-                        aria-label={`${canManagePatients ? 'Edit' : 'View'} ${patient.first_name} ${patient.last_name}`}
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      {canManageAccountStatus && (
-                        <button
-                          type="button"
-                          onClick={() => handleStatusToggleClick(patient)}
-                          className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                            patient.is_active
-                              ? 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50'
-                              : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
-                          }`}
-                          title={patient.is_active ? 'Disable Account' : 'Activate Account'}
-                          aria-label={`${patient.is_active ? 'Disable' : 'Activate'} account for ${patient.first_name} ${patient.last_name}`}
-                        >
-                          <Power className="w-4 h-4" />
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td role="cell" data-label="Medical Alerts" className="py-3.5 px-4">
+                        {alertFlag ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-200/80 dark:border-rose-500/25">
+                            <HeartPulse className="w-3 h-3 text-rose-500 dark:text-rose-400 shrink-0" aria-hidden="true" />
+                            Alerts Listed
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-gray-600" aria-hidden="true" />
+                            None reported
+                          </span>
+                        )}
+                      </td>
+                      <td role="cell" data-label="Account Status" className="py-3.5 px-4">
+                        {patient.is_active ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-500/25">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" aria-hidden="true" />
+                            Active
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-gray-700/70 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-gray-600">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" aria-hidden="true" />
+                            Disabled
+                          </span>
+                        )}
+                      </td>
+                      <td role="cell" data-label="Actions" className="py-3.5 px-5 text-right whitespace-nowrap">
+                        <div className="inline-flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            disabled={loadingViewId === patient.id}
+                            onClick={() => openViewModal(patient)}
+                            className="w-8 h-8 rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800/80 text-slate-600 dark:text-slate-300 hover:text-[#0F766E] dark:hover:text-teal-300 hover:border-teal-300 dark:hover:border-teal-700 hover:bg-teal-50/50 dark:hover:bg-teal-950/30 inline-flex items-center justify-center transition-colors disabled:opacity-50 cursor-pointer"
+                            title="View Patient Information"
+                            aria-label={`View ${patient.first_name} ${patient.last_name}`}
+                          >
+                            <Eye className="w-3.5 h-3.5" aria-hidden="true" />
+                          </button>
+                          {canManagePatients && (
+                            <button
+                              type="button"
+                              onClick={() => openDetailsModal(patient)}
+                              className="w-8 h-8 rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800/80 text-slate-600 dark:text-slate-300 hover:text-[#0F766E] dark:hover:text-teal-300 hover:border-teal-300 dark:hover:border-teal-700 hover:bg-teal-50/50 dark:hover:bg-teal-950/30 inline-flex items-center justify-center transition-colors cursor-pointer"
+                              title="Edit Patient"
+                              aria-label={`Edit ${patient.first_name} ${patient.last_name}`}
+                            >
+                              <Edit2 className="w-3.5 h-3.5" aria-hidden="true" />
+                            </button>
+                          )}
+                          {canManageAccountStatus && (
+                            <button
+                              type="button"
+                              onClick={() => handleStatusToggleClick(patient)}
+                              className={`w-8 h-8 rounded-lg border inline-flex items-center justify-center transition-colors cursor-pointer ${
+                                patient.is_active
+                                  ? 'border-amber-200/80 dark:border-amber-800/70 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50'
+                                  : 'border-emerald-200/80 dark:border-emerald-800/70 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
+                              }`}
+                              title={patient.is_active ? 'Disable Account' : 'Activate Account'}
+                              aria-label={`${patient.is_active ? 'Disable' : 'Activate'} account for ${patient.first_name} ${patient.last_name}`}
+                            >
+                              <Power className="w-3.5 h-3.5" aria-hidden="true" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -442,29 +536,31 @@ export function PatientListPage() {
 
         {/* Pagination Bar */}
         {meta.total > 0 && (
-          <div className="px-4 py-3 border-t border-slate-200 dark:border-gray-700 bg-slate-50/50 dark:bg-gray-900/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
-            <div>
-              Showing <span className="font-medium text-slate-700 dark:text-slate-200">{(meta.page - 1) * meta.per_page + 1}</span> to{' '}
-              <span className="font-medium text-slate-700 dark:text-slate-200">
+          <div className="px-5 py-3.5 border-t border-slate-100 dark:border-gray-700/80 bg-slate-50/50 dark:bg-gray-900/35 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+            <div className="tabular-nums">
+              Showing <span className="font-semibold text-slate-700 dark:text-slate-200">{(meta.page - 1) * meta.per_page + 1}</span> to{' '}
+              <span className="font-semibold text-slate-700 dark:text-slate-200">
                 {Math.min(meta.page * meta.per_page, meta.total)}
               </span>{' '}
-              of <span className="font-medium text-slate-700 dark:text-slate-200">{meta.total}</span> patients
+              of <span className="font-semibold text-slate-700 dark:text-slate-200">{meta.total}</span> patients
             </div>
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 disabled={meta.page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="px-3 py-1.5 border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-slate-700 dark:text-slate-200 font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-gray-600"
+                className="px-3 py-1.5 border border-slate-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
               >
                 Previous
               </button>
-              <span className="font-medium text-slate-700 dark:text-slate-200">
+              <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-gray-800 text-slate-700 dark:text-slate-200 font-semibold tabular-nums">
                 Page {meta.page} of {meta.last_page}
               </span>
               <button
+                type="button"
                 disabled={meta.page >= meta.last_page}
                 onClick={() => setPage((p) => p + 1)}
-                className="px-3 py-1.5 border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-slate-700 dark:text-slate-200 font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-gray-600"
+                className="px-3 py-1.5 border border-slate-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
               >
                 Next
               </button>
@@ -472,6 +568,199 @@ export function PatientListPage() {
           </div>
         )}
       </div>
+      )}
+
+      {/* Read-Only Patient Information Modal */}
+      {viewingPatient && (
+        <DialogOverlay
+          onClose={() => setViewingPatient(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/45 dark:bg-black/65 backdrop-blur-sm"
+        >
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 w-full max-w-xl overflow-hidden max-h-[90dvh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/60 dark:bg-gray-900/40">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-full bg-teal-50 dark:bg-teal-500/15 border border-teal-200/80 dark:border-teal-500/30 text-[#0F766E] dark:text-teal-300 flex items-center justify-center font-bold text-sm shrink-0">
+                  {getPatientInitials(viewingPatient.first_name, viewingPatient.last_name)}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-base font-bold text-slate-900 dark:text-slate-50 truncate">
+                      {viewingPatient.first_name} {viewingPatient.last_name}
+                    </h2>
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                        viewingPatient.is_active
+                          ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-500/25'
+                          : 'bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${viewingPatient.is_active ? 'bg-emerald-500' : 'bg-slate-400'}`}
+                        aria-hidden="true"
+                      />
+                      {viewingPatient.is_active ? 'Active' : 'Disabled'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
+                    Patient #{viewingPatient.id} · Registered {formatReadableDate(viewingPatient.created_at)}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewingPatient(null)}
+                aria-label="Close patient information"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg p-1 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5 overflow-y-auto flex-1 text-xs">
+              {/* Demographics & Visits */}
+              <div className="grid grid-cols-3 gap-3 p-3.5 rounded-xl bg-slate-50 dark:bg-gray-900/50 border border-slate-200/80 dark:border-gray-700">
+                <div>
+                  <span className="text-slate-400 dark:text-slate-500 block">Date of Birth</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-100 tabular-nums mt-0.5 block">
+                    {formatReadableDate(viewingPatient.date_of_birth)}
+                    {calculateAge(viewingPatient.date_of_birth) !== null && ` (${calculateAge(viewingPatient.date_of_birth)}y)`}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 dark:text-slate-500 block">Gender</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-100 mt-0.5 block">
+                    {formatGenderLabel(viewingPatient.gender)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 dark:text-slate-500 block">Total Bookings</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-100 tabular-nums mt-0.5 block">
+                    {viewingPatient.appointment_count ?? 0} visits
+                  </span>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="space-y-2.5">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  Contact Information
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl border border-slate-200/80 dark:border-gray-700 bg-white dark:bg-gray-900/30">
+                  <div className="flex items-start gap-2">
+                    <Phone className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" aria-hidden="true" />
+                    <div>
+                      <span className="text-slate-400 dark:text-slate-500 block">Phone Number</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-100 tabular-nums">
+                        {viewingPatient.phone || 'Not provided'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Mail className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <span className="text-slate-400 dark:text-slate-500 block">Account Email</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-100 break-all">
+                        {viewingPatient.email || 'Not provided'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2 sm:col-span-2 pt-2 border-t border-slate-100 dark:border-gray-700/70">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" aria-hidden="true" />
+                    <div>
+                      <span className="text-slate-400 dark:text-slate-500 block">Residential Address</span>
+                      <span className="font-medium text-slate-800 dark:text-slate-100">
+                        {viewingPatient.address || 'No residential address recorded'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Emergency Contact */}
+              <div className="space-y-2.5">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  Emergency Contact
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl border border-slate-200/80 dark:border-gray-700 bg-white dark:bg-gray-900/30">
+                  <div>
+                    <span className="text-slate-400 dark:text-slate-500 block">Contact Person</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-100">
+                      {viewingPatient.emergency_contact_name || 'Not specified'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 dark:text-slate-500 block">Emergency Phone</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-100 tabular-nums">
+                      {viewingPatient.emergency_contact_phone || 'Not specified'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Clinical Medical Alerts */}
+              <div
+                className={`p-3.5 rounded-xl border ${
+                  hasClinicalAlert(viewingPatient.medical_alerts)
+                    ? 'border-rose-200 dark:border-rose-800/70 bg-rose-50/60 dark:bg-rose-950/30'
+                    : 'border-slate-200/80 dark:border-gray-700 bg-slate-50/50 dark:bg-gray-900/30'
+                }`}
+              >
+                <div
+                  className={`flex items-center gap-1.5 font-semibold mb-1 ${
+                    hasClinicalAlert(viewingPatient.medical_alerts)
+                      ? 'text-rose-800 dark:text-rose-200'
+                      : 'text-slate-600 dark:text-slate-300'
+                  }`}
+                >
+                  <HeartPulse
+                    className={`w-3.5 h-3.5 ${
+                      hasClinicalAlert(viewingPatient.medical_alerts)
+                        ? 'text-rose-500 dark:text-rose-400'
+                        : 'text-slate-400'
+                    }`}
+                    aria-hidden="true"
+                  />
+                  <span>Clinical Medical Alerts</span>
+                </div>
+                <p
+                  className={`leading-relaxed ${
+                    hasClinicalAlert(viewingPatient.medical_alerts)
+                      ? 'text-rose-700 dark:text-rose-200'
+                      : 'text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  {hasClinicalAlert(viewingPatient.medical_alerts)
+                    ? viewingPatient.medical_alerts
+                    : 'No medical alerts, allergies, or systemic conditions recorded.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-slate-100 dark:border-gray-700 bg-slate-50/50 dark:bg-gray-900/35 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setViewingPatient(null)}
+                className="px-4 py-2 rounded-lg border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+              {canManagePatients && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = viewingPatient;
+                    setViewingPatient(null);
+                    openDetailsModal(target);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-[#0D9488] text-white text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
+                >
+                  <Edit2 className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>Edit Profile</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </DialogOverlay>
       )}
 
       {/* Patient View & Edit Modal */}

@@ -169,13 +169,26 @@ describe('Receptionist vs Admin RBAC Enforcement across Dentists, Services, and 
     expect(screen.getByRole('button', { name: /Deactivate Composite Tooth Filling/i })).toBeInTheDocument();
   });
 
-  it('allows Receptionists to edit Patient records but hides Disable/Enable account controls in table and modal', async () => {
+  it('hides patient emails in the table, lets Receptionists view and edit patient records, and hides Disable/Enable account controls', async () => {
     mockUseAuth.mockReturnValue(receptionistAuth);
     const { unmount } = render(<PatientListPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Daniel Reyes')).toBeInTheDocument();
     });
+
+    // Patient email is NOT displayed in the table
+    expect(screen.queryByText('daniel@example.com')).not.toBeInTheDocument();
+
+    // Receptionist can open read-only View Patient Information modal
+    const viewBtn = screen.getByRole('button', { name: /View Daniel Reyes/i });
+    fireEvent.click(viewBtn);
+    await waitFor(() => {
+      expect(screen.getByText('Contact Information')).toBeInTheDocument();
+      expect(screen.getByText('Makati City')).toBeInTheDocument();
+      expect(screen.getByText('Ana Reyes')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Close patient information/i }));
 
     // Edit allowed, Disable hidden in table row
     const editBtn = screen.getByRole('button', { name: /Edit Daniel Reyes/i });
