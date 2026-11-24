@@ -396,13 +396,13 @@ class AvailabilityService
                             continue;
                         }
 
-                        if ($this->hasIntervalOverlap($cursor, $blockingEnd, $blockingAppointments, $bufferMinutes)) {
+                        if ($this->hasIntervalOverlap($cursor, $blockingEnd, $blockingAppointments)) {
                             $skippedByBooking++;
                             $cursor = $cursor->modify("+{$this->slotIntervalMinutes} minutes");
                             continue;
                         }
 
-                        if (!empty($chairBookings) && $this->hasIntervalOverlap($cursor, $blockingEnd, $chairBookings, $bufferMinutes)) {
+                        if (!empty($chairBookings) && $this->hasIntervalOverlap($cursor, $blockingEnd, $chairBookings)) {
                             $skippedByRoom++;
                             $cursor = $cursor->modify("+{$this->slotIntervalMinutes} minutes");
                             continue;
@@ -794,7 +794,12 @@ class AvailabilityService
             $resolvedChair = 'Chair 1';
         }
 
-        // 8. Check overlapping blocking appointments for this dentist (symmetric half-open interval with turnaround buffer)
+        // 8. Check overlapping blocking appointments for this dentist.
+        // For new bookings ($enforceAdvanceNotice === true), check [start, end + buffer) against stored [start, end)
+        // so forward buffer collisions are caught while allowing Rule 8 adjacent back-to-back bookings.
+        // For approval revalidation of existing bookings ($enforceAdvanceNotice === false), check true service overlap
+        // [start, end) against stored [start, end) so valid back-to-back bookings can both be approved.
+        $overlapEndDt = $enforceAdvanceNotice ? $blockingEnd : $serviceEndDt;
         $blockingAppointments = $this->appointmentRepo->findBlockingByDentistAndRange(
             $dentistId,
             $rangeStartStr,
@@ -802,7 +807,7 @@ class AvailabilityService
             $excludeAppointmentId,
             $pdo
         );
-        $overlappingAppt = $this->findFirstOverlap($startAtManila, $blockingEnd, $blockingAppointments, $bufferMinutes);
+        $overlappingAppt = $this->findFirstOverlap($startAtManila, $overlapEndDt, $blockingAppointments);
         if ($overlappingAppt !== null) {
             return $this->buildValidationResult(
                 false,
@@ -817,17 +822,16 @@ class AvailabilityService
             );
         }
 
-        // 9. Check operatory chair / room conflicts across other practitioners (symmetric turnaround buffer)
-        $roomWindowStart = $startAtManila->modify("-{$bufferMinutes} minutes")->format('Y-m-d H:i:s');
+        // 9. Check operatory chair / room conflicts across other practitioners
         $roomConflicts = $this->appointmentRepo->findRoomConflicts(
             $resolvedChair,
-            $roomWindowStart,
-            $blockingEnd->format('Y-m-d H:i:s'),
+            $startAtManila->format('Y-m-d H:i:s'),
+            $overlapEndDt->format('Y-m-d H:i:s'),
             $dentistId,
             $excludeAppointmentId,
             $pdo
         );
-        $overlappingRoom = $this->findFirstOverlap($startAtManila, $blockingEnd, $roomConflicts, $bufferMinutes);
+        $overlappingRoom = $this->findFirstOverlap($startAtManila, $overlapEndDt, $roomConflicts);
         if ($overlappingRoom !== null) {
             return $this->buildValidationResult(
                 false,
@@ -1075,23 +1079,18 @@ class AvailabilityService
     }
 
     /**
-     * Check if a candidate half-open interval [candidateStart, candidateBlockingEnd)
+     * Check if a candidate half-open interval [candidateStart, candidateEnd)
      * overlaps with any existing record intervals in $records.
-     * Overlap condition: candidateStart < effectiveRecordEnd AND candidateBlockingEnd > recordStart.
-     *
-     * When $recordBufferMinutes > 0 (for existing appointment records), the existing record's
-     * effective blocking end accounts for max(end_at, start_at + duration_snapshot + buffer)
-     * so turnaround sterilization buffers are enforced symmetrically on both sides.
+     * Overlap condition: candidateStart < recordEnd AND candidateEnd > recordStart.
      *
      * @param list<array<string, mixed>> $records
      */
     private function hasIntervalOverlap(
         DateTimeImmutable $candidateStart,
-        DateTimeImmutable $candidateBlockingEnd,
-        array $records,
-        int $recordBufferMinutes = 0
+        DateTimeImmutable $candidateEnd,
+        array $records
     ): bool {
-        return $this->findFirstOverlap($candidateStart, $candidateBlockingEnd, $records, $recordBufferMinutes) !== null;
+        return $this->findFirstOverlap($candidateStart, $candidateEnd, $records) !== null;
     }
 
     /**
@@ -1100,9 +1099,8 @@ class AvailabilityService
      */
     private function findFirstOverlap(
         DateTimeImmutable $candidateStart,
-        DateTimeImmutable $candidateBlockingEnd,
-        array $records,
-        int $recordBufferMinutes = 0
+        DateTimeImmutable $candidateEnd,
+        array $records
     ): ?array {
         foreach ($records as $record) {
             $recStartStr = $record['start_at'] ?? null;
@@ -1119,19 +1117,7 @@ class AvailabilityService
                 continue;
             }
 
-            if ($recordBufferMinutes > 0) {
-                $durationSnapshot = isset($record['duration_snapshot']) ? (int) $record['duration_snapshot'] : 0;
-                if ($durationSnapshot > 0) {
-                    $bufferedEnd = $recStart->modify('+' . ($durationSnapshot + $recordBufferMinutes) . ' minutes');
-                    if ($bufferedEnd > $recEnd) {
-                        $recEnd = $bufferedEnd;
-                    }
-                } else {
-                    $recEnd = $recEnd->modify("+{$recordBufferMinutes} minutes");
-                }
-            }
-
-            if ($candidateStart < $recEnd && $candidateBlockingEnd > $recStart) {
+            if ($candidateStart < $recEnd && $candidateEnd > $recStart) {
                 return $record;
             }
         }
