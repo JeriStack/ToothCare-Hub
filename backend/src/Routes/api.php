@@ -105,8 +105,9 @@ $router->group('/api/v1', function (Router $r): void {
     $r->patch('/patients/{id}', [PatientController::class, 'update'], [AuthenticationMiddleware::class]);
 
     // 5. Phase 9: Scheduling, Operating Hours & Availability Engine
-    // Public/booking availability computation
+    // Public/booking availability computation & slot validation
     $r->get('/availability', [AvailabilityController::class, 'getAvailability']);
+    $r->get('/availability/validate', [AvailabilityController::class, 'validateSlot']);
     $r->get('/clinic/hours', [ClinicScheduleController::class, 'getHours']);
     $r->get('/clinic/closures', [ClinicScheduleController::class, 'getClosures']);
     $r->get('/dentists/{id}/schedules', [DentistScheduleController::class, 'index']);
@@ -176,6 +177,7 @@ $router->group('/api/v1', function (Router $r): void {
     // Appointments Lifecycle Review & Triage (Front Desk & Admin)
     $r->get('/admin/appointments', [AppointmentController::class, 'adminIndex'], [AuthenticationMiddleware::class, $staffPortalGuard, AuthorizationMiddleware::hasPermission('appointments.view', ['RECEPTIONIST', 'ADMIN'])]);
     $r->get('/admin/appointments/{id}', [AppointmentController::class, 'adminShow'], [AuthenticationMiddleware::class, $staffPortalGuard, AuthorizationMiddleware::hasPermission('appointments.view', ['RECEPTIONIST', 'ADMIN'])]);
+    $r->get('/admin/appointments/{id}/availability', [AppointmentController::class, 'checkAvailability'], [AuthenticationMiddleware::class, $staffPortalGuard, AuthorizationMiddleware::hasPermission('appointments.view', ['RECEPTIONIST', 'ADMIN'])]);
     $r->patch('/admin/appointments/{id}/confirm', [AppointmentController::class, 'confirm'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('appointments.manage', ['RECEPTIONIST', 'ADMIN'])]);
     $r->patch('/admin/appointments/{id}/reject', [AppointmentController::class, 'reject'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('appointments.manage', ['RECEPTIONIST', 'ADMIN'])]);
     $r->patch('/admin/appointments/{id}/complete', [AppointmentController::class, 'complete'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('appointments.complete', ['ADMIN'])]);

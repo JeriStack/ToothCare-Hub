@@ -299,6 +299,27 @@ paths:
       security:
         -
           CookieAuth: []
+  '/admin/appointments/{id}/availability':
+    get:
+      tags:
+        - Appointments
+      summary: 'Revalidate Dentist & Clinic Availability Prior to Approval (Admin/Receptionist)'
+      operationId: checkAdminAppointmentAvailability
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Structured availability validation result and suggested rejection reason'
+        '404':
+          description: 'Appointment not found'
+      security:
+        -
+          CookieAuth: []
   '/admin/appointments/{id}/confirm':
     patch:
       tags:
@@ -2131,7 +2152,37 @@ paths:
             format: date
       responses:
         '200':
-          description: 'Available time slots'
+          description: 'Available time slots with reason messages and validated alternatives when unavailable'
+        '422':
+          description: 'Invalid parameters'
+  /availability/validate:
+    get:
+      tags:
+        - Scheduling
+      summary: 'Validate a Specific Appointment Slot Against Clinic & Dentist Availability Rules'
+      operationId: validateAvailabilitySlot
+      parameters:
+        -
+          name: dentist_id
+          in: query
+          required: true
+          schema:
+            type: integer
+        -
+          name: service_id
+          in: query
+          required: true
+          schema:
+            type: integer
+        -
+          name: start_at
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'Structured availability validation result and alternatives'
         '422':
           description: 'Invalid parameters'
   /clinic/hours:

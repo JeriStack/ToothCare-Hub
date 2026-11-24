@@ -167,13 +167,16 @@ class UnifiedNotificationDispatcher
                 ];
             }
         } elseif ($eventType === RealtimeOutboxService::EVENT_APPOINTMENT_REJECTED) {
+            $reasonSuffix = ($customSummary !== null && trim($customSummary) !== '')
+                ? ' Reason: ' . trim($customSummary)
+                : '';
             if ($patientUserId > 0) {
                 $targets[] = [
                     'user_id' => $patientUserId,
                     'role' => 'PATIENT',
                     'type' => 'APPOINTMENT_REJECTED',
                     'title' => 'Appointment Request Declined',
-                    'message' => "Your appointment request for {$serviceName} could not be approved.",
+                    'message' => "Your appointment request for {$serviceName} on {$startAt} could not be approved.{$reasonSuffix}",
                 ];
             }
             if ($dentistUserId > 0) {
