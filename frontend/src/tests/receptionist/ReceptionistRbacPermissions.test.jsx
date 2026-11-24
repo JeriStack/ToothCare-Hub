@@ -141,13 +141,16 @@ describe('Receptionist vs Admin RBAC Enforcement across Dentists, Services, and 
     expect(screen.getByRole('button', { name: /Deactivate Dr\. Maria Santos/i })).toBeInTheDocument();
   });
 
-  it('keeps Dental Services Catalog strictly view-only for Receptionists while Admins retain full write access', async () => {
+  it('hides service descriptions in the table, keeps Dental Services Catalog strictly view-only for Receptionists, and lets Admins manage services', async () => {
     mockUseAuth.mockReturnValue(receptionistAuth);
     const { unmount } = render(<ServicesPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Composite Tooth Filling')).toBeInTheDocument();
     });
+
+    // Description is NOT rendered in the table row
+    expect(screen.queryByText('Tooth-colored nanohybrid resin restoration.')).not.toBeInTheDocument();
 
     expect(screen.getByText('View-Only Access')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Add Dental Service/i })).not.toBeInTheDocument();
@@ -157,14 +160,16 @@ describe('Receptionist vs Admin RBAC Enforcement across Dentists, Services, and 
     // Receptionist can inspect full service description in read-only modal
     fireEvent.click(screen.getByRole('button', { name: /View Composite Tooth Filling/i }));
     expect(screen.getByText('Clinical Description')).toBeInTheDocument();
+    expect(screen.getByText('Tooth-colored nanohybrid resin restoration.')).toBeInTheDocument();
     unmount();
 
-    // Admin retains Add, Edit, and Deactivate controls
+    // Admin retains View, Add, Edit, and Deactivate controls
     mockUseAuth.mockReturnValue(adminAuth);
     render(<ServicesPage />);
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Add Dental Service/i })).toBeInTheDocument();
     });
+    expect(screen.getByRole('button', { name: /View Composite Tooth Filling/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Edit Composite Tooth Filling/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Deactivate Composite Tooth Filling/i })).toBeInTheDocument();
   });
