@@ -13,12 +13,16 @@ import {
   Power,
   RefreshCw,
   X,
-  FileText
+  FileText,
+  Eye,
+  Lock
 } from 'lucide-react';
 import { servicesApi } from '../api';
+import { useAuth } from '../../auth';
 import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
 import { MobileSortControl } from '../../../components/ui/MobileSortControl';
-
+
+
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 const DURATION_OPTIONS = [15, 30, 45, 60, 90, 120];
 const CATEGORY_OPTIONS = [
@@ -33,7 +37,13 @@ const CATEGORY_OPTIONS = [
 ];
 
 export function ServicesPage() {
+  const { user, hasPermission } = useAuth();
+  const canManageServices = Boolean(
+    (typeof hasPermission === 'function' && hasPermission('services.manage')) || user?.role === 'ADMIN'
+  );
+
   const [services, setServices] = useState([]);
+  const [viewingService, setViewingService] = useState(null);
   const [meta, setMeta] = useState({ total: 0, page: 1, per_page: 10, last_page: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -115,6 +125,7 @@ export function ServicesPage() {
   };
 
   const openCreateModal = () => {
+    if (!canManageServices) return;
     setEditingService(null);
     setFormData({
       name: '',
@@ -129,6 +140,7 @@ export function ServicesPage() {
   };
 
   const openEditModal = (service) => {
+    if (!canManageServices) return;
     setEditingService(service);
     setFormData({
       name: service.name,
@@ -200,6 +212,7 @@ export function ServicesPage() {
   };
 
   const handleStatusToggleClick = (service) => {
+    if (!canManageServices) return;
     const targetStatus = service.is_active ? 0 : 1;
     setConfirmModal({
       isOpen: true,
@@ -244,18 +257,31 @@ export function ServicesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Dental Services Catalog</h1>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Dental Services Catalog</h1>
+            {!canManageServices && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-gray-700">
+                <Lock className="w-3 h-3" aria-hidden="true" />
+                View-Only Access
+              </span>
+            )}
+          </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Configure clinical procedures, appointment duration blocks, treatment fees, and booking availability.
+            {canManageServices
+              ? 'Configure clinical procedures, appointment duration blocks, treatment fees, and booking availability.'
+              : 'Browse clinical procedures, appointment duration blocks, standardized fees, and booking availability.'}
           </p>
         </div>
-        <button
-          onClick={openCreateModal}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 dark:bg-[#0F766E] hover:bg-teal-700 dark:hover:bg-[#0D9488] text-white font-medium text-sm rounded-lg shadow-sm transition-colors focus:ring-2 focus:ring-teal-500 focus:outline-none"
-        >
-          <Plus className="w-4 h-4" />
-          Add Dental Service
-        </button>
+        {canManageServices && (
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 dark:bg-[#0F766E] hover:bg-teal-700 dark:hover:bg-[#0D9488] text-white font-medium text-sm rounded-lg shadow-sm transition-colors focus:ring-2 focus:ring-teal-500 focus:outline-none cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Add Dental Service
+          </button>
+        )}
       </div>
 
       {/* Filter and Search Bar */}
@@ -429,24 +455,42 @@ export function ServicesPage() {
                       )}
                     </td>
                     <td role="cell" data-label="Actions" className="py-3.5 px-4 text-right space-x-1">
-                      <button
-                        onClick={() => openEditModal(service)}
-                        className="p-1.5 text-slate-600 dark:text-slate-300 hover:text-teal-600 dark:hover:text-teal-300 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                        title="Edit Service"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleStatusToggleClick(service)}
-                        className={`p-1.5 rounded-lg transition-colors ${
-                          service.is_active
-                            ? 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50'
-                            : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
-                        }`}
-                        title={service.is_active ? 'Deactivate Service' : 'Activate Service'}
-                      >
-                        <Power className="w-4 h-4" />
-                      </button>
+                      {canManageServices ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(service)}
+                            className="p-1.5 text-slate-600 dark:text-slate-300 hover:text-teal-600 dark:hover:text-teal-300 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
+                            title="Edit Service"
+                            aria-label={`Edit ${service.name}`}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleStatusToggleClick(service)}
+                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                              service.is_active
+                                ? 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50'
+                                : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
+                            }`}
+                            title={service.is_active ? 'Deactivate Service' : 'Activate Service'}
+                            aria-label={`${service.is_active ? 'Deactivate' : 'Activate'} ${service.name}`}
+                          >
+                            <Power className="w-4 h-4" />
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setViewingService(service)}
+                          className="p-1.5 text-slate-600 dark:text-slate-300 hover:text-teal-600 dark:hover:text-teal-300 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
+                          title="View Service Details"
+                          aria-label={`View ${service.name}`}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -644,7 +688,7 @@ export function ServicesPage() {
       )}
 
       {/* Deactivation / Activation Confirmation Dialog */}
-      {confirmModal.isOpen && confirmModal.service && (
+      {canManageServices && confirmModal.isOpen && confirmModal.service && (
         <DialogOverlay
           onClose={() => setConfirmModal({ isOpen: false, service: null, targetStatus: 0, submitting: false })} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-black/65 backdrop-blur-sm">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-150 space-y-4">
@@ -693,6 +737,75 @@ export function ServicesPage() {
                 {confirmModal.submitting && <RefreshCw className="w-4 h-4 animate-spin" />}
                 {confirmModal.targetStatus === 0 ? 'Confirm Deactivation' : 'Confirm Activation'}
               </button>
+            </div>
+          </div>
+        </DialogOverlay>
+      )}
+
+      {/* Read-Only Service Details Modal (Receptionists / View-Only Staff) */}
+      {viewingService && (
+        <DialogOverlay
+          onClose={() => setViewingService(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-black/65 backdrop-blur-sm"
+        >
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 w-full max-w-lg overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/60 dark:bg-gray-900/40">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">{viewingService.name}</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Service #{viewingService.id} · {viewingService.category || 'General'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewingService(null)}
+                aria-label="Close service details"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-sm">
+              <div className="grid grid-cols-3 gap-3 p-3.5 rounded-xl bg-slate-50 dark:bg-gray-900/50 border border-slate-200 dark:border-gray-700 text-xs">
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 block">Standard Fee</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">
+                    ₱{Number(viewingService.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 block">Duration</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">
+                    {viewingService.duration_minutes} minutes
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 block">Status</span>
+                  <span className={`font-bold ${viewingService.is_active ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                    {viewingService.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <span className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+                  Clinical Description
+                </span>
+                <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed text-justify">
+                  {viewingService.description || 'No clinical description provided.'}
+                </p>
+              </div>
+
+              <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-gray-700">
+                <button
+                  type="button"
+                  onClick={() => setViewingService(null)}
+                  className="px-4 py-2 rounded-lg border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-gray-700 cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </DialogOverlay>

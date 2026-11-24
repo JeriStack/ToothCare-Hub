@@ -19,9 +19,10 @@ import {
   FileText
 } from 'lucide-react';
 import { patientsApi } from '../api';
+import { useAuth } from '../../auth';
 import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
 import { MobileSortControl } from '../../../components/ui/MobileSortControl';
-
+
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 const GENDER_OPTIONS = [
   { value: 'MALE', label: 'Male' },
@@ -31,6 +32,14 @@ const GENDER_OPTIONS = [
 ];
 
 export function PatientListPage() {
+  const { user, hasPermission } = useAuth();
+  const canManagePatients = Boolean(
+    (typeof hasPermission === 'function' && hasPermission('patients.manage')) || user?.role === 'ADMIN'
+  );
+  const canManageAccountStatus = Boolean(
+    (typeof hasPermission === 'function' && hasPermission('users.manage')) || user?.role === 'ADMIN'
+  );
+
   const [patients, setPatients] = useState([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, per_page: 10, last_page: 1 });
   const [loading, setLoading] = useState(true);
@@ -176,6 +185,7 @@ export function PatientListPage() {
   };
 
   const handleStatusToggleClick = (patient) => {
+    if (!canManageAccountStatus) return;
     const targetStatus = patient.is_active ? 0 : 1;
     setConfirmModal({
       isOpen: true,
@@ -398,23 +408,29 @@ export function PatientListPage() {
                     </td>
                     <td role="cell" data-label="Actions" className="py-3.5 px-4 text-right space-x-1">
                       <button
+                        type="button"
                         onClick={() => openDetailsModal(patient)}
-                        className="p-1.5 text-slate-600 dark:text-slate-300 hover:text-teal-600 dark:hover:text-teal-300 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                        title="View & Edit Patient"
+                        className="p-1.5 text-slate-600 dark:text-slate-300 hover:text-teal-600 dark:hover:text-teal-300 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
+                        title={canManagePatients ? 'View & Edit Patient' : 'View Patient'}
+                        aria-label={`${canManagePatients ? 'Edit' : 'View'} ${patient.first_name} ${patient.last_name}`}
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
-                      <button
-                        onClick={() => handleStatusToggleClick(patient)}
-                        className={`p-1.5 rounded-lg transition-colors ${
-                          patient.is_active
-                            ? 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50'
-                            : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
-                        }`}
-                        title={patient.is_active ? 'Disable Account' : 'Activate Account'}
-                      >
-                        <Power className="w-4 h-4" />
-                      </button>
+                      {canManageAccountStatus && (
+                        <button
+                          type="button"
+                          onClick={() => handleStatusToggleClick(patient)}
+                          className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                            patient.is_active
+                              ? 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50'
+                              : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
+                          }`}
+                          title={patient.is_active ? 'Disable Account' : 'Activate Account'}
+                          aria-label={`${patient.is_active ? 'Disable' : 'Activate'} account for ${patient.first_name} ${patient.last_name}`}
+                        >
+                          <Power className="w-4 h-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -658,35 +674,39 @@ export function PatientListPage() {
               </div>
 
               {/* Actions */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100 dark:border-gray-700">
-                <button
-                  type="button"
-                  onClick={() => handleStatusToggleClick(selectedPatient)}
-                  className={`text-xs font-semibold px-3 py-2 rounded-lg border transition-colors ${
-                    selectedPatient.is_active
-                      ? 'border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/50'
-                      : 'border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
-                  }`}
-                >
-                  {selectedPatient.is_active ? 'Disable Account Login' : 'Enable Account Login'}
-                </button>
+              <div className={`flex flex-wrap items-center gap-3 pt-4 border-t border-slate-100 dark:border-gray-700 ${canManageAccountStatus ? 'justify-between' : 'justify-end'}`}>
+                {canManageAccountStatus && (
+                  <button
+                    type="button"
+                    onClick={() => handleStatusToggleClick(selectedPatient)}
+                    className={`text-xs font-semibold px-3 py-2 rounded-lg border transition-colors cursor-pointer ${
+                      selectedPatient.is_active
+                        ? 'border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/50'
+                        : 'border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
+                    }`}
+                  >
+                    {selectedPatient.is_active ? 'Disable Account Login' : 'Enable Account Login'}
+                  </button>
+                )}
 
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 font-medium text-sm rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors"
+                    className="px-4 py-2 border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 font-medium text-sm rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>
-                  <button
-                    type="submit"
-                    disabled={formSubmitting}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 dark:bg-[#0F766E] hover:bg-teal-700 dark:hover:bg-teal-600 text-white font-medium text-sm rounded-lg shadow-sm transition-colors disabled:opacity-50"
-                  >
-                    {formSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
-                    Save Profile Changes
-                  </button>
+                  {canManagePatients && (
+                    <button
+                      type="submit"
+                      disabled={formSubmitting}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 dark:bg-[#0F766E] hover:bg-teal-700 dark:hover:bg-teal-600 text-white font-medium text-sm rounded-lg shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      {formSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
+                      Save Profile Changes
+                    </button>
+                  )}
                 </div>
               </div>
             </form>
@@ -695,7 +715,7 @@ export function PatientListPage() {
       )}
 
       {/* Confirmation Dialog */}
-      {confirmModal.isOpen && confirmModal.patient && (
+      {canManageAccountStatus && confirmModal.isOpen && confirmModal.patient && (
         <DialogOverlay
           onClose={() => setConfirmModal({ isOpen: false, patient: null, targetStatus: 0, submitting: false })} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-black/65 backdrop-blur-sm">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-150 space-y-4">

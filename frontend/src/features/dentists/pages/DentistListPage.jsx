@@ -15,12 +15,15 @@ import {
   Phone,
   Mail,
   ShieldCheck,
-  UserCheck
+  UserCheck,
+  Eye,
+  Lock
 } from 'lucide-react';
 import { dentistsApi } from '../api';
+import { useAuth } from '../../auth';
 import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
 import { MobileSortControl } from '../../../components/ui/MobileSortControl';
-
+
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 const SPECIALIZATION_OPTIONS = [
   'General Dentistry',
@@ -36,7 +39,13 @@ const SPECIALIZATION_OPTIONS = [
 const OPERATORY_CHAIR_OPTIONS = ['Chair 1', 'Chair 2', 'Chair 3', 'Chair 4', 'Surgical Suite'];
 
 export function DentistListPage() {
+  const { user, hasPermission } = useAuth();
+  const canManageDentists = Boolean(
+    (typeof hasPermission === 'function' && hasPermission('dentists.manage')) || user?.role === 'ADMIN'
+  );
+
   const [dentists, setDentists] = useState([]);
+  const [viewingDentist, setViewingDentist] = useState(null);
   const [meta, setMeta] = useState({ total: 0, page: 1, per_page: 10, last_page: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -122,6 +131,7 @@ export function DentistListPage() {
   };
 
   const openCreateModal = () => {
+    if (!canManageDentists) return;
     setEditingDentist(null);
     setFormData({
       first_name: '',
@@ -140,6 +150,7 @@ export function DentistListPage() {
   };
 
   const openEditModal = (dentist) => {
+    if (!canManageDentists) return;
     setEditingDentist(dentist);
     setFormData({
       first_name: dentist.first_name,
@@ -234,6 +245,7 @@ export function DentistListPage() {
   };
 
   const handleStatusToggleClick = (dentist) => {
+    if (!canManageDentists) return;
     const targetStatus = dentist.is_active ? 0 : 1;
     setConfirmModal({
       isOpen: true,
@@ -280,18 +292,31 @@ export function DentistListPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50 tracking-tight">Clinic Dentist Roster</h1>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50 tracking-tight">Clinic Dentist Roster</h1>
+            {!canManageDentists && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-gray-700">
+                <Lock className="w-3 h-3" aria-hidden="true" />
+                View-Only Access
+              </span>
+            )}
+          </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Manage licensed dental practitioners, PRC credentials, assigned operatories, and active practice schedules.
+            {canManageDentists
+              ? 'Manage licensed dental practitioners, PRC credentials, assigned operatories, and active practice schedules.'
+              : 'View licensed dental practitioners, PRC credentials, assigned operatories, and account details.'}
           </p>
         </div>
-        <button
-          onClick={openCreateModal}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 dark:bg-[#0F766E] hover:bg-teal-700 dark:hover:bg-teal-600 text-white font-medium text-sm rounded-lg shadow-sm transition-colors focus:ring-2 focus:ring-teal-500 focus:outline-none"
-        >
-          <Plus className="w-4 h-4" />
-          Add Licensed Dentist
-        </button>
+        {canManageDentists && (
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 dark:bg-[#0F766E] hover:bg-teal-700 dark:hover:bg-teal-600 text-white font-medium text-sm rounded-lg shadow-sm transition-colors focus:ring-2 focus:ring-teal-500 focus:outline-none cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Add Licensed Dentist
+          </button>
+        )}
       </div>
 
       {/* Filter and Search Bar */}
@@ -464,24 +489,42 @@ export function DentistListPage() {
                       )}
                     </td>
                     <td role="cell" data-label="Actions" className="py-3.5 px-4 text-right space-x-1">
-                      <button
-                        onClick={() => openEditModal(dentist)}
-                        className="p-1.5 text-slate-600 dark:text-slate-300 hover:text-teal-600 dark:hover:text-teal-300 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                        title="Edit Profile"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleStatusToggleClick(dentist)}
-                        className={`p-1.5 rounded-lg transition-colors ${
-                          dentist.is_active
-                            ? 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50'
-                            : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
-                        }`}
-                        title={dentist.is_active ? 'Deactivate Dentist' : 'Activate Dentist'}
-                      >
-                        <Power className="w-4 h-4" />
-                      </button>
+                      {canManageDentists ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(dentist)}
+                            className="p-1.5 text-slate-600 dark:text-slate-300 hover:text-teal-600 dark:hover:text-teal-300 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
+                            title="Edit Profile"
+                            aria-label={`Edit Dr. ${dentist.first_name} ${dentist.last_name}`}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleStatusToggleClick(dentist)}
+                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                              dentist.is_active
+                                ? 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50'
+                                : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
+                            }`}
+                            title={dentist.is_active ? 'Deactivate Dentist' : 'Activate Dentist'}
+                            aria-label={`${dentist.is_active ? 'Deactivate' : 'Activate'} Dr. ${dentist.first_name} ${dentist.last_name}`}
+                          >
+                            <Power className="w-4 h-4" />
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setViewingDentist(dentist)}
+                          className="p-1.5 text-slate-600 dark:text-slate-300 hover:text-teal-600 dark:hover:text-teal-300 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
+                          title="View Dentist Details"
+                          aria-label={`View Dr. ${dentist.first_name} ${dentist.last_name}`}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -815,6 +858,89 @@ export function DentistListPage() {
                 {confirmModal.submitting && <RefreshCw className="w-4 h-4 animate-spin" />}
                 {confirmModal.targetStatus === 0 ? 'Confirm Deactivation' : 'Confirm Activation'}
               </button>
+            </div>
+          </div>
+        </DialogOverlay>
+      )}
+
+      {/* Read-Only Dentist Details Modal (Receptionists / View-Only Staff) */}
+      {viewingDentist && (
+        <DialogOverlay
+          onClose={() => setViewingDentist(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-black/65 backdrop-blur-sm"
+        >
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 w-full max-w-lg overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/60 dark:bg-gray-900/40">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-slate-50">
+                  Dr. {viewingDentist.first_name} {viewingDentist.last_name}
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Dentist #{viewingDentist.id} · {viewingDentist.specialization}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewingDentist(null)}
+                aria-label="Close dentist details"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-sm">
+              <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-50 dark:bg-gray-900/50 border border-slate-200 dark:border-gray-700 text-xs">
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 block">PRC License</span>
+                  <span className="font-mono font-semibold text-slate-900 dark:text-slate-100">
+                    {viewingDentist.license_number}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 block">Account Status</span>
+                  <span className={`font-semibold ${viewingDentist.is_active ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                    {viewingDentist.is_active ? 'Active Practice' : 'Inactive / On Leave'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 block">Account Email</span>
+                  <span className="font-medium text-slate-800 dark:text-slate-100 break-all">
+                    {viewingDentist.email || '—'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 block">Contact Phone</span>
+                  <span className="font-medium text-slate-800 dark:text-slate-100">
+                    {viewingDentist.phone || '—'}
+                  </span>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-slate-500 dark:text-slate-400 block">Assigned Operatory</span>
+                  <span className="font-medium text-slate-800 dark:text-slate-100">
+                    {viewingDentist.default_operatory_chair || 'Chair 1'}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <span className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+                  Clinical Biography
+                </span>
+                <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed text-justify">
+                  {viewingDentist.bio || 'No biography recorded.'}
+                </p>
+              </div>
+
+              <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-gray-700">
+                <button
+                  type="button"
+                  onClick={() => setViewingDentist(null)}
+                  className="px-4 py-2 rounded-lg border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-gray-700 cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </DialogOverlay>
