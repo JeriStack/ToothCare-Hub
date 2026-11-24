@@ -115,6 +115,39 @@ function formatAppointmentDate(dateStr) {
   }
 }
 
+function formatShiftTime12h(timeStr) {
+  if (!timeStr) return '';
+  const [hStr, mStr] = String(timeStr).split(':');
+  const h = Number(hStr);
+  const m = Number(mStr);
+  if (Number.isNaN(h) || Number.isNaN(m)) return String(timeStr).slice(0, 5);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+}
+
+function getShiftMinutes(timeStr) {
+  if (!timeStr) return 0;
+  const [hStr, mStr] = String(timeStr).split(':');
+  const h = Number(hStr);
+  const m = Number(mStr);
+  if (Number.isNaN(h) || Number.isNaN(m)) return 0;
+  return h * 60 + m;
+}
+
+function getManilaDayOfWeek() {
+  try {
+    const weekday = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Manila',
+      weekday: 'long',
+    }).format(new Date());
+    const found = DAYS_OF_WEEK.find((d) => d.name.toLowerCase() === weekday.toLowerCase());
+    return found ? found.id : null;
+  } catch {
+    return null;
+  }
+}
+
 export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppointment }) {
   const [dashboardData, setDashboardData] = useState(null);
   const [shifts, setShifts] = useState([]);
@@ -191,9 +224,22 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
         schedulesApi.getDentistTimeOff(dentistId).catch(() => []),
       ]);
 
+      const resolvedDentistId = Number(dash?.dentist?.id || 0);
+      let finalShifts = Array.isArray(s) ? s : [];
+      let finalTimeOff = Array.isArray(t) ? t : [];
+
+      if (resolvedDentistId > 0 && resolvedDentistId !== Number(dentistId)) {
+        const [resolvedShifts, resolvedTimeOff] = await Promise.all([
+          schedulesApi.getDentistSchedules(resolvedDentistId).catch(() => finalShifts),
+          schedulesApi.getDentistTimeOff(resolvedDentistId).catch(() => finalTimeOff),
+        ]);
+        finalShifts = Array.isArray(resolvedShifts) ? resolvedShifts : finalShifts;
+        finalTimeOff = Array.isArray(resolvedTimeOff) ? resolvedTimeOff : finalTimeOff;
+      }
+
       setDashboardData(dash);
-      setShifts(Array.isArray(s) ? s : []);
-      setTimeOffList(Array.isArray(t) ? t : []);
+      setShifts(finalShifts);
+      setTimeOffList(finalTimeOff);
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Failed to load dentist dashboard data.');
     } finally {
@@ -244,8 +290,9 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
         reason: 'Annual Dental Conference (CME)',
       });
 
-      // Refresh time-off list
-      const updatedTimeOff = await schedulesApi.getDentistTimeOff(dentistId).catch(() => []);
+      // Refresh time-off list using resolved dentist profile ID
+      const targetDentistId = Number(dashboardData?.dentist?.id || dentistId);
+      const updatedTimeOff = await schedulesApi.getDentistTimeOff(targetDentistId).catch(() => []);
       setTimeOffList(Array.isArray(updatedTimeOff) ? updatedTimeOff : []);
 
       setTimeout(() => {
@@ -260,6 +307,38 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
       setLeaveSubmitting(false);
     }
   };
+
+  // Deduplicate active recurring shifts & sort chronologically per day so repeated rows never clutter the grid
+  const uniqueActiveShifts = useMemo(() => {
+    const seen = new Set();
+    const cleaned = [];
+    for (const sh of shifts) {
+      if (sh?.is_active === 0 || sh?.is_active === false) continue;
+      const dow = Number(sh?.day_of_week || 0);
+      const startKey = String(sh?.start_time || '').slice(0, 5);
+      const endKey = String(sh?.end_time || '').slice(0, 5);
+      const chairKey = String(sh?.operatory_chair || 'Operatory Chair 1').trim().toLowerCase();
+      const dedupeKey = `${dow}|${startKey}|${endKey}|${chairKey}`;
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+      cleaned.push({ ...sh, day_of_week: dow });
+    }
+    return cleaned.sort(
+      (a, b) => a.day_of_week - b.day_of_week || String(a.start_time || '').localeCompare(String(b.start_time || ''))
+    );
+  }, [shifts]);
+
+  const weeklyScheduleSummary = useMemo(() => {
+    const workingDays = new Set(uniqueActiveShifts.map((s) => s.day_of_week)).size;
+    const totalMinutes = uniqueActiveShifts.reduce((acc, s) => {
+      const diff = getShiftMinutes(s.end_time) - getShiftMinutes(s.start_time);
+      return acc + (diff > 0 ? diff : 0);
+    }, 0);
+    const totalHours = Math.round((totalMinutes / 60) * 10) / 10;
+    return { workingDays, totalHours };
+  }, [uniqueActiveShifts]);
+
+  const currentManilaDayId = useMemo(() => getManilaDayOfWeek(), []);
 
   if (loading) {
     return <DashboardSkeleton role="dentist" />;
@@ -585,84 +664,122 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
       </div>
 
       {/* 4. Clinical Activity Summary Widget */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-xs p-5 space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-gray-700 pb-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-            <h3 className="text-sm font-bold text-[#12304A] dark:text-slate-100">Weekly Clinical Activity Summary</h3>
+      <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 shadow-xs p-5 sm:p-6 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-gray-700/80 pb-3.5">
+          <div className="flex items-center gap-2.5">
+            <span className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-500/15 ring-1 ring-inset ring-teal-200/80 dark:ring-teal-500/25 text-teal-700 dark:text-teal-300 flex items-center justify-center shrink-0">
+              <Sparkles className="w-4 h-4" aria-hidden="true" />
+            </span>
+            <h3 className="text-sm font-bold text-[#12304A] dark:text-slate-100 tracking-tight">
+              Weekly Clinical Activity Summary
+            </h3>
           </div>
-          <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">This Week (Mon - Sun)</span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-100/90 dark:bg-gray-900/70 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-gray-700/80">
+            This Week (Mon - Sun)
+          </span>
         </div>
 
         <div className="portal-grid-4">
-          <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-gray-900/60 border border-slate-100 dark:border-gray-700">
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Completed This Week</span>
-            <div className="mt-1 text-xl font-extrabold text-[#12304A] dark:text-slate-100">
+          <div className="p-4 rounded-xl bg-slate-50/75 dark:bg-gray-900/55 border border-slate-200/70 dark:border-gray-700/75 flex flex-col justify-between">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+              Completed This Week
+            </span>
+            <div className="mt-2 text-2xl font-extrabold text-[#12304A] dark:text-slate-50 tabular-nums leading-none">
               {activitySummary.completed_this_week}
             </div>
-            <p className="text-[10px] text-teal-700 dark:text-teal-400 font-semibold mt-0.5">Visits treated</p>
+            <p className="inline-flex items-center gap-1.5 text-[11px] text-teal-700 dark:text-teal-300 font-medium mt-2.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-teal-500 dark:bg-teal-400 shrink-0" aria-hidden="true" />
+              Visits treated
+            </p>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-gray-900/60 border border-slate-100 dark:border-gray-700">
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Upcoming This Week</span>
-            <div className="mt-1 text-xl font-extrabold text-[#12304A] dark:text-slate-100">
+          <div className="p-4 rounded-xl bg-slate-50/75 dark:bg-gray-900/55 border border-slate-200/70 dark:border-gray-700/75 flex flex-col justify-between">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+              Upcoming This Week
+            </span>
+            <div className="mt-2 text-2xl font-extrabold text-[#12304A] dark:text-slate-50 tabular-nums leading-none">
               {activitySummary.upcoming_this_week}
             </div>
-            <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold mt-0.5">Confirmed visits</p>
+            <p className="inline-flex items-center gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-300 font-medium mt-2.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 shrink-0" aria-hidden="true" />
+              Confirmed visits
+            </p>
           </div>
 
-          <div
+          <button
+            type="button"
             onClick={() => onNavigateTab && onNavigateTab('treatment-records')}
-            className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+            className={`text-left p-4 rounded-xl border transition-all cursor-pointer flex flex-col justify-between group focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0D9488] ${
               activitySummary.pending_documentation_count > 0
-                ? 'bg-amber-50/60 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 hover:border-amber-300 dark:hover:border-amber-600'
-                : 'bg-slate-50/70 dark:bg-gray-900/60 border-slate-100 dark:border-gray-700'
+                ? 'bg-amber-50/70 dark:bg-amber-500/[0.08] border-amber-200/90 dark:border-amber-500/30 hover:border-amber-300 dark:hover:border-amber-400/60 hover:-translate-y-0.5'
+                : 'bg-slate-50/75 dark:bg-gray-900/55 border-slate-200/70 dark:border-gray-700/75 hover:border-slate-300 dark:hover:border-gray-600'
             }`}
           >
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Pending Documentation</span>
+            <div className="flex items-center justify-between gap-2 w-full">
+              <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                Pending Documentation
+              </span>
+              <ChevronRight className="w-3.5 h-3.5 text-amber-600/70 dark:text-amber-400/70 group-hover:translate-x-0.5 transition-transform shrink-0" aria-hidden="true" />
+            </div>
             <div
-              className={`mt-1 text-xl font-extrabold ${
-                activitySummary.pending_documentation_count > 0 ? 'text-amber-800 dark:text-amber-300' : 'text-[#12304A] dark:text-slate-100'
+              className={`mt-2 text-2xl font-extrabold tabular-nums leading-none ${
+                activitySummary.pending_documentation_count > 0
+                  ? 'text-amber-700 dark:text-amber-300'
+                  : 'text-[#12304A] dark:text-slate-50'
               }`}
             >
               {activitySummary.pending_documentation_count}
             </div>
             <p
-              className={`text-[10px] font-semibold mt-0.5 ${
-                activitySummary.pending_documentation_count > 0 ? 'text-amber-700 dark:text-amber-400' : 'text-slate-400 dark:text-slate-500'
+              className={`inline-flex items-center gap-1.5 text-[11px] font-medium mt-2.5 ${
+                activitySummary.pending_documentation_count > 0
+                  ? 'text-amber-700 dark:text-amber-300'
+                  : 'text-slate-400 dark:text-slate-500'
               }`}
             >
+              <span
+                className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                  activitySummary.pending_documentation_count > 0 ? 'bg-amber-500 dark:bg-amber-400' : 'bg-slate-400'
+                }`}
+                aria-hidden="true"
+              />
               {activitySummary.pending_documentation_count > 0
                 ? 'Chart notes needed • Click to view'
                 : 'All charts signed'}
             </p>
-          </div>
+          </button>
 
-          <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-gray-900/60 border border-slate-100 dark:border-gray-700">
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Cancelled / Missed</span>
-            <div className="mt-1 text-xl font-extrabold text-slate-700 dark:text-slate-200">
+          <div className="p-4 rounded-xl bg-slate-50/75 dark:bg-gray-900/55 border border-slate-200/70 dark:border-gray-700/75 flex flex-col justify-between">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+              Cancelled / Missed
+            </span>
+            <div className="mt-2 text-2xl font-extrabold text-slate-700 dark:text-slate-200 tabular-nums leading-none">
               {activitySummary.cancelled_this_week}
             </div>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold mt-0.5">Adjusted visits</p>
+            <p className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-2.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500 shrink-0" aria-hidden="true" />
+              Adjusted visits
+            </p>
           </div>
         </div>
 
         {/* Attention banner if pending documentation exists */}
         {activitySummary.pending_documentation_count > 0 && (
-          <div className="p-3 rounded-xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
-              <span>
-                <strong>Clinical Documentation Notice:</strong> You have{' '}
-                {activitySummary.pending_documentation_count} completed visit(s) awaiting clinical procedure notes.
+          <div className="px-4 py-3 rounded-xl bg-amber-50/85 dark:bg-amber-500/[0.08] border border-amber-200/90 dark:border-amber-500/25 border-l-4 border-l-amber-500 dark:border-l-amber-400 text-amber-950 dark:text-amber-100 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start sm:items-center gap-2.5">
+              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5 sm:mt-0" aria-hidden="true" />
+              <span className="leading-relaxed">
+                <strong className="font-semibold text-amber-900 dark:text-amber-200">Clinical Documentation Notice:</strong>{' '}
+                You have {activitySummary.pending_documentation_count} completed visit(s) awaiting clinical procedure notes.
               </span>
             </div>
             <button
               type="button"
               onClick={() => onNavigateTab && onNavigateTab('treatment-records')}
-              className="shrink-0 px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition-colors"
+              className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
             >
-              Document Now
+              <span>Document Now</span>
+              <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
           </div>
         )}
@@ -671,12 +788,16 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
       {/* 5. Today's Appointment Queue & Clinical Sidebar (Grid 2:1) */}
       <div className="portal-split-2-1">
         {/* Today's Queue (2 Cols) */}
-        <div data-testid="appointment-queue" className="min-w-0 bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-xs p-5 sm:p-6 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-gray-700 pb-3">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-              <h3 className="text-sm font-bold text-[#12304A] dark:text-slate-100">Today&apos;s Appointment Queue</h3>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300">
+        <div data-testid="appointment-queue" className="min-w-0 bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 shadow-xs p-5 sm:p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-gray-700/80 pb-3.5">
+            <div className="flex items-center gap-2.5">
+              <span className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-500/15 ring-1 ring-inset ring-teal-200/80 dark:ring-teal-500/25 text-teal-700 dark:text-teal-300 flex items-center justify-center shrink-0">
+                <Clock className="w-4 h-4" aria-hidden="true" />
+              </span>
+              <h3 className="text-sm font-bold text-[#12304A] dark:text-slate-100 tracking-tight">
+                Today&apos;s Appointment Queue
+              </h3>
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-teal-50 dark:bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-200/80 dark:border-teal-500/25 tabular-nums">
                 {todayAppts.length} total
               </span>
             </div>
@@ -684,46 +805,47 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
             <button
               type="button"
               onClick={() => onNavigateTab && onNavigateTab('appointments')}
-              className="tch-tap text-xs font-semibold text-teal-700 dark:text-teal-400 hover:text-teal-900 dark:hover:text-teal-300 inline-flex items-center gap-1"
+              className="tch-tap text-xs font-semibold text-teal-700 dark:text-teal-300 hover:text-teal-900 dark:hover:text-teal-200 inline-flex items-center gap-1 cursor-pointer group"
             >
               <span>View Full Workload</span>
-              <ChevronRight className="w-3.5 h-3.5" />
+              <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
             </button>
           </div>
 
           {/* Interactive Search & Status Filters */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
             <div className="relative flex-1">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+              <Search className="w-3.5 h-3.5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none" aria-hidden="true" />
               <input
                 type="text"
                 placeholder="Search today's queue"
                 value={queueSearch}
                 onChange={(e) => setQueueSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-800 dark:text-slate-100 text-xs placeholder:text-slate-400 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200 dark:border-gray-600/80 bg-slate-50/70 dark:bg-gray-900/60 text-slate-800 dark:text-slate-100 text-xs placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-teal-500/25 focus:border-teal-500 transition-all"
               />
               {queueSearch && (
                 <button
                   type="button"
                   onClick={() => setQueueSearch('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  aria-label="Clear search"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
 
-            {/* Filter Pills */}
-            <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
+            {/* Segmented Filter Pills */}
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100/90 dark:bg-gray-900/70 border border-slate-200/70 dark:border-gray-700/80 overflow-x-auto">
               {['ALL', 'CONFIRMED', 'PENDING', 'COMPLETED'].map((st) => (
                 <button
                   key={st}
                   type="button"
                   onClick={() => setQueueStatusFilter(st)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer ${
                     queueStatusFilter === st
-                      ? 'bg-teal-700 text-white shadow-2xs'
-                      : 'bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-gray-600'
+                      ? 'bg-[#0D9488] text-white shadow-2xs'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/70 dark:hover:bg-gray-800'
                   }`}
                 >
                   {st === 'ALL' ? 'All' : st}
@@ -734,14 +856,16 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
 
           {/* Appointment Items List */}
           {filteredQueue.length === 0 ? (
-            <div className="p-8 text-center text-xs text-slate-400 dark:text-slate-500 border border-dashed border-slate-200 dark:border-gray-700 rounded-xl space-y-2">
-              <Calendar className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto" />
-              <p className="font-medium text-slate-600 dark:text-slate-300">
+            <div className="py-10 px-6 text-center bg-slate-50/50 dark:bg-gray-900/40 border border-dashed border-slate-200 dark:border-gray-700/80 rounded-xl space-y-2.5">
+              <div className="w-11 h-11 rounded-xl bg-white dark:bg-gray-800 border border-slate-200/80 dark:border-gray-700 text-slate-400 dark:text-slate-500 flex items-center justify-center mx-auto shadow-2xs">
+                <Calendar className="w-5 h-5" aria-hidden="true" />
+              </div>
+              <p className="font-semibold text-sm text-slate-700 dark:text-slate-200">
                 {todayAppts.length === 0
                   ? 'No patient visits scheduled for today.'
                   : 'No appointments match your search or filter.'}
               </p>
-              <p className="text-[11px] text-slate-400 dark:text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
                 {todayAppts.length === 0
                   ? 'Check upcoming visits in your assigned appointments tab.'
                   : 'Try clearing your search term or selecting "All".'}
@@ -753,36 +877,36 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
                     setQueueSearch('');
                     setQueueStatusFilter('ALL');
                   }}
-                  className="mt-2 text-xs font-bold text-teal-700 dark:text-teal-400 underline hover:text-teal-900 dark:hover:text-teal-300"
+                  className="mt-1 inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-500/15 hover:bg-teal-100 dark:hover:bg-teal-500/25 transition-colors cursor-pointer"
                 >
                   Reset Queue Filters
                 </button>
               )}
             </div>
           ) : (
-            <div className="divide-y divide-slate-100 dark:divide-gray-700">
+            <div className="space-y-2">
               {filteredQueue.map((appt) => {
                 const hasAlerts = Boolean(appt.patient_medical_alerts);
                 return (
                   <div
                     key={appt.id}
-                    className="py-3.5 px-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/80 dark:hover:bg-gray-700/40 rounded-xl transition-colors cursor-pointer group"
+                    className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl bg-slate-50/60 dark:bg-gray-900/45 border border-slate-200/70 dark:border-gray-700/75 hover:border-teal-300/80 dark:hover:border-teal-500/45 hover:bg-white dark:hover:bg-gray-800/80 transition-all cursor-pointer group"
                     onClick={() => onSelectAppointment && onSelectAppointment(appt.id)}
                   >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-xs text-[#12304A] dark:text-slate-100">
                           {appt.patient_first_name} {appt.patient_last_name}
                         </span>
                         <span
-                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
                             appt.status === 'CONFIRMED'
-                              ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                              ? 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30'
                               : appt.status === 'COMPLETED'
-                              ? 'bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                              ? 'bg-sky-50 dark:bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-500/30'
                               : appt.status === 'PENDING'
-                              ? 'bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
-                              : 'bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-gray-600'
+                              ? 'bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30'
+                              : 'bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-gray-600'
                           }`}
                         >
                           {appt.status}
@@ -793,19 +917,19 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
                         <span className="font-medium text-slate-700 dark:text-slate-200">
                           {appt.service_name || 'Dental Consultation'}
                         </span>
-                        <span>•</span>
-                        <span className="font-semibold text-teal-700 dark:text-teal-400">
+                        <span className="text-slate-300 dark:text-gray-600">•</span>
+                        <span className="font-semibold text-teal-700 dark:text-teal-300 tabular-nums">
                           {formatAppointmentTime(appt.start_at)}
                         </span>
-                        <span>•</span>
-                        <span className="text-slate-400 dark:text-slate-500">
+                        <span className="text-slate-300 dark:text-gray-600">•</span>
+                        <span className="text-slate-500 dark:text-slate-400">
                           {appt.operatory_chair || 'Operatory Chair 1'}
                         </span>
                       </p>
 
                       {hasAlerts && (
                         <p className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1 pt-0.5">
-                          <AlertTriangle className="w-3 h-3 text-rose-500 dark:text-rose-400 shrink-0" />
+                          <AlertTriangle className="w-3 h-3 text-rose-500 dark:text-rose-400 shrink-0" aria-hidden="true" />
                           <span>{appt.patient_medical_alerts}</span>
                         </p>
                       )}
@@ -818,10 +942,10 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
                           e.stopPropagation();
                           if (onSelectAppointment) onSelectAppointment(appt.id);
                         }}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#0F766E] dark:text-teal-300 bg-teal-50 dark:bg-teal-900/50 hover:bg-teal-100 dark:hover:bg-teal-900/80 transition-colors"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#0F766E] dark:text-teal-300 bg-teal-50 dark:bg-teal-500/15 border border-teal-200/70 dark:border-teal-500/25 hover:bg-teal-100 dark:hover:bg-teal-500/25 transition-colors cursor-pointer"
                       >
                         <span>Chart / Manage</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
+                        <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
                       </button>
                     </div>
                   </div>
@@ -834,94 +958,102 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
         {/* Clinical Sidebar: Shortcuts & Approved Leaves (1 Col) */}
         <div className="min-w-0 space-y-6">
           {/* Quick Navigation Panel */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-xs p-5 space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 shadow-xs p-5 space-y-3.5">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">
               Clinical Shortcuts
             </h3>
             <div className="space-y-2">
               <button
                 type="button"
                 onClick={() => onNavigateTab && onNavigateTab('appointments')}
-                className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-gray-700 hover:border-teal-200 dark:hover:border-teal-700 hover:bg-teal-50/40 dark:hover:bg-teal-950/30 text-left text-xs font-semibold text-slate-800 dark:text-slate-100 transition-all group"
+                className="w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200/80 dark:border-gray-700/80 bg-slate-50/50 dark:bg-gray-900/45 hover:border-teal-300/90 dark:hover:border-teal-500/50 hover:bg-teal-50/40 dark:hover:bg-teal-500/10 text-left text-xs font-semibold text-slate-800 dark:text-slate-100 transition-all group cursor-pointer"
               >
                 <div className="flex items-center gap-2.5">
-                  <Calendar className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                  <span className="w-8 h-8 rounded-lg bg-white dark:bg-gray-800 border border-slate-200/80 dark:border-gray-700 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0 group-hover:border-teal-300 dark:group-hover:border-teal-600 transition-colors">
+                    <Calendar className="w-4 h-4" aria-hidden="true" />
+                  </span>
                   <span>Assigned Appointments</span>
                 </div>
-                <ArrowRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 group-hover:translate-x-0.5 transition-transform" />
+                <ArrowRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 group-hover:text-teal-600 dark:group-hover:text-teal-300 group-hover:translate-x-0.5 transition-all" aria-hidden="true" />
               </button>
 
               <button
                 type="button"
                 onClick={() => onNavigateTab && onNavigateTab('treatment-records')}
-                className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-gray-700 hover:border-teal-200 dark:hover:border-teal-700 hover:bg-teal-50/40 dark:hover:bg-teal-950/30 text-left text-xs font-semibold text-slate-800 dark:text-slate-100 transition-all group"
+                className="w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200/80 dark:border-gray-700/80 bg-slate-50/50 dark:bg-gray-900/45 hover:border-teal-300/90 dark:hover:border-teal-500/50 hover:bg-teal-50/40 dark:hover:bg-teal-500/10 text-left text-xs font-semibold text-slate-800 dark:text-slate-100 transition-all group cursor-pointer"
               >
                 <div className="flex items-center gap-2.5">
-                  <FileText className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                  <span className="w-8 h-8 rounded-lg bg-white dark:bg-gray-800 border border-slate-200/80 dark:border-gray-700 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0 group-hover:border-teal-300 dark:group-hover:border-teal-600 transition-colors">
+                    <FileText className="w-4 h-4" aria-hidden="true" />
+                  </span>
                   <span>Treatment Records</span>
                 </div>
-                <ArrowRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 group-hover:translate-x-0.5 transition-transform" />
+                <ArrowRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 group-hover:text-teal-600 dark:group-hover:text-teal-300 group-hover:translate-x-0.5 transition-all" aria-hidden="true" />
               </button>
 
               <button
                 type="button"
                 onClick={() => setIsLeaveModalOpen(true)}
-                className="w-full flex items-center justify-between p-3 rounded-xl border border-teal-100 dark:border-teal-800 bg-teal-50/50 dark:bg-teal-950/40 hover:bg-teal-50 dark:hover:bg-teal-950/70 text-left text-xs font-bold text-teal-900 dark:text-teal-300 transition-all group"
+                className="w-full flex items-center justify-between p-2.5 rounded-xl border border-teal-200/90 dark:border-teal-500/35 bg-teal-50/70 dark:bg-teal-500/[0.12] hover:bg-teal-100/70 dark:hover:bg-teal-500/20 text-left text-xs font-bold text-teal-900 dark:text-teal-200 transition-all group cursor-pointer"
               >
                 <div className="flex items-center gap-2.5">
-                  <Plus className="w-4 h-4 text-teal-700 dark:text-teal-400" />
+                  <span className="w-8 h-8 rounded-lg bg-[#0D9488] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                    <Plus className="w-4 h-4" aria-hidden="true" />
+                  </span>
                   <span>Request Leave / Time Off</span>
                 </div>
-                <ChevronRight className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 group-hover:translate-x-0.5 transition-transform" />
+                <ChevronRight className="w-4 h-4 text-teal-700 dark:text-teal-300 group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
               </button>
             </div>
           </div>
 
           {/* Approved Leaves & Vacations Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-xs p-5 space-y-3">
+          <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 shadow-xs p-5 space-y-3.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Coffee className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                <span className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-500/15 ring-1 ring-inset ring-amber-200/80 dark:ring-amber-500/25 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                  <Coffee className="w-3.5 h-3.5" aria-hidden="true" />
+                </span>
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.08em] text-slate-700 dark:text-slate-200">
                   Approved Leaves
                 </h3>
               </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300">
+              <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-500/25 tabular-nums">
                 {timeOffList.length} total
               </span>
             </div>
 
             {timeOffList.length === 0 ? (
-              <div className="text-center py-4 space-y-2">
-                <p className="text-xs text-slate-400 dark:text-slate-500 italic">No leaves or vacations scheduled.</p>
+              <div className="text-center py-5 px-3 rounded-xl bg-slate-50/60 dark:bg-gray-900/45 border border-dashed border-slate-200 dark:border-gray-700/80 space-y-2">
+                <p className="text-xs text-slate-500 dark:text-slate-400">No leaves or vacations scheduled.</p>
                 <button
                   type="button"
                   onClick={() => setIsLeaveModalOpen(true)}
-                  className="text-xs font-bold text-teal-700 dark:text-teal-400 hover:underline"
+                  className="text-xs font-semibold text-teal-700 dark:text-teal-300 hover:underline cursor-pointer"
                 >
                   Request Time Off
                 </button>
               </div>
             ) : (
-              <div className="space-y-2 text-xs">
+              <div className="space-y-2.5 text-xs">
                 {timeOffList.slice(0, 3).map((t) => (
                   <div
                     key={t.id}
-                    className="p-2.5 rounded-xl bg-amber-50/50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-800/70 space-y-1"
+                    className="p-3 rounded-xl bg-amber-50/55 dark:bg-amber-500/[0.07] border border-amber-200/75 dark:border-amber-500/25 space-y-1.5"
                   >
-                    <div className="flex items-center justify-between">
-                      <p className="font-semibold text-slate-800 dark:text-slate-100">{t.reason}</p>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-semibold text-slate-800 dark:text-slate-100 truncate">{t.reason}</p>
                       <span
-                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${
                           t.approved_by_user_id
-                            ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300'
-                            : 'bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300'
+                            ? 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-500/30'
+                            : 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-200/80 dark:border-amber-500/30'
                         }`}
                       >
                         {t.approved_by_user_id ? 'Approved' : 'Pending'}
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono tabular-nums">
                       {t.start_at?.slice(0, 10)} → {t.end_at?.slice(0, 10)}
                     </p>
                   </div>
@@ -930,7 +1062,7 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
                 <button
                   type="button"
                   onClick={() => setIsLeaveModalOpen(true)}
-                  className="tch-tap w-full text-center pt-1 text-xs font-bold text-teal-700 dark:text-teal-400 hover:underline"
+                  className="tch-tap w-full py-2 rounded-xl border border-dashed border-teal-300/80 dark:border-teal-500/35 text-xs font-semibold text-teal-700 dark:text-teal-300 hover:bg-teal-50/60 dark:hover:bg-teal-500/10 transition-colors cursor-pointer"
                 >
                   + Request New Leave
                 </button>
@@ -941,36 +1073,73 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
       </div>
 
       {/* 6. Weekly Recurring Operatory Shifts Grid */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-xs p-5 sm:p-6 space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-gray-700 pb-3">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-            <h3 className="text-sm font-bold text-[#12304A] dark:text-slate-100">Weekly Recurring Operatory Shifts</h3>
+      <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 shadow-xs p-5 sm:p-6 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-gray-700/80 pb-3.5">
+          <div className="flex items-center gap-2.5">
+            <span className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-500/15 ring-1 ring-inset ring-teal-200/80 dark:ring-teal-500/25 text-teal-700 dark:text-teal-300 flex items-center justify-center shrink-0">
+              <Clock className="w-4 h-4" aria-hidden="true" />
+            </span>
+            <div>
+              <h3 className="text-sm font-bold text-[#12304A] dark:text-slate-100 tracking-tight">
+                Weekly Recurring Operatory Shifts
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Live synced duty schedule ({weeklyScheduleSummary.workingDays} active {weeklyScheduleSummary.workingDays === 1 ? 'day' : 'days'} · {weeklyScheduleSummary.totalHours}h/wk)
+              </p>
+            </div>
           </div>
-          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-teal-50 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300">
-            {shifts.length} active shifts
+          <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-teal-50 dark:bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-200/80 dark:border-teal-500/25 tabular-nums">
+            {uniqueActiveShifts.length} {uniqueActiveShifts.length === 1 ? 'active shift' : 'active shifts'}
           </span>
         </div>
 
         <div className="portal-grid-7">
           {DAYS_OF_WEEK.map((day) => {
-            const dayShifts = shifts.filter((s) => s.day_of_week === day.id);
+            const dayShifts = uniqueActiveShifts.filter((s) => s.day_of_week === day.id);
+            const isToday = currentManilaDayId === day.id;
+            const isOffDuty = dayShifts.length === 0;
             return (
               <div
                 key={day.id}
-                className="p-3 rounded-xl border border-slate-100 dark:border-gray-700 bg-slate-50/60 dark:bg-gray-900/60 flex flex-col justify-between min-h-[90px]"
+                className={`p-3.5 rounded-xl border flex flex-col justify-between min-h-[126px] transition-colors ${
+                  isToday
+                    ? 'bg-teal-50/50 dark:bg-teal-500/[0.08] border-teal-300/90 dark:border-teal-500/45 ring-1 ring-teal-500/20'
+                    : isOffDuty
+                    ? 'bg-slate-50/45 dark:bg-gray-900/35 border-slate-200/70 dark:border-gray-700/60'
+                    : 'bg-slate-50/75 dark:bg-gray-900/55 border-slate-200/80 dark:border-gray-700/80'
+                }`}
               >
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{day.name}</span>
-                <div className="mt-2 space-y-1">
-                  {dayShifts.length === 0 ? (
-                    <span className="text-[11px] text-slate-400 dark:text-slate-500 italic">Off duty</span>
+                <div className="flex items-center justify-between gap-1.5 pb-2 border-b border-slate-200/60 dark:border-gray-700/60">
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{day.name}</span>
+                  {isToday ? (
+                    <span className="px-1.5 py-0.5 rounded-md text-[9.5px] font-bold uppercase tracking-wider bg-teal-600 text-white">
+                      Today
+                    </span>
+                  ) : (
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                        isOffDuty ? 'bg-slate-300 dark:bg-gray-600' : 'bg-teal-500 dark:bg-teal-400'
+                      }`}
+                      aria-hidden="true"
+                    />
+                  )}
+                </div>
+
+                <div className="mt-2.5 flex-1 flex flex-col justify-center space-y-2">
+                  {isOffDuty ? (
+                    <span className="inline-flex items-center justify-center px-2 py-1 rounded-lg bg-slate-100/80 dark:bg-gray-800/80 border border-slate-200/70 dark:border-gray-700/70 text-[11px] font-medium text-slate-400 dark:text-slate-500">
+                      Off duty
+                    </span>
                   ) : (
                     dayShifts.map((sh) => (
-                      <div key={sh.id} className="space-y-0.5">
-                        <p className="font-mono text-xs font-bold text-teal-800 dark:text-teal-300">
-                          {sh.start_time?.slice(0, 5)} - {sh.end_time?.slice(0, 5)}
+                      <div
+                        key={sh.id}
+                        className="p-2 rounded-lg bg-white dark:bg-gray-800/90 border border-slate-200/80 dark:border-gray-700/80 space-y-0.5 shadow-2xs"
+                      >
+                        <p className="text-[11px] font-bold text-teal-800 dark:text-teal-300 tabular-nums whitespace-nowrap">
+                          {formatShiftTime12h(sh.start_time)} – {formatShiftTime12h(sh.end_time)}
                         </p>
-                        <p className="text-[10px] text-teal-700 dark:text-teal-400 font-medium">
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">
                           {sh.operatory_chair || 'Operatory Chair 1'}
                         </p>
                       </div>
