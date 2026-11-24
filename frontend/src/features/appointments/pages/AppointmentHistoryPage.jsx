@@ -260,51 +260,52 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-sm space-y-4">
-        {/* Filter Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-100 dark:border-gray-700">
-          {[
-            { id: 'ALL', label: 'All Visits' },
-            { id: 'UPCOMING', label: 'Upcoming' },
-            { id: 'PENDING', label: 'Pending Review' },
-            { id: 'COMPLETED', label: 'Completed' },
-            { id: 'CANCELLED', label: 'Cancelled / Declined' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                activeTab === tab.id
-                  ? 'bg-[#CCFBF1] dark:bg-teal-900/60 text-[#0F766E] dark:text-teal-300 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-gray-700'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
+      {/* Search and Category Filter Bar */}
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-sm flex flex-col sm:flex-row sm:items-center gap-3">
         {/* Search Input */}
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+        <div className="relative flex-1">
+          <label htmlFor="patient-appt-search" className="sr-only">
+            Search dentist, service, or reference
+          </label>
+          <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" aria-hidden="true" />
           <input
+            id="patient-appt-search"
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search dentist, service, reference"
-            className="w-full pl-10 pr-4 py-2 text-sm border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:border-transparent"
+            className="w-full min-h-11 sm:min-h-0 pl-10 pr-9 py-2.5 text-sm border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:border-transparent"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              aria-label="Clear search"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             >
               <X className="w-4 h-4" />
             </button>
           )}
+        </div>
+
+        {/* Status Filter Dropdown */}
+        <div className="sm:w-56 shrink-0">
+          <label htmlFor="patient-appt-status-filter" className="sr-only">
+            Filter visits by status
+          </label>
+          <select
+            id="patient-appt-status-filter"
+            value={activeTab}
+            onChange={(e) => setActiveTab(e.target.value)}
+            aria-label="Filter visits by status"
+            className="w-full min-h-11 sm:min-h-0 px-3.5 py-2.5 rounded-xl bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400"
+          >
+            <option value="ALL">All Visits</option>
+            <option value="UPCOMING">Upcoming</option>
+            <option value="PENDING">Pending Review</option>
+            <option value="COMPLETED">Completed</option>
+            <option value="CANCELLED">Cancelled / Declined</option>
+          </select>
         </div>
       </div>
 
