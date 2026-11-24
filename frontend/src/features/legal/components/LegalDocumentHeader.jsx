@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Printer, Link2, Check } from 'lucide-react';
+import { Printer, Link2, Check, AlertTriangle } from 'lucide-react';
 
 export function formatLegalDate(rawDate) {
   if (!rawDate) return 'Pending confirmation';
@@ -120,7 +120,7 @@ export function LegalDocumentHeader({
       </h1>
 
       {introduction && (
-        <p className="legal-prose mt-4 text-[0.9375rem] sm:text-base leading-[1.72] text-slate-600 dark:text-gray-300 max-w-[68ch]">
+        <p className="legal-prose mt-4 text-[0.9375rem] sm:text-base leading-[1.78] text-slate-600 dark:text-gray-300 text-justify hyphens-auto">
           {introduction}
         </p>
       )}
@@ -128,43 +128,49 @@ export function LegalDocumentHeader({
       {/* Formal Metadata Ledger */}
       <dl
         aria-label="Document metadata"
-        className="mt-6 pt-4 border-t border-slate-200/80 dark:border-gray-700/80 grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 text-[0.8125rem]"
+        className="mt-6 pt-5 border-t border-slate-200/80 dark:border-gray-700/80 grid grid-cols-2 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.4fr)] gap-x-6 gap-y-4 text-[0.8125rem]"
       >
         <div>
-          <dt className="text-[0.75rem] font-medium text-slate-500 dark:text-gray-400">
+          <dt className="text-[0.72rem] font-medium uppercase tracking-wider text-slate-500 dark:text-gray-400">
             Document Version
           </dt>
-          <dd className="mt-0.5 font-semibold text-slate-900 dark:text-gray-100 tabular-nums">
+          <dd className="mt-1 font-semibold text-slate-900 dark:text-gray-100 tabular-nums">
             v{version}
           </dd>
         </div>
         <div>
-          <dt className="text-[0.75rem] font-medium text-slate-500 dark:text-gray-400">
+          <dt className="text-[0.72rem] font-medium uppercase tracking-wider text-slate-500 dark:text-gray-400">
             Effective Date
           </dt>
-          <dd className="mt-0.5 font-semibold text-slate-900 dark:text-gray-100">
+          <dd className="mt-1 font-semibold text-slate-900 dark:text-gray-100">
             {effectiveDate}
           </dd>
         </div>
         <div>
-          <dt className="text-[0.75rem] font-medium text-slate-500 dark:text-gray-400">
+          <dt className="text-[0.72rem] font-medium uppercase tracking-wider text-slate-500 dark:text-gray-400">
             Last Updated
           </dt>
-          <dd className="mt-0.5 font-semibold text-slate-900 dark:text-gray-100">
+          <dd className="mt-1 font-semibold text-slate-900 dark:text-gray-100">
             {lastUpdated}
           </dd>
         </div>
         <div>
-          <dt className="text-[0.75rem] font-medium text-slate-500 dark:text-gray-400">
+          <dt className="text-[0.72rem] font-medium uppercase tracking-wider text-slate-500 dark:text-gray-400">
             Publication Status
           </dt>
-          <dd className="mt-0.5 font-semibold text-slate-900 dark:text-gray-100">
-            <span className="inline-flex items-start gap-1.5">
+          <dd className="mt-1">
+            <span
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap border ${
+                isApproved
+                  ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-500/25'
+                  : 'bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-200/80 dark:border-amber-500/25'
+              }`}
+            >
               <span
-                className={`inline-block w-2 h-2 mt-[0.35rem] rounded-full shrink-0 ${
+                className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${
                   isApproved
                     ? 'bg-emerald-600 dark:bg-emerald-400'
-                    : 'bg-amber-600 dark:bg-amber-400'
+                    : 'bg-amber-500 dark:bg-amber-400'
                 }`}
                 aria-hidden="true"
               />
@@ -178,15 +184,23 @@ export function LegalDocumentHeader({
       {(!isApproved || draftNotice) && (
         <div
           role="note"
-          className="legal-notice mt-6 border-l-[3px] border-amber-600/80 dark:border-amber-400/80 bg-amber-50/60 dark:bg-amber-950/30 px-4 py-3.5 rounded-r-md text-[0.875rem] leading-[1.65] text-amber-950 dark:text-amber-100"
+          className="legal-notice mt-6 rounded-xl border border-amber-200/90 dark:border-amber-500/25 border-l-4 border-l-amber-500 dark:border-l-amber-400 bg-amber-50/75 dark:bg-amber-500/[0.08] px-5 py-4 text-[0.875rem] leading-[1.72] text-amber-950 dark:text-amber-100"
         >
-          <p className="font-semibold text-[0.8125rem] uppercase tracking-[0.06em] text-amber-900 dark:text-amber-300">
-            Draft — Pending Clinic &amp; Legal/Privacy Approval
-          </p>
-          <p className="mt-1 text-amber-950/90 dark:text-amber-100/90 legal-prose">
-            {draftNotice ||
-              'This document is a structured draft aligned with current ToothCare Hub software capabilities and requires formal review and approval by clinic leadership and a qualified legal/privacy adviser prior to production publication.'}
-          </p>
+          <div className="flex items-start gap-3">
+            <AlertTriangle
+              className="w-4 h-4 mt-0.5 text-amber-600 dark:text-amber-400 shrink-0"
+              aria-hidden="true"
+            />
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <p className="font-semibold text-[0.78rem] uppercase tracking-[0.07em] text-amber-900 dark:text-amber-300">
+                Draft — Pending Clinic &amp; Legal/Privacy Approval
+              </p>
+              <p className="text-amber-950/90 dark:text-amber-100/90 legal-prose text-justify hyphens-auto">
+                {draftNotice ||
+                  'This document is a structured draft aligned with current ToothCare Hub software capabilities and requires formal review and approval by clinic leadership and a qualified legal/privacy adviser prior to production publication.'}
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
