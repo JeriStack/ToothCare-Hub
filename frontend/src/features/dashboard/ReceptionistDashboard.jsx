@@ -532,14 +532,279 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
         })}
       </div>
 
-      {/* Main Grid: Waiting List & Today's Schedule */}
-      <div className="portal-split-1-2 items-start">
-        {/* Left Column: Live Waiting Room Queue & Pending Review (1 Col) */}
-        <div className="min-w-0 space-y-5">
-          {/* Waiting Room Queue */}
+      {/* Main Workspace: Full-Width Today's Clinic Schedule + Balanced 2-Column Queues */}
+      <div className="space-y-6">
+        {/* Primary Operational Table: Today's Clinic Schedule */}
+        <section
+          aria-label="Today's Clinic Schedule"
+          className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 shadow-xs overflow-hidden flex flex-col"
+        >
+          {/* Header with Inline Search and Status Dropdown */}
+          <div className="px-5 py-4 border-b border-slate-100 dark:border-gray-700/80 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3.5">
+            <div className="flex items-start gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-gray-900/80 border border-slate-200/80 dark:border-gray-700 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
+                <Calendar className="w-4 h-4" aria-hidden="true" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 tracking-tight">
+                    Today's Clinic Schedule
+                  </h2>
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-gray-900/80 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-gray-700 tabular-nums">
+                    {schedule.length}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Manage arrivals, check-ins, and consultation progress
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full lg:w-auto">
+              <div className="relative flex-1 sm:w-64">
+                <label htmlFor="receptionist-schedule-search" className="sr-only">
+                  Search patient or service
+                </label>
+                <Search
+                  className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                  aria-hidden="true"
+                />
+                <input
+                  id="receptionist-schedule-search"
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search patient or service..."
+                  className="w-full pl-9 pr-8 py-2 text-xs rounded-xl border border-slate-200 dark:border-gray-600/90 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 bg-slate-50/70 dark:bg-gray-900/60 focus:bg-white dark:focus:bg-gray-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 transition-colors"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    aria-label="Clear schedule search"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" aria-hidden="true" />
+                  </button>
+                )}
+              </div>
+
+              <div className="sm:w-44 shrink-0">
+                <label htmlFor="receptionist-schedule-status" className="sr-only">
+                  Filter schedule by desk status
+                </label>
+                <select
+                  id="receptionist-schedule-status"
+                  aria-label="Filter schedule by desk status"
+                  value={attendanceFilter}
+                  onChange={(e) => setAttendanceFilter(e.target.value)}
+                  className="w-full px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 dark:border-gray-600/90 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 bg-slate-50/70 dark:bg-gray-900/60 text-slate-700 dark:text-slate-100 cursor-pointer"
+                >
+                  <option value="ALL">All Statuses</option>
+                  <option value="NOT_ARRIVED">Not Arrived</option>
+                  <option value="CHECKED_IN">Checked In</option>
+                  <option value="WAITING">Waiting</option>
+                  <option value="IN_CONSULTATION">In Chair</option>
+                  <option value="FINISHED">Finished</option>
+                  <option value="NO_SHOW">No Show</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Schedule Table / List */}
+          <div className="overflow-x-auto">
+            {filteredSchedule.length === 0 ? (
+              <div className="p-6">
+                <div className="rounded-xl border border-dashed border-slate-200 dark:border-gray-700/80 bg-slate-50/60 dark:bg-gray-900/35 py-10 px-4 text-center">
+                  <div className="w-10 h-10 rounded-xl bg-white dark:bg-gray-800 border border-slate-200/80 dark:border-gray-700 flex items-center justify-center mx-auto text-slate-400 dark:text-slate-500">
+                    <Calendar className="w-5 h-5 stroke-[1.75]" aria-hidden="true" />
+                  </div>
+                  <p className="mt-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                    No appointments found
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    {searchQuery || attendanceFilter !== 'ALL'
+                      ? 'Try clearing your search or status filter.'
+                      : 'No appointments scheduled for today.'}
+                  </p>
+                  {(searchQuery || attendanceFilter !== 'ALL') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setAttendanceFilter('ALL');
+                      }}
+                      className="mt-3 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-slate-50 dark:hover:bg-gray-700 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
+                    >
+                      Reset filters
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <table role="table" className="tch-responsive-table w-full text-left border-collapse text-xs">
+                <thead role="rowgroup">
+                  <tr
+                    role="row"
+                    className="border-b border-slate-100 dark:border-gray-700/80 bg-slate-50/70 dark:bg-gray-900/45 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[10px]"
+                  >
+                    <th role="columnheader" className="py-3 px-5">Time</th>
+                    <th role="columnheader" className="py-3 px-4">Patient</th>
+                    <th role="columnheader" className="py-3 px-4">Service &amp; Provider</th>
+                    <th role="columnheader" className="py-3 px-4">Lifecycle</th>
+                    <th role="columnheader" className="py-3 px-4">Desk State</th>
+                    <th role="columnheader" className="py-3 px-5 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody role="rowgroup" className="divide-y divide-slate-100 dark:divide-gray-700/70">
+                  {filteredSchedule.map((apt) => {
+                    const startTime = formatClockTime(apt.start_at);
+                    const endTime = formatClockTime(apt.end_at);
+                    const isArrived = apt.attendance_status && apt.attendance_status !== 'NOT_ARRIVED';
+                    const lifecycle = LIFECYCLE_STYLES[apt.appointment_status] || {
+                      label: apt.appointment_status || 'Unknown',
+                      badge: 'bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-gray-600',
+                      dot: 'bg-slate-400',
+                    };
+                    const deskState = DESK_STATE_STYLES[apt.attendance_status] || DESK_STATE_STYLES.NOT_ARRIVED;
+
+                    return (
+                      <tr
+                        role="row"
+                        key={apt.id}
+                        className="hover:bg-slate-50/75 dark:hover:bg-gray-700/30 transition-colors"
+                      >
+                        {/* Time */}
+                        <td role="cell" data-label="Time" className="py-3.5 px-5 whitespace-nowrap tabular-nums">
+                          <span className="font-semibold text-slate-900 dark:text-slate-100 block">
+                            {startTime}
+                          </span>
+                          <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                            – {endTime}
+                          </span>
+                        </td>
+
+                        {/* Patient */}
+                        <td role="cell" data-label="Patient" className="py-3.5 px-4">
+                          <div className="flex items-start gap-2.5">
+                            <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-gray-900/80 border border-slate-200/80 dark:border-gray-700 text-slate-700 dark:text-slate-200 flex items-center justify-center text-[11px] font-semibold shrink-0 mt-0.5">
+                              {getInitials(apt.patient_first_name, apt.patient_last_name)}
+                            </div>
+                            <div className="min-w-0">
+                              <span className="font-semibold text-slate-900 dark:text-slate-100 block">
+                                {apt.patient_first_name} {apt.patient_last_name}
+                              </span>
+                              <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5 tabular-nums">
+                                <Phone className="w-3 h-3 text-slate-400 dark:text-slate-500 shrink-0" aria-hidden="true" />
+                                {apt.patient_phone || 'No phone'}
+                              </span>
+                              {apt.patient_medical_alerts && apt.patient_medical_alerts !== 'None recorded' && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 rounded-full mt-1 border border-rose-200/80 dark:border-rose-500/25">
+                                  <ShieldAlert className="w-2.5 h-2.5 shrink-0" aria-hidden="true" />
+                                  {apt.patient_medical_alerts}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Service & Provider */}
+                        <td role="cell" data-label="Service & Provider" className="py-3.5 px-4">
+                          <span className="font-semibold text-slate-800 dark:text-slate-100 block">
+                            {apt.service_name}
+                          </span>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                            Dr. {apt.dentist_first_name} {apt.dentist_last_name}
+                            <span className="mx-1.5 text-slate-300 dark:text-gray-600" aria-hidden="true">·</span>
+                            <span className="text-slate-400 dark:text-slate-500">{apt.operatory_chair || 'Chair 1'}</span>
+                          </span>
+                        </td>
+
+                        {/* Lifecycle Status */}
+                        <td role="cell" data-label="Lifecycle" className="py-3.5 px-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${lifecycle.badge}`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${lifecycle.dot}`} aria-hidden="true" />
+                            {lifecycle.label}
+                          </span>
+                        </td>
+
+                        {/* Attendance Status */}
+                        <td role="cell" data-label="Desk State" className="py-3.5 px-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium border ${deskState.badge}`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${deskState.dot}`} aria-hidden="true" />
+                            {deskState.label}
+                          </span>
+                        </td>
+
+                        {/* Action Button */}
+                        <td role="cell" data-label="Action" className="py-3.5 px-5 text-right whitespace-nowrap">
+                          {!isArrived && apt.appointment_status === 'CONFIRMED' ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCheckInTarget(apt);
+                                setCheckInNotes('');
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-[#0D9488] hover:bg-[#0F766E] text-white font-semibold text-xs transition-colors shadow-2xs cursor-pointer"
+                            >
+                              Check In
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAttendanceModalTarget(apt);
+                                setAttendanceStatusChoice(apt.attendance_status || 'WAITING');
+                                setAttendanceNotes(apt.attendance_notes || '');
+                              }}
+                              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-slate-50 dark:hover:bg-gray-700 text-slate-700 dark:text-slate-200 font-semibold text-xs transition-colors cursor-pointer"
+                            >
+                              Manage
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* Subtle Schedule Footer */}
+          {schedule.length > 0 && (
+            <div className="px-5 py-3 border-t border-slate-100 dark:border-gray-700/80 bg-slate-50/50 dark:bg-gray-900/35 flex items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+              <span className="tabular-nums">
+                Showing <strong className="font-semibold text-slate-700 dark:text-slate-200">{filteredSchedule.length}</strong> of{' '}
+                <strong className="font-semibold text-slate-700 dark:text-slate-200">{schedule.length}</strong> scheduled today
+              </span>
+              {(searchQuery || attendanceFilter !== 'ALL') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setAttendanceFilter('ALL');
+                  }}
+                  className="font-semibold text-[#0F766E] dark:text-teal-400 hover:underline cursor-pointer"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* Balanced 2-Column Operational Queues (Equal Height) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+          {/* Left: Waiting Room Queue */}
           <section
             aria-label="Waiting Room Queue"
-            className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 shadow-xs overflow-hidden"
+            className="h-full bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 shadow-xs overflow-hidden flex flex-col"
           >
             <div className="px-5 py-4 border-b border-slate-100 dark:border-gray-700/80 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
@@ -572,16 +837,16 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
               </span>
             </div>
 
-            <div className="p-4">
+            <div className="p-4 flex-1 flex flex-col">
               {waitingList.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-200 dark:border-gray-700/80 bg-slate-50/60 dark:bg-gray-900/35 py-8 px-4 text-center">
-                  <div className="w-10 h-10 rounded-xl bg-white dark:bg-gray-800 border border-slate-200/80 dark:border-gray-700 flex items-center justify-center mx-auto text-slate-400 dark:text-slate-500">
+                <div className="flex-1 flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 dark:border-gray-700/80 bg-slate-50/60 dark:bg-gray-900/35 py-10 px-4 text-center">
+                  <div className="w-10 h-10 rounded-xl bg-white dark:bg-gray-800 border border-slate-200/80 dark:border-gray-700 flex items-center justify-center text-slate-400 dark:text-slate-500">
                     <UserCheck className="w-5 h-5 stroke-[1.75]" aria-hidden="true" />
                   </div>
                   <p className="mt-3 text-xs font-semibold text-slate-700 dark:text-slate-200">
                     No patients waiting
                   </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 max-w-[220px] mx-auto leading-relaxed">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 max-w-[260px] leading-relaxed">
                     Checked-in patients will appear here automatically with live wait times.
                   </p>
                 </div>
@@ -650,22 +915,31 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
             </div>
           </section>
 
-          {/* Pending Review Queue */}
+          {/* Right: Pending Review Queue */}
           <section
             aria-label="Pending Review Queue"
-            className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 shadow-xs overflow-hidden"
+            className="h-full bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 shadow-xs overflow-hidden flex flex-col"
           >
-            <div className="px-5 py-3.5 border-b border-slate-100 dark:border-gray-700/80 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <Clock className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" aria-hidden="true" />
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 tracking-tight truncate">
-                  Pending Review Queue
-                </h3>
-                {pendingReview.length > 0 && (
-                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-500/25 tabular-nums">
-                    {pendingReview.length}
-                  </span>
-                )}
+            <div className="px-5 py-4 border-b border-slate-100 dark:border-gray-700/80 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-gray-900/80 border border-slate-200/80 dark:border-gray-700 text-amber-500 dark:text-amber-400 flex items-center justify-center shrink-0">
+                  <Clock className="w-4 h-4" aria-hidden="true" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 tracking-tight truncate">
+                      Pending Review Queue
+                    </h3>
+                    {pendingReview.length > 0 && (
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-500/25 tabular-nums">
+                        {pendingReview.length}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                    New booking requests awaiting confirmation
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
@@ -678,13 +952,18 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
             </div>
 
             {pendingReview.length === 0 ? (
-              <div className="p-6 text-center">
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  No pending appointment requests to review.
-                </p>
+              <div className="p-4 flex-1 flex flex-col">
+                <div className="flex-1 flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 dark:border-gray-700/80 bg-slate-50/60 dark:bg-gray-900/35 py-10 px-4 text-center">
+                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                    All caught up
+                  </p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                    No pending appointment requests to review.
+                  </p>
+                </div>
               </div>
             ) : (
-              <div className="divide-y divide-slate-100 dark:divide-gray-700/70">
+              <div className="divide-y divide-slate-100 dark:divide-gray-700/70 flex-1">
                 {pendingReview.slice(0, 4).map((item) => (
                   <button
                     key={item.id}
@@ -702,9 +981,8 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                         </p>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
                           {item.service_name}
-                        </p>
-                        <p className="text-[11px] text-slate-400 dark:text-slate-500 tabular-nums mt-0.5">
-                          {formatShortSlot(item.start_at)}
+                          <span className="mx-1.5 text-slate-300 dark:text-gray-600" aria-hidden="true">·</span>
+                          <span className="tabular-nums text-slate-400 dark:text-slate-500">{formatShortSlot(item.start_at)}</span>
                         </p>
                       </div>
                     </div>
@@ -721,273 +999,6 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                     </div>
                   </button>
                 ))}
-              </div>
-            )}
-          </section>
-        </div>
-
-        {/* Right Column: Today's Front Desk Schedule (2 Cols) */}
-        <div className="min-w-0">
-          <section
-            aria-label="Today's Clinic Schedule"
-            className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 shadow-xs overflow-hidden flex flex-col"
-          >
-            {/* Header with Inline Search and Status Dropdown */}
-            <div className="px-5 py-4 border-b border-slate-100 dark:border-gray-700/80 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3.5">
-              <div className="flex items-start gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-gray-900/80 border border-slate-200/80 dark:border-gray-700 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
-                  <Calendar className="w-4 h-4" aria-hidden="true" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 tracking-tight">
-                      Today's Clinic Schedule
-                    </h2>
-                    <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-gray-900/80 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-gray-700 tabular-nums">
-                      {schedule.length}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Manage arrivals, check-ins, and consultation progress
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full xl:w-auto">
-                <div className="relative flex-1 sm:w-56">
-                  <label htmlFor="receptionist-schedule-search" className="sr-only">
-                    Search patient or service
-                  </label>
-                  <Search
-                    className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                    aria-hidden="true"
-                  />
-                  <input
-                    id="receptionist-schedule-search"
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search patient or service..."
-                    className="w-full pl-9 pr-8 py-2 text-xs rounded-xl border border-slate-200 dark:border-gray-600/90 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 bg-slate-50/70 dark:bg-gray-900/60 focus:bg-white dark:focus:bg-gray-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 transition-colors"
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery('')}
-                      aria-label="Clear schedule search"
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                    >
-                      <X className="w-3.5 h-3.5" aria-hidden="true" />
-                    </button>
-                  )}
-                </div>
-
-                <div className="sm:w-40 shrink-0">
-                  <label htmlFor="receptionist-schedule-status" className="sr-only">
-                    Filter schedule by desk status
-                  </label>
-                  <select
-                    id="receptionist-schedule-status"
-                    aria-label="Filter schedule by desk status"
-                    value={attendanceFilter}
-                    onChange={(e) => setAttendanceFilter(e.target.value)}
-                    className="w-full px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 dark:border-gray-600/90 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 bg-slate-50/70 dark:bg-gray-900/60 text-slate-700 dark:text-slate-100 cursor-pointer"
-                  >
-                    <option value="ALL">All Statuses</option>
-                    <option value="NOT_ARRIVED">Not Arrived</option>
-                    <option value="CHECKED_IN">Checked In</option>
-                    <option value="WAITING">Waiting</option>
-                    <option value="IN_CONSULTATION">In Chair</option>
-                    <option value="FINISHED">Finished</option>
-                    <option value="NO_SHOW">No Show</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Schedule Table / List */}
-            <div className="overflow-x-auto">
-              {filteredSchedule.length === 0 ? (
-                <div className="p-6">
-                  <div className="rounded-xl border border-dashed border-slate-200 dark:border-gray-700/80 bg-slate-50/60 dark:bg-gray-900/35 py-12 px-4 text-center">
-                    <div className="w-10 h-10 rounded-xl bg-white dark:bg-gray-800 border border-slate-200/80 dark:border-gray-700 flex items-center justify-center mx-auto text-slate-400 dark:text-slate-500">
-                      <Calendar className="w-5 h-5 stroke-[1.75]" aria-hidden="true" />
-                    </div>
-                    <p className="mt-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                      No appointments found
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      {searchQuery || attendanceFilter !== 'ALL'
-                        ? 'Try clearing your search or status filter.'
-                        : 'No appointments scheduled for today.'}
-                    </p>
-                    {(searchQuery || attendanceFilter !== 'ALL') && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSearchQuery('');
-                          setAttendanceFilter('ALL');
-                        }}
-                        className="mt-3 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-slate-50 dark:hover:bg-gray-700 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
-                      >
-                        Reset filters
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <table role="table" className="tch-responsive-table w-full text-left border-collapse text-xs">
-                  <thead role="rowgroup">
-                    <tr
-                      role="row"
-                      className="border-b border-slate-100 dark:border-gray-700/80 bg-slate-50/70 dark:bg-gray-900/45 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[10px]"
-                    >
-                      <th role="columnheader" className="py-3 px-5">Time</th>
-                      <th role="columnheader" className="py-3 px-4">Patient</th>
-                      <th role="columnheader" className="py-3 px-4">Service &amp; Provider</th>
-                      <th role="columnheader" className="py-3 px-4">Lifecycle</th>
-                      <th role="columnheader" className="py-3 px-4">Desk State</th>
-                      <th role="columnheader" className="py-3 px-5 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody role="rowgroup" className="divide-y divide-slate-100 dark:divide-gray-700/70">
-                    {filteredSchedule.map((apt) => {
-                      const startTime = formatClockTime(apt.start_at);
-                      const endTime = formatClockTime(apt.end_at);
-                      const isArrived = apt.attendance_status && apt.attendance_status !== 'NOT_ARRIVED';
-                      const lifecycle = LIFECYCLE_STYLES[apt.appointment_status] || {
-                        label: apt.appointment_status || 'Unknown',
-                        badge: 'bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-gray-600',
-                        dot: 'bg-slate-400',
-                      };
-                      const deskState = DESK_STATE_STYLES[apt.attendance_status] || DESK_STATE_STYLES.NOT_ARRIVED;
-
-                      return (
-                        <tr
-                          role="row"
-                          key={apt.id}
-                          className="hover:bg-slate-50/75 dark:hover:bg-gray-700/30 transition-colors"
-                        >
-                          {/* Time */}
-                          <td role="cell" data-label="Time" className="py-3.5 px-5 whitespace-nowrap tabular-nums">
-                            <span className="font-semibold text-slate-900 dark:text-slate-100 block">
-                              {startTime}
-                            </span>
-                            <span className="text-[11px] text-slate-400 dark:text-slate-500">
-                              – {endTime}
-                            </span>
-                          </td>
-
-                          {/* Patient */}
-                          <td role="cell" data-label="Patient" className="py-3.5 px-4">
-                            <div className="flex items-start gap-2.5">
-                              <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-gray-900/80 border border-slate-200/80 dark:border-gray-700 text-slate-700 dark:text-slate-200 flex items-center justify-center text-[11px] font-semibold shrink-0 mt-0.5">
-                                {getInitials(apt.patient_first_name, apt.patient_last_name)}
-                              </div>
-                              <div className="min-w-0">
-                                <span className="font-semibold text-slate-900 dark:text-slate-100 block">
-                                  {apt.patient_first_name} {apt.patient_last_name}
-                                </span>
-                                <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5 tabular-nums">
-                                  <Phone className="w-3 h-3 text-slate-400 dark:text-slate-500 shrink-0" aria-hidden="true" />
-                                  {apt.patient_phone || 'No phone'}
-                                </span>
-                                {apt.patient_medical_alerts && apt.patient_medical_alerts !== 'None recorded' && (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 rounded-full mt-1 border border-rose-200/80 dark:border-rose-500/25">
-                                    <ShieldAlert className="w-2.5 h-2.5 shrink-0" aria-hidden="true" />
-                                    {apt.patient_medical_alerts}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* Service & Provider */}
-                          <td role="cell" data-label="Service & Provider" className="py-3.5 px-4">
-                            <span className="font-semibold text-slate-800 dark:text-slate-100 block">
-                              {apt.service_name}
-                            </span>
-                            <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
-                              Dr. {apt.dentist_first_name} {apt.dentist_last_name}
-                              <span className="mx-1.5 text-slate-300 dark:text-gray-600" aria-hidden="true">·</span>
-                              <span className="text-slate-400 dark:text-slate-500">{apt.operatory_chair || 'Chair 1'}</span>
-                            </span>
-                          </td>
-
-                          {/* Lifecycle Status */}
-                          <td role="cell" data-label="Lifecycle" className="py-3.5 px-4 whitespace-nowrap">
-                            <span
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${lifecycle.badge}`}
-                            >
-                              <span className={`w-1.5 h-1.5 rounded-full ${lifecycle.dot}`} aria-hidden="true" />
-                              {lifecycle.label}
-                            </span>
-                          </td>
-
-                          {/* Attendance Status */}
-                          <td role="cell" data-label="Desk State" className="py-3.5 px-4 whitespace-nowrap">
-                            <span
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium border ${deskState.badge}`}
-                            >
-                              <span className={`w-1.5 h-1.5 rounded-full ${deskState.dot}`} aria-hidden="true" />
-                              {deskState.label}
-                            </span>
-                          </td>
-
-                          {/* Action Button */}
-                          <td role="cell" data-label="Action" className="py-3.5 px-5 text-right whitespace-nowrap">
-                            {!isArrived && apt.appointment_status === 'CONFIRMED' ? (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setCheckInTarget(apt);
-                                  setCheckInNotes('');
-                                }}
-                                className="px-3 py-1.5 rounded-lg bg-[#0D9488] hover:bg-[#0F766E] text-white font-semibold text-xs transition-colors shadow-2xs cursor-pointer"
-                              >
-                                Check In
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setAttendanceModalTarget(apt);
-                                  setAttendanceStatusChoice(apt.attendance_status || 'WAITING');
-                                  setAttendanceNotes(apt.attendance_notes || '');
-                                }}
-                                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-slate-50 dark:hover:bg-gray-700 text-slate-700 dark:text-slate-200 font-semibold text-xs transition-colors cursor-pointer"
-                              >
-                                Manage
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            {/* Subtle Schedule Footer */}
-            {schedule.length > 0 && (
-              <div className="px-5 py-3 border-t border-slate-100 dark:border-gray-700/80 bg-slate-50/50 dark:bg-gray-900/35 flex items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
-                <span className="tabular-nums">
-                  Showing <strong className="font-semibold text-slate-700 dark:text-slate-200">{filteredSchedule.length}</strong> of{' '}
-                  <strong className="font-semibold text-slate-700 dark:text-slate-200">{schedule.length}</strong> scheduled today
-                </span>
-                {(searchQuery || attendanceFilter !== 'ALL') && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchQuery('');
-                      setAttendanceFilter('ALL');
-                    }}
-                    className="font-semibold text-[#0F766E] dark:text-teal-400 hover:underline cursor-pointer"
-                  >
-                    Clear filters
-                  </button>
-                )}
               </div>
             )}
           </section>
