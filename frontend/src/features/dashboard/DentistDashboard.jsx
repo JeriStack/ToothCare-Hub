@@ -360,105 +360,118 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
 
       {/* 2. 4 Live Metric Stat Cards */}
       <div className="portal-grid-4">
-        {/* Today's Appointments */}
-        <div
-          onClick={() => onNavigateTab && onNavigateTab('appointments')}
-          className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 shadow-xs hover:border-teal-300 dark:hover:border-teal-600 hover:shadow-md transition-all cursor-pointer group"
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && onNavigateTab && onNavigateTab('appointments')}
-          aria-label={`Today's Visits: ${metrics.todayCount} scheduled`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Today&apos;s Visits
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Calendar className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <div className="text-2xl sm:text-3xl font-extrabold text-[#12304A] dark:text-slate-100">
-              {metrics.todayCount}
-            </div>
-            <p className="text-[11px] text-teal-700 dark:text-teal-400 font-medium mt-1">Scheduled for today</p>
-          </div>
-        </div>
+        {[
+          {
+            key: 'today',
+            label: "Today's Visits",
+            value: metrics.todayCount,
+            subtitle: 'Scheduled for today',
+            ariaLabel: `Today's Visits: ${metrics.todayCount} scheduled`,
+            targetTab: 'appointments',
+            Icon: Calendar,
+            accentBar: 'from-teal-500/80 via-teal-400/60 to-transparent',
+            glow: 'group-hover:bg-teal-500/10 dark:group-hover:bg-teal-400/10',
+            hoverBorder: 'hover:border-teal-300/90 dark:hover:border-teal-500/50',
+            iconWrap:
+              'bg-teal-50 dark:bg-teal-500/15 text-teal-700 dark:text-teal-300 ring-teal-200/80 dark:ring-teal-500/25',
+            dot: 'bg-teal-500 dark:bg-teal-400',
+            subText: 'text-teal-700 dark:text-teal-300',
+          },
+          {
+            key: 'upcoming',
+            label: 'Upcoming Confirmed',
+            value: metrics.upcomingCount,
+            subtitle: 'Confirmed clinical visits',
+            ariaLabel: `Upcoming Confirmed: ${metrics.upcomingCount} visits`,
+            targetTab: 'appointments',
+            Icon: CheckCircle2,
+            accentBar: 'from-emerald-500/80 via-emerald-400/60 to-transparent',
+            glow: 'group-hover:bg-emerald-500/10 dark:group-hover:bg-emerald-400/10',
+            hoverBorder: 'hover:border-emerald-300/90 dark:hover:border-emerald-500/50',
+            iconWrap:
+              'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 ring-emerald-200/80 dark:ring-emerald-500/25',
+            dot: 'bg-emerald-500 dark:bg-emerald-400',
+            subText: 'text-emerald-700 dark:text-emerald-300',
+          },
+          {
+            key: 'pending',
+            label: 'Awaiting Review',
+            value: metrics.pendingCount,
+            subtitle: 'Pending approval',
+            ariaLabel: `Awaiting Review: ${metrics.pendingCount} visits`,
+            targetTab: 'appointments',
+            Icon: Clock,
+            accentBar: 'from-amber-500/85 via-amber-400/60 to-transparent',
+            glow: 'group-hover:bg-amber-500/10 dark:group-hover:bg-amber-400/10',
+            hoverBorder: 'hover:border-amber-300/90 dark:hover:border-amber-500/50',
+            iconWrap:
+              'bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 ring-amber-200/80 dark:ring-amber-500/25',
+            dot: 'bg-amber-500 dark:bg-amber-400',
+            subText: 'text-amber-700 dark:text-amber-300',
+          },
+          {
+            key: 'completed',
+            label: 'Completed Care',
+            value: metrics.completedCount,
+            subtitle: 'Treated & documented',
+            ariaLabel: `Completed Care: ${metrics.completedCount} visits`,
+            targetTab: 'treatment-records',
+            Icon: Stethoscope,
+            accentBar: 'from-sky-500/85 via-blue-400/60 to-transparent',
+            glow: 'group-hover:bg-sky-500/10 dark:group-hover:bg-sky-400/10',
+            hoverBorder: 'hover:border-sky-300/90 dark:hover:border-sky-500/50',
+            iconWrap:
+              'bg-sky-50 dark:bg-sky-500/15 text-sky-700 dark:text-sky-300 ring-sky-200/80 dark:ring-sky-500/25',
+            dot: 'bg-sky-500 dark:bg-sky-400',
+            subText: 'text-sky-700 dark:text-sky-300',
+          },
+        ].map(({ key, label, value, subtitle, ariaLabel, targetTab, Icon, accentBar, glow, hoverBorder, iconWrap, dot, subText }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onNavigateTab && onNavigateTab(targetTab)}
+            aria-label={ariaLabel}
+            className={`relative overflow-hidden text-left p-5 rounded-2xl bg-white dark:bg-gray-800/90 border border-slate-200/90 dark:border-gray-700/80 shadow-xs hover:shadow-md hover:-translate-y-0.5 ${hoverBorder} transition-all duration-200 cursor-pointer group focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0D9488]`}
+          >
+            {/* Subtle Top Accent Hairline */}
+            <span
+              className={`pointer-events-none absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r ${accentBar} opacity-75 group-hover:opacity-100 transition-opacity`}
+              aria-hidden="true"
+            />
+            {/* Soft Corner Ambient Glow */}
+            <span
+              className={`pointer-events-none absolute -right-8 -top-8 w-24 h-24 rounded-full bg-transparent ${glow} blur-2xl transition-colors duration-300`}
+              aria-hidden="true"
+            />
 
-        {/* Upcoming Confirmed */}
-        <div
-          onClick={() => onNavigateTab && onNavigateTab('appointments')}
-          className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 shadow-xs hover:border-emerald-300 dark:hover:border-emerald-600 hover:shadow-md transition-all cursor-pointer group"
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && onNavigateTab && onNavigateTab('appointments')}
-          aria-label={`Upcoming Confirmed: ${metrics.upcomingCount} visits`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Upcoming Confirmed
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <CheckCircle2 className="w-4 h-4" />
+            <div className="relative flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <span className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
+                  {label}
+                </span>
+                <div className="mt-2.5 text-3xl sm:text-[2rem] font-extrabold tracking-tight text-[#12304A] dark:text-slate-50 tabular-nums leading-none">
+                  {value}
+                </div>
+              </div>
+              <div
+                className={`w-10 h-10 rounded-xl ring-1 ring-inset flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-200 ${iconWrap}`}
+              >
+                <Icon className="w-4.5 h-4.5" aria-hidden="true" />
+              </div>
             </div>
-          </div>
-          <div className="mt-3">
-            <div className="text-2xl sm:text-3xl font-extrabold text-[#12304A] dark:text-slate-100">
-              {metrics.upcomingCount}
-            </div>
-            <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium mt-1">Confirmed clinical visits</p>
-          </div>
-        </div>
 
-        {/* Pending Review */}
-        <div
-          onClick={() => onNavigateTab && onNavigateTab('appointments')}
-          className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 shadow-xs hover:border-amber-300 dark:hover:border-amber-600 hover:shadow-md transition-all cursor-pointer group"
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && onNavigateTab && onNavigateTab('appointments')}
-          aria-label={`Awaiting Review: ${metrics.pendingCount} visits`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Awaiting Review
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Clock className="w-4 h-4" />
+            <div className="relative mt-4 pt-3 border-t border-slate-100 dark:border-gray-700/70 flex items-center justify-between gap-2">
+              <span className={`inline-flex items-center gap-1.5 text-[11.5px] font-medium ${subText}`}>
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dot}`} aria-hidden="true" />
+                <span className="truncate">{subtitle}</span>
+              </span>
+              <ChevronRight
+                className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300 group-hover:translate-x-0.5 transition-all shrink-0"
+                aria-hidden="true"
+              />
             </div>
-          </div>
-          <div className="mt-3">
-            <div className="text-2xl sm:text-3xl font-extrabold text-[#12304A] dark:text-slate-100">
-              {metrics.pendingCount}
-            </div>
-            <p className="text-[11px] text-amber-700 dark:text-amber-400 font-medium mt-1">Pending approval</p>
-          </div>
-        </div>
-
-        {/* Completed Care */}
-        <div
-          onClick={() => onNavigateTab && onNavigateTab('treatment-records')}
-          className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 shadow-xs hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all cursor-pointer group"
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && onNavigateTab && onNavigateTab('treatment-records')}
-          aria-label={`Completed Care: ${metrics.completedCount} visits`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Completed Care
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Stethoscope className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <div className="text-2xl sm:text-3xl font-extrabold text-[#12304A] dark:text-slate-100">
-              {metrics.completedCount}
-            </div>
-            <p className="text-[11px] text-blue-700 dark:text-blue-400 font-medium mt-1">Treated & documented</p>
-          </div>
-        </div>
+          </button>
+        ))}
       </div>
 
       {/* 3. Next Patient / Next Appointment Card */}
