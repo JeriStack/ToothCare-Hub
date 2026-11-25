@@ -227,4 +227,22 @@ describe('DentistDashboard Component', () => {
     fireEvent.click(apptBtn);
     expect(handleNavigate).toHaveBeenCalledWith('appointments');
   });
+
+  it('deduplicates repeated active shifts, filters inactive shifts, and displays formatted 12-hour shift ranges', async () => {
+    schedulesApi.getDentistSchedules.mockResolvedValue([
+      { id: 20, dentist_id: 1, day_of_week: 1, start_time: '09:00:00', end_time: '12:00:00', operatory_chair: 'Operatory Chair 1', is_active: 1 },
+      { id: 30, dentist_id: 1, day_of_week: 1, start_time: '09:00:00', end_time: '12:00:00', operatory_chair: 'Operatory Chair 1', is_active: 1 },
+      { id: 21, dentist_id: 1, day_of_week: 1, start_time: '13:00:00', end_time: '17:00:00', operatory_chair: 'Operatory Chair 1', is_active: 1 },
+      { id: 99, dentist_id: 1, day_of_week: 2, start_time: '09:00:00', end_time: '12:00:00', operatory_chair: 'Operatory Chair 1', is_active: 0 },
+    ]);
+
+    render(<DentistDashboard dentistId={1} onNavigateTab={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('2 active shifts')).toBeDefined();
+      expect(screen.getByText('9:00 AM – 12:00 PM')).toBeDefined();
+      expect(screen.getByText('1:00 PM – 5:00 PM')).toBeDefined();
+      expect(screen.getByText(/1 active day · 7h\/wk/i)).toBeDefined();
+    });
+  });
 });
