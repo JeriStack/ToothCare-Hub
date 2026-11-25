@@ -17,7 +17,7 @@ COMPOSER ?= composer
 NPM      ?= npm
 SERVICE  ?= php-fpm
 
-.PHONY: help \
+.PHONY: help + make \
 	up up-all up-monitoring up-docs build rebuild start stop down restart ps logs validate-compose \
 	frontend-install frontend-dev frontend-build frontend-test frontend-audit \
 	backend-install backend-test backend-test-unit backend-test-integration backend-audit \
@@ -76,6 +76,14 @@ help:
 	$(info   make test                Run backend unit, frontend Vitest, and realtime tests)
 	$(info   make ci                  Run local CI verification gate (Compose, OpenAPI, Realtime, Frontend))
 	$(info   make e2e                 Run local Playwright Chromium E2E tests)
+	@:
+
+# Convenience no-op separators so chained invocations like
+# `make up-all + up-docs` or `make up-all + make up-docs` work seamlessly.
++:
+	@:
+
+make:
 	@:
 
 # -----------------------------------------------------------------------------
