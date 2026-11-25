@@ -97,7 +97,7 @@ services:
   # Optional offline standalone Swagger UI container (development only)
   # Note: Built-in Swagger UI with automatic CSRF injection is also live at http://localhost:8080/api-docs
   swagger-ui:
-    image: swaggerapi/swagger-ui:v5.17.14
+    image: swaggerapi/swagger-ui:v5.35.1
     container_name: toothcare-swagger-ui
     profiles:
       - docs
