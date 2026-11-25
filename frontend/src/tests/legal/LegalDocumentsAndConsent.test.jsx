@@ -168,11 +168,19 @@ describe('Legal Documents & User Consent Management UI', () => {
     expect(checkbox).not.toBeChecked();
     expect(authApi.register).not.toHaveBeenCalled();
 
-    // Verify non-sensitive draft is saved in sessionStorage and password is NEVER stored
+    // Verify only non-sensitive draft fields are saved in sessionStorage;
+    // passwords and sensitive PII/PHI (DOB, phone, gender, emergency contact, medical alerts) are NEVER stored in browser storage
     const savedDraft = sessionStorage.getItem('toothcare_register_draft');
     expect(savedDraft).toContain('Maria');
     expect(savedDraft).toContain('maria.legal@example.com');
     expect(savedDraft).not.toContain('StrongPass123!');
+    expect(savedDraft).not.toContain('1995-04-12');
+    expect(savedDraft).not.toContain('+63 917 123 4567');
+    expect(savedDraft).not.toContain('dateOfBirth');
+    expect(savedDraft).not.toContain('medicalAlerts');
+    expect(savedDraft).not.toContain('emergencyContactName');
+    expect(savedDraft).not.toContain('emergencyContactPhone');
+    expect(savedDraft).not.toContain('gender');
 
     // Unmount and remount to simulate returning from /terms-of-service
     unmount();

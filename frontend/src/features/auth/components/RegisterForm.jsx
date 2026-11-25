@@ -33,28 +33,94 @@ import {
 const REGISTER_DRAFT_STORAGE_KEY = 'toothcare_register_draft';
 const DEFAULT_LEGAL_VERSIONS = { terms: '1.0', privacy: '1.0' };
 
+// Ephemeral in-memory store for sensitive PII/PHI fields during in-tab SPA navigation
+// (e.g., viewing Terms of Service / Privacy Policy and returning). Never written to browser storage.
+let ephemeralSensitiveDraft = null;
+let activeDraftId = null;
+
+function ensureDraftId() {
+  if (!activeDraftId) {
+    activeDraftId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+  return activeDraftId;
+}
+
 function readRegisterDraft() {
   if (typeof window === 'undefined') return null;
   try {
     const raw = window.sessionStorage?.getItem(REGISTER_DRAFT_STORAGE_KEY);
-    if (!raw) return null;
+    if (!raw) {
+      ephemeralSensitiveDraft = null;
+      activeDraftId = null;
+      return null;
+    }
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? parsed : null;
+    if (!parsed || typeof parsed !== 'object') {
+      ephemeralSensitiveDraft = null;
+      activeDraftId = null;
+      return null;
+    }
+    const sensitive =
+      ephemeralSensitiveDraft &&
+      parsed.draftId &&
+      ephemeralSensitiveDraft.draftId === parsed.draftId
+        ? ephemeralSensitiveDraft
+        : null;
+    if (parsed.draftId) {
+      activeDraftId = parsed.draftId;
+    }
+    return {
+      firstName: parsed.firstName || '',
+      lastName: parsed.lastName || '',
+      email: parsed.email || '',
+      agreeTerms: Boolean(parsed.agreeTerms),
+      showOptionalFields: Boolean(parsed.showOptionalFields),
+      phone: sensitive?.phone || '',
+      dateOfBirth: sensitive?.dateOfBirth || '',
+      gender: sensitive?.gender || '',
+      address: sensitive?.address || '',
+      emergencyContactName: sensitive?.emergencyContactName || '',
+      emergencyContactPhone: sensitive?.emergencyContactPhone || '',
+      medicalAlerts: sensitive?.medicalAlerts || '',
+    };
   } catch {
     return null;
   }
 }
 
-function writeRegisterDraft(draft) {
+function writeNonSensitiveDraftToStorage(publicDraft) {
   if (typeof window === 'undefined') return;
   try {
-    window.sessionStorage?.setItem(REGISTER_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    const payload = {
+      draftId: ensureDraftId(),
+      firstName: publicDraft.firstName,
+      lastName: publicDraft.lastName,
+      email: publicDraft.email,
+      agreeTerms: Boolean(publicDraft.agreeTerms),
+      showOptionalFields: Boolean(publicDraft.showOptionalFields),
+    };
+    window.sessionStorage?.setItem(REGISTER_DRAFT_STORAGE_KEY, JSON.stringify(payload));
   } catch {
     // Ignore storage quota or restricted browsing context errors
   }
 }
 
+function writeSensitiveDraftInMemory(sensitiveFields) {
+  ephemeralSensitiveDraft = {
+    draftId: ensureDraftId(),
+    phone: sensitiveFields.phone,
+    dateOfBirth: sensitiveFields.dateOfBirth,
+    gender: sensitiveFields.gender,
+    address: sensitiveFields.address,
+    emergencyContactName: sensitiveFields.emergencyContactName,
+    emergencyContactPhone: sensitiveFields.emergencyContactPhone,
+    medicalAlerts: sensitiveFields.medicalAlerts,
+  };
+}
+
 function clearRegisterDraft() {
+  ephemeralSensitiveDraft = null;
+  activeDraftId = null;
   if (typeof window === 'undefined') return;
   try {
     window.sessionStorage?.removeItem(REGISTER_DRAFT_STORAGE_KEY);
@@ -152,11 +218,12 @@ export function RegisterForm({ onNavigateLogin, onNavigateTerms, onNavigatePriva
     };
   }, []);
 
-  // Persist non-sensitive form draft fields in sessionStorage so navigating to Terms/Privacy preserves progress.
-  // Passwords are NEVER stored in browser storage.
+  // Persist only non-sensitive basic fields in sessionStorage; keep sensitive PII/PHI strictly in memory
+  // so navigating to Terms/Privacy preserves progress without clear-text browser storage of sensitive data.
+  // Passwords are NEVER stored anywhere outside component state.
   useEffect(() => {
     if (registeredSuccessEmail) return;
-    const hasNonSensitiveContent = Boolean(
+    const hasDraftContent = Boolean(
       formData.firstName ||
         formData.lastName ||
         formData.email ||
@@ -169,14 +236,18 @@ export function RegisterForm({ onNavigateLogin, onNavigateTerms, onNavigatePriva
         formData.medicalAlerts ||
         formData.agreeTerms
     );
-    if (!hasNonSensitiveContent) {
+    if (!hasDraftContent) {
       clearRegisterDraft();
       return;
     }
-    writeRegisterDraft({
+    writeNonSensitiveDraftToStorage({
       firstName: formData.firstName,
       lastName: formData.lastName,
       email: formData.email,
+      agreeTerms: formData.agreeTerms,
+      showOptionalFields,
+    });
+    writeSensitiveDraftInMemory({
       phone: formData.phone,
       dateOfBirth: formData.dateOfBirth,
       gender: formData.gender,
@@ -184,8 +255,6 @@ export function RegisterForm({ onNavigateLogin, onNavigateTerms, onNavigatePriva
       emergencyContactName: formData.emergencyContactName,
       emergencyContactPhone: formData.emergencyContactPhone,
       medicalAlerts: formData.medicalAlerts,
-      agreeTerms: formData.agreeTerms,
-      showOptionalFields,
     });
   }, [
     formData.firstName,
