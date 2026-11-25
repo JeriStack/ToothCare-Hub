@@ -176,8 +176,10 @@ updates:
       - "dependencies"
       - "docker"
     ignore:
-      # Never auto-jump MySQL major versions (e.g. 8.0 -> 26.x); persistent MySQL 8.0
-      # data volumes reject non-LTS direct major upgrades with MY-014060.
+      # Never auto-jump MySQL minor/major series (e.g. 8.0 -> 8.3 EOL innovation, 8.4 LTS, or 26.x);
+      # persistent MySQL 8.0 data volumes reject non-LTS or incompatible upgrades (MY-014060)
+      # and require a planned, backed-up LTS migration alongside CI updates.
       - dependency-name: "mysql"
         update-types:
           - "version-update:semver-major"
+          - "version-update:semver-minor"
