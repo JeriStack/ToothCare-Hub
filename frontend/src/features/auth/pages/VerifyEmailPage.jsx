@@ -95,8 +95,8 @@ export function VerifyEmailPage({
           <div>
             <h2 className="text-xl font-bold text-[#12304A] dark:text-gray-50">Email Verified Successfully</h2>
             <p className="mt-2 text-xs text-slate-600 dark:text-gray-300 leading-relaxed max-w-sm mx-auto">
-              Thank you! Your email address has been verified. Your patient account is now fully active,
-              and you can proceed to sign in and schedule appointments.
+              Thank you! Your email address has been verified and a welcome email has been queued for your inbox.
+              Your patient account is now ready to sign in and request dental appointments.
             </p>
           </div>
 
@@ -136,7 +136,7 @@ export function VerifyEmailPage({
             {resendSuccess ? (
               <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span>Verification link sent! Please check your inbox.</span>
+                <span>If an unverified account exists for that email address, a new verification link has been queued. Please check your inbox shortly.</span>
               </div>
             ) : (
               <form onSubmit={handleResend} noValidate className="space-y-2">

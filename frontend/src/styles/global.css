@@ -932,3 +932,128 @@ input:not([type="checkbox"]):not([type="radio"]) {
   margin-block: auto;
   flex-shrink: 0;
 }
+
+/* ==========================================================================
+   Formal Legal Documents — Typography, Native Disclosure TOC, Forced Colors & Print
+   ========================================================================== */
+.legal-heading {
+  text-wrap: balance;
+}
+
+.legal-prose {
+  text-wrap: pretty;
+  overflow-wrap: break-word;
+  text-align: start;
+}
+
+/* Native <details> mobile TOC: chevron directly beside label text & smooth progressive reveal */
+.legal-details-summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legal-details-summary::-webkit-details-marker {
+  display: none;
+}
+
+.legal-details-summary::before {
+  content: "";
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  flex-shrink: 0;
+  border-inline-end: 2px solid currentColor;
+  border-block-end: 2px solid currentColor;
+  transform: rotate(-45deg);
+  opacity: 0.7;
+}
+
+.legal-details[open] > .legal-details-summary::before {
+  transform: rotate(45deg);
+}
+
+.legal-details::details-content {
+  interpolate-size: allow-keywords;
+  overflow: clip;
+  contain: layout;
+}
+
+.legal-details:not([open])::details-content {
+  block-size: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .legal-details-summary::before {
+    transition: transform 0.2s ease-out;
+  }
+
+  .legal-details::details-content {
+    transition: block-size 0.25s ease-in-out, content-visibility 0.25s ease-in-out allow-discrete;
+  }
+}
+
+@media (forced-colors: active) {
+  .legal-toc-link-active {
+    border-inline-start-color: Highlight;
+    font-weight: 700;
+  }
+
+  .legal-notice {
+    border-inline-start-color: CanvasText;
+  }
+}
+
+@media print {
+  @page {
+    margin: 18mm 16mm;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .legal-no-print {
+    display: none !important;
+  }
+
+  .legal-document-sheet {
+    border: 0 !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    max-width: none !important;
+    box-shadow: none !important;
+  }
+
+  .legal-document-sheet *,
+  .legal-document-sheet h1,
+  .legal-document-sheet h2,
+  .legal-document-sheet h3,
+  .legal-document-sheet p,
+  .legal-document-sheet li,
+  .legal-document-sheet dt,
+  .legal-document-sheet dd {
+    color: #000000 !important;
+    background: transparent !important;
+  }
+
+  .legal-heading {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .legal-section {
+    break-inside: avoid-page;
+    page-break-inside: avoid;
+  }
+
+  .legal-notice {
+    border: 1px solid #555555 !important;
+    border-inline-start: 3px solid #000000 !important;
+    break-inside: avoid;
+  }
+}

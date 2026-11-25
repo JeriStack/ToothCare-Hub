@@ -61,15 +61,15 @@ describe('DentistAppointmentsPage Component', () => {
     });
   });
 
-  it('filters appointments when clicking status tabs', async () => {
+  it('filters appointments when changing status dropdown', async () => {
     render(<DentistAppointmentsPage onSelectAppointment={vi.fn()} />);
 
     await waitFor(() => {
       expect(screen.getByText('Ana Reyes')).toBeDefined();
     });
 
-    const confirmedTab = screen.getByRole('button', { name: /^Confirmed$/i });
-    fireEvent.click(confirmedTab);
+    const statusSelect = screen.getByLabelText(/Filter appointments by status/i);
+    fireEvent.change(statusSelect, { target: { value: 'CONFIRMED' } });
 
     expect(appointmentsApi.listDentist).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'CONFIRMED' })

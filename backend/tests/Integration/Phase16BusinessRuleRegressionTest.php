@@ -147,6 +147,9 @@ class Phase16BusinessRuleRegressionTest extends TestCase
             'date_of_birth' => '1995-05-05',
             'gender' => 'OTHER',
             'role' => 'ADMIN',
+            'accept_legal' => true,
+            'terms_version' => '1.0',
+            'privacy_version' => '1.0',
         ]));
         $this->assertSame(201, $escReg->getStatusCode());
         $created = $this->userRepo->findByEmail('escalator.p16@example.com');

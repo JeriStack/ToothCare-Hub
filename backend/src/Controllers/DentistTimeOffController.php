@@ -118,6 +118,20 @@ class DentistTimeOffController
             ]
         );
 
+        try {
+            $dispatcher = new \App\Services\Notifications\UnifiedNotificationDispatcher();
+            $dispatcher->dispatchScheduleUpdated(
+                $dentistId,
+                $id,
+                "Time-off period scheduled for Dentist #{$dentistId} ({$validated['start_at']} to {$validated['end_at']}).",
+                'time_off_scheduled',
+                $adminUser ? (int) $adminUser['id'] : null
+            );
+            $dispatcher->dispatchPendingAfterCommit();
+        } catch (\Throwable) {
+            // Outage-resilient
+        }
+
         return Response::created($record);
     }
 
@@ -198,6 +212,20 @@ class DentistTimeOffController
                 'reason' => $validated['reason'],
             ]
         );
+
+        try {
+            $dispatcher = new \App\Services\Notifications\UnifiedNotificationDispatcher();
+            $dispatcher->dispatchScheduleUpdated(
+                $dentistId,
+                $id,
+                "Dentist #{$dentistId} submitted a leave request ({$validated['start_at']} to {$validated['end_at']}).",
+                'time_off_requested',
+                (int) $user['id']
+            );
+            $dispatcher->dispatchPendingAfterCommit();
+        } catch (\Throwable) {
+            // Outage-resilient
+        }
 
         return Response::created($record);
     }

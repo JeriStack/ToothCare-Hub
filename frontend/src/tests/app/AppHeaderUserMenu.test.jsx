@@ -154,8 +154,8 @@ describe('Portal Header Identity & Account Dropdown', () => {
 
     render(<App />);
 
-    // Real name shown in topbar; email NOT used as display name; redundant portal badge, clinic footer & standalone Sign Out removed
-    expect(screen.getByText('Marco Villanueva')).toBeInTheDocument();
+    // Header shows avatar/initials only (name and email hidden on trigger); redundant portal badge, clinic footer & standalone Sign Out removed
+    expect(screen.queryByText('Marco Villanueva')).not.toBeInTheDocument();
     expect(screen.queryByText('admin@toothcare.com')).not.toBeInTheDocument();
     expect(screen.queryByText('Admin Portal')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Back to Website/i })).not.toBeInTheDocument();
@@ -167,9 +167,10 @@ describe('Portal Header Identity & Account Dropdown', () => {
     const trigger = screen.getByRole('button', { name: 'Marco Villanueva account menu' });
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
 
-    // Open dropdown — email and Back to Website must remain hidden
+    // Open dropdown — full name shown inside menu; email and Back to Website must remain hidden
     fireEvent.click(trigger);
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Marco Villanueva')).toBeInTheDocument();
     expect(screen.queryByText('admin@toothcare.com')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Back to Website/i })).not.toBeInTheDocument();
     const signOutBtn = screen.getByRole('button', { name: /Sign Out/i });
@@ -209,7 +210,7 @@ describe('Portal Header Identity & Account Dropdown', () => {
 
     render(<App />);
 
-    expect(screen.getByText('Juan Dela Cruz')).toBeInTheDocument();
+    expect(screen.queryByText('Juan Dela Cruz')).not.toBeInTheDocument();
     expect(screen.queryByText('patient@toothcare.com')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Back to Website/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/Call the clinic/i)).not.toBeInTheDocument();
@@ -218,6 +219,8 @@ describe('Portal Header Identity & Account Dropdown', () => {
 
     const trigger = screen.getByRole('button', { name: 'Juan Dela Cruz account menu' });
     fireEvent.click(trigger);
+
+    expect(screen.getByText('Juan Dela Cruz')).toBeInTheDocument();
 
     expect(screen.queryByText('patient@toothcare.com')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Back to Website/i })).not.toBeInTheDocument();
@@ -354,12 +357,13 @@ describe('Portal Header Identity & Account Dropdown', () => {
     expect(await screen.findByText('DentistDashboardMock')).toBeInTheDocument();
 
     const accountMenuTrigger = screen.getByRole('button', { name: /Dr\. Maria Santos account menu/i });
-    expect(accountMenuTrigger).toHaveTextContent('Dentist');
-    expect(accountMenuTrigger).not.toHaveTextContent('Attending Dentist');
+    expect(accountMenuTrigger).not.toHaveTextContent('Dr. Maria Santos');
 
     fireEvent.click(accountMenuTrigger);
     const accountMenu = document.getElementById('user-account-menu');
     expect(accountMenu).not.toBeNull();
+    expect(accountMenu).toHaveTextContent('Dentist');
+    expect(accountMenu).not.toHaveTextContent('Attending Dentist');
     expect(within(accountMenu).queryByText('Portal Overview')).toBeNull();
 
     const profileMenuItem = within(accountMenu).getByRole('button', { name: /My Profile/i });
@@ -391,7 +395,7 @@ describe('Portal Header Identity & Account Dropdown', () => {
     expect(screen.getByRole('button', { name: 'My Profile' })).toBeInTheDocument();
 
     const accountMenuTrigger = screen.getByRole('button', { name: /Clarisse Mendoza account menu/i });
-    expect(accountMenuTrigger).toHaveTextContent('Front Desk Specialist');
+    expect(accountMenuTrigger).not.toHaveTextContent('Clarisse Mendoza');
     const headerAvatarImg = accountMenuTrigger.querySelector('img');
     expect(headerAvatarImg).not.toBeNull();
     expect(headerAvatarImg).toHaveAttribute('src', '/api/v1/users/3/avatar?v=45');
@@ -400,6 +404,7 @@ describe('Portal Header Identity & Account Dropdown', () => {
 
     const accountMenu = document.getElementById('user-account-menu');
     expect(accountMenu).not.toBeNull();
+    expect(accountMenu).toHaveTextContent('Front Desk Specialist');
     const dropdownAvatarImg = accountMenu.querySelector('img');
     expect(dropdownAvatarImg).not.toBeNull();
     expect(dropdownAvatarImg).toHaveAttribute('src', '/api/v1/users/3/avatar?v=45');

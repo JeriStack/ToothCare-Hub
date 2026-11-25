@@ -313,6 +313,9 @@ class AdminControlCenterApiTest extends TestCase
         $this->assertSame('operational', $health['system_status']);
         $this->assertArrayHasKey('database', $health['services']);
         $this->assertArrayHasKey('php_fpm', $health['services']);
+        $this->assertArrayHasKey('realtime', $health['services']);
+        $this->assertSame('realtime', $health['services']['realtime']['host']);
+        $this->assertSame(4000, $health['services']['realtime']['port']);
     }
 
     public function testLiveRouteDrbacEnforcementAuthMeHydrationAndBeforeAfterDiffs(): void

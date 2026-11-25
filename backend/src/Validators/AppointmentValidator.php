@@ -117,8 +117,9 @@ class AppointmentValidator
     {
         $errors = [];
 
-        // 1. Start At
-        $startAtStr = isset($data['start_at']) ? trim((string) $data['start_at']) : '';
+        // 1. Start At (support both 'start_at' and 'new_start_at')
+        $rawStart = $data['start_at'] ?? $data['new_start_at'] ?? '';
+        $startAtStr = trim((string) $rawStart);
         if ($startAtStr === '') {
             $errors['start_at'] = 'New appointment start date and time is required.';
         } else {
@@ -226,6 +227,14 @@ class AppointmentValidator
             }
         }
 
+        $conflictReasonCode = null;
+        if (isset($data['conflict_reason_code']) && trim((string) $data['conflict_reason_code']) !== '') {
+            $rawCode = strtoupper(trim((string) $data['conflict_reason_code']));
+            if (preg_match('/^[A-Z0-9_]{2,64}$/', $rawCode) === 1) {
+                $conflictReasonCode = $rawCode;
+            }
+        }
+
         if (!empty($errors)) {
             throw HttpException::unprocessableEntity(
                 'Rejection validation failed.',
@@ -233,7 +242,10 @@ class AppointmentValidator
             );
         }
 
-        return ['reason' => $reason];
+        return [
+            'reason' => $reason,
+            'conflict_reason_code' => $conflictReasonCode,
+        ];
     }
 
     /**

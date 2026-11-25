@@ -88,16 +88,16 @@ export function PatientServicesPage({ onBookService }) {
         </div>
       </div>
 
-      {/* Search and Category Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200/90 dark:border-gray-700 p-4 shadow-xs space-y-3">
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+      {/* Search and Category Filter */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200/90 dark:border-gray-700 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             placeholder="Search procedure or treatment"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-xs sm:text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400"
+            className="w-full min-h-11 sm:min-h-0 pl-10 pr-14 py-2.5 rounded-xl bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-xs sm:text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400"
           />
           {search && (
             <button
@@ -110,22 +110,24 @@ export function PatientServicesPage({ onBookService }) {
           )}
         </div>
 
-        {/* Category Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                selectedCategory === cat
-                  ? 'bg-[#0D9488] dark:bg-[#0F766E] text-white shadow-2xs'
-                  : 'bg-slate-50 dark:bg-gray-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-gray-600 border border-slate-200/80 dark:border-gray-600'
-              }`}
-            >
-              {cat === 'ALL' ? 'All Procedures' : cat}
-            </button>
-          ))}
+        {/* Category Dropdown */}
+        <div className="sm:w-56 shrink-0">
+          <label htmlFor="patient-service-category" className="sr-only">
+            Filter by category
+          </label>
+          <select
+            id="patient-service-category"
+            aria-label="Filter by category"
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="w-full min-h-11 sm:min-h-0 px-3.5 py-2.5 rounded-xl bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400"
+          >
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat === 'ALL' ? 'All Procedures' : cat}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -171,7 +173,7 @@ export function PatientServicesPage({ onBookService }) {
                   {svc.name}
                 </h3>
 
-                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed text-justify">
                   {svc.description || 'Comprehensive dental procedure administered by our licensed clinic dentists.'}
                 </p>
               </div>
@@ -246,7 +248,7 @@ export function PatientServicesPage({ onBookService }) {
 
               <div>
                 <h4 className="text-xs font-bold text-[#12304A] dark:text-slate-100 mb-1">Clinical Overview</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
                   {detailService.description ||
                     'Standard in-clinic procedure. Pre-appointment briefing and diagnostic review will be conducted by your assigned dentist prior to beginning treatment.'}
                 </p>

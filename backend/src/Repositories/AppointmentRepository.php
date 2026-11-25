@@ -30,10 +30,11 @@ class AppointmentRepository
         $pdo = $this->database->getConnection();
         $stmt = $pdo->prepare('
             SELECT a.*,
+                   COALESCE(NULLIF(a.operatory_chair, \'\'), d.default_operatory_chair, \'Chair 1\') AS dentist_room_number,
                    p.first_name AS patient_first_name, p.last_name AS patient_last_name, p.phone AS patient_phone,
                    p.medical_alerts AS patient_medical_alerts, p.date_of_birth AS patient_date_of_birth, p.gender AS patient_gender,
                    u_p.id AS patient_user_id, u_p.email AS patient_email,
-                   d.license_number, d.specialization,
+                   d.license_number, d.specialization, d.default_operatory_chair, d.is_active AS dentist_is_active,
                    d.first_name AS dentist_first_name, d.last_name AS dentist_last_name,
                    u_d.id AS dentist_user_id, u_d.email AS dentist_email,
                    s.name AS service_name, s.duration_minutes AS service_duration, s.category AS service_category
@@ -145,6 +146,183 @@ class AppointmentRepository
         ?PDO $pdo = null
     ): array {
         return $this->findBlockingByDentistAndRange($dentistId, $startAt, $endAt, $excludeAppointmentId, $pdo);
+    }
+
+    /**
+     * Check for overlapping blocking appointments occupying the same operatory chair/room
+     * assigned to another practitioner.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function findRoomConflicts(
+        string $operatoryChair,
+        string $startAt,
+        string $endAt,
+        int $excludeDentistId,
+        ?int $excludeAppointmentId = null,
+        ?PDO $pdo = null
+    ): array {
+        $chair = trim($operatoryChair);
+        if ($chair === '') {
+            return [];
+        }
+
+        $db = $pdo ?? $this->database->getConnection();
+        $sql = "
+            SELECT id, dentist_id, start_at, end_at, duration_snapshot, status, operatory_chair
+            FROM appointments
+            WHERE operatory_chair = :chair
+              AND dentist_id != :exclude_dentist_id
+              AND status IN ('PENDING', 'CONFIRMED')
+              AND start_at < :end_at
+              AND end_at > :start_at
+        ";
+        $params = [
+            ':chair' => $chair,
+            ':exclude_dentist_id' => $excludeDentistId,
+            ':start_at' => $startAt,
+            ':end_at' => $endAt,
+        ];
+
+        if ($excludeAppointmentId !== null) {
+            $sql .= ' AND id != :exclude_id';
+            $params[':exclude_id'] = $excludeAppointmentId;
+        }
+
+        $sql .= ' ORDER BY start_at ASC';
+
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Retrieve operational triage summary counts using index-friendly Asia/Manila boundaries.
+     *
+     * @return array{pending_review: int, confirmed: int, today_appointments: int}
+     */
+    public function getTriageSummaryCounts(string $todayStart, string $todayEnd): array
+    {
+        $pdo = $this->database->getConnection();
+        $stmt = $pdo->prepare("
+            SELECT
+                COALESCE(SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END), 0) AS pending_review,
+                COALESCE(SUM(CASE WHEN status = 'CONFIRMED' THEN 1 ELSE 0 END), 0) AS confirmed,
+                COALESCE(SUM(CASE WHEN start_at >= :today_start AND start_at <= :today_end AND status IN ('PENDING', 'CONFIRMED', 'COMPLETED') THEN 1 ELSE 0 END), 0) AS today_appointments
+            FROM appointments
+        ");
+        $stmt->execute([
+            ':today_start' => $todayStart,
+            ':today_end' => $todayEnd,
+        ]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        return [
+            'pending_review' => (int) ($row['pending_review'] ?? 0),
+            'confirmed' => (int) ($row['confirmed'] ?? 0),
+            'today_appointments' => (int) ($row['today_appointments'] ?? 0),
+        ];
+    }
+
+    /**
+     * Stream PENDING appointments using keyset pagination (WHERE status = 'PENDING' AND id > :after_id).
+     * Avoids offset degradation and eliminates arbitrary record caps while keeping memory bounded.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function findPendingChunkAfterId(int $afterId = 0, int $chunkSize = 500): array
+    {
+        $pdo = $this->database->getConnection();
+        $chunkSize = max(1, min(1000, $chunkSize));
+        $stmt = $pdo->prepare("
+            SELECT id, dentist_id, service_id, start_at, end_at, duration_snapshot, operatory_chair, status
+            FROM appointments
+            WHERE status = 'PENDING'
+              AND id > :after_id
+            ORDER BY id ASC
+            LIMIT :limit
+        ");
+        $stmt->bindValue(':after_id', max(0, $afterId), PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $chunkSize, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Batch-fetch blocking appointments (PENDING/CONFIRMED) overlapping [minStartAt, maxEndAt]
+     * for any of the specified dentist IDs or operatory chairs in a single query.
+     *
+     * @param list<int> $dentistIds
+     * @param list<string> $operatoryChairs
+     * @return list<array<string, mixed>>
+     */
+    public function findBlockingForBatch(
+        array $dentistIds,
+        array $operatoryChairs,
+        string $minStartAt,
+        string $maxEndAt
+    ): array {
+        $cleanDentists = array_values(array_unique(array_filter(array_map('intval', $dentistIds), static fn (int $id): bool => $id > 0)));
+        $cleanChairs = array_values(array_unique(array_filter(array_map(static fn ($c): string => trim((string) $c), $operatoryChairs), static fn (string $c): bool => $c !== '')));
+
+        if (empty($cleanDentists) && empty($cleanChairs)) {
+            return [];
+        }
+
+        $pdo = $this->database->getConnection();
+        $orParts = [];
+        $params = [
+            ':max_end' => $maxEndAt,
+            ':min_start' => $minStartAt,
+        ];
+
+        if (!empty($cleanDentists)) {
+            $placeholders = [];
+            foreach ($cleanDentists as $i => $dId) {
+                $key = ":d_{$i}";
+                $placeholders[] = $key;
+                $params[$key] = $dId;
+            }
+            $orParts[] = 'dentist_id IN (' . implode(', ', $placeholders) . ')';
+        }
+
+        if (!empty($cleanChairs)) {
+            $placeholders = [];
+            foreach ($cleanChairs as $i => $chair) {
+                $key = ":c_{$i}";
+                $placeholders[] = $key;
+                $params[$key] = $chair;
+            }
+            $orParts[] = 'operatory_chair IN (' . implode(', ', $placeholders) . ')';
+        }
+
+        $scopeClause = implode(' OR ', $orParts);
+        $sql = "
+            SELECT id, dentist_id, service_id, start_at, end_at, duration_snapshot, status, operatory_chair
+            FROM appointments
+            WHERE status IN ('PENDING', 'CONFIRMED')
+              AND start_at < :max_end
+              AND end_at > :min_start
+              AND ({$scopeClause})
+            ORDER BY start_at ASC
+        ";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Retrieve bounded pending appointments (retained for backward compatibility).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function findPendingForValidation(int $limit = 200): array
+    {
+        return $this->findPendingChunkAfterId(0, $limit);
     }
 
     /**
@@ -399,14 +577,36 @@ class AppointmentRepository
             $params[':to'] = (string) $filters['to'];
         }
         if (!empty($filters['search'])) {
-            $escaped = str_replace(['%', '_'], ['\\%', '\\_'], trim((string) $filters['search']));
+            $rawSearch = trim((string) $filters['search']);
+            $escaped = str_replace(['%', '_'], ['\\%', '\\_'], $rawSearch);
             $searchTerm = '%' . $escaped . '%';
-            $where[] = '(p.first_name LIKE :search1 OR p.last_name LIKE :search2 OR u_p.email LIKE :search3 OR p.phone LIKE :search4 OR s.name LIKE :search5)';
+            $isSqlite = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite';
+            $fullNameExpr = $isSqlite
+                ? "(p.first_name || ' ' || p.last_name) LIKE :search6"
+                : "CONCAT(p.first_name, ' ', p.last_name) LIKE :search6";
+            $searchParts = [
+                'p.first_name LIKE :search1',
+                'p.last_name LIKE :search2',
+                'u_p.email LIKE :search3',
+                'p.phone LIKE :search4',
+                's.name LIKE :search5',
+                $fullNameExpr,
+            ];
             $params[':search1'] = $searchTerm;
             $params[':search2'] = $searchTerm;
             $params[':search3'] = $searchTerm;
             $params[':search4'] = $searchTerm;
             $params[':search5'] = $searchTerm;
+            $params[':search6'] = $searchTerm;
+
+            // Support reference lookups like "1066", "#1066", or "TC-001066"
+            $normalizedRef = preg_replace('/^(?:TC-?|#)/i', '', $rawSearch);
+            if ($normalizedRef !== null && $normalizedRef !== '' && ctype_digit($normalizedRef)) {
+                $searchParts[] = 'a.id = :search_ref_id';
+                $params[':search_ref_id'] = (int) ltrim($normalizedRef, '0') ?: (int) $normalizedRef;
+            }
+
+            $where[] = '(' . implode(' OR ', $searchParts) . ')';
         }
 
         $whereClause = implode(' AND ', $where);
@@ -428,10 +628,12 @@ class AppointmentRepository
 
         $sql = "
             SELECT a.*,
+                   COALESCE(NULLIF(a.operatory_chair, ''), d.default_operatory_chair, 'Chair 1') AS dentist_room_number,
                    p.first_name AS patient_first_name, p.last_name AS patient_last_name, p.phone AS patient_phone,
                    u_p.email AS patient_email,
                    d.first_name AS dentist_first_name, d.last_name AS dentist_last_name, d.specialization,
-                   s.name AS service_name, s.duration_minutes AS service_duration
+                   d.default_operatory_chair, d.is_active AS dentist_is_active,
+                   s.name AS service_name, s.duration_minutes AS service_duration, s.is_active AS service_is_active
             FROM appointments a
             JOIN patients p ON a.patient_id = p.id
             JOIN users u_p ON p.user_id = u_p.id

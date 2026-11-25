@@ -48,9 +48,23 @@ final class PatientsDentistsServicesPaths
             new OA\Parameter(name: 'service_id', in: 'query', required: true, schema: new OA\Schema(type: 'integer')),
             new OA\Parameter(name: 'date', in: 'query', required: true, schema: new OA\Schema(type: 'string', format: 'date')),
         ],
-        responses: [new OA\Response(response: 200, description: 'Available time slots'), new OA\Response(response: 422, description: 'Invalid parameters')]
+        responses: [new OA\Response(response: 200, description: 'Available time slots with reason messages and validated alternatives when unavailable'), new OA\Response(response: 422, description: 'Invalid parameters')]
     )]
     public function availability(): void {}
+
+    #[OA\Get(
+        path: '/availability/validate',
+        operationId: 'validateAvailabilitySlot',
+        summary: 'Validate a Specific Appointment Slot Against Clinic & Dentist Availability Rules',
+        tags: ['Scheduling'],
+        parameters: [
+            new OA\Parameter(name: 'dentist_id', in: 'query', required: true, schema: new OA\Schema(type: 'integer')),
+            new OA\Parameter(name: 'service_id', in: 'query', required: true, schema: new OA\Schema(type: 'integer')),
+            new OA\Parameter(name: 'start_at', in: 'query', required: true, schema: new OA\Schema(type: 'string')),
+        ],
+        responses: [new OA\Response(response: 200, description: 'Structured availability validation result and alternatives'), new OA\Response(response: 422, description: 'Invalid parameters')]
+    )]
+    public function validateAvailabilitySlot(): void {}
 
     #[OA\Get(path: '/clinic/hours', operationId: 'getClinicHours', summary: 'Get Clinic Weekly Operating Hours', tags: ['Scheduling'], responses: [new OA\Response(response: 200, description: 'Operating hours')])]
     public function clinicHours(): void {}

@@ -10,8 +10,12 @@ import {
   Calendar,
   Sparkles,
   ArrowRight,
-  Filter,
+  Search,
+  X,
+  Trash2,
   RefreshCw,
+  Settings,
+  UserPlus,
 } from 'lucide-react';
 import notificationsApi from '../api';
 import { NotificationSkeleton } from '../../../components/skeletons';
@@ -23,6 +27,7 @@ function getNotificationIcon(type) {
     case 'APPOINTMENT_REQUESTED':
       return <Clock className="w-5 h-5 text-amber-500 dark:text-amber-400" />;
     case 'APPOINTMENT_CONFIRMED':
+    case 'APPOINTMENT_UPDATED':
       return <CheckCircle2 className="w-5 h-5 text-[#0D9488] dark:text-[#2DD4BF]" />;
     case 'APPOINTMENT_REJECTED':
       return <XCircle className="w-5 h-5 text-rose-500 dark:text-rose-400" />;
@@ -31,14 +36,21 @@ function getNotificationIcon(type) {
     case 'APPOINTMENT_COMPLETED':
       return <Sparkles className="w-5 h-5 text-teal-600 dark:text-[#2DD4BF]" />;
     case 'APPOINTMENT_RESCHEDULED':
+    case 'SCHEDULE_UPDATED':
       return <Calendar className="w-5 h-5 text-sky-500 dark:text-sky-400" />;
+    case 'SERVICE_UPDATED':
+      return <Settings className="w-5 h-5 text-[#0D9488] dark:text-[#2DD4BF]" />;
+    case 'ACCOUNT_CREATED':
+    case 'ACCOUNT_UPDATED':
+      return <UserPlus className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />;
     default:
       return <Bell className="w-5 h-5 text-[#0D9488] dark:text-[#2DD4BF]" />;
   }
 }
 
-export function PatientNotificationsPage({ onNavigateToAppointments }) {
+export function PatientNotificationsPage({ onNavigateToAppointments, onSelectNotification }) {
   const [filter, setFilter] = useState('ALL'); // 'ALL' or 'UNREAD'
+  const [searchQuery, setSearchQuery] = useState('');
   const [notifications, setNotifications] = useState([]);
   const [total, setTotal] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -46,6 +58,7 @@ export function PatientNotificationsPage({ onNavigateToAppointments }) {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   const fetchList = useCallback(async (pageNum = 1, silent = false) => {
     if (!silent) {
@@ -107,8 +120,31 @@ export function PatientNotificationsPage({ onNavigateToAppointments }) {
     }
   };
 
-  const displayedNotifications =
-    filter === 'UNREAD' ? notifications.filter((n) => !n.read_at) : notifications;
+  const handleDelete = async (notif) => {
+    setDeletingId(notif.id);
+    try {
+      await notificationsApi.deleteNotification(notif.id);
+      setNotifications((prev) => prev.filter((n) => n.id !== notif.id));
+      setTotal((prev) => Math.max(0, prev - 1));
+      if (!notif.read_at) {
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+    } catch {
+      fetchList(page);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const displayedNotifications = notifications.filter((n) => {
+    if (filter === 'UNREAD' && n.read_at) return false;
+    if (!normalizedQuery) return true;
+    return (
+      (n.title || '').toLowerCase().includes(normalizedQuery) ||
+      (n.message || '').toLowerCase().includes(normalizedQuery)
+    );
+  });
 
   return (
     <div className="space-y-6">
@@ -135,35 +171,51 @@ export function PatientNotificationsPage({ onNavigateToAppointments }) {
         )}
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-gray-700 pb-2">
-        <button
-          type="button"
-          onClick={() => setFilter('ALL')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-            filter === 'ALL'
-              ? 'bg-[#12304A] dark:bg-[#0F766E] text-white'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-gray-800'
-          }`}
-        >
-          All Notifications ({total})
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilter('UNREAD')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
-            filter === 'UNREAD'
-              ? 'bg-[#12304A] dark:bg-[#0F766E] text-white'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-gray-800'
-          }`}
-        >
-          <span>Unread</span>
-          {unreadCount > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-bold">
-              {unreadCount}
-            </span>
+      {/* Search & Category Filter Bar */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="relative flex-1">
+          <label htmlFor="notifications-search" className="sr-only">
+            Search notifications
+          </label>
+          <Search
+            className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2"
+            aria-hidden="true"
+          />
+          <input
+            id="notifications-search"
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search notifications by title or message"
+            className="w-full min-h-11 sm:min-h-0 pl-10 pr-9 py-2.5 text-sm border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0D9488] focus:border-transparent"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              aria-label="Clear notification search"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            >
+              <X className="w-4 h-4" />
+            </button>
           )}
-        </button>
+        </div>
+
+        <div className="sm:w-56 shrink-0">
+          <label htmlFor="notifications-filter" className="sr-only">
+            Filter notifications
+          </label>
+          <select
+            id="notifications-filter"
+            aria-label="Filter notifications"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="w-full min-h-11 sm:min-h-0 px-3.5 py-2.5 rounded-xl bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400"
+          >
+            <option value="ALL">All Notifications ({total})</option>
+            <option value="UNREAD">Unread ({unreadCount})</option>
+          </select>
+        </div>
       </div>
 
       {/* Content */}
@@ -226,27 +278,52 @@ export function PatientNotificationsPage({ onNavigateToAppointments }) {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                  {isUnread && (
+                <div className="flex flex-wrap items-center gap-2 self-end sm:self-center shrink-0">
+                  {isUnread ? (
                     <button
                       type="button"
                       onClick={() => handleMarkAsRead(notif.id)}
-                      className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-slate-50 dark:hover:bg-gray-600 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors flex items-center gap-1"
+                      title="Mark as read"
+                      aria-label={`Mark as read: ${notif.title}`}
+                      className="w-9 h-9 rounded-xl border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-slate-50 dark:hover:bg-gray-600 text-[#0D9488] dark:text-[#2DD4BF] transition-colors inline-flex items-center justify-center cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
                     >
-                      <Check className="w-3.5 h-3.5 text-[#0D9488] dark:text-[#2DD4BF]" />
-                      <span>Mark read</span>
+                      <Check className="w-4 h-4" aria-hidden="true" />
                     </button>
+                  ) : (
+                    <span
+                      title="Read"
+                      aria-label="Read"
+                      className="w-9 h-9 rounded-xl border border-slate-200/80 dark:border-gray-700 bg-slate-50 dark:bg-gray-800/70 text-[#0D9488] dark:text-[#2DD4BF] inline-flex items-center justify-center select-none"
+                    >
+                      <CheckCheck className="w-4 h-4" aria-hidden="true" />
+                    </span>
                   )}
-                  {notif.reference_type === 'appointments' && notif.reference_id && (
+
+                  <button
+                    type="button"
+                    disabled={deletingId === notif.id}
+                    onClick={() => handleDelete(notif)}
+                    title={deletingId === notif.id ? 'Deleting...' : 'Delete notification'}
+                    aria-label={`Delete notification: ${notif.title}`}
+                    className="w-9 h-9 rounded-xl border border-rose-200 dark:border-rose-800/70 bg-rose-50/70 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 transition-colors inline-flex items-center justify-center disabled:opacity-50 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                  >
+                    <Trash2 className={`w-4 h-4 ${deletingId === notif.id ? 'animate-pulse' : ''}`} aria-hidden="true" />
+                  </button>
+
+                  {notif.reference_id && (onSelectNotification || (notif.reference_type === 'appointments' && onNavigateToAppointments)) && (
                     <button
                       type="button"
                       onClick={() => {
                         if (isUnread) handleMarkAsRead(notif.id);
-                        onNavigateToAppointments?.(notif.reference_id);
+                        if (onSelectNotification) {
+                          onSelectNotification(notif);
+                        } else {
+                          onNavigateToAppointments?.(notif.reference_id);
+                        }
                       }}
-                      className="px-3 py-1.5 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-teal-600 text-white text-xs font-semibold transition-colors flex items-center gap-1 shadow-2xs"
+                      className="px-3 py-1.5 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-teal-600 text-white text-xs font-semibold transition-colors flex items-center gap-1 shadow-2xs cursor-pointer"
                     >
-                      <span>View Visit</span>
+                      <span>{notif.reference_type === 'appointments' ? 'View Visit' : 'Open'}</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   )}

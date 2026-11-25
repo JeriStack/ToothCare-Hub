@@ -33,15 +33,18 @@ class RealtimeOutboxRepository
     public function insert(array $data, ?PDO $pdo = null): int
     {
         $conn = $pdo ?? $this->database->getConnection();
-        $stmt = $conn->prepare('
-            INSERT INTO realtime_outbox (
+        $driver = strtolower((string) $conn->getAttribute(PDO::ATTR_DRIVER_NAME));
+        $insertKeyword = $driver === 'sqlite' ? 'INSERT OR IGNORE INTO' : 'INSERT IGNORE INTO';
+
+        $stmt = $conn->prepare("
+            {$insertKeyword} realtime_outbox (
                 event_id, event_type, notification_id, recipient_user_id, payload,
                 status, attempt_count, max_attempts, available_at, created_at
             ) VALUES (
                 :event_id, :event_type, :notification_id, :recipient_user_id, :payload,
                 :status, :attempt_count, :max_attempts, :available_at, :created_at
             )
-        ');
+        ");
 
         $now = (string) ($data['created_at'] ?? date('Y-m-d H:i:s'));
         $stmt->execute([
@@ -56,6 +59,10 @@ class RealtimeOutboxRepository
             'available_at' => (string) ($data['available_at'] ?? $now),
             'created_at' => $now,
         ]);
+
+        if ($stmt->rowCount() === 0) {
+            return 0;
+        }
 
         return (int) $conn->lastInsertId();
     }
@@ -95,6 +102,55 @@ class RealtimeOutboxRepository
     public function claimDueBatch(string $workerId, int $limit, string $nowStr): array
     {
         $pdo = $this->database->getConnection();
+        $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+        $useSkipLocked = ($driver === 'mysql' && !$pdo->inTransaction());
+
+        if ($useSkipLocked) {
+            try {
+                $pdo->beginTransaction();
+                $selectStmt = $pdo->prepare('
+                    SELECT id
+                    FROM realtime_outbox
+                    WHERE status IN (:pending, :retryable)
+                      AND available_at <= :now_str
+                    ORDER BY available_at ASC, id ASC
+                    LIMIT :limit
+                    FOR UPDATE SKIP LOCKED
+                ');
+                $selectStmt->bindValue(':pending', self::STATUS_PENDING);
+                $selectStmt->bindValue(':retryable', self::STATUS_FAILED_RETRYABLE);
+                $selectStmt->bindValue(':now_str', $nowStr);
+                $selectStmt->bindValue(':limit', max(1, $limit), PDO::PARAM_INT);
+                $selectStmt->execute();
+                $ids = array_map('intval', $selectStmt->fetchAll(PDO::FETCH_COLUMN));
+
+                if ($ids === []) {
+                    $pdo->commit();
+                    return [];
+                }
+
+                $placeholders = implode(', ', array_fill(0, count($ids), '?'));
+                $upd = $pdo->prepare("
+                    UPDATE realtime_outbox
+                    SET status = ?, locked_at = ?, locked_by = ?, attempt_count = attempt_count + 1
+                    WHERE id IN ({$placeholders})
+                ");
+                $upd->execute(array_merge([self::STATUS_PROCESSING, $nowStr, $workerId], $ids));
+
+                $fetch = $pdo->prepare("SELECT * FROM realtime_outbox WHERE id IN ({$placeholders}) ORDER BY available_at ASC, id ASC");
+                $fetch->execute($ids);
+                $rows = $fetch->fetchAll(PDO::FETCH_ASSOC);
+                $pdo->commit();
+
+                return $rows;
+            } catch (\Throwable) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                // Fall back to portable CAS claiming
+            }
+        }
+
         $stmt = $pdo->prepare('
             SELECT id
             FROM realtime_outbox

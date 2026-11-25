@@ -93,3 +93,23 @@ services:
       - /app/node_modules
     networks:
       - edge
+
+  # Optional offline standalone Swagger UI container (development only)
+  # Note: Built-in Swagger UI with automatic CSRF injection is also live at http://localhost:8080/api-docs
+  swagger-ui:
+    image: swaggerapi/swagger-ui:v5.17.14
+    container_name: toothcare-swagger-ui
+    profiles:
+      - docs
+    ports:
+      - "127.0.0.1:${SWAGGER_UI_PORT:-8082}:8080"
+    environment:
+      SWAGGER_JSON: /spec/openapi.yaml
+      DEEP_LINKING: "true"
+      FILTER: "true"
+      DISPLAY_REQUEST_DURATION: "true"
+    volumes:
+      - ./docs/openapi.yaml:/spec/openapi.yaml:ro
+    networks:
+      - edge
+    restart: unless-stopped

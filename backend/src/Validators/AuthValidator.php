@@ -57,6 +57,8 @@ class AuthValidator
             $errors['first_name'] = 'First name is required.';
         } elseif (mb_strlen($firstName) > 100) {
             $errors['first_name'] = 'First name cannot exceed 100 characters.';
+        } elseif (preg_match('/\p{Nd}/u', $firstName) === 1) {
+            $errors['first_name'] = 'First name cannot contain numbers.';
         }
 
         // 4. Last Name
@@ -65,13 +67,16 @@ class AuthValidator
             $errors['last_name'] = 'Last name is required.';
         } elseif (mb_strlen($lastName) > 100) {
             $errors['last_name'] = 'Last name cannot exceed 100 characters.';
+        } elseif (preg_match('/\p{Nd}/u', $lastName) === 1) {
+            $errors['last_name'] = 'Last name cannot contain numbers.';
         }
 
         // 5. Phone
         $phone = isset($data['phone']) ? trim((string) $data['phone']) : '';
+        $phoneDigits = preg_replace('/\D/', '', $phone) ?? '';
         if ($phone === '') {
             $errors['phone'] = 'Phone number is required.';
-        } elseif (!preg_match('/^[0-9+\s\-()]{7,30}$/', $phone)) {
+        } elseif (!preg_match('/^[0-9+\s\-()]{7,30}$/', $phone) || strlen($phoneDigits) < 7 || strlen($phoneDigits) > 15) {
             $errors['phone'] = 'Phone number format is invalid.';
         }
 
@@ -96,22 +101,47 @@ class AuthValidator
         }
 
         // Optional demographic fields
-        $address = isset($data['address']) ? trim((string) $data['address']) : null;
+        $rawAddress = isset($data['address']) ? trim((string) $data['address']) : '';
+        $address = $rawAddress !== '' ? $rawAddress : null;
         if ($address !== null && mb_strlen($address) > 255) {
             $errors['address'] = 'Address cannot exceed 255 characters.';
         }
 
-        $emergencyContactName = isset($data['emergency_contact_name']) ? trim((string) $data['emergency_contact_name']) : null;
-        if ($emergencyContactName !== null && mb_strlen($emergencyContactName) > 150) {
-            $errors['emergency_contact_name'] = 'Emergency contact name cannot exceed 150 characters.';
+        $rawEmergencyName = isset($data['emergency_contact_name']) ? trim((string) $data['emergency_contact_name']) : '';
+        $emergencyContactName = $rawEmergencyName !== '' ? $rawEmergencyName : null;
+        if ($emergencyContactName !== null) {
+            if (mb_strlen($emergencyContactName) > 150) {
+                $errors['emergency_contact_name'] = 'Emergency contact name cannot exceed 150 characters.';
+            } elseif (preg_match('/\p{Nd}/u', $emergencyContactName) === 1) {
+                $errors['emergency_contact_name'] = 'Emergency contact name cannot contain numbers.';
+            }
         }
 
-        $emergencyContactPhone = isset($data['emergency_contact_phone']) ? trim((string) $data['emergency_contact_phone']) : null;
-        if ($emergencyContactPhone !== null && !preg_match('/^[0-9+\s\-()]{7,30}$/', $emergencyContactPhone)) {
-            $errors['emergency_contact_phone'] = 'Emergency contact phone format is invalid.';
+        $rawEmergencyPhone = isset($data['emergency_contact_phone']) ? trim((string) $data['emergency_contact_phone']) : '';
+        $emergencyContactPhone = $rawEmergencyPhone !== '' ? $rawEmergencyPhone : null;
+        if ($emergencyContactPhone !== null) {
+            $emergencyPhoneDigits = preg_replace('/\D/', '', $emergencyContactPhone) ?? '';
+            if (
+                !preg_match('/^[0-9+\s\-()]{7,30}$/', $emergencyContactPhone) ||
+                strlen($emergencyPhoneDigits) < 7 ||
+                strlen($emergencyPhoneDigits) > 15
+            ) {
+                $errors['emergency_contact_phone'] = 'Emergency contact phone format is invalid.';
+            }
         }
 
-        $medicalAlerts = isset($data['medical_alerts']) ? trim((string) $data['medical_alerts']) : null;
+        $rawMedicalAlerts = isset($data['medical_alerts']) ? trim((string) $data['medical_alerts']) : '';
+        $medicalAlerts = $rawMedicalAlerts !== '' ? $rawMedicalAlerts : null;
+
+        // 8. Mandatory Legal Agreement Acceptance & Version Verification (client timestamps ignored)
+        $legalData = null;
+        try {
+            $legalData = LegalValidator::validateRegistrationLegalInput($data);
+        } catch (HttpException $legalEx) {
+            foreach ($legalEx->getDetails() as $key => $msg) {
+                $errors[$key] = $msg;
+            }
+        }
 
         if (!empty($errors)) {
             throw HttpException::unprocessableEntity('Validation failed for registration input.', $errors);
@@ -129,6 +159,9 @@ class AuthValidator
             'emergency_contact_name' => $emergencyContactName,
             'emergency_contact_phone' => $emergencyContactPhone,
             'medical_alerts' => $medicalAlerts,
+            'accept_legal' => true,
+            'terms_version' => (string) ($legalData['terms_version'] ?? ''),
+            'privacy_version' => (string) ($legalData['privacy_version'] ?? ''),
             // Strictly enforce PATIENT role on server - client input cannot override
             'role' => 'PATIENT',
         ];

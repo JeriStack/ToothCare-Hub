@@ -31,14 +31,21 @@ final class NotificationsReportsOpsPaths
     #[OA\Get(
         path: '/admin/reports/appointments',
         operationId: 'getAdminAppointmentsReport',
-        summary: 'Appointments Volume & Status Report (Admin)',
+        summary: 'Appointments Volume, Status Counts & Filterable Appointment List Report (Admin)',
         tags: ['Reports'],
         security: [['CookieAuth' => []]],
         parameters: [
             new OA\Parameter(name: 'start_date', in: 'query', schema: new OA\Schema(type: 'string', format: 'date')),
             new OA\Parameter(name: 'end_date', in: 'query', schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'dentist_id', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1)),
+            new OA\Parameter(name: 'service_id', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1)),
+            new OA\Parameter(name: 'patient_id', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1)),
+            new OA\Parameter(name: 'status', in: 'query', schema: new OA\Schema(type: 'string', enum: ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'REJECTED'])),
+            new OA\Parameter(name: 'search', in: 'query', schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'page', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1, default: 1)),
+            new OA\Parameter(name: 'per_page', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1, maximum: 100, default: 25)),
         ],
-        responses: [new OA\Response(response: 200, description: 'Appointment report'), new OA\Response(response: 403, description: 'Requires reports.view'), new OA\Response(response: 422, description: 'Invalid date range')]
+        responses: [new OA\Response(response: 200, description: 'Appointment counts and filterable appointment list'), new OA\Response(response: 403, description: 'Requires reports.view'), new OA\Response(response: 422, description: 'Invalid date range or filter parameter')]
     )]
     public function reportsAppointments(): void {}
 
@@ -106,6 +113,7 @@ final class NotificationsReportsOpsPaths
             new OA\Parameter(name: 'page', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1, default: 1)),
             new OA\Parameter(name: 'per_page', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1, maximum: 100, default: 20)),
             new OA\Parameter(name: 'limit', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1, maximum: 100)),
+            new OA\Parameter(name: 'unread_only', in: 'query', schema: new OA\Schema(type: 'boolean')),
         ],
         responses: [new OA\Response(response: 200, description: 'Paginated notifications'), new OA\Response(response: 401, description: 'Unauthenticated')]
     )]
@@ -113,6 +121,43 @@ final class NotificationsReportsOpsPaths
 
     #[OA\Get(path: '/notifications/unread-count', operationId: 'getUnreadNotificationCount', summary: 'Get Unread Notification Count', tags: ['Notifications'], security: [['CookieAuth' => []]], responses: [new OA\Response(response: 200, description: 'Unread count')])]
     public function notificationsUnreadCount(): void {}
+
+    #[OA\Get(
+        path: '/notifications/sync',
+        operationId: 'syncNotifications',
+        summary: 'Cursor-Based Incremental Notification Synchronization',
+        tags: ['Notifications'],
+        security: [['CookieAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'after_id', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 0)),
+            new OA\Parameter(name: 'since', in: 'query', schema: new OA\Schema(type: 'string', format: 'date-time')),
+            new OA\Parameter(name: 'limit', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1, maximum: 100, default: 50)),
+        ],
+        responses: [new OA\Response(response: 200, description: 'Incremental missed notifications and authoritative unread count'), new OA\Response(response: 400, description: 'Invalid since timestamp'), new OA\Response(response: 401, description: 'Unauthenticated')]
+    )]
+    public function notificationsSync(): void {}
+
+    #[OA\Get(
+        path: '/notifications/{id}',
+        operationId: 'getNotificationById',
+        summary: 'Retrieve Single Notification (Strict Ownership)',
+        tags: ['Notifications'],
+        security: [['CookieAuth' => []]],
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer', minimum: 1))],
+        responses: [new OA\Response(response: 200, description: 'Notification record'), new OA\Response(response: 403, description: 'Forbidden (not owner)'), new OA\Response(response: 404, description: 'Not found')]
+    )]
+    public function notificationShow(): void {}
+
+    #[OA\Delete(
+        path: '/notifications/{id}',
+        operationId: 'deleteNotificationById',
+        summary: 'Delete Single Notification (Strict Ownership)',
+        tags: ['Notifications'],
+        security: [['CookieAuth' => [], 'CsrfToken' => []]],
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer', minimum: 1))],
+        responses: [new OA\Response(response: 200, description: 'Notification deleted'), new OA\Response(response: 400, description: 'Invalid notification ID'), new OA\Response(response: 401, description: 'Unauthenticated'), new OA\Response(response: 403, description: 'Forbidden (not owner)'), new OA\Response(response: 404, description: 'Not found')]
+    )]
+    public function deleteNotification(): void {}
 
     #[OA\Patch(
         path: '/notifications/{id}/read',

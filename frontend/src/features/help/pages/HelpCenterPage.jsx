@@ -91,6 +91,8 @@ export function HelpCenterPage({
   onForgotPassword,
   onViewAppointments,
   onAdminLogin,
+  onTermsOfService,
+  onPrivacyPolicy,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const deferredSearchQuery = useDeferredValue(searchQuery);
@@ -404,57 +406,84 @@ export function HelpCenterPage({
               </p>
             </div>
 
-            {/* Working Help Center Search Form */}
+            {/* Working Help Center Search & Category Filter Form */}
             <form
               role="search"
               aria-label="Search Help Center articles and FAQs"
               onSubmit={handleSearchSubmit}
               style={{ '--hero-delay': '160ms' }}
-              className="landing-hero-enter max-w-2xl mx-auto pt-2"
+              className="landing-hero-enter max-w-3xl mx-auto pt-2"
             >
-              <label htmlFor="help-center-search" className="sr-only">
-                Search help articles, FAQs, and user guides
-              </label>
-              <div className="relative flex items-center">
-                <Search
-                  className="w-5 h-5 text-slate-400 dark:text-gray-400 absolute left-4 pointer-events-none"
-                  aria-hidden="true"
-                />
-                <input
-                  ref={searchInputRef}
-                  id="help-center-search"
-                  type="search"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Escape' && searchQuery) {
-                      e.preventDefault();
-                      setSearchQuery('');
-                    }
-                  }}
-                  placeholder="Search by topic, e.g., book appointment, reset password, cancel..."
-                  className="w-full min-h-12 sm:min-h-14 pl-12 pr-14 py-3.5 rounded-2xl bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400 focus:border-[#0D9488] dark:focus:border-teal-400 transition-shadow text-sm sm:text-base"
-                />
-                {searchQuery ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchQuery('');
-                      searchInputRef.current?.focus();
-                    }}
-                    aria-label="Clear search query"
-                    className="absolute right-3 inline-flex items-center justify-center w-9 h-9 rounded-xl text-slate-500 dark:text-gray-400 hover:text-slate-800 dark:hover:text-gray-100 hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
-                  >
-                    <X className="w-4 h-4" aria-hidden="true" />
-                  </button>
-                ) : (
-                  <kbd
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="relative flex-1 flex items-center">
+                  <label htmlFor="help-center-search" className="sr-only">
+                    Search help articles, FAQs, and user guides
+                  </label>
+                  <Search
+                    className="w-5 h-5 text-slate-400 dark:text-gray-400 absolute left-4 pointer-events-none"
                     aria-hidden="true"
-                    className="hidden sm:inline-flex items-center justify-center absolute right-3.5 px-2 py-1 rounded-lg text-[11px] font-semibold text-slate-400 dark:text-gray-400 bg-slate-100 dark:bg-gray-900/80 border border-slate-200 dark:border-gray-700 pointer-events-none"
+                  />
+                  <input
+                    ref={searchInputRef}
+                    id="help-center-search"
+                    type="search"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape' && searchQuery) {
+                        e.preventDefault();
+                        setSearchQuery('');
+                      }
+                    }}
+                    placeholder="Search by topic, e.g., book appointment, reset password, cancel..."
+                    className="w-full min-h-12 sm:min-h-14 pl-12 pr-14 py-3.5 rounded-2xl bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-700 text-slate-900 dark:text-gray-100 placeholder:text-slate-400 dark:placeholder:text-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400 focus:border-[#0D9488] dark:focus:border-teal-400 transition-shadow text-sm sm:text-base"
+                  />
+                  {searchQuery ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('');
+                        searchInputRef.current?.focus();
+                      }}
+                      aria-label="Clear search query"
+                      className="absolute right-3 inline-flex items-center justify-center w-9 h-9 rounded-xl text-slate-500 dark:text-gray-400 hover:text-slate-800 dark:hover:text-gray-100 hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                    >
+                      <X className="w-4 h-4" aria-hidden="true" />
+                    </button>
+                  ) : (
+                    <kbd
+                      aria-hidden="true"
+                      className="hidden sm:inline-flex items-center justify-center absolute right-3.5 px-2 py-1 rounded-lg text-[11px] font-semibold text-slate-400 dark:text-gray-400 bg-slate-100 dark:bg-gray-900/80 border border-slate-200 dark:border-gray-700 pointer-events-none"
+                    >
+                      /
+                    </kbd>
+                  )}
+                </div>
+
+                <div className="sm:w-60 shrink-0">
+                  <label htmlFor="help-center-category" className="sr-only">
+                    Filter help topics by category
+                  </label>
+                  <select
+                    id="help-center-category"
+                    aria-label="Filter help topics by category"
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="w-full min-h-12 sm:min-h-14 px-4 py-3.5 rounded-2xl bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-700 text-slate-900 dark:text-gray-100 shadow-sm text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400 focus:border-[#0D9488] dark:focus:border-teal-400"
                   >
-                    /
-                  </kbd>
-                )}
+                    {FAQ_FILTER_TABS.map((tab) => {
+                      const count =
+                        tab.id === 'all'
+                          ? HELP_FAQS.length
+                          : CATEGORY_FAQ_COUNTS[tab.id] || 0;
+                      return (
+                        <option key={tab.id} value={tab.id}>
+                          {tab.label} ({count})
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
               </div>
 
               {/* Quick-search suggestion chips */}
@@ -676,35 +705,60 @@ export function HelpCenterPage({
               )}
             </div>
 
-            {/* Category Filter Pills */}
-            <div
-              role="group"
-              aria-label="Filter FAQs by category"
-              className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:items-center gap-2 w-full"
-            >
-              {FAQ_FILTER_TABS.map((tab) => {
-                const isSelected = selectedCategory === tab.id;
-                const count =
-                  tab.id === 'all'
-                    ? HELP_FAQS.length
-                    : CATEGORY_FAQ_COUNTS[tab.id] || 0;
-
-                return (
+            {/* FAQ Search & Category Filter Dropdown */}
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-xs flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="relative flex-1">
+                <label htmlFor="help-faq-search" className="sr-only">
+                  Filter FAQs by keyword
+                </label>
+                <Search
+                  className="w-4 h-4 text-slate-400 dark:text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                  aria-hidden="true"
+                />
+                <input
+                  id="help-faq-search"
+                  type="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Filter FAQs by keyword..."
+                  className="w-full min-h-11 sm:min-h-0 pl-10 pr-9 py-2.5 rounded-xl bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-xs sm:text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400"
+                />
+                {searchQuery && (
                   <button
-                    key={tab.id}
                     type="button"
-                    aria-pressed={isSelected}
-                    onClick={() => setSelectedCategory(tab.id)}
-                    className={`w-full lg:w-auto lg:flex-auto inline-flex items-center justify-center text-center leading-tight min-h-10 px-3 sm:px-3.5 py-2 rounded-full text-xs font-semibold border transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
-                      isSelected
-                        ? 'bg-[#CCFBF1] dark:bg-teal-500/20 border-[#0D9488]/45 dark:border-teal-400/55 text-[#0F766E] dark:text-teal-200 shadow-2xs'
-                        : 'bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 text-slate-600 dark:text-gray-300 hover:text-[#12304A] dark:hover:text-white hover:border-slate-300 dark:hover:border-gray-600'
-                    }`}
+                    onClick={() => setSearchQuery('')}
+                    aria-label="Clear FAQ search"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                   >
-                    {tab.label} ({count})
+                    <X className="w-4 h-4" aria-hidden="true" />
                   </button>
-                );
-              })}
+                )}
+              </div>
+
+              <div className="sm:w-64 shrink-0">
+                <label htmlFor="help-faq-category" className="sr-only">
+                  Filter FAQs by category
+                </label>
+                <select
+                  id="help-faq-category"
+                  aria-label="Filter FAQs by category"
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full min-h-11 sm:min-h-0 px-3.5 py-2.5 rounded-xl bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400"
+                >
+                  {FAQ_FILTER_TABS.map((tab) => {
+                    const count =
+                      tab.id === 'all'
+                        ? HELP_FAQS.length
+                        : CATEGORY_FAQ_COUNTS[tab.id] || 0;
+                    return (
+                      <option key={tab.id} value={tab.id}>
+                        {tab.label} ({count})
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
             </div>
 
             {/* FAQ Accordion List or Empty State */}
@@ -1133,6 +1187,8 @@ export function HelpCenterPage({
         onBookAppointment={onBookAppointment}
         onAdminLogin={onAdminLogin}
         onHelpSupport={() => window.scrollTo?.({ top: 0, behavior: 'smooth' })}
+        onTermsOfService={onTermsOfService}
+        onPrivacyPolicy={onPrivacyPolicy}
         onNavigateSection={(sectionId) => {
           if (onNavigateLandingSection) {
             onNavigateLandingSection(sectionId);

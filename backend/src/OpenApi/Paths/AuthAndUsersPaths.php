@@ -52,16 +52,18 @@ final class AuthAndUsersPaths
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
-                required: ['first_name', 'last_name', 'email', 'password', 'password_confirmation', 'phone', 'date_of_birth'],
+                required: ['first_name', 'last_name', 'email', 'password', 'phone', 'date_of_birth', 'accept_legal', 'terms_version', 'privacy_version'],
                 properties: [
                     new OA\Property(property: 'first_name', type: 'string', example: 'Ana'),
                     new OA\Property(property: 'last_name', type: 'string', example: 'Reyes'),
                     new OA\Property(property: 'email', type: 'string', format: 'email', example: 'ana.reyes@example.com'),
                     new OA\Property(property: 'password', type: 'string', format: 'password', minLength: 8),
-                    new OA\Property(property: 'password_confirmation', type: 'string', format: 'password'),
-                    new OA\Property(property: 'phone', type: 'string', example: '09171234567'),
+                    new OA\Property(property: 'phone', type: 'string', example: '+63 917 123 4567'),
                     new OA\Property(property: 'date_of_birth', type: 'string', format: 'date', example: '1993-04-12'),
                     new OA\Property(property: 'gender', type: 'string', enum: ['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']),
+                    new OA\Property(property: 'accept_legal', type: 'boolean', example: true, description: 'Explicit acceptance of Terms of Service and acknowledgment of Privacy Policy'),
+                    new OA\Property(property: 'terms_version', type: 'string', example: '1.0', description: 'Must match currently PUBLISHED Terms of Service version'),
+                    new OA\Property(property: 'privacy_version', type: 'string', example: '1.0', description: 'Must match currently PUBLISHED Privacy Policy version'),
                 ]
             )
         ),

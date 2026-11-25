@@ -21,6 +21,16 @@ export const schedulesApi = {
   },
 
   /**
+   * Validate a specific requested slot against clinic & dentist availability rules
+   */
+  async validateSlot({ dentist_id, service_id, start_at }) {
+    const res = await apiClient.get('/availability/validate', {
+      params: { dentist_id, service_id, start_at },
+    });
+    return res.data?.data;
+  },
+
+  /**
    * Get clinic facility weekly operating hours
    */
   async getClinicHours() {

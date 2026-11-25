@@ -75,21 +75,76 @@ class OpenApiDocsController
   <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
   <style>
     body { margin: 0; background: #f8fafc; }
+    .swagger-ui .topbar { background-color: #12304a; }
+    .swagger-ui .topbar .download-url-wrapper .select-label select { border-color: #0d9488; }
     .topbar-wrapper img { display: none; }
   </style>
 </head>
 <body>
   <div id="swagger-ui"></div>
   <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
   <script>
     window.onload = function () {
+      var cachedCsrfToken = null;
+      var unsafeMethods = { POST: true, PUT: true, PATCH: true, DELETE: true };
+
+      async function getCsrfToken() {
+        if (cachedCsrfToken) {
+          return cachedCsrfToken;
+        }
+        try {
+          var res = await fetch('/api/v1/auth/csrf-token', {
+            method: 'GET',
+            credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+          });
+          if (!res.ok) return null;
+          var json = await res.json();
+          cachedCsrfToken = (json && json.data && json.data.csrf_token) || null;
+          return cachedCsrfToken;
+        } catch (_err) {
+          return null;
+        }
+      }
+
       window.ui = SwaggerUIBundle({
         url: '/api/v1/docs/openapi.yaml',
         dom_id: '#swagger-ui',
         deepLinking: true,
+        filter: true,
+        displayRequestDuration: true,
+        docExpansion: 'list',
         persistAuthorization: false,
         withCredentials: true,
-        presets: [SwaggerUIBundle.presets.apis]
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIStandalonePreset
+        ],
+        layout: 'StandaloneLayout',
+        requestInterceptor: async function (req) {
+          req.credentials = 'include';
+          var method = String(req.method || 'GET').toUpperCase();
+          if (unsafeMethods[method]) {
+            var hasHeader = Object.keys(req.headers || {}).some(function (k) {
+              return k.toLowerCase() === 'x-csrf-token';
+            });
+            if (!hasHeader) {
+              var token = await getCsrfToken();
+              if (token) {
+                req.headers = req.headers || {};
+                req.headers['X-CSRF-Token'] = token;
+              }
+            }
+          }
+          return req;
+        },
+        responseInterceptor: function (res) {
+          if (res && (res.status === 401 || res.status === 403)) {
+            cachedCsrfToken = null;
+          }
+          return res;
+        }
       });
     };
   </script>

@@ -109,6 +109,14 @@ class ServiceController
             ['name' => $validated['name'], 'price' => $validated['price']]
         );
 
+        try {
+            $dispatcher = new \App\Services\Notifications\UnifiedNotificationDispatcher();
+            $dispatcher->dispatchServiceUpdated($serviceId, (string) $validated['name'], 'CREATED', $user ? (int) $user['id'] : null);
+            $dispatcher->dispatchPendingAfterCommit();
+        } catch (\Throwable) {
+            // Never fail service creation on realtime outage
+        }
+
         return Response::created($service);
     }
 
@@ -154,6 +162,14 @@ class ServiceController
             ['updated_fields' => array_keys($validated)]
         );
 
+        try {
+            $dispatcher = new \App\Services\Notifications\UnifiedNotificationDispatcher();
+            $dispatcher->dispatchServiceUpdated($id, (string) ($updatedService['name'] ?? $service['name']), 'UPDATED', $user ? (int) $user['id'] : null);
+            $dispatcher->dispatchPendingAfterCommit();
+        } catch (\Throwable) {
+            // Never fail service update on realtime outage
+        }
+
         return Response::success($updatedService);
     }
 
@@ -191,6 +207,19 @@ class ServiceController
                 'historical_appointments_preserved' => $this->serviceRepository->countAppointmentsReferencing($id),
             ]
         );
+
+        try {
+            $dispatcher = new \App\Services\Notifications\UnifiedNotificationDispatcher();
+            $dispatcher->dispatchServiceUpdated(
+                $id,
+                (string) $service['name'],
+                $newStatus === 1 ? 'ACTIVATED' : 'DEACTIVATED',
+                $user ? (int) $user['id'] : null
+            );
+            $dispatcher->dispatchPendingAfterCommit();
+        } catch (\Throwable) {
+            // Never fail service status change on realtime outage
+        }
 
         return Response::success($updatedService);
     }

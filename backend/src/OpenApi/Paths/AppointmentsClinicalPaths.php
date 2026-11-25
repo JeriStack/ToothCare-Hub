@@ -118,6 +118,9 @@ final class AppointmentsClinicalPaths
     #[OA\Get(path: '/admin/appointments/{id}', operationId: 'getAdminAppointment', summary: 'Get Appointment Details with Audit Trail (Admin/Receptionist)', tags: ['Appointments'], security: [['CookieAuth' => []]], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Appointment details')])]
     public function adminAppointmentById(): void {}
 
+    #[OA\Get(path: '/admin/appointments/{id}/availability', operationId: 'checkAdminAppointmentAvailability', summary: 'Revalidate Dentist & Clinic Availability Prior to Approval (Admin/Receptionist)', tags: ['Appointments'], security: [['CookieAuth' => []]], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Structured availability validation result and suggested rejection reason'), new OA\Response(response: 404, description: 'Appointment not found')])]
+    public function checkAdminAppointmentAvailability(): void {}
+
     #[OA\Patch(path: '/admin/appointments/{id}/confirm', operationId: 'confirmAppointment', summary: 'Approve & Confirm Pending Appointment (Admin/Receptionist)', tags: ['Appointments'], security: [['CookieAuth' => [], 'CsrfToken' => []]], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Appointment confirmed'), new OA\Response(response: 409, description: 'Invalid transition or slot conflict')])]
     public function confirmAppointment(): void {}
 

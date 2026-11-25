@@ -12,6 +12,7 @@ import {
   FileText,
   ShieldCheck,
   Award,
+  ChevronDown,
   ChevronRight,
   X,
   AlertTriangle,
@@ -24,6 +25,8 @@ import {
 } from 'lucide-react';
 import { appointmentsApi } from '../appointments/api';
 import { DashboardSkeleton } from '../../components/skeletons/DashboardSkeleton';
+import { useDashboardSync } from '../../hooks/useDashboardSync';
+import { DASHBOARD_SYNC_DOMAINS } from '../../services/realtime/dashboardSync';
 
 import { DialogOverlay } from '../../components/ui/DialogOverlay';
 const STATUS_BADGE = {
@@ -120,6 +123,7 @@ export function PatientDashboard({
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [activeListTab, setActiveListTab] = useState('upcoming');
+  const [isRecentActivityExpanded, setIsRecentActivityExpanded] = useState(false);
   const appointmentsSectionRef = useRef(null);
 
   const focusScheduleTab = (tab) => {
@@ -187,6 +191,15 @@ export function PatientDashboard({
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
+
+  useDashboardSync({
+    role: 'PATIENT',
+    domains: [
+      DASHBOARD_SYNC_DOMAINS.PATIENT_DASHBOARD,
+      DASHBOARD_SYNC_DOMAINS.APPOINTMENTS,
+    ],
+    onRefresh: () => fetchDashboardData(true),
+  });
 
   const patientName = user?.patient?.first_name
     ? user.patient.first_name
@@ -409,9 +422,16 @@ export function PatientDashboard({
                 count: metrics.upcomingCount,
                 subtitle: 'Confirmed scheduled',
                 Icon: CheckCircle2,
-                activeClass: 'bg-teal-50/80 dark:bg-teal-950/50 border-[#0D9488] dark:border-teal-500 ring-1 ring-[#0D9488]/20 dark:ring-teal-500/30 shadow-sm',
-                iconClass: 'bg-teal-100/80 dark:bg-teal-900/60 text-[#0F766E] dark:text-teal-300 border-teal-200/80 dark:border-teal-800',
-                activeTagClass: 'bg-teal-100 dark:bg-teal-900/60 text-[#0F766E] dark:text-teal-300',
+                topBarClass: 'from-teal-400 via-[#0D9488] to-emerald-400',
+                glowClass: 'bg-teal-400/20 dark:bg-teal-400/15',
+                activeClass:
+                  'bg-gradient-to-br from-teal-50/90 via-white to-white dark:from-teal-950/60 dark:via-gray-800/95 dark:to-gray-800 border-[#0D9488]/60 dark:border-teal-400/60 ring-1 ring-[#0D9488]/20 dark:ring-teal-400/25 shadow-md shadow-teal-900/5 dark:shadow-teal-950/40',
+                iconClass:
+                  'bg-gradient-to-br from-teal-500/15 to-emerald-500/10 dark:from-teal-400/20 dark:to-emerald-500/10 text-[#0F766E] dark:text-teal-300 border-teal-200/80 dark:border-teal-700/70',
+                activeTagClass:
+                  'bg-teal-100/90 dark:bg-teal-500/15 text-[#0F766E] dark:text-teal-300 border border-teal-200/80 dark:border-teal-500/30',
+                dotClass: 'bg-[#0D9488] dark:bg-teal-400',
+                hoverAccentText: 'group-hover:text-[#0F766E] dark:group-hover:text-teal-300',
               },
               {
                 key: 'pending',
@@ -419,9 +439,16 @@ export function PatientDashboard({
                 count: metrics.pendingCount,
                 subtitle: 'Awaiting triage',
                 Icon: Clock,
-                activeClass: 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-500 dark:border-amber-500 ring-1 ring-amber-500/20 dark:ring-amber-500/30 shadow-sm',
-                iconClass: 'bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 border-amber-200/80 dark:border-amber-800',
-                activeTagClass: 'bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300',
+                topBarClass: 'from-amber-400 via-orange-400 to-amber-500',
+                glowClass: 'bg-amber-400/20 dark:bg-amber-400/15',
+                activeClass:
+                  'bg-gradient-to-br from-amber-50/90 via-white to-white dark:from-amber-950/50 dark:via-gray-800/95 dark:to-gray-800 border-amber-500/60 dark:border-amber-400/60 ring-1 ring-amber-500/20 dark:ring-amber-400/25 shadow-md shadow-amber-900/5 dark:shadow-amber-950/40',
+                iconClass:
+                  'bg-gradient-to-br from-amber-500/15 to-orange-500/10 dark:from-amber-400/20 dark:to-orange-500/10 text-amber-700 dark:text-amber-300 border-amber-200/80 dark:border-amber-700/70',
+                activeTagClass:
+                  'bg-amber-100/90 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-500/30',
+                dotClass: 'bg-amber-500 dark:bg-amber-400',
+                hoverAccentText: 'group-hover:text-amber-700 dark:group-hover:text-amber-300',
               },
               {
                 key: 'completed',
@@ -429,11 +456,18 @@ export function PatientDashboard({
                 count: metrics.completedCount,
                 subtitle: 'Past dental visits',
                 Icon: Award,
-                activeClass: 'bg-sky-50/80 dark:bg-sky-950/40 border-sky-500 dark:border-sky-500 ring-1 ring-sky-500/20 dark:ring-sky-500/30 shadow-sm',
-                iconClass: 'bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-300 border-sky-200/80 dark:border-sky-800',
-                activeTagClass: 'bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-300',
+                topBarClass: 'from-sky-400 via-cyan-500 to-blue-500',
+                glowClass: 'bg-sky-400/20 dark:bg-sky-400/15',
+                activeClass:
+                  'bg-gradient-to-br from-sky-50/90 via-white to-white dark:from-sky-950/50 dark:via-gray-800/95 dark:to-gray-800 border-sky-500/60 dark:border-sky-400/60 ring-1 ring-sky-500/20 dark:ring-sky-400/25 shadow-md shadow-sky-900/5 dark:shadow-sky-950/40',
+                iconClass:
+                  'bg-gradient-to-br from-sky-500/15 to-cyan-500/10 dark:from-sky-400/20 dark:to-cyan-500/10 text-sky-700 dark:text-sky-300 border-sky-200/80 dark:border-sky-700/70',
+                activeTagClass:
+                  'bg-sky-100/90 dark:bg-sky-500/15 text-sky-800 dark:text-sky-300 border border-sky-200/80 dark:border-sky-500/30',
+                dotClass: 'bg-sky-500 dark:bg-sky-400',
+                hoverAccentText: 'group-hover:text-sky-700 dark:group-hover:text-sky-300',
               },
-            ].map(({ key, label, count, subtitle, Icon, activeClass, iconClass, activeTagClass }) => {
+            ].map(({ key, label, count, subtitle, Icon, topBarClass, glowClass, activeClass, iconClass, activeTagClass, dotClass, hoverAccentText }) => {
               const isSelected = activeListTab === key;
               return (
                 <button
@@ -442,44 +476,70 @@ export function PatientDashboard({
                   onClick={() => setActiveListTab(key)}
                   aria-pressed={isSelected}
                   aria-label={`${label}: ${count} ${subtitle.toLowerCase()}`}
-                  className={`w-full text-left p-5 rounded-2xl border transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] flex flex-col justify-between gap-3.5 ${
+                  className={`group relative overflow-hidden w-full text-left p-5 sm:p-6 rounded-2xl border transition-all duration-200 hover:-translate-y-0.5 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] flex flex-col justify-between gap-5 ${
                     isSelected
                       ? activeClass
-                      : 'bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 hover:border-slate-300 dark:hover:border-gray-600 hover:shadow-sm'
+                      : 'bg-white dark:bg-gray-800/90 border-slate-200/90 dark:border-gray-700/80 hover:border-slate-300 dark:hover:border-gray-600 hover:shadow-md dark:hover:shadow-black/20'
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-2 w-full">
-                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                      {label}
-                    </span>
+                  {/* Top Accent Gradient Bar */}
+                  <span
+                    aria-hidden="true"
+                    className={`pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${topBarClass} transition-opacity duration-200 ${
+                      isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-65'
+                    }`}
+                  />
+
+                  {/* Subtle Corner Ambient Glow */}
+                  <span
+                    aria-hidden="true"
+                    className={`pointer-events-none absolute -right-10 -top-10 w-32 h-32 rounded-full blur-2xl transition-opacity duration-300 ${glowClass} ${
+                      isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-75'
+                    }`}
+                  />
+
+                  {/* Top Row: Label & Icon */}
+                  <div className="relative flex items-start justify-between gap-3 w-full">
+                    <div className="space-y-1">
+                      <span className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                        {label}
+                      </span>
+                      <div className="flex items-baseline gap-2.5 pt-1">
+                        <span className="text-4xl font-extrabold tracking-tight tabular-nums leading-none text-[#12304A] dark:text-white">
+                          {count}
+                        </span>
+                        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                          {subtitle}
+                        </span>
+                      </div>
+                    </div>
+
                     <div
-                      className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${iconClass}`}
+                      className={`w-11 h-11 rounded-2xl border flex items-center justify-center shrink-0 shadow-2xs transition-transform duration-200 group-hover:scale-105 ${iconClass}`}
                     >
-                      <Icon className="w-4 h-4" aria-hidden="true" />
+                      <Icon className="w-5 h-5" aria-hidden="true" />
                     </div>
                   </div>
 
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-bold tracking-tight tabular-nums text-[#12304A] dark:text-slate-100">
-                      {count}
-                    </span>
-                    <span className="text-xs text-slate-600 dark:text-slate-400">{subtitle}</span>
-                  </div>
-
-                  <div className="pt-2.5 border-t border-slate-200/70 dark:border-gray-700 flex items-center justify-between text-[11px] w-full">
+                  {/* Bottom Row: Active Pill / Interactive Cue */}
+                  <div className="relative flex items-center justify-between text-xs w-full pt-1">
                     {isSelected ? (
                       <span
-                        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-semibold ${activeTagClass}`}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${activeTagClass}`}
                       >
-                        <CheckCircle2 className="w-3 h-3 shrink-0" aria-hidden="true" />
+                        <span className={`w-1.5 h-1.5 rounded-full ${dotClass}`} aria-hidden="true" />
                         <span>Active filter</span>
                       </span>
                     ) : (
-                      <span className="text-slate-500 dark:text-slate-400 font-medium">View in schedule</span>
+                      <span className={`text-[11px] font-semibold text-slate-500 dark:text-slate-400 transition-colors ${hoverAccentText}`}>
+                        View in schedule
+                      </span>
                     )}
                     <ChevronRight
-                      className={`w-3.5 h-3.5 transition-transform ${
-                        isSelected ? 'text-[#12304A] dark:text-slate-100 translate-x-0.5' : 'text-slate-400 dark:text-slate-500'
+                      className={`w-4 h-4 transition-all duration-200 ${
+                        isSelected
+                          ? 'text-[#12304A] dark:text-slate-100 translate-x-0.5'
+                          : 'text-slate-400 dark:text-slate-500 group-hover:translate-x-1 group-hover:text-slate-700 dark:group-hover:text-slate-200'
                       }`}
                       aria-hidden="true"
                     />
@@ -986,42 +1046,79 @@ export function PatientDashboard({
           </div>
 
           {/* 6. Recent Appointment Activity Section (Phase 7) */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200/80 dark:border-gray-700 shadow-xs p-5 space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-gray-700 pb-3">
-              <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                <h3 className="text-sm font-bold text-[#12304A] dark:text-slate-100">Recent Appointment Activity</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200/80 dark:border-gray-700 shadow-xs overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setIsRecentActivityExpanded((prev) => !prev)}
+              aria-expanded={isRecentActivityExpanded}
+              aria-controls="patient-recent-activity-panel"
+              className="w-full px-5 py-4 flex items-center justify-between gap-3 text-left hover:bg-slate-50/80 dark:hover:bg-gray-700/40 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <Activity className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" aria-hidden="true" />
+                <h3 className="text-sm font-bold text-[#12304A] dark:text-slate-100 truncate">
+                  Recent Appointment Activity
+                </h3>
+                {recentActivity.length > 0 && (
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-teal-50 dark:bg-teal-900/50 text-[#0F766E] dark:text-teal-300 border border-teal-200/70 dark:border-teal-700/60 tabular-nums">
+                    {recentActivity.length}
+                  </span>
+                )}
               </div>
-              <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">Latest patient updates</span>
-            </div>
+              <div className="flex items-center gap-2.5 shrink-0">
+                <span className="hidden sm:inline text-[11px] text-slate-400 dark:text-slate-500 font-medium">
+                  Latest patient updates
+                </span>
+                <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 dark:bg-gray-700/80 text-slate-500 dark:text-slate-300">
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={`w-4 h-4 transition-transform duration-200 motion-reduce:transition-none ${
+                      isRecentActivityExpanded ? 'rotate-180' : ''
+                    }`}
+                  />
+                </span>
+                <span className="sr-only">
+                  {isRecentActivityExpanded ? 'Minimize recent appointment activity' : 'Expand recent appointment activity'}
+                </span>
+              </div>
+            </button>
 
-            {recentActivity.length === 0 ? (
-              <p className="text-xs text-slate-400 dark:text-slate-500 italic py-2">No recent appointment activity recorded.</p>
-            ) : (
-              <div className="divide-y divide-slate-100 dark:divide-gray-700">
-                {recentActivity.map((act) => (
-                  <div key={act.id} className="py-2.5 flex items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-2 h-2 rounded-full bg-teal-500 dark:bg-teal-400 shrink-0" />
-                      <div>
-                        <span className="font-semibold text-slate-800 dark:text-slate-100">
-                          {act.service_name || 'Appointment'}
+            {isRecentActivityExpanded && (
+              <div
+                id="patient-recent-activity-panel"
+                className="px-5 pb-4 pt-1 border-t border-slate-100 dark:border-gray-700"
+              >
+                {recentActivity.length === 0 ? (
+                  <p className="text-xs text-slate-400 dark:text-slate-500 italic py-2">
+                    No recent appointment activity recorded.
+                  </p>
+                ) : (
+                  <div className="divide-y divide-slate-100 dark:divide-gray-700">
+                    {recentActivity.map((act) => (
+                      <div key={act.id} className="py-2.5 flex items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-2 h-2 rounded-full bg-teal-500 dark:bg-teal-400 shrink-0" />
+                          <div>
+                            <span className="font-semibold text-slate-800 dark:text-slate-100">
+                              {act.service_name || 'Appointment'}
+                            </span>
+                            <span className="text-slate-500 dark:text-slate-400">
+                              {' '}
+                              transitioned to{' '}
+                              <strong className="text-teal-700 dark:text-teal-300">{act.new_status}</strong>
+                            </span>
+                            {act.dentist_last_name && (
+                              <span className="text-slate-400 dark:text-slate-500"> (Dr. {act.dentist_last_name})</span>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-[11px] text-slate-400 dark:text-slate-500 shrink-0 font-mono">
+                          {formatManilaDate(act.created_at)}
                         </span>
-                        <span className="text-slate-500 dark:text-slate-400">
-                          {' '}
-                          transitioned to{' '}
-                          <strong className="text-teal-700 dark:text-teal-300">{act.new_status}</strong>
-                        </span>
-                        {act.dentist_last_name && (
-                          <span className="text-slate-400 dark:text-slate-500"> (Dr. {act.dentist_last_name})</span>
-                        )}
                       </div>
-                    </div>
-                    <span className="text-[11px] text-slate-400 dark:text-slate-500 shrink-0 font-mono">
-                      {formatManilaDate(act.created_at)}
-                    </span>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
             )}
           </div>

@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
+  sanitizeNameInput,
+  sanitizePhoneInput,
+  validateName,
   validateEmail,
   validatePassword,
   validatePhone,
@@ -8,6 +11,40 @@ import {
 } from '../../features/auth/schemas/authSchema';
 
 describe('authSchema Validation Rules', () => {
+  describe('sanitizeNameInput & validateName', () => {
+    it('strips ASCII and Unicode digits from name input while preserving valid characters', () => {
+      expect(sanitizeNameInput('Maria123')).toBe('Maria');
+      expect(sanitizeNameInput('456Santos789')).toBe('Santos');
+      expect(sanitizeNameInput("De la Cruz-O'Brien Jr.")).toBe("De la Cruz-O'Brien Jr.");
+      expect(sanitizeNameInput('José Niño 2026')).toBe('José Niño ');
+      expect(sanitizeNameInput('Maria٣٤')).toBe('Maria');
+    });
+
+    it('returns error when name is empty or whitespace', () => {
+      expect(validateName('', 'First name')).toBe('First name is required.');
+      expect(validateName('   ', 'Last name')).toBe('Last name is required.');
+      expect(validateName(null, 'First name')).toBe('First name is required.');
+    });
+
+    it('rejects names containing numbers', () => {
+      expect(validateName('Maria1', 'First name')).toBe('First name cannot contain numbers.');
+      expect(validateName('S4ntos', 'Last name')).toBe('Last name cannot contain numbers.');
+      expect(validateName('12345', 'First name')).toBe('First name cannot contain numbers.');
+    });
+
+    it('rejects names exceeding 100 characters', () => {
+      expect(validateName('A'.repeat(101), 'First name')).toBe('First name cannot exceed 100 characters.');
+    });
+
+    it('accepts valid international and punctuated names', () => {
+      expect(validateName('Maria Clara', 'First name')).toBeNull();
+      expect(validateName('De la Cruz', 'Last name')).toBeNull();
+      expect(validateName("O'Brien-Santos", 'Last name')).toBeNull();
+      expect(validateName('José Niño', 'First name')).toBeNull();
+      expect(validateName('Santos Jr.', 'Last name')).toBeNull();
+    });
+  });
+
   describe('validateEmail', () => {
     it('returns error when email is empty or whitespace', () => {
       expect(validateEmail('')).toBe('Email address is required.');
@@ -88,16 +125,26 @@ describe('authSchema Validation Rules', () => {
     });
   });
 
-  describe('validatePhone', () => {
+  describe('sanitizePhoneInput & validatePhone', () => {
+    it('strips letters and invalid symbols while preserving leading plus and phone punctuation', () => {
+      expect(sanitizePhoneInput('abc +63 917 def 123-4567')).toBe('+63 917  123-4567');
+      expect(sanitizePhoneInput('hello world')).toBe(' ');
+      expect(sanitizePhoneInput('0917+123+4567')).toBe('09171234567');
+      expect(sanitizePhoneInput('(02) 8123-4567 ext')).toBe('(02) 8123-4567 ');
+    });
+
     it('returns error when phone number is empty', () => {
       expect(validatePhone('')).toBe('Phone number is required.');
       expect(validatePhone('   ')).toBe('Phone number is required.');
       expect(validatePhone(null)).toBe('Phone number is required.');
+      expect(validatePhone('', { required: false })).toBeNull();
     });
 
-    it('returns error for invalid characters or insufficient length', () => {
+    it('returns error for invalid characters, punctuation-only, or insufficient digits', () => {
       expect(validatePhone('123')).toBe('Please enter a valid phone number (e.g. +63 917 123 4567).');
       expect(validatePhone('phone-number-here')).toBe('Please enter a valid phone number (e.g. +63 917 123 4567).');
+      expect(validatePhone('-------')).toBe('Please enter a valid phone number (e.g. +63 917 123 4567).');
+      expect(validatePhone('1234567890123456')).toBe('Please enter a valid phone number (e.g. +63 917 123 4567).');
     });
 
     it('accepts standard Philippine and international phone formats', () => {
@@ -114,9 +161,10 @@ describe('authSchema Validation Rules', () => {
       expect(validateDateOfBirth(null)).toBe('Date of birth is required.');
     });
 
-    it('returns error for invalid date strings', () => {
+    it('returns error for invalid date strings and impossible calendar dates', () => {
       expect(validateDateOfBirth('not-a-date')).toBe('Please enter a valid date in YYYY-MM-DD format.');
       expect(validateDateOfBirth('2025-13-45')).toBe('Please enter a valid date in YYYY-MM-DD format.');
+      expect(validateDateOfBirth('2025-02-31')).toBe('Please enter a valid date in YYYY-MM-DD format.');
     });
 
     it('rejects future dates of birth', () => {

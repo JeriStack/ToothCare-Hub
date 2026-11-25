@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
+const BENIGN_WS_PROXY_ERRORS = new Set(['ECONNABORTED', 'ECONNRESET', 'EPIPE']);
+
 export default defineConfig({
   plugins: [react()],
   server: {
@@ -13,7 +15,22 @@ export default defineConfig({
       },
       '/socket.io': {
         target: 'http://127.0.0.1:8080',
-        ws: true
+        changeOrigin: true,
+        ws: true,
+        configure(proxy) {
+          proxy.on('proxyReqWs', (_proxyReq, _req, socket) => {
+            socket.on('error', (err) => {
+              if (!BENIGN_WS_PROXY_ERRORS.has(err?.code)) {
+                console.error('[vite] ws client socket error:', err);
+              }
+            });
+          });
+          proxy.on('error', (err) => {
+            if (!BENIGN_WS_PROXY_ERRORS.has(err?.code)) {
+              console.error('[vite] ws proxy error:', err);
+            }
+          });
+        }
       }
     }
   },

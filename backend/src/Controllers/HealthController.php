@@ -10,6 +10,7 @@ use App\Core\HttpException;
 use App\Core\Request;
 use App\Core\Response;
 use App\Middleware\AuthorizationMiddleware;
+use App\Services\Realtime\RealtimeConfig;
 use PDO;
 
 /**
@@ -114,21 +115,65 @@ class HealthController
             $driver = '';
         }
 
-        $realtimeHost = $this->config->getString('realtime_host', 'toothcare-realtime');
-        $realtimePort = $this->config->getInt('realtime_port', 3001);
+        $realtimeConfig = RealtimeConfig::fromEnvironment();
+        $parsedRealtime = parse_url($realtimeConfig->internalUrl) ?: [];
+        $realtimeScheme = strtolower((string) ($parsedRealtime['scheme'] ?? 'http'));
+        $defaultRealtimeHost = (string) ($parsedRealtime['host'] ?? 'realtime');
+        $defaultRealtimePort = isset($parsedRealtime['port'])
+            ? (int) $parsedRealtime['port']
+            : ($realtimeScheme === 'https' ? 443 : 4000);
+
+        $realtimeHost = $this->config->getString('realtime_host', $defaultRealtimeHost);
+        $realtimePort = $this->config->getInt('realtime_port', $defaultRealtimePort);
         $realtimeReachable = null;
         $realtimeStatus = 'unverified';
-        if ($driver !== 'sqlite') {
-            $errNo = 0;
-            $errStr = '';
-            $sock = @fsockopen($realtimeHost, $realtimePort, $errNo, $errStr, 0.2);
-            if (is_resource($sock)) {
-                fclose($sock);
-                $realtimeReachable = true;
-                $realtimeStatus = 'healthy';
+        $realtimeLatencyMs = null;
+        $realtimeActiveConnections = null;
+
+        if (!$realtimeConfig->enabled) {
+            $realtimeReachable = false;
+            $realtimeStatus = 'disabled';
+        } elseif ($driver !== 'sqlite') {
+            $rtStart = microtime(true);
+            $healthUrl = sprintf('%s://%s:%d/health', $realtimeScheme, $realtimeHost, $realtimePort);
+            $context = stream_context_create([
+                'http' => [
+                    'method' => 'GET',
+                    'timeout' => 0.8,
+                    'ignore_errors' => true,
+                    'header' => "Accept: application/json\r\n",
+                ],
+            ]);
+
+            $rawHealth = @file_get_contents($healthUrl, false, $context);
+            $realtimeLatencyMs = round((microtime(true) - $rtStart) * 1000, 2);
+
+            if ($rawHealth !== false) {
+                $decodedHealth = json_decode($rawHealth, true);
+                if (is_array($decodedHealth) && ($decodedHealth['status'] ?? null) === 'healthy') {
+                    $realtimeReachable = true;
+                    $realtimeStatus = 'healthy';
+                    if (isset($decodedHealth['active_connections']) && is_numeric($decodedHealth['active_connections'])) {
+                        $realtimeActiveConnections = (int) $decodedHealth['active_connections'];
+                    }
+                } else {
+                    $realtimeReachable = false;
+                    $realtimeStatus = 'degraded';
+                }
             } else {
-                $realtimeReachable = false;
-                $realtimeStatus = 'unreachable';
+                // Fallback to TCP reachability probe if HTTP stream wrapper is unavailable
+                $errNo = 0;
+                $errStr = '';
+                $sock = @fsockopen($realtimeHost, $realtimePort, $errNo, $errStr, 0.5);
+                if (is_resource($sock)) {
+                    fclose($sock);
+                    $realtimeReachable = true;
+                    $realtimeStatus = 'healthy';
+                } else {
+                    $realtimeReachable = false;
+                    $realtimeStatus = 'unreachable';
+                    $realtimeLatencyMs = null;
+                }
             }
         }
 
@@ -185,6 +230,8 @@ class HealthController
                 'reachable' => $realtimeReachable,
                 'host' => $realtimeHost,
                 'port' => $realtimePort,
+                'latency_ms' => $realtimeLatencyMs,
+                'active_connections' => $realtimeActiveConnections,
             ],
             'rate_limiter' => [
                 'name' => 'Rate Limit Protection Engine',

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Stethoscope, Clock, ArrowRight, AlertCircle, RefreshCw, Sparkles } from 'lucide-react';
+import { Stethoscope, Clock, ArrowRight, AlertCircle, RefreshCw, Sparkles, Search, X } from 'lucide-react';
 import { servicesApi } from '../../services/api';
 import { Button } from '../../../components/ui/Button';
 import { EmptyState } from '../../../components/ui/EmptyState';
@@ -19,6 +19,7 @@ const FALLBACK_SERVICES = INITIAL_SERVICES.map((s) => ({
 export function ServicesSection({ onBookService }) {
   const [services, setServices] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -54,13 +55,20 @@ export function ServicesSection({ onBookService }) {
   }, [services]);
 
   const filteredServices = useMemo(() => {
-    if (selectedCategory === 'ALL') {
-      return services;
-    }
-    return services.filter(
-      (s) => (s.category || 'General Care').trim().toLowerCase() === selectedCategory.toLowerCase()
-    );
-  }, [services, selectedCategory]);
+    const q = searchQuery.trim().toLowerCase();
+    return services.filter((s) => {
+      const matchesCategory =
+        selectedCategory === 'ALL' ||
+        (s.category || 'General Care').trim().toLowerCase() === selectedCategory.toLowerCase();
+      if (!matchesCategory) return false;
+      if (!q) return true;
+      return (
+        (s.name || '').toLowerCase().includes(q) ||
+        (s.category || '').toLowerCase().includes(q) ||
+        (s.description || '').toLowerCase().includes(q)
+      );
+    });
+  }, [services, selectedCategory, searchQuery]);
 
   return (
     <section id="services" className="py-20 bg-white dark:bg-gray-900" aria-labelledby="services-heading">
@@ -82,39 +90,58 @@ export function ServicesSection({ onBookService }) {
           </p>
         </div>
 
-        {/* Interactive Category Filter Pills */}
-        {!loading && !error && categories.length > 1 && (
-          <div className="flex flex-wrap items-center justify-center gap-2" role="group" aria-label="Filter dental services by category">
-            <button
-              type="button"
-              onClick={() => setSelectedCategory('ALL')}
-              aria-pressed={selectedCategory === 'ALL'}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
-                selectedCategory === 'ALL'
-                  ? 'bg-[#CCFBF1] dark:bg-teal-500/20 border-[#0D9488]/35 dark:border-teal-400/50 text-[#0F766E] dark:text-teal-200 shadow-xs'
-                  : 'bg-[#F8FAFC] dark:bg-gray-800/80 border-slate-200 dark:border-gray-700 text-slate-600 dark:text-gray-300 hover:text-[#12304A] dark:hover:text-white hover:border-slate-300 dark:hover:border-gray-600'
-              }`}
-            >
-              All Services ({services.length})
-            </button>
-            {categories.map((category) => {
-              const isSelected = selectedCategory.toLowerCase() === category.toLowerCase();
-              return (
+        {/* Search & Category Dropdown Bar */}
+        {!loading && !error && services.length > 0 && (
+          <div className="max-w-2xl mx-auto flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="relative flex-1">
+              <label htmlFor="landing-service-search" className="sr-only">
+                Search dental services
+              </label>
+              <Search
+                className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                aria-hidden="true"
+              />
+              <input
+                id="landing-service-search"
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search procedure or treatment"
+                className="w-full min-h-11 sm:min-h-0 pl-10 pr-9 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-gray-800 border border-slate-200 dark:border-gray-700 text-xs sm:text-sm text-slate-800 dark:text-gray-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0D9488] dark:focus:ring-teal-400"
+              />
+              {searchQuery && (
                 <button
-                  key={category}
                   type="button"
-                  onClick={() => setSelectedCategory(category)}
-                  aria-pressed={isSelected}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
-                    isSelected
-                      ? 'bg-[#CCFBF1] dark:bg-teal-500/20 border-[#0D9488]/35 dark:border-teal-400/50 text-[#0F766E] dark:text-teal-200 shadow-xs'
-                      : 'bg-[#F8FAFC] dark:bg-gray-800/80 border-slate-200 dark:border-gray-700 text-slate-600 dark:text-gray-300 hover:text-[#12304A] dark:hover:text-white hover:border-slate-300 dark:hover:border-gray-600'
-                  }`}
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Clear service search"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 >
-                  {category}
+                  <X className="w-4 h-4" aria-hidden="true" />
                 </button>
-              );
-            })}
+              )}
+            </div>
+
+            {categories.length > 1 && (
+              <div className="sm:w-56 shrink-0">
+                <label htmlFor="landing-service-category" className="sr-only">
+                  Filter dental services by category
+                </label>
+                <select
+                  id="landing-service-category"
+                  aria-label="Filter dental services by category"
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full min-h-11 sm:min-h-0 px-3.5 py-2.5 rounded-xl bg-[#F8FAFC] dark:bg-gray-800 border border-slate-200 dark:border-gray-700 text-xs sm:text-sm font-medium text-slate-800 dark:text-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400"
+                >
+                  <option value="ALL">All Services ({services.length})</option>
+                  {categories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         )}
 

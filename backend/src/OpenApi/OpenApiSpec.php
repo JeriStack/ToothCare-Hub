@@ -34,6 +34,7 @@ use OpenApi\Attributes as OA;
         new OA\Tag(name: 'Reports', description: 'Database-driven operational reports (appointments, service utilization, dentist workload, patients)'),
         new OA\Tag(name: 'Operations', description: 'Audit logs, security events, email/realtime outbox monitoring, and redacted operational errors'),
         new OA\Tag(name: 'Settings', description: 'Clinic-wide configuration settings'),
+        new OA\Tag(name: 'Legal', description: 'Public Terms of Service and Privacy Policy documents, versioning, and auditable user legal acceptance records'),
     ]
 )]
 #[OA\SecurityScheme(

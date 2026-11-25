@@ -50,6 +50,10 @@ server {
     autoindex off;
     server_tokens off;
 
+    resolver 127.0.0.11 valid=5s ipv6=off;
+    set $php_fpm_upstream "php-fpm:9000";
+    set $realtime_upstream "http://realtime:4000";
+
     location ^~ /assets/ {
         expires 1y;
         add_header Cache-Control "public, max-age=31536000, immutable" always;
@@ -68,7 +72,7 @@ server {
 
     location /api/ {
         client_max_body_size 5m;
-        fastcgi_pass php_fpm_backend;
+        fastcgi_pass $php_fpm_upstream;
         include /etc/nginx/snippets/fastcgi-params.conf;
         fastcgi_param SCRIPT_FILENAME /var/www/backend/public/index.php;
         fastcgi_param SCRIPT_NAME /index.php;
@@ -78,7 +82,7 @@ server {
     }
 
     location /socket.io/ {
-        proxy_pass http://realtime_service;
+        proxy_pass $realtime_upstream;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";

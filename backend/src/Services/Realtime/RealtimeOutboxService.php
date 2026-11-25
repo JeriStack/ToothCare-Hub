@@ -21,10 +21,18 @@ use Throwable;
  */
 class RealtimeOutboxService
 {
+    public const EVENT_VERSION = '1.0';
+
     public const EVENT_APPOINTMENT_REQUESTED = 'appointment.requested';
     public const EVENT_APPOINTMENT_CONFIRMED = 'appointment.confirmed';
     public const EVENT_APPOINTMENT_REJECTED = 'appointment.rejected';
     public const EVENT_APPOINTMENT_CANCELLED = 'appointment.cancelled';
+    public const EVENT_APPOINTMENT_RESCHEDULED = 'appointment.rescheduled';
+    public const EVENT_APPOINTMENT_UPDATED = 'appointment.updated';
+    public const EVENT_SCHEDULE_UPDATED = 'schedule.updated';
+    public const EVENT_SERVICE_UPDATED = 'service.updated';
+    public const EVENT_ACCOUNT_CREATED = 'account.created';
+    public const EVENT_ACCOUNT_UPDATED = 'account.updated';
     public const EVENT_NOTIFICATION_CREATED = 'notification.created';
 
     /** @var list<string> */
@@ -33,6 +41,12 @@ class RealtimeOutboxService
         self::EVENT_APPOINTMENT_CONFIRMED,
         self::EVENT_APPOINTMENT_REJECTED,
         self::EVENT_APPOINTMENT_CANCELLED,
+        self::EVENT_APPOINTMENT_RESCHEDULED,
+        self::EVENT_APPOINTMENT_UPDATED,
+        self::EVENT_SCHEDULE_UPDATED,
+        self::EVENT_SERVICE_UPDATED,
+        self::EVENT_ACCOUNT_CREATED,
+        self::EVENT_ACCOUNT_UPDATED,
         self::EVENT_NOTIFICATION_CREATED,
     ];
 
@@ -87,12 +101,23 @@ class RealtimeOutboxService
             ? $metadata['occurredAt']
             : gmdate('Y-m-d\TH:i:s\Z');
 
-        // Strictly minimal, non-clinical, non-PII payload contract
+        // Strictly minimal, versioned, non-clinical, non-PII payload contract
+        $appointmentId = isset($metadata['appointmentId']) ? (int) $metadata['appointmentId'] : null;
+        $entityType = isset($metadata['entityType']) && is_string($metadata['entityType']) && $metadata['entityType'] !== ''
+            ? strtolower(trim($metadata['entityType']))
+            : ($appointmentId !== null ? 'appointments' : 'notifications');
+        $entityId = isset($metadata['entityId'])
+            ? (int) $metadata['entityId']
+            : ($appointmentId ?? $notificationId);
+
         $payload = [
             'eventId' => $eventId,
             'eventType' => $eventType,
+            'eventVersion' => self::EVENT_VERSION,
             'notificationId' => $notificationId,
-            'appointmentId' => isset($metadata['appointmentId']) ? (int) $metadata['appointmentId'] : null,
+            'appointmentId' => $appointmentId,
+            'entityType' => $entityType,
+            'entityId' => $entityId,
             'status' => isset($metadata['status']) ? strtolower((string) $metadata['status']) : null,
             'occurredAt' => $occurredAt,
         ];

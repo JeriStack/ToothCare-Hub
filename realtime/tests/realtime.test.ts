@@ -187,6 +187,42 @@ test('Event validator enforces allowlist and rejects clinical/PII payload fields
     },
   });
   assert.equal(withClinicalLeak.valid, false);
+
+  const schedValid = validatePublishEnvelope({
+    eventId: 'evt-sched-0001',
+    eventType: 'schedule.updated',
+    recipientUserId: 12,
+    payload: {
+      eventId: 'evt-sched-0001',
+      eventType: 'schedule.updated',
+      eventVersion: '1.0',
+      notificationId: 88,
+      appointmentId: null,
+      entityType: 'schedules',
+      entityId: 45,
+      status: 'updated',
+      occurredAt: '2026-11-23T12:00:00Z',
+    },
+  });
+  assert.equal(schedValid.valid, true);
+  assert.equal(schedValid.envelope?.payload.eventVersion, '1.0');
+  assert.equal(schedValid.envelope?.payload.entityType, 'schedules');
+  assert.equal(schedValid.envelope?.payload.entityId, 45);
+
+  const withSmtpLeak = validatePublishEnvelope({
+    eventId: 'evt-cred-0001',
+    eventType: 'account.updated',
+    recipientUserId: 12,
+    payload: {
+      eventId: 'evt-cred-0001',
+      eventType: 'account.updated',
+      notificationId: null,
+      appointmentId: null,
+      smtp_password: 'secret',
+      occurredAt: '2026-11-23T12:00:00Z',
+    },
+  });
+  assert.equal(withSmtpLeak.valid, false);
 });
 
 test('Socket.IO handshake authentication enforces single-use, unexpired, unrevoked, non-query tickets', async () => {
@@ -345,4 +381,30 @@ test('Room isolation, signed publishing, replay protection, idempotency, client 
     clientB?.close();
     await service.close();
   }
+});
+
+test('Realtime CORS allows private LAN dev origins in development but rejects them in production', async () => {
+  const { isAllowedRealtimeOrigin } = await import('../src/config/socket.config');
+
+  const devEnv = loadEnvironment({
+    NODE_ENV: 'development',
+    REALTIME_INTERNAL_SECRET: 'dev_test_secret_1234567890123456789012',
+    ALLOWED_ORIGINS: 'http://localhost:5173,http://127.0.0.1:5173',
+  });
+
+  assert.equal(isAllowedRealtimeOrigin('http://localhost:5173', devEnv), true);
+  assert.equal(isAllowedRealtimeOrigin('http://192.168.1.56:5173', devEnv), true);
+  assert.equal(isAllowedRealtimeOrigin('http://10.0.0.12:5173', devEnv), true);
+  assert.equal(isAllowedRealtimeOrigin('http://localhost:5174', devEnv), true);
+  assert.equal(isAllowedRealtimeOrigin('https://evil.example.com', devEnv), false);
+
+  const prodEnv = loadEnvironment({
+    NODE_ENV: 'production',
+    REALTIME_INTERNAL_SECRET: 'prod_test_secret_123456789012345678901',
+    ALLOWED_ORIGINS: 'https://clinic.toothcare.example',
+  });
+
+  assert.equal(isAllowedRealtimeOrigin('https://clinic.toothcare.example', prodEnv), true);
+  assert.equal(isAllowedRealtimeOrigin('http://192.168.1.56:5173', prodEnv), false);
+  assert.equal(isAllowedRealtimeOrigin('http://localhost:5173', prodEnv), false);
 });

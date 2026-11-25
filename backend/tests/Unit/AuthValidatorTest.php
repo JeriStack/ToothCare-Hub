@@ -28,6 +28,9 @@ class AuthValidatorTest extends TestCase
             'emergency_contact_name' => 'Juan Santos',
             'emergency_contact_phone' => '+639179876543',
             'medical_alerts' => 'Penicillin allergy',
+            'accept_legal' => true,
+            'terms_version' => '1.0',
+            'privacy_version' => '1.0',
         ];
     }
 
@@ -72,6 +75,68 @@ class AuthValidatorTest extends TestCase
 
         $validated = AuthValidator::validateRegister($raw);
         $this->assertSame('PREFER_NOT_TO_SAY', $validated['gender']);
+    }
+
+    public function testRegistrationRejectsNumbersInFirstOrLastName(): void
+    {
+        $data = $this->getValidPatientData();
+        $data['first_name'] = 'Maria123';
+        $data['last_name'] = 'Santos9';
+        $data['emergency_contact_name'] = 'Juan 42 Santos';
+
+        try {
+            AuthValidator::validateRegister($data);
+            $this->fail('Expected HttpException 422 for numeric characters in name fields');
+        } catch (HttpException $e) {
+            $this->assertSame(422, $e->getStatusCode());
+            $errors = $e->getDetails();
+            $this->assertSame('First name cannot contain numbers.', $errors['first_name'] ?? null);
+            $this->assertSame('Last name cannot contain numbers.', $errors['last_name'] ?? null);
+            $this->assertSame('Emergency contact name cannot contain numbers.', $errors['emergency_contact_name'] ?? null);
+        }
+    }
+
+    public function testRegistrationRejectsLettersOrPunctuationOnlyInPhoneFields(): void
+    {
+        $data = $this->getValidPatientData();
+        $data['phone'] = 'phone-abc-1234';
+        $data['emergency_contact_phone'] = '-------';
+
+        try {
+            AuthValidator::validateRegister($data);
+            $this->fail('Expected HttpException 422 for invalid phone fields');
+        } catch (HttpException $e) {
+            $this->assertSame(422, $e->getStatusCode());
+            $errors = $e->getDetails();
+            $this->assertSame('Phone number format is invalid.', $errors['phone'] ?? null);
+            $this->assertSame('Emergency contact phone format is invalid.', $errors['emergency_contact_phone'] ?? null);
+        }
+    }
+
+    public function testRegistrationNormalizesEmptyOptionalFieldsToNull(): void
+    {
+        $data = $this->getValidPatientData();
+        $data['address'] = '   ';
+        $data['emergency_contact_name'] = '';
+        $data['emergency_contact_phone'] = '';
+        $data['medical_alerts'] = '';
+
+        $validated = AuthValidator::validateRegister($data);
+        $this->assertNull($validated['address']);
+        $this->assertNull($validated['emergency_contact_name']);
+        $this->assertNull($validated['emergency_contact_phone']);
+        $this->assertNull($validated['medical_alerts']);
+    }
+
+    public function testRegistrationAcceptsInternationalAndPunctuatedNames(): void
+    {
+        $data = $this->getValidPatientData();
+        $data['first_name'] = 'José Niño';
+        $data['last_name'] = "De la Cruz-O'Brien Jr.";
+
+        $validated = AuthValidator::validateRegister($data);
+        $this->assertSame('José Niño', $validated['first_name']);
+        $this->assertSame("De la Cruz-O'Brien Jr.", $validated['last_name']);
     }
 
     public function testRegistrationRejectsInvalidEmailFormat(): void

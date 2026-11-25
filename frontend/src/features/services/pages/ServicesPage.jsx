@@ -13,27 +13,60 @@ import {
   Power,
   RefreshCw,
   X,
-  FileText
+  FileText,
+  Eye,
+  Lock
 } from 'lucide-react';
 import { servicesApi } from '../api';
+import { useAuth } from '../../auth';
 import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
 import { MobileSortControl } from '../../../components/ui/MobileSortControl';
-
+
+
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 const DURATION_OPTIONS = [15, 30, 45, 60, 90, 120];
 const CATEGORY_OPTIONS = [
   'General',
+  'Preventive',
+  'Restorative',
+  'Cosmetic',
+  'Oral Surgery',
   'Orthodontics',
   'Endodontics',
   'Periodontics',
   'Pediatric',
-  'Oral Surgery',
-  'Cosmetic',
-  'Preventive',
 ];
 
+function getCategoryBadgeClasses(category) {
+  switch ((category || 'General').toLowerCase()) {
+    case 'preventive':
+      return 'bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-200/80 dark:border-teal-500/25';
+    case 'restorative':
+      return 'bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-200/80 dark:border-sky-500/25';
+    case 'cosmetic':
+      return 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-200/80 dark:border-indigo-500/25';
+    case 'oral surgery':
+      return 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200/80 dark:border-amber-500/25';
+    case 'endodontics':
+    case 'periodontics':
+      return 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-200/80 dark:border-rose-500/25';
+    case 'orthodontics':
+      return 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-200/80 dark:border-blue-500/25';
+    case 'pediatric':
+      return 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-500/25';
+    default:
+      return 'bg-slate-100 dark:bg-gray-700/70 text-slate-700 dark:text-slate-200 border-slate-200/80 dark:border-gray-600';
+  }
+}
+
 export function ServicesPage() {
+  const { user, hasPermission } = useAuth();
+  const canManageServices = Boolean(
+    (typeof hasPermission === 'function' && hasPermission('services.manage')) || user?.role === 'ADMIN'
+  );
+
   const [services, setServices] = useState([]);
+  const [viewingService, setViewingService] = useState(null);
   const [meta, setMeta] = useState({ total: 0, page: 1, per_page: 10, last_page: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -115,6 +148,7 @@ export function ServicesPage() {
   };
 
   const openCreateModal = () => {
+    if (!canManageServices) return;
     setEditingService(null);
     setFormData({
       name: '',
@@ -129,6 +163,7 @@ export function ServicesPage() {
   };
 
   const openEditModal = (service) => {
+    if (!canManageServices) return;
     setEditingService(service);
     setFormData({
       name: service.name,
@@ -200,6 +235,7 @@ export function ServicesPage() {
   };
 
   const handleStatusToggleClick = (service) => {
+    if (!canManageServices) return;
     const targetStatus = service.is_active ? 0 : 1;
     setConfirmModal({
       isOpen: true,
@@ -244,18 +280,31 @@ export function ServicesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Dental Services Catalog</h1>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Dental Services Catalog</h1>
+            {!canManageServices && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-gray-700">
+                <Lock className="w-3 h-3" aria-hidden="true" />
+                View-Only Access
+              </span>
+            )}
+          </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Configure clinical procedures, appointment duration blocks, treatment fees, and booking availability.
+            {canManageServices
+              ? 'Configure clinical procedures, appointment duration blocks, treatment fees, and booking availability.'
+              : 'Browse clinical procedures, appointment duration blocks, standardized fees, and booking availability.'}
           </p>
         </div>
-        <button
-          onClick={openCreateModal}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 dark:bg-[#0F766E] hover:bg-teal-700 dark:hover:bg-[#0D9488] text-white font-medium text-sm rounded-lg shadow-sm transition-colors focus:ring-2 focus:ring-teal-500 focus:outline-none"
-        >
-          <Plus className="w-4 h-4" />
-          Add Dental Service
-        </button>
+        {canManageServices && (
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 dark:bg-[#0F766E] hover:bg-teal-700 dark:hover:bg-[#0D9488] text-white font-medium text-sm rounded-lg shadow-sm transition-colors focus:ring-2 focus:ring-teal-500 focus:outline-none cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Add Dental Service
+          </button>
+        )}
       </div>
 
       {/* Filter and Search Bar */}
@@ -321,22 +370,25 @@ export function ServicesPage() {
           columns={['w-12', 'w-44', 'w-28', 'w-24', 'w-20', 'w-24', 'w-28']}
         />
       ) : (
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-slate-200 dark:border-gray-700 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 shadow-xs overflow-hidden transition-colors">
         {error ? (
           <div className="p-12 text-center">
             <AlertTriangle className="w-8 h-8 text-rose-500 dark:text-rose-400 mx-auto mb-3" />
             <p className="text-slate-800 dark:text-slate-100 font-medium">{error}</p>
             <button
+              type="button"
               onClick={fetchServices}
-              className="mt-4 px-4 py-2 bg-slate-100 dark:bg-gray-700 hover:bg-slate-200 dark:hover:bg-gray-600 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-lg transition-colors"
+              className="mt-4 px-4 py-2 bg-slate-100 dark:bg-gray-700 hover:bg-slate-200 dark:hover:bg-gray-600 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-lg transition-colors cursor-pointer"
             >
               Try Again
             </button>
           </div>
         ) : services.length === 0 ? (
           <div className="p-12 text-center">
-            <FileText className="w-8 h-8 text-slate-400 dark:text-slate-500 mx-auto mb-3" />
-            <h3 className="text-slate-800 dark:text-slate-100 font-medium">No dental services found</h3>
+            <div className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-gray-900/80 border border-slate-200/80 dark:border-gray-700 flex items-center justify-center mx-auto mb-3 text-slate-400 dark:text-slate-500">
+              <FileText className="w-5 h-5" />
+            </div>
+            <h3 className="text-slate-800 dark:text-slate-100 font-semibold">No dental services found</h3>
             <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
               {search || categoryFilter || statusFilter !== ''
                 ? 'Try adjusting your filters or search terms.'
@@ -349,104 +401,123 @@ export function ServicesPage() {
           <div className="overflow-x-auto">
             <table role="table" className="tch-responsive-table w-full text-left border-collapse">
               <thead role="rowgroup">
-                <tr role="row" className="bg-slate-50/80 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-700 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                  <th role="columnheader" tabIndex={0} aria-sort={sortBy === 'id' ? (sortDir === 'ASC' ? 'ascending' : 'descending') : 'none'} className="py-3.5 px-4 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]" onClick={() => handleSort('id')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('id'); } }}>
+                <tr role="row" className="bg-slate-50/75 dark:bg-gray-900/45 border-b border-slate-100 dark:border-gray-700/80 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th role="columnheader" tabIndex={0} aria-sort={sortBy === 'id' ? (sortDir === 'ASC' ? 'ascending' : 'descending') : 'none'} className="py-3.5 px-5 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]" onClick={() => handleSort('id')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('id'); } }}>
                     <div className="flex items-center gap-1.5">
                       ID
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                      <ArrowUpDown className={`w-3 h-3 ${sortBy === 'id' ? 'text-[#0D9488] dark:text-teal-400' : 'text-slate-400 dark:text-slate-500'}`} />
                     </div>
                   </th>
                   <th role="columnheader" tabIndex={0} aria-sort={sortBy === 'name' ? (sortDir === 'ASC' ? 'ascending' : 'descending') : 'none'} className="py-3.5 px-4 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]" onClick={() => handleSort('name')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('name'); } }}>
                     <div className="flex items-center gap-1.5">
-                      Service Name
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                      Service
+                      <ArrowUpDown className={`w-3 h-3 ${sortBy === 'name' ? 'text-[#0D9488] dark:text-teal-400' : 'text-slate-400 dark:text-slate-500'}`} />
                     </div>
                   </th>
                   <th role="columnheader" tabIndex={0} aria-sort={sortBy === 'category' ? (sortDir === 'ASC' ? 'ascending' : 'descending') : 'none'} className="py-3.5 px-4 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]" onClick={() => handleSort('category')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('category'); } }}>
                     <div className="flex items-center gap-1.5">
                       Category
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                      <ArrowUpDown className={`w-3 h-3 ${sortBy === 'category' ? 'text-[#0D9488] dark:text-teal-400' : 'text-slate-400 dark:text-slate-500'}`} />
                     </div>
                   </th>
                   <th role="columnheader" tabIndex={0} aria-sort={sortBy === 'price' ? (sortDir === 'ASC' ? 'ascending' : 'descending') : 'none'} className="py-3.5 px-4 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]" onClick={() => handleSort('price')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('price'); } }}>
                     <div className="flex items-center gap-1.5">
                       Fee (PHP)
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                      <ArrowUpDown className={`w-3 h-3 ${sortBy === 'price' ? 'text-[#0D9488] dark:text-teal-400' : 'text-slate-400 dark:text-slate-500'}`} />
                     </div>
                   </th>
                   <th role="columnheader" tabIndex={0} aria-sort={sortBy === 'duration_minutes' ? (sortDir === 'ASC' ? 'ascending' : 'descending') : 'none'} className="py-3.5 px-4 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]" onClick={() => handleSort('duration_minutes')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('duration_minutes'); } }}>
                     <div className="flex items-center gap-1.5">
                       Duration
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                      <ArrowUpDown className={`w-3 h-3 ${sortBy === 'duration_minutes' ? 'text-[#0D9488] dark:text-teal-400' : 'text-slate-400 dark:text-slate-500'}`} />
                     </div>
                   </th>
                   <th role="columnheader" tabIndex={0} aria-sort={sortBy === 'is_active' ? (sortDir === 'ASC' ? 'ascending' : 'descending') : 'none'} className="py-3.5 px-4 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]" onClick={() => handleSort('is_active')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('is_active'); } }}>
                     <div className="flex items-center gap-1.5">
                       Status
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                      <ArrowUpDown className={`w-3 h-3 ${sortBy === 'is_active' ? 'text-[#0D9488] dark:text-teal-400' : 'text-slate-400 dark:text-slate-500'}`} />
                     </div>
                   </th>
-                  <th role="columnheader" className="py-3.5 px-4 text-right">Actions</th>
+                  <th role="columnheader" className="py-3.5 px-5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody role="rowgroup" className="divide-y divide-slate-100 dark:divide-gray-700/70 text-sm">
                 {services.map((service) => (
-                  <tr role="row" key={service.id} className="hover:bg-slate-50/60 dark:hover:bg-gray-700/40 transition-colors">
-                    <td role="cell" data-label="ID" className="py-3.5 px-4 font-mono text-xs text-slate-500 dark:text-slate-400">#{service.id}</td>
-                    <td role="cell" data-label="Service Name" className="py-3.5 px-4">
-                      <div className="font-medium text-slate-900 dark:text-slate-100">{service.name}</div>
-                      {service.description && (
-                        <div className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 max-w-sm">
-                          {service.description}
-                        </div>
-                      )}
+                  <tr role="row" key={service.id} className="hover:bg-slate-50/75 dark:hover:bg-gray-700/30 transition-colors">
+                    <td role="cell" data-label="ID" className="py-3.5 px-5 font-mono text-xs text-slate-400 dark:text-slate-500 tabular-nums">
+                      #{service.id}
+                    </td>
+                    <td role="cell" data-label="Service" className="py-3.5 px-4">
+                      <span className="font-semibold text-slate-900 dark:text-slate-50">
+                        {service.name}
+                      </span>
                     </td>
                     <td role="cell" data-label="Category" className="py-3.5 px-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-slate-200">
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border ${getCategoryBadgeClasses(service.category)}`}>
                         {service.category || 'General'}
                       </span>
                     </td>
-                    <td role="cell" data-label="Fee (PHP)" className="py-3.5 px-4 font-semibold text-slate-900 dark:text-slate-100">
-                      ₱{Number(service.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    <td role="cell" data-label="Fee (PHP)" className="py-3.5 px-4 font-semibold text-slate-900 dark:text-slate-50 tabular-nums">
+                      <span className="text-slate-400 dark:text-slate-500 font-medium mr-0.5">₱</span>
+                      {Number(service.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </td>
                     <td role="cell" data-label="Duration" className="py-3.5 px-4">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-medium bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300">
-                        <Clock className="w-3 h-3" />
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100/90 dark:bg-gray-900/60 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-gray-700 tabular-nums">
+                        <Clock className="w-3 h-3 text-[#0D9488] dark:text-teal-400 shrink-0" aria-hidden="true" />
                         {service.duration_minutes} min
                       </span>
                     </td>
                     <td role="cell" data-label="Status" className="py-3.5 px-4">
                       {service.is_active ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
-                          <CheckCircle className="w-3 h-3" />
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-500/25">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" aria-hidden="true" />
                           Active
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300">
-                          <XCircle className="w-3 h-3" />
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-gray-700/70 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-gray-600">
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-400" aria-hidden="true" />
                           Inactive
                         </span>
                       )}
                     </td>
-                    <td role="cell" data-label="Actions" className="py-3.5 px-4 text-right space-x-1">
-                      <button
-                        onClick={() => openEditModal(service)}
-                        className="p-1.5 text-slate-600 dark:text-slate-300 hover:text-teal-600 dark:hover:text-teal-300 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                        title="Edit Service"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleStatusToggleClick(service)}
-                        className={`p-1.5 rounded-lg transition-colors ${
-                          service.is_active
-                            ? 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50'
-                            : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
-                        }`}
-                        title={service.is_active ? 'Deactivate Service' : 'Activate Service'}
-                      >
-                        <Power className="w-4 h-4" />
-                      </button>
+                    <td role="cell" data-label="Actions" className="py-3.5 px-5 text-right whitespace-nowrap">
+                      <div className="inline-flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setViewingService(service)}
+                          className="w-8 h-8 rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800/80 text-slate-600 dark:text-slate-300 hover:text-[#0F766E] dark:hover:text-teal-300 hover:border-teal-300 dark:hover:border-teal-700 hover:bg-teal-50/50 dark:hover:bg-teal-950/30 inline-flex items-center justify-center transition-colors cursor-pointer"
+                          title="View Service Details"
+                          aria-label={`View ${service.name}`}
+                        >
+                          <Eye className="w-3.5 h-3.5" aria-hidden="true" />
+                        </button>
+                        {canManageServices && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => openEditModal(service)}
+                              className="w-8 h-8 rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800/80 text-slate-600 dark:text-slate-300 hover:text-[#0F766E] dark:hover:text-teal-300 hover:border-teal-300 dark:hover:border-teal-700 hover:bg-teal-50/50 dark:hover:bg-teal-950/30 inline-flex items-center justify-center transition-colors cursor-pointer"
+                              title="Edit Service"
+                              aria-label={`Edit ${service.name}`}
+                            >
+                              <Edit2 className="w-3.5 h-3.5" aria-hidden="true" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleStatusToggleClick(service)}
+                              className={`w-8 h-8 rounded-lg border inline-flex items-center justify-center transition-colors cursor-pointer ${
+                                service.is_active
+                                  ? 'border-rose-200/80 dark:border-rose-800/70 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50'
+                                  : 'border-emerald-200/80 dark:border-emerald-800/70 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
+                              }`}
+                              title={service.is_active ? 'Deactivate Service' : 'Activate Service'}
+                              aria-label={`${service.is_active ? 'Deactivate' : 'Activate'} ${service.name}`}
+                            >
+                              <Power className="w-3.5 h-3.5" aria-hidden="true" />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -458,29 +529,31 @@ export function ServicesPage() {
 
         {/* Pagination Bar */}
         {meta.total > 0 && (
-          <div className="px-4 py-3 border-t border-slate-200 dark:border-gray-700 bg-slate-50/50 dark:bg-gray-900/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
-            <div>
-              Showing <span className="font-medium text-slate-700 dark:text-slate-200">{(meta.page - 1) * meta.per_page + 1}</span> to{' '}
-              <span className="font-medium text-slate-700 dark:text-slate-200">
+          <div className="px-5 py-3.5 border-t border-slate-100 dark:border-gray-700/80 bg-slate-50/50 dark:bg-gray-900/35 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+            <div className="tabular-nums">
+              Showing <span className="font-semibold text-slate-700 dark:text-slate-200">{(meta.page - 1) * meta.per_page + 1}</span> to{' '}
+              <span className="font-semibold text-slate-700 dark:text-slate-200">
                 {Math.min(meta.page * meta.per_page, meta.total)}
               </span>{' '}
-              of <span className="font-medium text-slate-700 dark:text-slate-200">{meta.total}</span> procedures
+              of <span className="font-semibold text-slate-700 dark:text-slate-200">{meta.total}</span> procedures
             </div>
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 disabled={meta.page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="px-3 py-1.5 border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-gray-700"
+                className="px-3 py-1.5 border border-slate-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
               >
                 Previous
               </button>
-              <span className="font-medium text-slate-700 dark:text-slate-200">
+              <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-gray-800 text-slate-700 dark:text-slate-200 font-semibold tabular-nums">
                 Page {meta.page} of {meta.last_page}
               </span>
               <button
+                type="button"
                 disabled={meta.page >= meta.last_page}
                 onClick={() => setPage((p) => p + 1)}
-                className="px-3 py-1.5 border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-gray-700"
+                className="px-3 py-1.5 border border-slate-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
               >
                 Next
               </button>
@@ -644,7 +717,7 @@ export function ServicesPage() {
       )}
 
       {/* Deactivation / Activation Confirmation Dialog */}
-      {confirmModal.isOpen && confirmModal.service && (
+      {canManageServices && confirmModal.isOpen && confirmModal.service && (
         <DialogOverlay
           onClose={() => setConfirmModal({ isOpen: false, service: null, targetStatus: 0, submitting: false })} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-black/65 backdrop-blur-sm">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-150 space-y-4">
@@ -693,6 +766,110 @@ export function ServicesPage() {
                 {confirmModal.submitting && <RefreshCw className="w-4 h-4 animate-spin" />}
                 {confirmModal.targetStatus === 0 ? 'Confirm Deactivation' : 'Confirm Activation'}
               </button>
+            </div>
+          </div>
+        </DialogOverlay>
+      )}
+
+      {/* Read-Only Service Details Modal */}
+      {viewingService && (
+        <DialogOverlay
+          onClose={() => setViewingService(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/45 dark:bg-black/65 backdrop-blur-sm"
+        >
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 w-full max-w-lg overflow-hidden">
+            <div className="flex items-start justify-between gap-4 px-6 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/60 dark:bg-gray-900/40">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">{viewingService.name}</h2>
+                  {viewingService.is_active ? (
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-500/25">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" aria-hidden="true" />
+                      Active
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-gray-700/70 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-gray-600">
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400" aria-hidden="true" />
+                      Inactive
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="font-mono text-xs text-slate-400 dark:text-slate-500 tabular-nums">
+                    Service #{viewingService.id}
+                  </span>
+                  <span className="text-slate-300 dark:text-gray-600" aria-hidden="true">·</span>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${getCategoryBadgeClasses(viewingService.category)}`}>
+                    {viewingService.category || 'General'}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewingService(null)}
+                aria-label="Close service details"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors cursor-pointer shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5 text-sm">
+              <div className="grid grid-cols-3 gap-3 p-4 rounded-xl bg-slate-50/80 dark:bg-gray-900/50 border border-slate-200/80 dark:border-gray-700/80">
+                <div>
+                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Standard Fee</span>
+                  <span className="mt-0.5 block text-sm font-bold text-slate-900 dark:text-slate-50 tabular-nums">
+                    ₱{Number(viewingService.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Duration</span>
+                  <span className="mt-0.5 block text-sm font-bold text-slate-900 dark:text-slate-50 tabular-nums">
+                    {viewingService.duration_minutes} min
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Booking Status</span>
+                  <span className={`mt-0.5 block text-sm font-bold ${viewingService.is_active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                    {viewingService.is_active ? 'Bookable' : 'Hidden'}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+                  Clinical Description
+                </span>
+                <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-gray-900/40 border border-slate-200/70 dark:border-gray-700/70">
+                  <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
+                    {viewingService.description || 'No clinical description provided.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-gray-700">
+                <button
+                  type="button"
+                  onClick={() => setViewingService(null)}
+                  className="px-4 py-2 rounded-lg border border-slate-200 dark:border-gray-600 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+                {canManageServices && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = viewingService;
+                      setViewingService(null);
+                      openEditModal(target);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#0F766E] hover:bg-[#0D9488] text-white text-xs font-semibold transition-colors cursor-pointer"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" aria-hidden="true" />
+                    Edit Service
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </DialogOverlay>

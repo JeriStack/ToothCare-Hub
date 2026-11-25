@@ -26,6 +26,10 @@ class AuditLogRepository
         'api_key',
         'new_password',
         'current_password',
+        'otp',
+        'ticket',
+        'ticket_hash',
+        'websocket_ticket',
     ];
 
     public function __construct(?Database $database = null)

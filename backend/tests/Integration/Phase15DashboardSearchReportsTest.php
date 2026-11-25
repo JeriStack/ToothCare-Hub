@@ -332,6 +332,34 @@ class Phase15DashboardSearchReportsTest extends TestCase
         $this->assertSame(2, $docData['dentists'][0]['total_assigned']);
         $this->assertSame(1, $docData['dentists'][0]['upcoming_count']);
 
+        // Appointments report with combined date, dentist, service, patient, and status filters returns counts + filterable appointment list
+        $apptReportRes = $this->app->handle($this->authRequest('GET', '/api/v1/admin/reports/appointments', $this->adminUser, [
+            'start_date' => $today,
+            'end_date' => $endDate,
+            'dentist_id' => (string) $this->dentist1Id,
+            'service_id' => (string) $this->service1Id,
+            'patient_id' => (string) $this->patient2Id,
+            'status' => 'COMPLETED',
+        ]));
+        $this->assertSame(200, $apptReportRes->getStatusCode());
+        $apptReportData = json_decode($apptReportRes->getBody(), true)['data'];
+        $this->assertSame(1, $apptReportData['total_appointments']);
+        $this->assertSame(1, $apptReportData['completed_count']);
+        $this->assertCount(1, $apptReportData['appointments']);
+        $this->assertSame($this->patient2Id, $apptReportData['appointments'][0]['patient_id']);
+        $this->assertSame('Oral Prophylaxis', $apptReportData['appointments'][0]['service_name']);
+
+        // Reject invalid filter values on appointments report
+        $this->assertSame(422, $this->app->handle($this->authRequest('GET', '/api/v1/admin/reports/appointments', $this->adminUser, [
+            'dentist_id' => 'invalid',
+        ]))->getStatusCode());
+        $this->assertSame(422, $this->app->handle($this->authRequest('GET', '/api/v1/admin/reports/appointments', $this->adminUser, [
+            'patient_id' => 'invalid',
+        ]))->getStatusCode());
+        $this->assertSame(422, $this->app->handle($this->authRequest('GET', '/api/v1/admin/reports/appointments', $this->adminUser, [
+            'status' => 'UNKNOWN_STATUS',
+        ]))->getStatusCode());
+
         // Reject invalid date range
         $badRes = $this->app->handle($this->authRequest('GET', '/api/v1/admin/reports/services', $this->adminUser, [
             'start_date' => '2026-12-20',
