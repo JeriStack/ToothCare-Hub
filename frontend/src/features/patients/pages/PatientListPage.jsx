@@ -1228,7 +1228,7 @@ export function PatientListPage() {
                         }`}
                       >
                         <Power className="w-3.5 h-3.5" aria-hidden="true" />
-                        <span>{isActive ? 'Disable Account' : 'Enable Account'}</span>
+                        <span>{isActive ? 'Disable Account Login' : 'Enable Account Login'}</span>
                       </button>
                     )}
                   </div>
@@ -1248,7 +1248,7 @@ export function PatientListPage() {
                         className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-[#0D9488] text-white font-semibold text-xs shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
                       >
                         {formSubmitting && <RefreshCw className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}
-                        <span>Save Changes</span>
+                        <span>Save Profile Changes</span>
                       </button>
                     )}
                   </div>
