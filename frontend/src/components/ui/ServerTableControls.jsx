@@ -80,6 +80,9 @@ export function ServerTableFooter({
   const rangeStart = filtered === 0 ? 0 : (current - 1) * size + 1;
   const rangeEnd = Math.min(filtered, current * size);
   const isFiltered = total > filtered;
+  const normalizedOptions = pageSizeOptions.includes(size)
+    ? pageSizeOptions
+    : [...pageSizeOptions, size].sort((a, b) => a - b);
 
   return (
     <div className="px-5 py-3.5 border-t border-slate-100 dark:border-gray-700/80 bg-slate-50/50 dark:bg-gray-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-300">
@@ -117,7 +120,7 @@ export function ServerTableFooter({
               onChange={(e) => onPerPageChange(Number(e.target.value))}
               className="appearance-none pl-2.5 pr-7 py-1.5 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] cursor-pointer disabled:opacity-50"
             >
-              {pageSizeOptions.map((opt) => (
+              {normalizedOptions.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt} / page
                 </option>

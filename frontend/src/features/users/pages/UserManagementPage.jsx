@@ -22,6 +22,7 @@ import {
 import { usersApi } from '../api';
 import { TableSkeleton } from '../../../components/skeletons';
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
+import { ServerTableFooter } from '../../../components/ui/ServerTableControls';
 
 const ROLE_BADGE_MAP = {
   ADMIN: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/70',
@@ -52,7 +53,7 @@ function getInitials(firstName = '', lastName = '', fallbackEmail = '') {
 
 export function UserManagementPage() {
   const [users, setUsers] = useState([]);
-  const [meta, setMeta] = useState({ total: 0, page: 1, per_page: 15, last_page: 1 });
+  const [meta, setMeta] = useState({ total: 0, total_records: 0, filtered_records: 0, page: 1, per_page: 10, last_page: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
@@ -61,6 +62,7 @@ export function UserManagementPage() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [perPage, setPerPage] = useState(10);
   const [page, setPage] = useState(1);
 
   // Create Staff Modal
@@ -93,20 +95,20 @@ export function UserManagementPage() {
     setLoading(true);
     setError(null);
     try {
-      const params = { page, per_page: 15 };
+      const params = { page, per_page: perPage };
       if (search.trim()) params.search = search.trim();
       if (roleFilter) params.role = roleFilter;
       if (statusFilter !== '') params.is_active = statusFilter;
 
       const res = await usersApi.getUsers(params);
       setUsers(res.data || []);
-      setMeta(res.meta || { total: 0, page: 1, per_page: 15, last_page: 1 });
+      setMeta(res.meta || { total: 0, total_records: 0, filtered_records: 0, page: 1, per_page: perPage, last_page: 1 });
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Failed to load user directory.');
     } finally {
       setLoading(false);
     }
-  }, [page, search, roleFilter, statusFilter]);
+  }, [page, perPage, search, roleFilter, statusFilter]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -390,31 +392,23 @@ export function UserManagementPage() {
           </div>
         )}
 
-        {/* Pagination */}
-        {meta.last_page > 1 && (
-          <div className="px-5 py-3.5 border-t border-slate-100 dark:border-gray-700 bg-slate-50/40 dark:bg-gray-900/50 flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
-            <span>
-              Showing page <strong className="text-slate-900 dark:text-slate-100">{meta.page}</strong> of <strong className="text-slate-900 dark:text-slate-100">{meta.last_page}</strong> ({meta.total} accounts)
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-600 rounded-lg disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-gray-700 cursor-pointer"
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                disabled={page >= meta.last_page}
-                onClick={() => setPage((p) => p + 1)}
-                className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-600 rounded-lg disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-gray-700 cursor-pointer"
-              >
-                Next
-              </button>
-            </div>
-          </div>
+        {/* Unified Server-Side Pagination */}
+        {meta.total > 0 && (
+          <ServerTableFooter
+            page={meta.current_page || meta.page || page}
+            perPage={meta.per_page || perPage}
+            totalRecords={meta.total_records ?? meta.total ?? 0}
+            filteredRecords={meta.filtered_records ?? meta.total ?? 0}
+            totalPages={meta.total_pages || meta.last_page || 1}
+            onPageChange={(nextPage) => setPage(nextPage)}
+            onPerPageChange={(nextSize) => {
+              setPerPage(nextSize);
+              setPage(1);
+            }}
+            pageSizeOptions={[5, 10, 15, 25, 50]}
+            loading={loading}
+            itemLabel="accounts"
+          />
         )}
       </div>
 

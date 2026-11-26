@@ -10,8 +10,6 @@ import {
   AlertTriangle,
   Filter,
   FileText,
-  ChevronLeft,
-  ChevronRight,
   ChevronDown,
   ChevronUp,
   Search,
@@ -25,6 +23,7 @@ import {
 } from 'lucide-react';
 import { reportsApi } from '../api';
 import { ReportSkeleton } from '../../../components/skeletons';
+import { ServerTableFooter } from '../../../components/ui/ServerTableControls';
 
 const COLLAPSE_STORAGE_KEY = 'toothcare_reports_collapsed_cards';
 const ALL_CARD_KEYS = ['status', 'volume', 'services', 'dentists', 'appointments', 'patients'];
@@ -181,6 +180,11 @@ export function ReportsPage() {
   const [patientSearch, setPatientSearch] = useState('');
   const [debouncedPatientSearch, setDebouncedPatientSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [apptPerPage, setApptPerPage] = useState(10);
+  const [servicePage, setServicePage] = useState(1);
+  const [servicePerPage, setServicePerPage] = useState(5);
+  const [dentistPage, setDentistPage] = useState(1);
+  const [dentistPerPage, setDentistPerPage] = useState(5);
   const [validationError, setValidationError] = useState(null);
 
   const [loading, setLoading] = useState(true);
@@ -268,6 +272,7 @@ export function ReportsPage() {
         }
       }
       if (filters.page && filters.page > 1) apptParams.page = filters.page;
+      if (filters.perPage) apptParams.per_page = filters.perPage;
 
       const [appts, services, dentists, patients] = await Promise.all([
         reportsApi.getAppointmentReports(apptParams),
@@ -298,8 +303,14 @@ export function ReportsPage() {
       status: statusFilter,
       patientQuery: debouncedPatientSearch,
       page,
+      perPage: apptPerPage,
     });
-  }, [fetchReports, startDate, endDate, dentistFilter, serviceFilter, statusFilter, debouncedPatientSearch, page]);
+  }, [fetchReports, startDate, endDate, dentistFilter, serviceFilter, statusFilter, debouncedPatientSearch, page, apptPerPage]);
+
+  useEffect(() => {
+    setServicePage(1);
+    setDentistPage(1);
+  }, [startDate, endDate]);
 
   const handlePresetChange = (value) => {
     setPresetDays(value);
@@ -1193,7 +1204,10 @@ export function ReportsPage() {
                       </td>
                     </tr>
                   ) : (
-                    serviceData.services.map((svc) => {
+                    (() => {
+                      const safePage = Math.min(servicePage, Math.max(1, Math.ceil(serviceData.services.length / servicePerPage)));
+                      return serviceData.services.slice((safePage - 1) * servicePerPage, safePage * servicePerPage);
+                    })().map((svc) => {
                       const isActive = String(serviceFilter) === String(svc.id);
                       return (
                         <tr
@@ -1257,6 +1271,23 @@ export function ReportsPage() {
                 </tbody>
               </table>
             </div>
+            {(serviceData?.services?.length || 0) > 0 && (
+              <ServerTableFooter
+                page={Math.min(servicePage, Math.max(1, Math.ceil((serviceData?.services?.length || 0) / servicePerPage)))}
+                perPage={servicePerPage}
+                totalRecords={serviceData?.services?.length || 0}
+                filteredRecords={serviceData?.services?.length || 0}
+                totalPages={Math.max(1, Math.ceil((serviceData?.services?.length || 0) / servicePerPage))}
+                onPageChange={(nextPage) => setServicePage(nextPage)}
+                onPerPageChange={(nextSize) => {
+                  setServicePerPage(nextSize);
+                  setServicePage(1);
+                }}
+                pageSizeOptions={[5, 10, 15, 25]}
+                loading={loading}
+                itemLabel="services"
+              />
+            )}
           </CollapsibleReportCard>
 
           {/* Dentist Clinical Workload */}
@@ -1307,7 +1338,10 @@ export function ReportsPage() {
                       </td>
                     </tr>
                   ) : (
-                    dentistData.dentists.map((doc) => {
+                    (() => {
+                      const safePage = Math.min(dentistPage, Math.max(1, Math.ceil(dentistData.dentists.length / dentistPerPage)));
+                      return dentistData.dentists.slice((safePage - 1) * dentistPerPage, safePage * dentistPerPage);
+                    })().map((doc) => {
                       const isActive = String(dentistFilter) === String(doc.id);
                       const docCompPct =
                         doc.total_assigned > 0
@@ -1375,6 +1409,23 @@ export function ReportsPage() {
                 </tbody>
               </table>
             </div>
+            {(dentistData?.dentists?.length || 0) > 0 && (
+              <ServerTableFooter
+                page={Math.min(dentistPage, Math.max(1, Math.ceil((dentistData?.dentists?.length || 0) / dentistPerPage)))}
+                perPage={dentistPerPage}
+                totalRecords={dentistData?.dentists?.length || 0}
+                filteredRecords={dentistData?.dentists?.length || 0}
+                totalPages={Math.max(1, Math.ceil((dentistData?.dentists?.length || 0) / dentistPerPage))}
+                onPageChange={(nextPage) => setDentistPage(nextPage)}
+                onPerPageChange={(nextSize) => {
+                  setDentistPerPage(nextSize);
+                  setDentistPage(1);
+                }}
+                pageSizeOptions={[5, 10, 15, 25]}
+                loading={loading}
+                itemLabel="providers"
+              />
+            )}
           </CollapsibleReportCard>
 
           {/* Filtered Appointment Report List */}
@@ -1470,33 +1521,22 @@ export function ReportsPage() {
                 </tbody>
               </table>
             </div>
-            {apptData?.appointments_meta?.last_page > 1 && (
-              <div className="px-5 py-3 border-t border-slate-100 dark:border-gray-700 bg-slate-50/40 dark:bg-gray-900/40 flex items-center justify-between text-xs text-slate-500 dark:text-gray-400">
-                <span className="tabular-nums">
-                  Page {apptData.appointments_meta.page} of {apptData.appointments_meta.last_page} (
-                  {apptData.appointments_meta.total} total)
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={apptData.appointments_meta.page <= 1 || loading}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    className="p-1.5 rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 disabled:opacity-40 cursor-pointer"
-                    aria-label="Previous report page"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    disabled={apptData.appointments_meta.page >= apptData.appointments_meta.last_page || loading}
-                    onClick={() => setPage((p) => p + 1)}
-                    className="p-1.5 rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 disabled:opacity-40 cursor-pointer"
-                    aria-label="Next report page"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+            {(apptData?.appointments_meta?.total ?? apptData?.appointments?.length ?? 0) > 0 && (
+              <ServerTableFooter
+                page={apptData?.appointments_meta?.current_page || apptData?.appointments_meta?.page || page}
+                perPage={apptData?.appointments_meta?.per_page || apptPerPage}
+                totalRecords={apptData?.appointments_meta?.total_records ?? apptData?.appointments_meta?.total ?? apptData?.appointments?.length ?? 0}
+                filteredRecords={apptData?.appointments_meta?.filtered_records ?? apptData?.appointments_meta?.total ?? apptData?.appointments?.length ?? 0}
+                totalPages={apptData?.appointments_meta?.total_pages || apptData?.appointments_meta?.last_page || 1}
+                onPageChange={(nextPage) => setPage(nextPage)}
+                onPerPageChange={(nextSize) => {
+                  setApptPerPage(nextSize);
+                  setPage(1);
+                }}
+                pageSizeOptions={[5, 10, 15, 25, 50]}
+                loading={loading}
+                itemLabel="appointments"
+              />
             )}
           </CollapsibleReportCard>
 

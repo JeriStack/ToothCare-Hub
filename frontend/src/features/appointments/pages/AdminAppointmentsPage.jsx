@@ -190,7 +190,7 @@ export function AdminAppointmentsPage({ initialStatus = '', initialDate = '' } =
     filtered_records: 0,
     page: 1,
     current_page: 1,
-    per_page: 15,
+    per_page: 10,
     last_page: 1,
     total_pages: 1,
     sorting: { sort_by: 'start_at', sort_dir: 'desc' },
@@ -213,7 +213,7 @@ export function AdminAppointmentsPage({ initialStatus = '', initialDate = '' } =
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [sortBy, setSortBy] = useState('start_at');
   const [sortDir, setSortDir] = useState('desc');
-  const [perPage, setPerPage] = useState(15);
+  const [perPage, setPerPage] = useState(10);
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -1348,6 +1348,7 @@ export function AdminAppointmentsPage({ initialStatus = '', initialDate = '' } =
             setPerPage(nextSize);
             setPage(1);
           }}
+          pageSizeOptions={[5, 10, 15, 25, 50]}
           loading={loading}
           itemLabel="appointments"
         />

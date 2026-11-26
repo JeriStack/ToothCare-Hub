@@ -334,4 +334,32 @@ describe('Server-Side Data Table Architecture (useServerTable + Controls + Admin
       );
     });
   });
+
+  it('ServerTableFooter supports custom compact page-size presets and renders filtered totals accurately', () => {
+    const onPageChange = vi.fn();
+    const onPerPageChange = vi.fn();
+    render(
+      <ServerTableFooter
+        page={2}
+        perPage={5}
+        totalRecords={30}
+        filteredRecords={12}
+        totalPages={3}
+        onPageChange={onPageChange}
+        onPerPageChange={onPerPageChange}
+        pageSizeOptions={[5, 10, 15, 25]}
+        itemLabel="services"
+      />
+    );
+
+    expect(screen.getByText('6–10')).toBeInTheDocument();
+    expect(screen.getByText(/filtered from 30 total/i)).toBeInTheDocument();
+    expect(screen.getByText('2 / 3')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Next page/i }));
+    expect(onPageChange).toHaveBeenCalledWith(3);
+
+    fireEvent.change(screen.getByLabelText('Rows per page'), { target: { value: '10' } });
+    expect(onPerPageChange).toHaveBeenCalledWith(10);
+  });
 });

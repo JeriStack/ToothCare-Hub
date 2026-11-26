@@ -25,15 +25,22 @@ import { AppointmentCardSkeleton } from '../../../components/skeletons/Appointme
 
 
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
+import { ServerTableFooter } from '../../../components/ui/ServerTableControls';
 export function AppointmentHistoryPage({ onNavigateToBook }) {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Filters
+  // Filters & Pagination
   const [activeTab, setActiveTab] = useState('ALL'); // ALL, UPCOMING, PENDING, COMPLETED, CANCELLED
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(6);
+
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab, searchQuery]);
 
   // Modals state
   const [detailModalAppt, setDetailModalAppt] = useState(null);
@@ -355,20 +362,47 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
             </button>
           )}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredAppointments.map((appt) => (
-            <AppointmentCard
-              key={appt.id}
-              appointment={appt}
-              onViewDetails={handleOpenDetails}
-              onCancel={handleOpenCancel}
-              onReschedule={handleOpenReschedule}
-              role="PATIENT"
-            />
-          ))}
-        </div>
-      )}
+      ) : (() => {
+        const totalPages = Math.max(1, Math.ceil(filteredAppointments.length / perPage));
+        const safePage = Math.min(page, totalPages);
+        const visibleAppointments = filteredAppointments.slice(
+          (safePage - 1) * perPage,
+          safePage * perPage
+        );
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {visibleAppointments.map((appt) => (
+                <AppointmentCard
+                  key={appt.id}
+                  appointment={appt}
+                  onViewDetails={handleOpenDetails}
+                  onCancel={handleOpenCancel}
+                  onReschedule={handleOpenReschedule}
+                  role="PATIENT"
+                />
+              ))}
+            </div>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 overflow-hidden shadow-xs">
+              <ServerTableFooter
+                page={safePage}
+                perPage={perPage}
+                totalRecords={appointments.length}
+                filteredRecords={filteredAppointments.length}
+                totalPages={totalPages}
+                onPageChange={(nextPage) => setPage(nextPage)}
+                onPerPageChange={(nextSize) => {
+                  setPerPage(nextSize);
+                  setPage(1);
+                }}
+                pageSizeOptions={[6, 10, 15, 25]}
+                loading={loading}
+                itemLabel="appointments"
+              />
+            </div>
+          </div>
+        );
+      })()}
 
       {/* DETAIL MODAL / DRAWER */}
       {detailModalAppt && (
