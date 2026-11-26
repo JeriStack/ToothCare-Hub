@@ -42,6 +42,24 @@ export const archivesApi = {
   },
 
   /**
+   * Pre-check whether a live entity can safely be archived (unresolved appointments, last-admin, duplicates).
+   */
+  async checkEligibility(entityType, entityId) {
+    const response = await apiClient.get('/archives/eligibility', {
+      params: { entity_type: entityType, entity_id: entityId },
+    });
+    return response.data?.data || null;
+  },
+
+  /**
+   * Retrieve multi-cycle archival & restoration history for an archived record's entity.
+   */
+  async getCycleHistory(id) {
+    const response = await apiClient.get(`/archives/${id}/history`);
+    return response.data?.data || null;
+  },
+
+  /**
    * Archive an eligible live entity with a mandatory compliance reason.
    */
   async archiveEntity(payload) {

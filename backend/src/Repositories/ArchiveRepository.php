@@ -39,9 +39,17 @@ class ArchiveRepository
         'CATALOG_LEGACY',
     ];
 
+    public const ACCOUNT_TYPES = [
+        'PATIENT',
+        'DENTIST',
+        'RECEPTIONIST',
+        'ADMIN',
+    ];
+
     public const SORT_ALLOWLIST = [
         'archived_at' => 'ar.archived_at',
         'entity_type' => 'ar.entity_type',
+        'account_type' => 'ar.account_type',
         'status' => 'ar.status',
         'retention_until' => 'ar.retention_until',
         'title' => 'ar.title',
@@ -109,8 +117,8 @@ class ArchiveRepository
     {
         $pdo = $this->database->getConnection();
         $stmt = $pdo->prepare('
-            SELECT ar.id, ar.entity_type, ar.entity_id, ar.reference_code,
-                   ar.title, ar.summary,
+            SELECT ar.id, ar.entity_type, ar.entity_id, ar.account_type, ar.reference_code,
+                   ar.title, ar.summary, ar.archived_email,
                    ar.owner_patient_id, ar.owner_dentist_id, ar.owner_user_id,
                    ar.status, ar.retention_category, ar.retention_until,
                    ar.archive_reason, ar.archived_by_user_id, ar.archived_by_role, ar.archived_at,
@@ -167,13 +175,13 @@ class ArchiveRepository
         $pdo = $this->database->getConnection();
         $stmt = $pdo->prepare('
             INSERT INTO archive_records (
-                entity_type, entity_id, reference_code, title, summary,
+                entity_type, entity_id, account_type, reference_code, title, summary, archived_email,
                 owner_patient_id, owner_dentist_id, owner_user_id,
                 status, retention_category, retention_until,
                 archive_reason, archived_by_user_id, archived_by_role, archived_at,
                 snapshot_json, snapshot_sha256, is_example, created_at, updated_at
             ) VALUES (
-                :entity_type, :entity_id, :reference_code, :title, :summary,
+                :entity_type, :entity_id, :account_type, :reference_code, :title, :summary, :archived_email,
                 :owner_patient_id, :owner_dentist_id, :owner_user_id,
                 :status, :retention_category, :retention_until,
                 :archive_reason, :archived_by_user_id, :archived_by_role, NOW(),
@@ -184,9 +192,11 @@ class ArchiveRepository
         $stmt->execute([
             ':entity_type' => $data['entity_type'],
             ':entity_id' => $data['entity_id'],
+            ':account_type' => $data['account_type'] ?? null,
             ':reference_code' => $data['reference_code'],
             ':title' => $data['title'],
             ':summary' => $data['summary'] ?? null,
+            ':archived_email' => $data['archived_email'] ?? null,
             ':owner_patient_id' => $data['owner_patient_id'] ?? null,
             ':owner_dentist_id' => $data['owner_dentist_id'] ?? null,
             ':owner_user_id' => $data['owner_user_id'] ?? null,
@@ -202,6 +212,130 @@ class ArchiveRepository
         ]);
 
         return (int) $pdo->lastInsertId();
+    }
+
+    /**
+     * Count prior archive cycles for an entity so repeated archival is tagged REARCHIVED.
+     */
+    public function countCyclesForEntity(string $entityType, int $entityId): int
+    {
+        $pdo = $this->database->getConnection();
+        $stmt = $pdo->prepare('
+            SELECT COUNT(*)
+            FROM archive_records
+            WHERE entity_type = :et AND entity_id = :eid
+        ');
+        $stmt->execute([':et' => $entityType, ':eid' => $entityId]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Append an immutable archival/restoration cycle event into `archive_history`.
+     *
+     * @param array<string, mixed>|null $metadata
+     */
+    public function recordHistoryEvent(
+        int $archiveRecordId,
+        string $entityType,
+        int $entityId,
+        ?string $accountType,
+        string $eventType,
+        ?int $actorUserId,
+        string $actorRole,
+        string $reason,
+        ?array $metadata = null
+    ): int {
+        $pdo = $this->database->getConnection();
+        $stmt = $pdo->prepare('
+            INSERT INTO archive_history (
+                archive_record_id, entity_type, entity_id, account_type,
+                event_type, actor_user_id, actor_role, reason, metadata, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        ');
+        $stmt->execute([
+            $archiveRecordId,
+            $entityType,
+            $entityId,
+            $accountType,
+            strtoupper($eventType),
+            $actorUserId,
+            strtoupper($actorRole),
+            $reason,
+            $metadata !== null ? json_encode($metadata, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null,
+        ]);
+
+        return (int) $pdo->lastInsertId();
+    }
+
+    /**
+     * Retrieve full multi-cycle archive/restore history for an entity (never overwritten).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function findCycleHistoryForEntity(string $entityType, int $entityId): array
+    {
+        $pdo = $this->database->getConnection();
+        $stmt = $pdo->prepare('
+            SELECT
+                ah.id, ah.archive_record_id, ah.entity_type, ah.entity_id, ah.account_type,
+                ah.event_type, ah.actor_user_id, ah.actor_role, ah.reason, ah.metadata, ah.created_at,
+                ar.reference_code,
+                u.email AS actor_email,
+                u.first_name AS actor_first_name,
+                u.last_name AS actor_last_name
+            FROM archive_history ah
+            LEFT JOIN archive_records ar ON ah.archive_record_id = ar.id
+            LEFT JOIN users u ON ah.actor_user_id = u.id
+            WHERE ah.entity_type = :et AND ah.entity_id = :eid
+            ORDER BY ah.created_at DESC, ah.id DESC
+            LIMIT 100
+        ');
+        $stmt->execute([':et' => $entityType, ':eid' => $entityId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Find unresolved (PENDING / CONFIRMED) appointments for a patient that must be resolved before archival.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function findUnresolvedAppointmentsForPatient(int $patientId): array
+    {
+        $pdo = $this->database->getConnection();
+        $stmt = $pdo->prepare("
+            SELECT a.id, a.status, a.start_at, a.end_at, a.dentist_id,
+                   s.name AS service_name
+            FROM appointments a
+            LEFT JOIN services s ON a.service_id = s.id
+            WHERE a.patient_id = :pid
+              AND a.status IN ('PENDING', 'CONFIRMED')
+            ORDER BY a.start_at ASC
+            LIMIT 25
+        ");
+        $stmt->execute([':pid' => $patientId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Find unresolved (PENDING / CONFIRMED) appointments assigned to a dentist before archival.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function findUnresolvedAppointmentsForDentist(int $dentistId): array
+    {
+        $pdo = $this->database->getConnection();
+        $stmt = $pdo->prepare("
+            SELECT a.id, a.status, a.start_at, a.end_at, a.patient_id,
+                   s.name AS service_name
+            FROM appointments a
+            LEFT JOIN services s ON a.service_id = s.id
+            WHERE a.dentist_id = :did
+              AND a.status IN ('PENDING', 'CONFIRMED')
+            ORDER BY a.start_at ASC
+            LIMIT 25
+        ");
+        $stmt->execute([':did' => $dentistId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**
@@ -250,6 +384,14 @@ class ArchiveRepository
             $userClauses[] = 'ar.entity_type = :entity_type';
             $params[':entity_type'] = strtolower(trim((string) $filters['entity_type']));
         }
+        if (!empty($filters['account_type'])) {
+            $userClauses[] = 'ar.account_type = :account_type';
+            $params[':account_type'] = strtoupper(trim((string) $filters['account_type']));
+        }
+        if (!empty($filters['archived_by_user_id'])) {
+            $userClauses[] = 'ar.archived_by_user_id = :archived_by_user_id';
+            $params[':archived_by_user_id'] = (int) $filters['archived_by_user_id'];
+        }
         if (!empty($filters['status'])) {
             $userClauses[] = 'ar.status = :status';
             $params[':status'] = strtoupper(trim((string) $filters['status']));
@@ -271,11 +413,12 @@ class ArchiveRepository
         }
         if (!empty($filters['search']) && trim((string) $filters['search']) !== '') {
             $term = '%' . ServerTableQuery::escapeLike((string) $filters['search']) . '%';
-            $userClauses[] = "(ar.reference_code LIKE :s1 ESCAPE '!' OR ar.title LIKE :s2 ESCAPE '!' OR ar.summary LIKE :s3 ESCAPE '!' OR ar.archive_reason LIKE :s4 ESCAPE '!')";
+            $userClauses[] = "(ar.reference_code LIKE :s1 ESCAPE '!' OR ar.title LIKE :s2 ESCAPE '!' OR ar.summary LIKE :s3 ESCAPE '!' OR ar.archive_reason LIKE :s4 ESCAPE '!' OR ar.archived_email LIKE :s5 ESCAPE '!')";
             $params[':s1'] = $term;
             $params[':s2'] = $term;
             $params[':s3'] = $term;
             $params[':s4'] = $term;
+            $params[':s5'] = $term;
         }
 
         $hasUserFilters = count($userClauses) > 0;
@@ -333,8 +476,8 @@ class ArchiveRepository
         }
 
         $sql = "
-            SELECT ar.id, ar.entity_type, ar.entity_id, ar.reference_code,
-                   ar.title, ar.summary,
+            SELECT ar.id, ar.entity_type, ar.entity_id, ar.account_type, ar.reference_code,
+                   ar.title, ar.summary, ar.archived_email,
                    ar.owner_patient_id, ar.owner_dentist_id, ar.owner_user_id,
                    ar.status, ar.retention_category, ar.retention_until,
                    ar.archive_reason, ar.archived_by_user_id, ar.archived_by_role, ar.archived_at,
@@ -385,8 +528,8 @@ class ArchiveRepository
         $q = $this->buildFilteredQuery($scope, $filters);
 
         $sql = "
-            SELECT ar.id, ar.entity_type, ar.entity_id, ar.reference_code,
-                   ar.title, ar.summary,
+            SELECT ar.id, ar.entity_type, ar.entity_id, ar.account_type, ar.reference_code,
+                   ar.title, ar.summary, ar.archived_email,
                    ar.owner_patient_id, ar.owner_dentist_id, ar.owner_user_id,
                    ar.status, ar.retention_category, ar.retention_until,
                    ar.archive_reason, ar.archived_by_user_id, ar.archived_by_role, ar.archived_at,
@@ -451,6 +594,24 @@ class ArchiveRepository
             $byType[$t] = (int) ($rawTypes[$t] ?? 0);
         }
 
+        $byAccountStmt = $pdo->prepare("
+            SELECT ar.account_type, COUNT(*) AS total
+            FROM archive_records ar
+            WHERE {$whereSql}
+              AND ar.account_type IS NOT NULL
+              AND ar.status = 'ARCHIVED'
+            GROUP BY ar.account_type
+        ");
+        $byAccountStmt->execute($params);
+        $rawAccountTypes = $byAccountStmt->fetchAll(PDO::FETCH_KEY_PAIR) ?: [];
+
+        $byAccountType = [
+            'PATIENT' => (int) ($rawAccountTypes['PATIENT'] ?? 0),
+            'DENTIST' => (int) ($rawAccountTypes['DENTIST'] ?? 0),
+            'RECEPTIONIST' => (int) ($rawAccountTypes['RECEPTIONIST'] ?? 0),
+            'ADMIN' => (int) ($rawAccountTypes['ADMIN'] ?? 0),
+        ];
+
         return [
             'total_records' => (int) ($totals['total_records'] ?? 0),
             'active_archived' => (int) ($totals['active_archived'] ?? 0),
@@ -458,6 +619,7 @@ class ArchiveRepository
             'restored_count' => (int) ($totals['restored_count'] ?? 0),
             'example_count' => (int) ($totals['example_count'] ?? 0),
             'by_entity_type' => $byType,
+            'by_account_type' => $byAccountType,
         ];
     }
 }

@@ -20,8 +20,11 @@ import {
   Sparkles,
   User,
   Fingerprint,
+  History,
+  Shield,
 } from 'lucide-react';
 import { archivesApi } from '../api';
+import { RecordHistoryModal } from '../../history/components/RecordHistoryModal';
 import { useOptionalAuth } from '../../auth/context/AuthContext';
 import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
@@ -145,6 +148,7 @@ export function ArchiveCenterPage() {
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [entityType, setEntityType] = useState('');
+  const [accountType, setAccountType] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [retentionFilter, setRetentionFilter] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
@@ -159,6 +163,9 @@ export function ArchiveCenterPage() {
   const [inspectRecord, setInspectRecord] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [snapshotPage, setSnapshotPage] = useState(1);
+  const [cycleHistoryModal, setCycleHistoryModal] = useState(null);
+  const [loadingCycles, setLoadingCycles] = useState(false);
+  const [timelineTarget, setTimelineTarget] = useState(null);
 
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [archiveForm, setArchiveForm] = useState({
@@ -169,6 +176,8 @@ export function ArchiveCenterPage() {
   });
   const [archiving, setArchiving] = useState(false);
   const [archiveFormError, setArchiveFormError] = useState(null);
+  const [eligibilityInfo, setEligibilityInfo] = useState(null);
+  const [checkingEligibility, setCheckingEligibility] = useState(false);
 
   const [restoreTarget, setRestoreTarget] = useState(null);
   const [restoreReason, setRestoreReason] = useState('');
@@ -251,6 +260,7 @@ export function ArchiveCenterPage() {
     };
     if (debouncedSearch) params.search = debouncedSearch;
     if (entityType) params.entity_type = entityType;
+    if (accountType) params.account_type = accountType;
     if (statusFilter) params.status = statusFilter;
     if (retentionFilter) params.retention_category = retentionFilter;
     if (selectedDate) {
@@ -295,7 +305,7 @@ export function ArchiveCenterPage() {
           setLoading(false);
         }
       });
-  }, [page, perPage, sortBy, sortDir, debouncedSearch, entityType, statusFilter, retentionFilter, selectedDate, includeExamples, refreshKey]);
+  }, [page, perPage, sortBy, sortDir, debouncedSearch, entityType, accountType, statusFilter, retentionFilter, selectedDate, includeExamples, refreshKey]);
 
   useEffect(() => {
     fetchArchives();
@@ -337,6 +347,38 @@ export function ArchiveCenterPage() {
     }
   };
 
+  const handleOpenCycleHistory = async (row) => {
+    setCycleHistoryModal({ record: row, cycles: [] });
+    setLoadingCycles(true);
+    try {
+      const res = await archivesApi.getCycleHistory(row.id);
+      setCycleHistoryModal({ record: row, ...(res || { cycles: [] }) });
+    } catch (err) {
+      showToast(err?.response?.data?.error?.message || 'Unable to load archive cycle history.', 'error');
+    } finally {
+      setLoadingCycles(false);
+    }
+  };
+
+  const handleCheckEligibility = async () => {
+    const idNum = Number(archiveForm.entity_id);
+    if (!Number.isInteger(idNum) || idNum <= 0) {
+      setArchiveFormError('Enter a valid positive numeric Record ID first to check eligibility.');
+      return;
+    }
+    setArchiveFormError(null);
+    setCheckingEligibility(true);
+    try {
+      const res = await archivesApi.checkEligibility(archiveForm.entity_type, idNum);
+      setEligibilityInfo(res);
+    } catch (err) {
+      setEligibilityInfo(null);
+      setArchiveFormError(err?.response?.data?.error?.message || 'Unable to validate archival eligibility.');
+    } finally {
+      setCheckingEligibility(false);
+    }
+  };
+
   const handleCreateArchive = async (e) => {
     e.preventDefault();
     setArchiveFormError(null);
@@ -362,12 +404,22 @@ export function ArchiveCenterPage() {
       }
       const created = await archivesApi.archiveEntity(payload);
       setShowArchiveModal(false);
+      setEligibilityInfo(null);
       setArchiveForm((prev) => ({ ...prev, entity_id: '', reason: '', retention_category: '' }));
       showToast(`Archived successfully under ${created?.reference_code || 'archive vault'}.`);
       setRefreshKey((k) => k + 1);
     } catch (err) {
+      const apiErr = err?.response?.data?.error;
+      if (apiErr?.details?.blocking_appointments) {
+        setEligibilityInfo({
+          eligible: false,
+          blockers: [{ code: apiErr.code || 'UNRESOLVED_APPOINTMENTS_EXIST', message: apiErr.message }],
+          blocking_appointments: apiErr.details.blocking_appointments,
+          consequences: [],
+        });
+      }
       setArchiveFormError(
-        err?.response?.data?.error?.message || err?.message || 'Failed to archive record.'
+        apiErr?.message || err?.message || 'Failed to archive record.'
       );
     } finally {
       setArchiving(false);
@@ -421,6 +473,7 @@ export function ArchiveCenterPage() {
     setSearchInput('');
     setDebouncedSearch('');
     setEntityType('');
+    setAccountType('');
     setStatusFilter('');
     setRetentionFilter('');
     setSelectedDate('');
@@ -432,7 +485,7 @@ export function ArchiveCenterPage() {
   const creatableTypes = summary?.creatable_entity_types || [];
   const canArchive = Boolean(summary?.capabilities?.can_archive);
   const canExport = Boolean(summary?.capabilities?.can_export);
-  const hasActiveFilters = Boolean(searchInput || entityType || statusFilter || retentionFilter || selectedDate || !includeExamples);
+  const hasActiveFilters = Boolean(searchInput || entityType || accountType || statusFilter || retentionFilter || selectedDate || !includeExamples);
 
   return (
     <div className="space-y-5">
@@ -513,56 +566,181 @@ export function ArchiveCenterPage() {
       </div>
 
       {/* KPI Summary Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 p-4 shadow-xs">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Total Archived
+      {role === 'ADMIN' ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
+          <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 p-4 shadow-xs">
+            <div className="text-[10.5px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Total Archived
+            </div>
+            <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-slate-900 dark:text-slate-50">
+              {summary?.total_records ?? meta.total_records ?? 0}
+            </div>
+            <div className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
+              {summary?.locked_retention ?? 0} clinical locked
+            </div>
           </div>
-          <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-slate-900 dark:text-slate-50">
-            {summary?.total_records ?? meta.total_records ?? 0}
-          </div>
-          <div className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
-            {summary?.active_archived ?? 0} reversible active
-          </div>
-        </div>
 
-        <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-indigo-200/70 dark:border-indigo-500/25 p-4 shadow-xs">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-300 flex items-center gap-1">
-            <Lock className="w-3 h-3" aria-hidden="true" />
-            Locked Clinical
-          </div>
-          <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-indigo-700 dark:text-indigo-300">
-            {summary?.locked_retention ?? 0}
-          </div>
-          <div className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
-            Immutable 7-year retention
-          </div>
-        </div>
+          <button
+            type="button"
+            onClick={() => {
+              setEntityType('');
+              setAccountType(accountType === 'PATIENT' ? '' : 'PATIENT');
+              setPage(1);
+            }}
+            className={`text-left rounded-2xl border p-4 shadow-xs transition-colors cursor-pointer ${
+              accountType === 'PATIENT'
+                ? 'bg-indigo-50/70 dark:bg-indigo-500/15 border-indigo-400'
+                : 'bg-white dark:bg-gray-800/95 border-slate-200/90 dark:border-gray-700/80 hover:border-indigo-400/70'
+            }`}
+          >
+            <div className="text-[10.5px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-300">
+              Archived Patients
+            </div>
+            <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-indigo-700 dark:text-indigo-300">
+              {summary?.by_account_type?.PATIENT ?? 0}
+            </div>
+            <div className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
+              Patient Archives
+            </div>
+          </button>
 
-        <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-emerald-200/70 dark:border-emerald-500/25 p-4 shadow-xs">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-            Restored
-          </div>
-          <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-emerald-700 dark:text-emerald-300">
-            {summary?.restored_count ?? 0}
-          </div>
-          <div className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
-            Returned to active clinic use
-          </div>
-        </div>
+          <button
+            type="button"
+            onClick={() => {
+              setEntityType('');
+              setAccountType(accountType === 'DENTIST' ? '' : 'DENTIST');
+              setPage(1);
+            }}
+            className={`text-left rounded-2xl border p-4 shadow-xs transition-colors cursor-pointer ${
+              accountType === 'DENTIST'
+                ? 'bg-emerald-50/70 dark:bg-emerald-500/15 border-emerald-400'
+                : 'bg-white dark:bg-gray-800/95 border-slate-200/90 dark:border-gray-700/80 hover:border-emerald-400/70'
+            }`}
+          >
+            <div className="text-[10.5px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+              Archived Dentists
+            </div>
+            <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-emerald-700 dark:text-emerald-300">
+              {summary?.by_account_type?.DENTIST ?? 0}
+            </div>
+            <div className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
+              Dentist Archives
+            </div>
+          </button>
 
-        <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 p-4 shadow-xs">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Example Records
-          </div>
-          <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-teal-700 dark:text-teal-300">
-            {summary?.example_count ?? 0}
-          </div>
-          <div className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
-            Seeded audit templates
+          <button
+            type="button"
+            onClick={() => {
+              setEntityType('');
+              setAccountType(accountType === 'RECEPTIONIST' ? '' : 'RECEPTIONIST');
+              setPage(1);
+            }}
+            className={`text-left rounded-2xl border p-4 shadow-xs transition-colors cursor-pointer ${
+              accountType === 'RECEPTIONIST'
+                ? 'bg-sky-50/70 dark:bg-sky-500/15 border-sky-400'
+                : 'bg-white dark:bg-gray-800/95 border-slate-200/90 dark:border-gray-700/80 hover:border-sky-400/70'
+            }`}
+          >
+            <div className="text-[10.5px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">
+              Receptionists
+            </div>
+            <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-sky-700 dark:text-sky-300">
+              {summary?.by_account_type?.RECEPTIONIST ?? 0}
+            </div>
+            <div className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
+              Receptionist Archives
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setEntityType('');
+              setAccountType(accountType === 'ADMIN' ? '' : 'ADMIN');
+              setPage(1);
+            }}
+            className={`text-left rounded-2xl border p-4 shadow-xs transition-colors cursor-pointer ${
+              accountType === 'ADMIN'
+                ? 'bg-purple-50/70 dark:bg-purple-500/15 border-purple-400'
+                : 'bg-white dark:bg-gray-800/95 border-slate-200/90 dark:border-gray-700/80 hover:border-purple-400/70'
+            }`}
+          >
+            <div className="text-[10.5px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300 flex items-center gap-1">
+              <Shield className="w-3 h-3" aria-hidden="true" />
+              Administrators
+            </div>
+            <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-purple-700 dark:text-purple-300">
+              {summary?.by_account_type?.ADMIN ?? 0}
+            </div>
+            <div className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
+              Admin Archives
+            </div>
+          </button>
+
+          <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-teal-200/70 dark:border-teal-500/25 p-4 shadow-xs">
+            <div className="text-[10.5px] font-bold uppercase tracking-wider text-[#0F766E] dark:text-teal-300">
+              Restored
+            </div>
+            <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-[#0F766E] dark:text-teal-300">
+              {summary?.restored_count ?? 0}
+            </div>
+            <div className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
+              Returned to active use
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+          <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 p-4 shadow-xs">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Total Archived
+            </div>
+            <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-slate-900 dark:text-slate-50">
+              {summary?.total_records ?? meta.total_records ?? 0}
+            </div>
+            <div className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
+              {summary?.active_archived ?? 0} reversible active
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-indigo-200/70 dark:border-indigo-500/25 p-4 shadow-xs">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-300 flex items-center gap-1">
+              <Lock className="w-3 h-3" aria-hidden="true" />
+              Locked Clinical
+            </div>
+            <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-indigo-700 dark:text-indigo-300">
+              {summary?.locked_retention ?? 0}
+            </div>
+            <div className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
+              Immutable 7-year retention
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-emerald-200/70 dark:border-emerald-500/25 p-4 shadow-xs">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+              Restored
+            </div>
+            <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-emerald-700 dark:text-emerald-300">
+              {summary?.restored_count ?? 0}
+            </div>
+            <div className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
+              Returned to active clinic use
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 p-4 shadow-xs">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Example Records
+            </div>
+            <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-teal-700 dark:text-teal-300">
+              {summary?.example_count ?? 0}
+            </div>
+            <div className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
+              Seeded audit templates
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filters Toolbar */}
       <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 p-4 shadow-xs space-y-3">
@@ -821,7 +999,7 @@ export function ArchiveCenterPage() {
 
                       <td role="cell" data-label="Domain" className="py-3.5 px-4 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${entityInfo.pill}`}>
-                          {entityInfo.singular}
+                          {row.account_type ? `${row.account_type.charAt(0) + row.account_type.slice(1).toLowerCase()} Account` : entityInfo.singular}
                         </span>
                       </td>
 
@@ -829,6 +1007,11 @@ export function ArchiveCenterPage() {
                         <div className="font-semibold text-slate-900 dark:text-slate-100 truncate" title={row.title}>
                           {row.title}
                         </div>
+                        {row.archived_email && (
+                          <div className="text-[10.5px] font-mono text-teal-700 dark:text-teal-300 truncate mt-0.5">
+                            {row.archived_email}
+                          </div>
+                        )}
                         <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5" title={row.archive_reason}>
                           {row.archive_reason}
                         </div>
@@ -869,6 +1052,16 @@ export function ArchiveCenterPage() {
                           >
                             <Eye className="w-3.5 h-3.5" aria-hidden="true" />
                             <span>Inspect</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleOpenCycleHistory(row)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-indigo-400 text-slate-600 dark:text-slate-300 hover:text-indigo-700 dark:hover:text-indigo-300 font-semibold text-[11px] transition-colors cursor-pointer"
+                            aria-label={`Archive history for ${row.reference_code}`}
+                          >
+                            <History className="w-3 h-3" aria-hidden="true" />
+                            <span>History</span>
                           </button>
 
                           {row.can_restore && (
@@ -1110,20 +1303,58 @@ export function ArchiveCenterPage() {
               </div>
 
               <div>
-                <label htmlFor="archive-entity-id" className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">
-                  Record ID
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label htmlFor="archive-entity-id" className="block font-semibold text-slate-700 dark:text-slate-200">
+                    Record ID
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleCheckEligibility}
+                    disabled={checkingEligibility}
+                    className="text-[11px] font-semibold text-[#0F766E] dark:text-teal-300 hover:underline cursor-pointer disabled:opacity-50"
+                  >
+                    {checkingEligibility ? 'Checking...' : 'Check Eligibility'}
+                  </button>
+                </div>
                 <input
                   id="archive-entity-id"
                   type="number"
                   min={1}
                   required
                   value={archiveForm.entity_id}
-                  onChange={(e) => setArchiveForm((p) => ({ ...p, entity_id: e.target.value }))}
+                  onChange={(e) => {
+                    setEligibilityInfo(null);
+                    setArchiveForm((p) => ({ ...p, entity_id: e.target.value }));
+                  }}
                   placeholder="e.g., 1042"
                   className="w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-slate-800 dark:text-slate-100"
                 />
               </div>
+
+              {eligibilityInfo && (
+                <div
+                  className={`p-3 rounded-xl border text-[11px] space-y-1.5 ${
+                    eligibilityInfo.eligible
+                      ? 'bg-emerald-50/70 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-200'
+                      : 'bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200'
+                  }`}
+                >
+                  <div className="font-bold">
+                    {eligibilityInfo.eligible ? 'Eligible for Safe Archival' : 'Archival Blocked — Action Required'}
+                  </div>
+                  {Array.isArray(eligibilityInfo.blockers) && eligibilityInfo.blockers.map((b, i) => (
+                    <div key={i}>• {b.message}</div>
+                  ))}
+                  {Array.isArray(eligibilityInfo.blocking_appointments) && eligibilityInfo.blocking_appointments.length > 0 && (
+                    <div className="pt-1 font-mono text-[10.5px]">
+                      Blocking appointments: {eligibilityInfo.blocking_appointments.map((a) => `#${a.id} (${a.status} · ${String(a.start_at).slice(0, 16)})`).join(', ')}
+                    </div>
+                  )}
+                  {eligibilityInfo.eligible && Array.isArray(eligibilityInfo.consequences) && eligibilityInfo.consequences.map((c, i) => (
+                    <div key={i} className="opacity-90">• {c}</div>
+                  ))}
+                </div>
+              )}
 
               <div>
                 <label htmlFor="archive-retention" className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">
@@ -1248,6 +1479,91 @@ export function ArchiveCenterPage() {
             </form>
           </div>
         </DialogOverlay>
+      )}
+      {/* MULTI-CYCLE ARCHIVE HISTORY MODAL */}
+      {cycleHistoryModal && (
+        <DialogOverlay
+          onClose={() => setCycleHistoryModal(null)}
+          className="fixed inset-0 z-50 bg-slate-900/55 dark:bg-black/75 backdrop-blur-xs flex items-center justify-center p-4"
+        >
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-2xl w-full max-w-xl max-h-[85dvh] flex flex-col overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/70 dark:bg-gray-900/50 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                  {cycleHistoryModal.record?.reference_code} · Archival & Restoration Cycles
+                </div>
+                <h3 className="font-bold text-base text-slate-900 dark:text-slate-50 truncate">
+                  {cycleHistoryModal.record?.title}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCycleHistoryModal(null)}
+                aria-label="Close archive cycle history"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 overflow-y-auto space-y-3 text-xs">
+              {loadingCycles ? (
+                <div className="py-8 text-center text-slate-400">Loading archive cycle ledger...</div>
+              ) : (cycleHistoryModal.cycles || []).length === 0 ? (
+                <div className="py-8 text-center text-slate-400">No archive cycle events recorded.</div>
+              ) : (
+                <ol className="space-y-2.5">
+                  {cycleHistoryModal.cycles.map((c) => (
+                    <li key={c.id} className="p-3 rounded-xl border border-slate-200/80 dark:border-gray-700 bg-slate-50/70 dark:bg-gray-900/45 space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-bold text-slate-900 dark:text-slate-100">
+                          {c.event_type} · {c.reference_code}
+                        </span>
+                        <span className="font-mono text-[10.5px] text-slate-500 dark:text-slate-400">
+                          {c.created_at}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-600 dark:text-slate-300">
+                        By <strong>{c.actor_name}</strong> ({c.actor_role})
+                      </div>
+                      <div className="text-slate-700 dark:text-slate-200">{c.reason}</div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+
+              {['patient', 'dentist', 'user', 'appointment'].includes(String(cycleHistoryModal.record?.entity_type || '')) && !cycleHistoryModal.record?.is_example && (
+                <div className="pt-2 border-t border-slate-100 dark:border-gray-700 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const rec = cycleHistoryModal.record;
+                      setCycleHistoryModal(null);
+                      setTimelineTarget({
+                        entityType: rec.entity_type === 'user' ? 'staff' : rec.entity_type,
+                        entityId: rec.entity_id,
+                        title: `${rec.title} — Full Record History`,
+                      });
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] text-white font-semibold cursor-pointer"
+                  >
+                    <History className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>Open Full Account History</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogOverlay>
+      )}
+
+      {/* FULL RECORD LIFECYCLE TIMELINE MODAL */}
+      {timelineTarget && (
+        <RecordHistoryModal
+          entityType={timelineTarget.entityType}
+          entityId={timelineTarget.entityId}
+          title={timelineTarget.title}
+          onClose={() => setTimelineTarget(null)}
+        />
       )}
     </div>
   );

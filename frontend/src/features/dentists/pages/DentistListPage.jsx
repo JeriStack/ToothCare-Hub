@@ -22,9 +22,11 @@ import {
   Copy,
   Check,
   FileText,
-  ChevronDown
+  ChevronDown,
+  History
 } from 'lucide-react';
 import { dentistsApi } from '../api';
+import { RecordHistoryModal } from '../../history/components/RecordHistoryModal';
 import { useAuth } from '../../auth';
 import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
 import { MobileSortControl } from '../../../components/ui/MobileSortControl';
@@ -86,6 +88,7 @@ export function DentistListPage() {
 
   const [dentists, setDentists] = useState([]);
   const [viewingDentist, setViewingDentist] = useState(null);
+  const [historyDentist, setHistoryDentist] = useState(null);
   const [copiedField, setCopiedField] = useState(null);
 
   const handleCopyContact = async (field, value) => {
@@ -561,6 +564,15 @@ export function DentistListPage() {
                           aria-label={`View Dr. ${dentist.first_name} ${dentist.last_name}`}
                         >
                           <Eye className="w-3.5 h-3.5" aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setHistoryDentist(dentist)}
+                          className="w-8 h-8 rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800/80 text-slate-600 dark:text-slate-300 hover:text-indigo-700 dark:hover:text-indigo-300 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 inline-flex items-center justify-center transition-colors cursor-pointer"
+                          title="View Dentist History Timeline"
+                          aria-label={`History for Dr. ${dentist.first_name} ${dentist.last_name}`}
+                        >
+                          <History className="w-3.5 h-3.5" aria-hidden="true" />
                         </button>
                         {canManageDentists && (
                           <>
@@ -1426,6 +1438,14 @@ export function DentistListPage() {
           </DialogOverlay>
         );
       })()}
+      {historyDentist && (
+        <RecordHistoryModal
+          entityType="dentist"
+          entityId={historyDentist.id}
+          title={`Dr. ${historyDentist.first_name} ${historyDentist.last_name} — Practice History`}
+          onClose={() => setHistoryDentist(null)}
+        />
+      )}
     </div>
   );
 }

@@ -30,6 +30,7 @@ import {
   Settings,
   Activity,
   Archive,
+  History,
 } from 'lucide-react';
 import { rolesApi } from '../api';
 import { PermissionMatrixSkeleton } from '../../../components/skeletons';
@@ -57,6 +58,8 @@ function getModuleIcon(modName = '') {
       return Stethoscope;
     case 'email':
       return Mail;
+    case 'history':
+      return History;
     case 'legal':
       return FileText;
     case 'patients':

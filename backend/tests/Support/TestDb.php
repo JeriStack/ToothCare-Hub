@@ -332,15 +332,21 @@ class TestDb
             (28, "View Archives", "archives.view", "archives", "Inspect role-scoped archived clinic records"),
             (29, "Archive Records", "archives.create", "archives", "Soft-archive eligible clinic records with audit reason"),
             (30, "Restore Archived Records", "archives.restore", "archives", "Restore reversible soft-archived records"),
-            (31, "Export Archive Reports", "archives.export", "archives", "Export filtered role-scoped archive records to CSV");
+            (31, "Export Archive Reports", "archives.export", "archives", "Export filtered role-scoped archive records to CSV"),
+            (32, "View History Records", "history.view", "history", "Access chronological system and account history records"),
+            (33, "View History Event Details", "history.view_details", "history", "Inspect event metadata and value comparisons"),
+            (34, "View Patient History", "history.view_patient", "history", "View chronological lifecycle history for authorized patients"),
+            (35, "View Staff History", "history.view_staff", "history", "View chronological history for staff accounts"),
+            (36, "View Appointment History", "history.view_appointment", "history", "View chronological appointment lifecycle history"),
+            (37, "View Archive Cycle History", "archives.view_history", "archives", "Inspect multi-cycle archival and restoration timelines");
 
             INSERT INTO role_permissions (role_id, permission_id) VALUES
             (1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6), (1, 7), (1, 8), (1, 9), (1, 10),
             (1, 11), (1, 12), (1, 13), (1, 14), (1, 15), (1, 16), (1, 17), (1, 18), (1, 19), (1, 20), (1, 21), (1, 22),
-            (1, 23), (1, 24), (1, 25), (1, 27), (1, 28), (1, 29), (1, 30), (1, 31),
-            (2, 3), (2, 5), (2, 7), (2, 9), (2, 11), (2, 12), (2, 13), (2, 14), (2, 15), (2, 28), (2, 29),
-            (3, 5), (3, 7), (3, 9), (3, 10), (3, 13), (3, 28),
-            (4, 3), (4, 4), (4, 5), (4, 7), (4, 9), (4, 10), (4, 11), (4, 28), (4, 29), (4, 31);
+            (1, 23), (1, 24), (1, 25), (1, 27), (1, 28), (1, 29), (1, 30), (1, 31), (1, 32), (1, 33), (1, 34), (1, 35), (1, 36), (1, 37),
+            (2, 3), (2, 5), (2, 7), (2, 9), (2, 11), (2, 12), (2, 13), (2, 14), (2, 15), (2, 28), (2, 29), (2, 32), (2, 33), (2, 36), (2, 37),
+            (3, 5), (3, 7), (3, 9), (3, 10), (3, 13), (3, 28), (3, 32), (3, 33), (3, 34), (3, 36), (3, 37),
+            (4, 3), (4, 4), (4, 5), (4, 7), (4, 9), (4, 10), (4, 11), (4, 28), (4, 29), (4, 31), (4, 32), (4, 33), (4, 34), (4, 36), (4, 37);
 
             INSERT INTO clinic_settings (setting_key, setting_value, description, value_type, is_public) VALUES
             ("clinic_name", "ToothCare Hub", "Clinic display name", "string", 1),
@@ -445,9 +451,11 @@ class TestDb
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 entity_type TEXT NOT NULL,
                 entity_id INTEGER NOT NULL,
+                account_type TEXT NULL,
                 reference_code TEXT NOT NULL UNIQUE,
                 title TEXT NOT NULL,
                 summary TEXT NULL,
+                archived_email TEXT NULL,
                 owner_patient_id INTEGER NULL,
                 owner_dentist_id INTEGER NULL,
                 owner_user_id INTEGER NULL,
@@ -472,6 +480,25 @@ class TestDb
             CREATE INDEX IF NOT EXISTS idx_archive_status_archived_at ON archive_records (status, archived_at, id);
             CREATE INDEX IF NOT EXISTS idx_archive_patient ON archive_records (owner_patient_id, archived_at);
             CREATE INDEX IF NOT EXISTS idx_archive_dentist ON archive_records (owner_dentist_id, archived_at);
+            CREATE INDEX IF NOT EXISTS idx_archive_account_type ON archive_records (account_type, status, archived_at, id);
+            CREATE INDEX IF NOT EXISTS idx_archive_archived_by ON archive_records (archived_by_user_id, archived_at);
+
+            CREATE TABLE IF NOT EXISTS archive_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                archive_record_id INTEGER NOT NULL,
+                entity_type TEXT NOT NULL,
+                entity_id INTEGER NOT NULL,
+                account_type TEXT NULL,
+                event_type TEXT NOT NULL,
+                actor_user_id INTEGER NULL,
+                actor_role TEXT NOT NULL DEFAULT "SYSTEM",
+                reason TEXT NOT NULL,
+                metadata TEXT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_archive_history_entity ON archive_history (entity_type, entity_id, created_at, id);
+            CREATE INDEX IF NOT EXISTS idx_archive_history_record ON archive_history (archive_record_id, created_at, id);
 
             INSERT INTO clinic_operating_hours (day_of_week, opening_time, closing_time, is_closed) VALUES
             (1, "08:00:00", "17:00:00", 0),
@@ -490,6 +517,8 @@ class TestDb
             CREATE INDEX IF NOT EXISTS idx_appointments_service ON appointments (service_id);
             CREATE INDEX IF NOT EXISTS idx_appointments_created_id ON appointments (created_at, id);
             CREATE INDEX IF NOT EXISTS idx_audit_logs_target_created ON audit_logs (target_type, created_at, id);
+            CREATE INDEX IF NOT EXISTS idx_audit_logs_actor_created ON audit_logs (actor_user_id, created_at, id);
+            CREATE INDEX IF NOT EXISTS idx_audit_logs_target_entity ON audit_logs (target_type, target_id, created_at, id);
             CREATE INDEX IF NOT EXISTS idx_users_role_active_created ON users (role, is_active, created_at);
         ');
 
@@ -595,18 +624,43 @@ class TestDb
         ];
         $seedArchive = $pdo->prepare('
             INSERT INTO archive_records (
-                entity_type, entity_id, reference_code, title, summary,
+                entity_type, entity_id, account_type, reference_code, title, summary, archived_email,
                 status, retention_category, retention_until,
                 archive_reason, archived_by_role, archived_at,
                 snapshot_json, snapshot_sha256, is_example
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+        ');
+        $seedArchiveHistory = $pdo->prepare('
+            INSERT INTO archive_history (
+                archive_record_id, entity_type, entity_id, account_type,
+                event_type, actor_user_id, actor_role, reason, metadata, created_at
+            ) VALUES (?, ?, ?, ?, "ARCHIVED", NULL, ?, ?, ?, ?)
         ');
         foreach ($exampleArchives as $ex) {
+            $snap = json_decode($ex[11], true) ?: [];
+            $acctType = match ($ex[0]) {
+                'patient' => 'PATIENT',
+                'dentist' => 'DENTIST',
+                'user' => strtoupper((string) ($snap['role'] ?? 'ADMIN')),
+                default => null,
+            };
+            $archEmail = $snap['email'] ?? match ($ex[2]) {
+                'ARC-EX-PAT-001' => 'elena.navarro.example@toothcare.example',
+                'ARC-EX-DNT-001' => 'arturo.mendoza.example@toothcare.example',
+                default => null,
+            };
             $seedArchive->execute([
-                $ex[0], $ex[1], $ex[2], $ex[3], $ex[4],
+                $ex[0], $ex[1], $acctType, $ex[2], $ex[3], $ex[4], $archEmail,
                 $ex[5], $ex[6], $ex[7],
                 $ex[8], $ex[9], $ex[10],
                 $ex[11], hash('sha256', $ex[11]),
+            ]);
+            $arcId = (int) $pdo->lastInsertId();
+            $seedArchiveHistory->execute([
+                $arcId, $ex[0], $ex[1], $acctType,
+                $ex[9], $ex[8],
+                json_encode(['reference_code' => $ex[2], 'is_example' => true]),
+                $ex[10],
             ]);
         }
 

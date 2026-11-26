@@ -259,13 +259,15 @@ final class NotificationsReportsOpsPaths
             new OA\Parameter(name: 'page', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1, default: 1)),
             new OA\Parameter(name: 'per_page', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1, maximum: 100, default: 10)),
             new OA\Parameter(name: 'entity_type', in: 'query', schema: new OA\Schema(type: 'string', enum: ['appointment', 'treatment_record', 'patient', 'dentist', 'service', 'user'])),
+            new OA\Parameter(name: 'account_type', in: 'query', schema: new OA\Schema(type: 'string', enum: ['PATIENT', 'DENTIST', 'RECEPTIONIST', 'ADMIN'])),
+            new OA\Parameter(name: 'archived_by_user_id', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1)),
             new OA\Parameter(name: 'status', in: 'query', schema: new OA\Schema(type: 'string', enum: ['ARCHIVED', 'RESTORED', 'LOCKED_RETENTION'])),
             new OA\Parameter(name: 'retention_category', in: 'query', schema: new OA\Schema(type: 'string', enum: ['CLINICAL_7Y', 'OPERATIONAL_3Y', 'ACCOUNT_5Y', 'CATALOG_LEGACY'])),
             new OA\Parameter(name: 'search', in: 'query', schema: new OA\Schema(type: 'string', maxLength: 120)),
             new OA\Parameter(name: 'date_from', in: 'query', schema: new OA\Schema(type: 'string', format: 'date')),
             new OA\Parameter(name: 'date_to', in: 'query', schema: new OA\Schema(type: 'string', format: 'date')),
             new OA\Parameter(name: 'include_examples', in: 'query', schema: new OA\Schema(type: 'boolean', default: true)),
-            new OA\Parameter(name: 'sort_by', in: 'query', schema: new OA\Schema(type: 'string', enum: ['archived_at', 'entity_type', 'status', 'retention_until', 'title', 'reference_code', 'id'], default: 'archived_at')),
+            new OA\Parameter(name: 'sort_by', in: 'query', schema: new OA\Schema(type: 'string', enum: ['archived_at', 'entity_type', 'account_type', 'status', 'retention_until', 'title', 'reference_code', 'id'], default: 'archived_at')),
             new OA\Parameter(name: 'sort_dir', in: 'query', schema: new OA\Schema(type: 'string', enum: ['asc', 'desc'], default: 'desc')),
         ],
         responses: [new OA\Response(response: 200, description: 'Paginated role-scoped archive records'), new OA\Response(response: 403, description: 'Unauthorized entity type or permission'), new OA\Response(response: 422, description: 'Invalid filters or sorting')]
@@ -273,22 +275,84 @@ final class NotificationsReportsOpsPaths
     #[OA\Post(
         path: '/archives',
         operationId: 'createArchiveRecord',
-        summary: 'Archive Eligible Live Entity with Tamper-Evident SHA-256 Snapshot',
+        summary: 'Archive Eligible Live Entity with Tamper-Evident SHA-256 Snapshot & Unresolved Appointment Guards',
         tags: ['Archives'],
         security: [['CookieAuth' => [], 'CsrfToken' => []]],
-        responses: [new OA\Response(response: 201, description: 'Archive record created'), new OA\Response(response: 403, description: 'Role/ownership denied'), new OA\Response(response: 409, description: 'Already archived or ineligible state'), new OA\Response(response: 422, description: 'Validation error')]
+        responses: [new OA\Response(response: 201, description: 'Archive record created'), new OA\Response(response: 403, description: 'Role/ownership denied'), new OA\Response(response: 409, description: 'Already archived, unresolved appointments, or last-admin safeguard'), new OA\Response(response: 422, description: 'Validation error')]
     )]
     public function archivesCollection(): void {}
 
-    #[OA\Get(path: '/archives/summary', operationId: 'getArchiveSummary', summary: 'Get Role-Scoped Archive KPIs & Actor Capabilities', tags: ['Archives'], security: [['CookieAuth' => []]], responses: [new OA\Response(response: 200, description: 'Archive summary metrics and capabilities')])]
+    #[OA\Get(path: '/archives/summary', operationId: 'getArchiveSummary', summary: 'Get Role-Scoped Archive KPIs, Account Category Counts & Actor Capabilities', tags: ['Archives'], security: [['CookieAuth' => []]], responses: [new OA\Response(response: 200, description: 'Archive summary metrics and capabilities')])]
     public function archivesSummary(): void {}
+
+    #[OA\Get(
+        path: '/archives/eligibility',
+        operationId: 'checkArchiveEligibility',
+        summary: 'Pre-Check Entity Archival Eligibility & Blocking Unresolved Appointments',
+        tags: ['Archives'],
+        security: [['CookieAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'entity_type', in: 'query', required: true, schema: new OA\Schema(type: 'string', enum: ['appointment', 'treatment_record', 'patient', 'dentist', 'service', 'user'])),
+            new OA\Parameter(name: 'entity_id', in: 'query', required: true, schema: new OA\Schema(type: 'integer', minimum: 1)),
+        ],
+        responses: [new OA\Response(response: 200, description: 'Eligibility report with blockers and operational consequences'), new OA\Response(response: 403, description: 'Unauthorized'), new OA\Response(response: 404, description: 'Entity not found')]
+    )]
+    public function archivesEligibility(): void {}
 
     #[OA\Get(path: '/archives/export', operationId: 'exportArchivesCsv', summary: 'Export Filtered Role-Scoped Archives to CSV (Admin/Receptionist)', tags: ['Archives'], security: [['CookieAuth' => []]], responses: [new OA\Response(response: 200, description: 'CSV export stream'), new OA\Response(response: 403, description: 'Requires archives.export')])]
     public function archivesExport(): void {}
 
+    #[OA\Get(path: '/archives/{id}/history', operationId: 'getArchiveCycleHistory', summary: 'Get Multi-Cycle Archival & Restoration Ledger for Archived Entity', tags: ['Archives'], security: [['CookieAuth' => []]], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Chronological archive/restore/rearchive cycle history'), new OA\Response(response: 403, description: 'Unauthorized'), new OA\Response(response: 404, description: 'Archive record not found')])]
+    public function archiveCycleHistory(): void {}
+
     #[OA\Get(path: '/archives/{id}', operationId: 'getArchiveDetail', summary: 'Inspect Single Archive Snapshot with SHA-256 Verification', tags: ['Archives'], security: [['CookieAuth' => []]], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Archive snapshot & integrity digest'), new OA\Response(response: 403, description: 'Ownership/role denied'), new OA\Response(response: 404, description: 'Archive record not found')])]
     public function archiveById(): void {}
 
-    #[OA\Post(path: '/archives/{id}/restore', operationId: 'restoreArchiveRecord', summary: 'Restore Soft-Archived Record to Active Operations (Admin Only)', tags: ['Archives'], security: [['CookieAuth' => [], 'CsrfToken' => []]], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Record restored'), new OA\Response(response: 403, description: 'Requires archives.restore'), new OA\Response(response: 409, description: 'Immutable clinical lock or already restored')])]
+    #[OA\Post(path: '/archives/{id}/restore', operationId: 'restoreArchiveRecord', summary: 'Restore Soft-Archived Record to Active Operations (Admin Only)', tags: ['Archives'], security: [['CookieAuth' => [], 'CsrfToken' => []]], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Record restored with post-restore review notices'), new OA\Response(response: 403, description: 'Requires archives.restore'), new OA\Response(response: 409, description: 'Immutable clinical lock, email conflict, or already restored')])]
     public function restoreArchive(): void {}
+
+    // --- Centralized History Records & Individual Record Timelines (Phase 3) ---
+    #[OA\Get(
+        path: '/history',
+        operationId: 'listHistoryRecords',
+        summary: 'List Chronological History Records (Server-Side Paginated, Filterable, Sortable)',
+        tags: ['History'],
+        security: [['CookieAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'page', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1, default: 1)),
+            new OA\Parameter(name: 'per_page', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1, maximum: 100, default: 10)),
+            new OA\Parameter(name: 'category', in: 'query', schema: new OA\Schema(type: 'string', enum: ['PATIENT', 'STAFF', 'APPOINTMENT', 'SECURITY', 'ADMIN'])),
+            new OA\Parameter(name: 'actor_role', in: 'query', schema: new OA\Schema(type: 'string', enum: ['ADMIN', 'RECEPTIONIST', 'DENTIST', 'PATIENT', 'SYSTEM'])),
+            new OA\Parameter(name: 'actor_user_id', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1)),
+            new OA\Parameter(name: 'module', in: 'query', schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'action', in: 'query', schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'result', in: 'query', schema: new OA\Schema(type: 'string', enum: ['SUCCESS', 'FAILED', 'DENIED', 'WARNING'])),
+            new OA\Parameter(name: 'record_ref', in: 'query', schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'search', in: 'query', schema: new OA\Schema(type: 'string', maxLength: 120)),
+            new OA\Parameter(name: 'date_from', in: 'query', schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'date_to', in: 'query', schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'sort_by', in: 'query', schema: new OA\Schema(type: 'string', enum: ['created_at', 'id', 'action', 'module', 'actor_role'], default: 'created_at')),
+            new OA\Parameter(name: 'sort_dir', in: 'query', schema: new OA\Schema(type: 'string', enum: ['asc', 'desc'], default: 'desc')),
+        ],
+        responses: [new OA\Response(response: 200, description: 'Paginated role-scoped history events with Asia/Manila timestamps and value diffs'), new OA\Response(response: 403, description: 'Requires history.view'), new OA\Response(response: 422, description: 'Invalid filter or sorting parameter')]
+    )]
+    public function historyCollection(): void {}
+
+    #[OA\Get(path: '/history/summary', operationId: 'getHistorySummary', summary: 'Get Database-Calculated History Records Dashboard KPI Counts', tags: ['History'], security: [['CookieAuth' => []]], responses: [new OA\Response(response: 200, description: 'Total, patient, staff, appointment, security, and administrative activity counts')])]
+    public function historySummary(): void {}
+
+    #[OA\Get(path: '/history/{id}', operationId: 'getHistoryEventDetail', summary: 'Get Single History Event with Sanitized Previous/Updated Value Comparison', tags: ['History'], security: [['CookieAuth' => []]], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Sanitized history event details'), new OA\Response(response: 403, description: 'Unauthorized'), new OA\Response(response: 404, description: 'Event not found')])]
+    public function historyById(): void {}
+
+    #[OA\Get(path: '/history/patients/{id}', operationId: 'getPatientHistoryTimeline', summary: 'Get Chronological Patient Lifecycle Timeline', tags: ['History'], security: [['CookieAuth' => []]], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Patient chronological history'), new OA\Response(response: 403, description: 'Unauthorized patient access'), new OA\Response(response: 404, description: 'Patient not found')])]
+    public function patientHistoryTimeline(): void {}
+
+    #[OA\Get(path: '/history/dentists/{id}', operationId: 'getDentistHistoryTimeline', summary: 'Get Chronological Dentist Practice Timeline', tags: ['History'], security: [['CookieAuth' => []]], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Dentist chronological history'), new OA\Response(response: 403, description: 'Unauthorized dentist access'), new OA\Response(response: 404, description: 'Dentist not found')])]
+    public function dentistHistoryTimeline(): void {}
+
+    #[OA\Get(path: '/history/staff/{id}', operationId: 'getStaffHistoryTimeline', summary: 'Get Chronological Receptionist or Administrator Activity Timeline', tags: ['History'], security: [['CookieAuth' => []]], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Staff chronological history'), new OA\Response(response: 403, description: 'Unauthorized staff access'), new OA\Response(response: 404, description: 'User not found')])]
+    public function staffHistoryTimeline(): void {}
+
+    #[OA\Get(path: '/history/appointments/{id}', operationId: 'getAppointmentHistoryTimeline', summary: 'Get Chronological Appointment Lifecycle & Reassignment Timeline', tags: ['History'], security: [['CookieAuth' => []]], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Appointment chronological history'), new OA\Response(response: 403, description: 'Unauthorized appointment access'), new OA\Response(response: 404, description: 'Appointment not found')])]
+    public function appointmentHistoryTimeline(): void {}
 }

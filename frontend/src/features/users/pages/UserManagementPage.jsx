@@ -18,8 +18,10 @@ import {
   Eye,
   EyeOff,
   Check,
+  History,
 } from 'lucide-react';
 import { usersApi } from '../api';
+import { RecordHistoryModal } from '../../history/components/RecordHistoryModal';
 import { TableSkeleton } from '../../../components/skeletons';
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 import { ServerTableFooter } from '../../../components/ui/ServerTableControls';
@@ -85,6 +87,7 @@ export function UserManagementPage() {
   const [editingUser, setEditingUser] = useState(null);
   const [newRole, setNewRole] = useState('');
   const [updatingRole, setUpdatingRole] = useState(false);
+  const [historyUser, setHistoryUser] = useState(null);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -362,7 +365,16 @@ export function UserManagementPage() {
                     <td role="cell" data-label="Registered" className="py-3.5 px-4 text-xs text-slate-500 dark:text-slate-400 font-mono">
                       {u.created_at?.split(' ')[0]}
                     </td>
-                    <td role="cell" data-label="Actions" className="py-3.5 px-5 text-right space-x-2">
+                    <td role="cell" data-label="Actions" className="py-3.5 px-5 text-right space-x-2 whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => setHistoryUser(u)}
+                        aria-label={`View history for ${u.email}`}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#0F766E] dark:text-teal-300 bg-teal-50 dark:bg-teal-500/15 hover:bg-teal-100 dark:hover:bg-teal-500/25 transition-colors cursor-pointer"
+                      >
+                        <History className="w-3 h-3" aria-hidden="true" />
+                        <span>History</span>
+                      </button>
                       <button
                         type="button"
                         onClick={() => {
@@ -850,6 +862,14 @@ export function UserManagementPage() {
             </form>
           </div>
         </DialogOverlay>
+      )}
+      {historyUser && (
+        <RecordHistoryModal
+          entityType="staff"
+          entityId={historyUser.id}
+          title={`${historyUser.email} (${historyUser.role}) — Account History`}
+          onClose={() => setHistoryUser(null)}
+        />
       )}
     </div>
   );

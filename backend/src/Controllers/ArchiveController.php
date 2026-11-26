@@ -121,6 +121,43 @@ class ArchiveController
     }
 
     /**
+     * GET /api/v1/archives/eligibility
+     * Pre-check archival eligibility, blocking unresolved appointments, and safeguards before confirming.
+     */
+    public function eligibility(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required.');
+        }
+
+        $q = $request->getQueryParams();
+        $entityType = strtolower(trim((string) ($q['entity_type'] ?? '')));
+        $entityId = (int) ($q['entity_id'] ?? 0);
+
+        return Response::success($this->archiveService->checkArchivalEligibility($user, $entityType, $entityId));
+    }
+
+    /**
+     * GET /api/v1/archives/{id}/history
+     * Retrieve multi-cycle archival and restoration timeline for an archived record's entity.
+     */
+    public function history(Request $request): Response
+    {
+        $user = $request->getUser();
+        if ($user === null || !isset($user['id'])) {
+            throw HttpException::unauthorized('Authentication is required.');
+        }
+
+        $id = (int) $request->getParam('id');
+        if ($id <= 0) {
+            throw HttpException::badRequest('Invalid archive record ID.');
+        }
+
+        return Response::success($this->archiveService->getArchiveCycleHistory($user, $id));
+    }
+
+    /**
      * GET /api/v1/archives/export
      * Export filtered role-scoped archive records to CSV (Admin / Receptionist).
      */

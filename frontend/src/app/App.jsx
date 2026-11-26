@@ -22,6 +22,7 @@ import {
   BarChart3,
   Server,
   Archive,
+  History,
 } from 'lucide-react';
 import {
   AuthProvider,
@@ -67,6 +68,7 @@ const ReportsPage = lazy(() => import('../features/reports/pages/ReportsPage').t
 const SystemHealthPage = lazy(() => import('../features/system/pages/SystemHealthPage').then((m) => ({ default: m.SystemHealthPage })));
 const StaffProfilePage = lazy(() => import('../features/staff/pages/StaffProfilePage').then((m) => ({ default: m.StaffProfilePage })));
 const ArchiveCenterPage = lazy(() => import('../features/archives/pages/ArchiveCenterPage').then((m) => ({ default: m.ArchiveCenterPage })));
+const HistoryRecordsPage = lazy(() => import('../features/history/pages/HistoryRecordsPage').then((m) => ({ default: m.HistoryRecordsPage })));
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { LoadingProvider, useRouteLoading } from '../contexts/LoadingContext';
 import { ThemeProvider } from '../contexts/ThemeContext';
@@ -114,6 +116,7 @@ function getInitialTab() {
         'users',
         'roles',
         'audit',
+        'history',
         'archives',
         'reports',
         'system',
@@ -244,6 +247,12 @@ function getSidebarSections(currentRole, hasPermission, { onPatientNav, onAdminN
         label: 'Audit Trail',
         icon: Activity,
         onSelect: () => onAdminNav('audit'),
+      },
+      (currentRole === 'ADMIN' || hasPermission('history.view')) && {
+        key: 'history',
+        label: 'History Records',
+        icon: History,
+        onSelect: () => onAdminNav('history'),
       },
       currentRole === 'ADMIN' && {
         key: 'archives',
@@ -1349,6 +1358,10 @@ function AppContent() {
                 <AuditTrailPage />
               )}
 
+              {activeTab === 'history' && (
+                <HistoryRecordsPage />
+              )}
+
               {activeTab === 'archives' && (
                 <ArchiveCenterPage />
               )}
@@ -1425,6 +1438,10 @@ function AppContent() {
 
               {activeTab === 'audit' && (
                 <AuditTrailPage />
+              )}
+
+              {activeTab === 'history' && (
+                <HistoryRecordsPage />
               )}
 
               {activeTab === 'archives' && (

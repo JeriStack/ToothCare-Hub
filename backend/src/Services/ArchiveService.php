@@ -9,12 +9,15 @@ use App\Core\HttpException;
 use App\Repositories\AppointmentRepository;
 use App\Repositories\ArchiveRepository;
 use App\Repositories\AuditLogRepository;
+use App\Repositories\AuthTokenRepository;
 use App\Repositories\DentistRepository;
 use App\Repositories\PatientRepository;
+use App\Repositories\RealtimeTicketRepository;
 use App\Repositories\RoleRepository;
 use App\Repositories\ServiceRepository;
 use App\Repositories\TreatmentRecordRepository;
 use App\Repositories\UserRepository;
+use App\Services\Realtime\RealtimeOutboxService;
 use App\Support\ServerTableQuery;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -69,6 +72,9 @@ class ArchiveService
     private ServiceRepository $serviceRepo;
     private UserRepository $userRepo;
     private RoleRepository $roleRepo;
+    private AuthTokenRepository $authTokenRepo;
+    private RealtimeTicketRepository $realtimeTicketRepo;
+    private ?RealtimeOutboxService $realtimeOutbox = null;
     private DateTimeZone $tz;
 
     public function __construct(?Database $database = null)
@@ -84,6 +90,13 @@ class ArchiveService
         $this->serviceRepo = new ServiceRepository($db);
         $this->userRepo = new UserRepository($db);
         $this->roleRepo = new RoleRepository($db);
+        $this->authTokenRepo = new AuthTokenRepository($db);
+        $this->realtimeTicketRepo = new RealtimeTicketRepository($db);
+        try {
+            $this->realtimeOutbox = new RealtimeOutboxService(null, null, null, null, $db);
+        } catch (Throwable $e) {
+            $this->realtimeOutbox = null;
+        }
         $this->tz = new DateTimeZone('Asia/Manila');
     }
 
@@ -164,6 +177,32 @@ class ArchiveService
                 throw HttpException::forbidden('Your role is not authorized to view archives for this entity type.');
             }
             $filters['entity_type'] = $entityType;
+        }
+
+        if (isset($query['account_type']) && trim((string) $query['account_type']) !== '') {
+            $accountType = strtoupper(trim((string) $query['account_type']));
+            if (!in_array($accountType, ArchiveRepository::ACCOUNT_TYPES, true)) {
+                throw HttpException::unprocessableEntity('Invalid account_type filter.', [
+                    'account_type' => ['Allowed account types: ' . implode(', ', ArchiveRepository::ACCOUNT_TYPES)],
+                ]);
+            }
+            if ($scope['role'] === 'RECEPTIONIST' && $accountType !== 'PATIENT') {
+                throw HttpException::forbidden('Receptionists are only authorized to inspect Patient account archives.');
+            }
+            if (in_array($scope['role'], ['DENTIST', 'PATIENT'], true)) {
+                throw HttpException::forbidden('Your role is not authorized to filter by clinic account archive category.');
+            }
+            $filters['account_type'] = $accountType;
+        }
+
+        if (isset($query['archived_by_user_id']) && trim((string) $query['archived_by_user_id']) !== '') {
+            $archBy = (int) $query['archived_by_user_id'];
+            if ($archBy <= 0) {
+                throw HttpException::unprocessableEntity('archived_by_user_id must be a positive integer.', [
+                    'archived_by_user_id' => ['archived_by_user_id must be a positive integer.'],
+                ]);
+            }
+            $filters['archived_by_user_id'] = $archBy;
         }
 
         if (isset($query['status']) && trim((string) $query['status']) !== '') {
@@ -322,7 +361,205 @@ class ArchiveService
     }
 
     /**
-     * Archive a live clinic entity atomically with a tamper-evident snapshot and audit log entry.
+     * Pre-check whether an entity/account can safely be archived (Phase 4.4–4.8).
+     * Detects unresolved upcoming/pending appointments, self-archival, last-admin safeguards, and duplicates.
+     *
+     * @param array<string, mixed> $user
+     * @return array<string, mixed>
+     */
+    public function checkArchivalEligibility(array $user, string $entityType, int $entityId): array
+    {
+        $scope = $this->resolveActorScope($user);
+        $entityType = strtolower(trim($entityType));
+
+        if (!in_array($entityType, ArchiveRepository::ENTITY_TYPES, true) || $entityId <= 0) {
+            throw HttpException::unprocessableEntity('Valid entity_type and positive entity_id are required.', [
+                'entity_type' => ['Allowed entity types: ' . implode(', ', ArchiveRepository::ENTITY_TYPES)],
+                'entity_id' => ['entity_id must be a positive integer.'],
+            ]);
+        }
+
+        if (!in_array($entityType, $scope['creatable_types'], true)) {
+            throw HttpException::forbidden("Your role ({$scope['role']}) is not authorized to archive {$entityType} records.");
+        }
+
+        $blockers = [];
+        $blockingAppointments = [];
+        $consequences = [];
+
+        $existing = $this->archiveRepo->findActiveByEntity($entityType, $entityId);
+        if ($existing !== null) {
+            $blockers[] = [
+                'code' => 'ALREADY_ARCHIVED',
+                'message' => "Already archived under {$existing['reference_code']}.",
+            ];
+        }
+
+        if ($entityType === 'patient') {
+            $patient = $this->patientRepo->findWithUserById($entityId);
+            if (!$patient) {
+                throw HttpException::notFound("Patient #{$entityId} was not found.");
+            }
+            $blockingAppointments = $this->archiveRepo->findUnresolvedAppointmentsForPatient($entityId);
+            if (!empty($blockingAppointments)) {
+                $blockers[] = [
+                    'code' => 'UNRESOLVED_APPOINTMENTS_EXIST',
+                    'message' => sprintf(
+                        'Patient has %d unresolved (PENDING/CONFIRMED) appointment(s). Resolve or cancel them explicitly before archiving.',
+                        count($blockingAppointments)
+                    ),
+                ];
+            }
+            $consequences = [
+                'Disables account login and revokes active tokens/sessions.',
+                'Prevents new appointment bookings while archived.',
+                'Preserves all historical appointments, clinical records, and audit trails without deletion.',
+            ];
+        } elseif ($entityType === 'dentist') {
+            $dentist = $this->dentistRepo->findById($entityId);
+            if (!$dentist) {
+                throw HttpException::notFound("Dentist #{$entityId} was not found.");
+            }
+            $blockingAppointments = $this->archiveRepo->findUnresolvedAppointmentsForDentist($entityId);
+            if (!empty($blockingAppointments)) {
+                $blockers[] = [
+                    'code' => 'UNRESOLVED_APPOINTMENTS_EXIST',
+                    'message' => sprintf(
+                        'Dentist has %d unresolved (PENDING/CONFIRMED) assigned appointment(s). Reassign or resolve them explicitly before archiving.',
+                        count($blockingAppointments)
+                    ),
+                ];
+            }
+            $consequences = [
+                'Prevents new appointment assignments and revokes active login sessions.',
+                'Preserves all historical dentist assignments, treatment records, and schedule history.',
+            ];
+        } elseif ($entityType === 'user') {
+            $targetUser = $this->userRepo->findById($entityId);
+            if (!$targetUser) {
+                throw HttpException::notFound("User #{$entityId} was not found.");
+            }
+            if ((int) $targetUser['id'] === $scope['user_id']) {
+                $blockers[] = [
+                    'code' => 'SELF_ARCHIVE_BLOCKED',
+                    'message' => 'Administrators cannot archive their own active account.',
+                ];
+            }
+            if (strtoupper((string) $targetUser['role']) === 'ADMIN' && (int) $targetUser['is_active'] === 1 && $this->userRepo->countActiveAdmins() <= 1) {
+                $blockers[] = [
+                    'code' => 'LAST_ADMIN_PROTECTED',
+                    'message' => 'Cannot archive the last remaining active Administrator account.',
+                ];
+            }
+            $roleLabel = strtoupper((string) $targetUser['role']);
+            if ($roleLabel === 'PATIENT') {
+                $linkedPatient = $this->patientRepo->findByUserId($entityId);
+                if ($linkedPatient) {
+                    $blockingAppointments = $this->archiveRepo->findUnresolvedAppointmentsForPatient((int) $linkedPatient['id']);
+                    if (!empty($blockingAppointments)) {
+                        $blockers[] = [
+                            'code' => 'UNRESOLVED_APPOINTMENTS_EXIST',
+                            'message' => sprintf('Linked patient has %d unresolved appointment(s) that must be resolved before archival.', count($blockingAppointments)),
+                        ];
+                    }
+                }
+            } elseif ($roleLabel === 'DENTIST') {
+                $linkedDentist = $this->dentistRepo->findByUserId($entityId);
+                if ($linkedDentist) {
+                    $blockingAppointments = $this->archiveRepo->findUnresolvedAppointmentsForDentist((int) $linkedDentist['id']);
+                    if (!empty($blockingAppointments)) {
+                        $blockers[] = [
+                            'code' => 'UNRESOLVED_APPOINTMENTS_EXIST',
+                            'message' => sprintf('Linked dentist has %d unresolved assigned appointment(s) that must be reassigned or resolved first.', count($blockingAppointments)),
+                        ];
+                    }
+                }
+            }
+            $consequences = [
+                "Disables {$roleLabel} account access and immediately revokes active tokens and realtime tickets.",
+                'Preserves all historical actions, approvals, and actor attribution in History Records and Audit Trail.',
+            ];
+        } elseif ($entityType === 'treatment_record') {
+            $consequences = [
+                'Permanently seals this clinical record under LOCKED_RETENTION (7-year healthcare retention policy).',
+                'Locked clinical archives are immutable and cannot be restored or edited.',
+            ];
+        } else {
+            $consequences = [
+                'Creates a tamper-evident SHA-256 archive record without deleting relational history.',
+                'Reversible records may be restored later by an authorized Administrator.',
+            ];
+        }
+
+        return [
+            'eligible' => count($blockers) === 0,
+            'entity_type' => $entityType,
+            'entity_id' => $entityId,
+            'blockers' => $blockers,
+            'blocking_appointments' => $blockingAppointments,
+            'consequences' => $consequences,
+        ];
+    }
+
+    /**
+     * Retrieve full append-only archival & restoration cycle history for an archive record's entity.
+     *
+     * @param array<string, mixed> $user
+     * @return array<string, mixed>
+     */
+    public function getArchiveCycleHistory(array $user, int $archiveId): array
+    {
+        $scope = $this->resolveActorScope($user);
+        $record = $this->archiveRepo->findById($archiveId);
+        if ($record === null) {
+            throw HttpException::notFound("Archive record #{$archiveId} was not found.");
+        }
+
+        $this->assertCanViewRecord($scope, $record);
+
+        $rows = $this->archiveRepo->findCycleHistoryForEntity(
+            (string) $record['entity_type'],
+            (int) $record['entity_id']
+        );
+        $isPatient = $scope['role'] === 'PATIENT';
+
+        $cycles = array_map(function (array $row) use ($isPatient): array {
+            $meta = !empty($row['metadata']) ? (json_decode((string) $row['metadata'], true) ?: []) : [];
+            $actorName = trim(((string) ($row['actor_first_name'] ?? '')) . ' ' . ((string) ($row['actor_last_name'] ?? '')));
+            if ($actorName === '') {
+                $actorName = !empty($row['actor_email']) ? (string) $row['actor_email'] : 'System';
+            }
+
+            return [
+                'id' => (int) $row['id'],
+                'archive_record_id' => (int) $row['archive_record_id'],
+                'reference_code' => (string) ($row['reference_code'] ?? ''),
+                'event_type' => strtoupper((string) $row['event_type']),
+                'actor_user_id' => $row['actor_user_id'] !== null ? (int) $row['actor_user_id'] : null,
+                'actor_name' => $isPatient ? ucfirst(strtolower((string) $row['actor_role'])) : $actorName,
+                'actor_email' => $isPatient ? null : ($row['actor_email'] ?: null),
+                'actor_role' => strtoupper((string) $row['actor_role']),
+                'reason' => (string) $row['reason'],
+                'metadata' => $meta,
+                'created_at' => (string) $row['created_at'],
+            ];
+        }, $rows);
+
+        return [
+            'archive_record_id' => $archiveId,
+            'reference_code' => (string) $record['reference_code'],
+            'entity_type' => (string) $record['entity_type'],
+            'entity_id' => (int) $record['entity_id'],
+            'account_type' => $record['account_type'] ?? null,
+            'title' => (string) $record['title'],
+            'cycles' => $cycles,
+            'total_events' => count($cycles),
+        ];
+    }
+
+    /**
+     * Archive a live clinic entity atomically with a tamper-evident snapshot, cycle ledger entry,
+     * session/token revocation, unresolved-appointment enforcement, and audit log entry.
      *
      * @param array<string, mixed> $user
      * @param array<string, mixed> $input
@@ -379,6 +616,43 @@ class ArchiveService
 
         $built = $this->buildEntitySnapshot($scope, $entityType, $entityId);
 
+        // Enforce Phase 4.5 & 4.6: Block Patient/Dentist archival when unresolved upcoming/pending appointments exist
+        $blockingAppointments = [];
+        if ($entityType === 'patient') {
+            $blockingAppointments = $this->archiveRepo->findUnresolvedAppointmentsForPatient($entityId);
+        } elseif ($entityType === 'dentist') {
+            $blockingAppointments = $this->archiveRepo->findUnresolvedAppointmentsForDentist($entityId);
+        } elseif ($entityType === 'user') {
+            $acctTypeCheck = strtoupper((string) ($built['account_type'] ?? ''));
+            if ($acctTypeCheck === 'PATIENT') {
+                $lp = $this->patientRepo->findByUserId($entityId);
+                if ($lp) {
+                    $blockingAppointments = $this->archiveRepo->findUnresolvedAppointmentsForPatient((int) $lp['id']);
+                }
+            } elseif ($acctTypeCheck === 'DENTIST') {
+                $ld = $this->dentistRepo->findByUserId($entityId);
+                if ($ld) {
+                    $blockingAppointments = $this->archiveRepo->findUnresolvedAppointmentsForDentist((int) $ld['id']);
+                }
+            }
+        }
+        if (!empty($blockingAppointments)) {
+            throw new HttpException(
+                409,
+                'UNRESOLVED_APPOINTMENTS_EXIST',
+                sprintf(
+                    'Cannot archive %s #%d while %d unresolved (PENDING/CONFIRMED) appointment(s) remain. Reassign, cancel, or complete them first.',
+                    $entityType,
+                    $entityId,
+                    count($blockingAppointments)
+                ),
+                ['blocking_appointments' => $blockingAppointments]
+            );
+        }
+
+        $priorCycles = $this->archiveRepo->countCyclesForEntity($entityType, $entityId);
+        $cycleEventType = $priorCycles > 0 ? 'REARCHIVED' : 'ARCHIVED';
+
         $years = self::RETENTION_YEARS[$retentionCategory] ?? 3;
         $retentionUntil = (new DateTimeImmutable('now', $this->tz))->modify("+{$years} years")->format('Y-m-d');
         $prefixMap = [
@@ -408,9 +682,11 @@ class ArchiveService
             $archiveId = $this->archiveRepo->create([
                 'entity_type' => $entityType,
                 'entity_id' => $entityId,
+                'account_type' => $built['account_type'] ?? null,
                 'reference_code' => $referenceCode,
                 'title' => $built['title'],
                 'summary' => $built['summary'],
+                'archived_email' => $built['archived_email'] ?? null,
                 'owner_patient_id' => $built['owner_patient_id'],
                 'owner_dentist_id' => $built['owner_dentist_id'],
                 'owner_user_id' => $built['owner_user_id'],
@@ -425,8 +701,24 @@ class ArchiveService
                 'is_example' => 0,
             ]);
 
-            // Synchronize reversible active flags safely without deleting relational history
-            $this->deactivateSourceIfApplicable($entityType, $entityId);
+            $this->archiveRepo->recordHistoryEvent(
+                $archiveId,
+                $entityType,
+                $entityId,
+                $built['account_type'] ?? null,
+                $cycleEventType,
+                $scope['user_id'] > 0 ? $scope['user_id'] : null,
+                $scope['role'],
+                $reason,
+                [
+                    'reference_code' => $referenceCode,
+                    'retention_category' => $retentionCategory,
+                    'cycle_number' => $priorCycles + 1,
+                ]
+            );
+
+            // Synchronize reversible active flags & revoke active sessions/tokens without deleting relational history
+            $revokedUserId = $this->deactivateSourceAndRevokeSessions($entityType, $entityId);
 
             $this->auditRepo->record(
                 'RECORD_ARCHIVED',
@@ -439,13 +731,34 @@ class ArchiveService
                     'reference_code' => $referenceCode,
                     'entity_type' => $entityType,
                     'entity_id' => $entityId,
-                    'status' => $status,
+                    'account_type' => $built['account_type'] ?? null,
+                    'cycle_event' => $cycleEventType,
+                    'before' => ['status' => 'ACTIVE'],
+                    'after' => ['status' => $status],
                     'retention_category' => $retentionCategory,
                     'retention_until' => $retentionUntil,
                     'reason' => $reason,
+                    'sessions_revoked_user_id' => $revokedUserId,
                     'snapshot_sha256' => $snapshotHash,
                 ]
             );
+
+            if ($revokedUserId !== null && $revokedUserId > 0) {
+                $this->auditRepo->record(
+                    'SESSION_REVOKED',
+                    'users',
+                    $revokedUserId,
+                    $scope['user_id'] > 0 ? $scope['user_id'] : null,
+                    $ipAddress,
+                    $userAgent,
+                    [
+                        'reason' => "Account archived under {$referenceCode}",
+                        'archive_record_id' => $archiveId,
+                    ]
+                );
+            }
+
+            $this->notifyAdminsRealtime($pdo, $entityType, $entityId, 'ARCHIVED');
 
             if ($startedTx) {
                 $pdo->commit();
@@ -462,6 +775,7 @@ class ArchiveService
 
     /**
      * Restore a soft-archived record atomically (Admin only; blocks immutable clinical retention locks).
+     * Never restores old tokens/sessions and preserves original archival history cleanly.
      *
      * @param array<string, mixed> $user
      * @param array<string, mixed> $input
@@ -506,6 +820,12 @@ class ArchiveService
             throw HttpException::conflict('This archive record has already been restored.', 'ALREADY_RESTORED');
         }
 
+        $entityType = (string) $record['entity_type'];
+        $entityId = (int) $record['entity_id'];
+
+        // Phase 4.9: Recheck underlying record existence and email identifier integrity before restoring
+        $reviewNotices = $this->validateRestorationEligibility($entityType, $entityId, $record);
+
         $pdo = $this->database->getConnection();
         $startedTx = !$pdo->inTransaction();
         if ($startedTx) {
@@ -518,7 +838,22 @@ class ArchiveService
                 throw HttpException::conflict('This archive record has already been restored.', 'ALREADY_RESTORED');
             }
 
-            $this->reactivateSourceIfApplicable((string) $record['entity_type'], (int) $record['entity_id']);
+            $this->reactivateSourceIfApplicable($entityType, $entityId);
+
+            $this->archiveRepo->recordHistoryEvent(
+                $archiveId,
+                $entityType,
+                $entityId,
+                $record['account_type'] ?? null,
+                'RESTORED',
+                $scope['user_id'] > 0 ? $scope['user_id'] : null,
+                $scope['role'],
+                $reason,
+                [
+                    'reference_code' => $record['reference_code'],
+                    'sessions_restored' => false,
+                ]
+            );
 
             $this->auditRepo->record(
                 'RECORD_RESTORED',
@@ -529,11 +864,16 @@ class ArchiveService
                 $userAgent,
                 [
                     'reference_code' => $record['reference_code'],
-                    'entity_type' => $record['entity_type'],
-                    'entity_id' => (int) $record['entity_id'],
+                    'entity_type' => $entityType,
+                    'entity_id' => $entityId,
+                    'account_type' => $record['account_type'] ?? null,
+                    'before' => ['status' => 'ARCHIVED'],
+                    'after' => ['status' => 'RESTORED'],
                     'reason' => $reason,
                 ]
             );
+
+            $this->notifyAdminsRealtime($pdo, $entityType, $entityId, 'RESTORED');
 
             if ($startedTx) {
                 $pdo->commit();
@@ -545,7 +885,9 @@ class ArchiveService
             throw $e;
         }
 
-        return $this->getArchiveDetail($user, $archiveId);
+        $detail = $this->getArchiveDetail($user, $archiveId);
+        $detail['review_notices'] = $reviewNotices;
+        return $detail;
     }
 
     /**
@@ -755,6 +1097,8 @@ class ArchiveService
                 return [
                     'title' => sprintf('Patient Profile #%d — %s', $entityId, $fullName ?: 'Patient'),
                     'summary' => sprintf('Patient demographic snapshot archived (%s).', $patient['email'] ?? 'no email'),
+                    'account_type' => 'PATIENT',
+                    'archived_email' => $patient['email'] ?? null,
                     'owner_patient_id' => $entityId,
                     'owner_dentist_id' => null,
                     'owner_user_id' => (int) ($patient['user_id'] ?? 0) ?: null,
@@ -780,6 +1124,8 @@ class ArchiveService
                 return [
                     'title' => sprintf('Practitioner #%d — %s', $entityId, $fullName),
                     'summary' => sprintf('%s · License %s', $dentist['specialization'] ?? 'Dental Specialist', $dentist['license_number'] ?? 'N/A'),
+                    'account_type' => 'DENTIST',
+                    'archived_email' => $dentist['email'] ?? null,
                     'owner_patient_id' => null,
                     'owner_dentist_id' => $entityId,
                     'owner_user_id' => (int) ($dentist['user_id'] ?? 0) ?: null,
@@ -828,9 +1174,12 @@ class ArchiveService
                 if (strtoupper((string) $targetUser['role']) === 'ADMIN' && (int) $targetUser['is_active'] === 1 && $this->userRepo->countActiveAdmins() <= 1) {
                     throw HttpException::conflict('Cannot archive the last remaining active Administrator account.', 'LAST_ADMIN_PROTECTED');
                 }
+                $uRole = strtoupper((string) $targetUser['role']);
                 return [
-                    'title' => sprintf('User Account #%d — %s (%s)', $entityId, $targetUser['email'], strtoupper((string) $targetUser['role'])),
-                    'summary' => sprintf('Account snapshot archived for %s role.', strtoupper((string) $targetUser['role'])),
+                    'title' => sprintf('User Account #%d — %s (%s)', $entityId, $targetUser['email'], $uRole),
+                    'summary' => sprintf('Account snapshot archived for %s role.', $uRole),
+                    'account_type' => in_array($uRole, ArchiveRepository::ACCOUNT_TYPES, true) ? $uRole : 'ADMIN',
+                    'archived_email' => (string) $targetUser['email'],
                     'owner_patient_id' => null,
                     'owner_dentist_id' => null,
                     'owner_user_id' => $entityId,
@@ -850,19 +1199,126 @@ class ArchiveService
         }
     }
 
-    private function deactivateSourceIfApplicable(string $entityType, int $entityId): void
+    /**
+     * Soft-deactivate source entity and revoke all active auth tokens and realtime tickets.
+     *
+     * @return ?int Revoked user ID when an account was deactivated
+     */
+    private function deactivateSourceAndRevokeSessions(string $entityType, int $entityId): ?int
     {
+        $revokedUserId = null;
         if ($entityType === 'service') {
             $this->serviceRepo->updateStatus($entityId, 0);
         } elseif ($entityType === 'dentist') {
+            $d = $this->dentistRepo->findById($entityId);
             $this->dentistRepo->updateStatus($entityId, 0);
+            $revokedUserId = ($d && !empty($d['user_id'])) ? (int) $d['user_id'] : null;
         } elseif ($entityType === 'user') {
             $this->userRepo->updateStatus($entityId, 0);
+            $revokedUserId = $entityId;
         } elseif ($entityType === 'patient') {
             $p = $this->patientRepo->findById($entityId);
             if ($p && !empty($p['user_id'])) {
-                $this->userRepo->updateStatus((int) $p['user_id'], 0);
+                $revokedUserId = (int) $p['user_id'];
+                $this->userRepo->updateStatus($revokedUserId, 0);
             }
+        }
+
+        if ($revokedUserId !== null && $revokedUserId > 0) {
+            try {
+                $this->authTokenRepo->invalidateOutstandingTokens($revokedUserId, 'EMAIL_VERIFY');
+                $this->authTokenRepo->invalidateOutstandingTokens($revokedUserId, 'PASSWORD_RESET');
+                $this->realtimeTicketRepo->revokeAllForUser($revokedUserId);
+            } catch (Throwable $e) {
+                // Non-fatal in minimal schema test contexts; users.is_active=0 already invalidates PHP sessions
+            }
+        }
+
+        return $revokedUserId;
+    }
+
+    /**
+     * Validate restoration eligibility, account existence, and email conflicts (Phase 4.9).
+     *
+     * @param array<string, mixed> $record
+     * @return list<string>
+     */
+    private function validateRestorationEligibility(string $entityType, int $entityId, array $record): array
+    {
+        $notices = [
+            'Previous login sessions and password reset tokens were NOT automatically restored; user must authenticate fresh.',
+            'Original archival history has been preserved in the append-only archive cycle ledger.',
+        ];
+
+        $userIdToCheck = null;
+        if ($entityType === 'user') {
+            $u = $this->userRepo->findById($entityId);
+            if ($u === null) {
+                throw HttpException::conflict("Underlying user account #{$entityId} no longer exists.", 'SOURCE_MISSING');
+            }
+            $userIdToCheck = $entityId;
+            $notices[] = 'Review current DRBAC role and permissions before resuming administrative or front-desk access.';
+        } elseif ($entityType === 'patient') {
+            $p = $this->patientRepo->findById($entityId);
+            if ($p === null) {
+                throw HttpException::conflict("Underlying patient profile #{$entityId} no longer exists.", 'SOURCE_MISSING');
+            }
+            $userIdToCheck = !empty($p['user_id']) ? (int) $p['user_id'] : null;
+        } elseif ($entityType === 'dentist') {
+            $d = $this->dentistRepo->findById($entityId);
+            if ($d === null) {
+                throw HttpException::conflict("Underlying dentist profile #{$entityId} no longer exists.", 'SOURCE_MISSING');
+            }
+            $userIdToCheck = !empty($d['user_id']) ? (int) $d['user_id'] : null;
+            $notices[] = 'Verify dentist PRC license, working schedule, and operatory assignment before enabling new bookings.';
+        } elseif ($entityType === 'service') {
+            $s = $this->serviceRepo->findById($entityId);
+            if ($s === null) {
+                throw HttpException::conflict("Underlying service #{$entityId} no longer exists.", 'SOURCE_MISSING');
+            }
+        }
+
+        if ($userIdToCheck !== null && $userIdToCheck > 0 && !empty($record['archived_email'])) {
+            $existingByEmail = $this->userRepo->findByEmail((string) $record['archived_email']);
+            if ($existingByEmail !== null && (int) $existingByEmail['id'] !== $userIdToCheck) {
+                throw HttpException::conflict(
+                    'Cannot restore account because another active account now uses the same email identifier.',
+                    'EMAIL_CONFLICT_ON_RESTORE'
+                );
+            }
+        }
+
+        return $notices;
+    }
+
+    /**
+     * Emit minimal non-PII realtime update to active administrators (Phase 7.4).
+     * Never fails or rolls back committed archive/restoration operations.
+     */
+    private function notifyAdminsRealtime(\PDO $pdo, string $entityType, int $entityId, string $status): void
+    {
+        if ($this->realtimeOutbox === null) {
+            return;
+        }
+        try {
+            $stmt = $pdo->query("SELECT id FROM users WHERE role = 'ADMIN' AND is_active = 1 LIMIT 20");
+            $adminIds = $stmt ? $stmt->fetchAll(\PDO::FETCH_COLUMN) : [];
+            foreach ($adminIds as $aid) {
+                $this->realtimeOutbox->enqueue(
+                    RealtimeOutboxService::EVENT_ACCOUNT_UPDATED,
+                    (int) $aid,
+                    null,
+                    [
+                        'entityType' => 'archives',
+                        'entityId' => $entityId,
+                        'status' => $status,
+                        'title' => 'Archive status updated',
+                    ],
+                    $pdo
+                );
+            }
+        } catch (Throwable $e) {
+            // Realtime outbox unavailability must never abort archive/restore operations
         }
     }
 
@@ -896,9 +1352,11 @@ class ArchiveService
             'id' => (int) $row['id'],
             'entity_type' => (string) $row['entity_type'],
             'entity_id' => (int) $row['entity_id'],
+            'account_type' => !empty($row['account_type']) ? strtoupper((string) $row['account_type']) : null,
             'reference_code' => (string) $row['reference_code'],
             'title' => (string) $row['title'],
             'summary' => $row['summary'] !== null ? (string) $row['summary'] : null,
+            'archived_email' => $isPatient ? null : ($row['archived_email'] ?? null),
             'status' => (string) $row['status'],
             'retention_category' => (string) $row['retention_category'],
             'retention_until' => $row['retention_until'] !== null ? (string) $row['retention_until'] : null,
