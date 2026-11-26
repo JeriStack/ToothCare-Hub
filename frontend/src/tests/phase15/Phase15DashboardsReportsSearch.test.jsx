@@ -186,6 +186,23 @@ describe('Phase 15: Dashboards, Reports, and Appointment Search UI', () => {
     fireEvent.change(screen.getByLabelText(/End date/i), { target: { value: '2026-11-10' } });
 
     expect(await screen.findByText(/End date cannot be earlier than start date\./i)).toBeInTheDocument();
+
+    // Verify exact simplified subtitle text and collapsible card minimize/expand controls
+    expect(
+      screen.getByText(
+        'Database-driven appointment throughput, dentist workload, service utilization, patient registrations (Asia/Manila).'
+      )
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Minimize Dental Service Utilization/i }));
+    expect(screen.queryByText('70%')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Expand Dental Service Utilization/i }));
+    expect(screen.getByText('70%')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Minimize All/i }));
+    expect(screen.queryByText('#501')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Expand All/i }));
+    expect(screen.getByText('#501')).toBeInTheDocument();
   });
 
   it('AdminAppointmentsPage supports service, dentist, status, and date filters with range validation and Clear Filters', async () => {
