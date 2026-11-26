@@ -17,10 +17,12 @@ import {
   ShieldCheck,
   UserCheck,
   Eye,
+  EyeOff,
   Lock,
   Copy,
   Check,
-  FileText
+  FileText,
+  ChevronDown
 } from 'lucide-react';
 import { dentistsApi } from '../api';
 import { useAuth } from '../../auth';
@@ -112,6 +114,7 @@ export function DentistListPage() {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingDentist, setEditingDentist] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -197,6 +200,7 @@ export function DentistListPage() {
       is_active: 1,
     });
     setFormErrors({});
+    setShowPassword(false);
     setIsModalOpen(true);
   };
 
@@ -216,6 +220,7 @@ export function DentistListPage() {
       is_active: dentist.is_active ? 1 : 0,
     });
     setFormErrors({});
+    setShowPassword(false);
     setIsModalOpen(true);
   };
 
@@ -715,6 +720,41 @@ export function DentistListPage() {
                     </div>
                   )}
 
+                  {/* Live Compact Dentist Preview Strip */}
+                  <div className="px-3.5 py-2.5 rounded-xl bg-slate-50/90 dark:bg-gray-900/60 border border-slate-200/80 dark:border-gray-700/70 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-full bg-teal-50 dark:bg-teal-500/15 ring-1 ring-inset ring-teal-200/90 dark:ring-teal-500/30 text-[#0F766E] dark:text-teal-300 flex items-center justify-center font-bold text-xs shrink-0">
+                        {getDentistInitials(formData.first_name, formData.last_name)}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                              formData.is_active === 1 ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-slate-400'
+                            }`}
+                            aria-hidden="true"
+                          />
+                          <span className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">
+                            Dr. {formData.first_name.trim() || 'First'} {formData.last_name.trim() || 'Last'}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getSpecializationBadgeClasses(formData.specialization)}`}
+                          >
+                            {formData.specialization || 'General Dentistry'}
+                          </span>
+                          <span className="text-[10.5px] text-slate-400 dark:text-slate-500 truncate">
+                            · {formData.default_operatory_chair || 'Operatory Chair 1'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <span className="font-mono text-[11px] font-semibold text-slate-500 dark:text-slate-400 tabular-nums shrink-0 hidden sm:inline">
+                      {formData.license_number.trim() || 'PRC-PENDING'}
+                    </span>
+                  </div>
+
                   {/* Identity & Credentials */}
                   <div className="space-y-3.5">
                     <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
@@ -742,7 +782,7 @@ export function DentistListPage() {
                           className={`w-full px-3.5 py-2.5 border rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors ${
                             formErrors.first_name
                               ? 'border-rose-400 dark:border-rose-500 bg-rose-50/30 dark:bg-rose-950/30'
-                              : 'border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900/70'
+                              : 'border-slate-300 dark:border-gray-600/90 hover:border-slate-400 dark:hover:border-gray-500 bg-white dark:bg-gray-900/70'
                           }`}
                         />
                         {formErrors.first_name && (
@@ -770,7 +810,7 @@ export function DentistListPage() {
                           className={`w-full px-3.5 py-2.5 border rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors ${
                             formErrors.last_name
                               ? 'border-rose-400 dark:border-rose-500 bg-rose-50/30 dark:bg-rose-950/30'
-                              : 'border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900/70'
+                              : 'border-slate-300 dark:border-gray-600/90 hover:border-slate-400 dark:hover:border-gray-500 bg-white dark:bg-gray-900/70'
                           }`}
                         />
                         {formErrors.last_name && (
@@ -802,7 +842,7 @@ export function DentistListPage() {
                             className={`w-full px-3.5 py-2.5 border rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors ${
                               formErrors.email
                                 ? 'border-rose-400 dark:border-rose-500 bg-rose-50/30 dark:bg-rose-950/30'
-                                : 'border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900/70'
+                                : 'border-slate-300 dark:border-gray-600/90 hover:border-slate-400 dark:hover:border-gray-500 bg-white dark:bg-gray-900/70'
                             }`}
                           />
                           {formErrors.email && <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.email}</p>}
@@ -815,22 +855,32 @@ export function DentistListPage() {
                           >
                             Initial Password <span className="text-rose-500 dark:text-rose-400">*</span>
                           </label>
-                          <input
-                            id="dentist-password"
-                            type="password"
-                            required
-                            placeholder="••••••••"
-                            value={formData.password}
-                            onChange={(e) => {
-                              setFormData({ ...formData, password: e.target.value });
-                              if (formErrors.password) setFormErrors((prev) => ({ ...prev, password: undefined }));
-                            }}
-                            className={`w-full px-3.5 py-2.5 border rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors ${
-                              formErrors.password
-                                ? 'border-rose-400 dark:border-rose-500 bg-rose-50/30 dark:bg-rose-950/30'
-                                : 'border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900/70'
-                            }`}
-                          />
+                          <div className="relative">
+                            <input
+                              id="dentist-password"
+                              type={showPassword ? 'text' : 'password'}
+                              required
+                              placeholder="Min. 8 characters"
+                              value={formData.password}
+                              onChange={(e) => {
+                                setFormData({ ...formData, password: e.target.value });
+                                if (formErrors.password) setFormErrors((prev) => ({ ...prev, password: undefined }));
+                              }}
+                              className={`w-full pl-3.5 pr-10 py-2.5 border rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors ${
+                                formErrors.password
+                                  ? 'border-rose-400 dark:border-rose-500 bg-rose-50/30 dark:bg-rose-950/30'
+                                  : 'border-slate-300 dark:border-gray-600/90 hover:border-slate-400 dark:hover:border-gray-500 bg-white dark:bg-gray-900/70'
+                              }`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword((prev) => !prev)}
+                              aria-label={showPassword ? 'Hide password' : 'Show password'}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                            >
+                              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
                           {formErrors.password && (
                             <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.password}</p>
                           )}
@@ -860,18 +910,18 @@ export function DentistListPage() {
                           type="text"
                           required
                           disabled={!!editingDentist}
-                          placeholder="PRC-009876"
+                          placeholder="e.g., PRC-009876"
                           value={formData.license_number}
                           onChange={(e) => {
                             setFormData({ ...formData, license_number: e.target.value });
                             if (formErrors.license_number) setFormErrors((prev) => ({ ...prev, license_number: undefined }));
                           }}
-                          className={`w-full px-3.5 py-2.5 border rounded-xl text-sm font-mono tabular-nums focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors ${
+                          className={`w-full px-3.5 py-2.5 border rounded-xl text-sm font-mono tabular-nums placeholder:font-sans placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors ${
                             editingDentist
                               ? 'bg-slate-100 dark:bg-gray-900/50 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-gray-700 cursor-not-allowed'
                               : formErrors.license_number
                               ? 'border-rose-400 dark:border-rose-500 bg-rose-50/30 dark:bg-rose-950/30 text-slate-900 dark:text-slate-100'
-                              : 'border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100'
+                              : 'border-slate-300 dark:border-gray-600/90 hover:border-slate-400 dark:hover:border-gray-500 bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100'
                           }`}
                         />
                         {formErrors.license_number && (
@@ -899,7 +949,7 @@ export function DentistListPage() {
                           className={`w-full px-3.5 py-2.5 border rounded-xl text-sm tabular-nums text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors ${
                             formErrors.phone
                               ? 'border-rose-400 dark:border-rose-500 bg-rose-50/30 dark:bg-rose-950/30'
-                              : 'border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900/70'
+                              : 'border-slate-300 dark:border-gray-600/90 hover:border-slate-400 dark:hover:border-gray-500 bg-white dark:bg-gray-900/70'
                           }`}
                         />
                         {formErrors.phone && <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.phone}</p>}
@@ -921,18 +971,24 @@ export function DentistListPage() {
                         >
                           Specialization
                         </label>
-                        <select
-                          id="dentist-specialization"
-                          value={formData.specialization}
-                          onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
-                          className="w-full px-3.5 py-2.5 border border-slate-300 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors"
-                        >
-                          {specializationChoices.map((spec) => (
-                            <option key={spec} value={spec}>
-                              {spec}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="relative">
+                          <select
+                            id="dentist-specialization"
+                            value={formData.specialization}
+                            onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
+                            className="w-full appearance-none pl-3.5 pr-9 py-2.5 border border-slate-300 dark:border-gray-600/90 hover:border-slate-400 dark:hover:border-gray-500 rounded-xl text-sm bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors cursor-pointer"
+                          >
+                            {specializationChoices.map((spec) => (
+                              <option key={spec} value={spec} className="bg-white dark:bg-gray-800 text-slate-800 dark:text-slate-100">
+                                {spec}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown
+                            className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                            aria-hidden="true"
+                          />
+                        </div>
                       </div>
 
                       <div className="space-y-1.5">
@@ -942,18 +998,24 @@ export function DentistListPage() {
                         >
                           Default Operatory Chair
                         </label>
-                        <select
-                          id="dentist-chair"
-                          value={formData.default_operatory_chair}
-                          onChange={(e) => setFormData({ ...formData, default_operatory_chair: e.target.value })}
-                          className="w-full px-3.5 py-2.5 border border-slate-300 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors"
-                        >
-                          {chairChoices.map((chair) => (
-                            <option key={chair} value={chair}>
-                              {chair}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="relative">
+                          <select
+                            id="dentist-chair"
+                            value={formData.default_operatory_chair}
+                            onChange={(e) => setFormData({ ...formData, default_operatory_chair: e.target.value })}
+                            className="w-full appearance-none pl-3.5 pr-9 py-2.5 border border-slate-300 dark:border-gray-600/90 hover:border-slate-400 dark:hover:border-gray-500 rounded-xl text-sm bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors cursor-pointer"
+                          >
+                            {chairChoices.map((chair) => (
+                              <option key={chair} value={chair} className="bg-white dark:bg-gray-800 text-slate-800 dark:text-slate-100">
+                                {chair}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown
+                            className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                            aria-hidden="true"
+                          />
+                        </div>
                       </div>
                     </div>
 
@@ -980,7 +1042,7 @@ export function DentistListPage() {
                         placeholder="Education, board certifications, and clinical focus areas..."
                         value={formData.bio}
                         onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                        className="w-full px-3.5 py-2.5 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl text-sm leading-relaxed focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors"
+                        className="w-full px-3.5 py-2.5 border border-slate-300 dark:border-gray-600/90 hover:border-slate-400 dark:hover:border-gray-500 bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl text-sm leading-relaxed focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors"
                       />
                     </div>
                   </div>
@@ -995,15 +1057,30 @@ export function DentistListPage() {
                           : 'bg-slate-50/70 dark:bg-gray-900/50 border-slate-200 dark:border-gray-700'
                       }`}
                     >
-                      <div className="min-w-0">
-                        <span className="block text-xs font-semibold text-slate-800 dark:text-slate-100">
-                          Active Practice Status
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                            formData.is_active === 1
+                              ? 'bg-emerald-100/80 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
+                              : 'bg-slate-200/80 dark:bg-gray-800 text-slate-500 dark:text-slate-400'
+                          }`}
+                        >
+                          {formData.is_active === 1 ? (
+                            <CheckCircle className="w-4 h-4" aria-hidden="true" />
+                          ) : (
+                            <Lock className="w-4 h-4" aria-hidden="true" />
+                          )}
                         </span>
-                        <span className="block text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                          {formData.is_active === 1
-                            ? 'Allow immediate portal login and appointment scheduling.'
-                            : 'Create account in inactive state until ready to accept bookings.'}
-                        </span>
+                        <div className="min-w-0">
+                          <span className="block text-xs font-semibold text-slate-800 dark:text-slate-100">
+                            Active Practice Status
+                          </span>
+                          <span className="block text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            {formData.is_active === 1
+                              ? 'Allow immediate portal login and appointment scheduling.'
+                              : 'Create account in inactive state until ready to accept bookings.'}
+                          </span>
+                        </div>
                       </div>
                       <div className="relative inline-flex items-center shrink-0">
                         <input
@@ -1033,7 +1110,13 @@ export function DentistListPage() {
                     disabled={formSubmitting}
                     className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-[#0D9488] text-white font-semibold text-xs shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
                   >
-                    {formSubmitting && <RefreshCw className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}
+                    {formSubmitting ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                    ) : editingDentist ? (
+                      <CheckCircle className="w-3.5 h-3.5" aria-hidden="true" />
+                    ) : (
+                      <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                    )}
                     <span>{editingDentist ? 'Save Changes' : 'Register Dentist'}</span>
                   </button>
                 </div>

@@ -15,7 +15,8 @@ import {
   X,
   FileText,
   Eye,
-  Lock
+  Lock,
+  ChevronDown
 } from 'lucide-react';
 import { servicesApi } from '../api';
 import { useAuth } from '../../auth';
@@ -570,7 +571,7 @@ export function ServicesPage() {
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-slate-200/90 dark:border-gray-700/80 w-full max-w-lg overflow-hidden max-h-[90dvh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
             {/* Header */}
             <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-100 dark:border-gray-700/80 bg-slate-50/70 dark:bg-gray-900/50">
-              <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-3.5 min-w-0">
                 <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-500/15 ring-1 ring-inset ring-teal-200/90 dark:ring-teal-500/30 text-[#0F766E] dark:text-teal-300 flex items-center justify-center shrink-0">
                   {editingService ? <Edit2 className="w-4 h-4" aria-hidden="true" /> : <Sparkles className="w-4 h-4" aria-hidden="true" />}
                 </div>
@@ -580,8 +581,8 @@ export function ServicesPage() {
                   </h2>
                   <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                     {editingService
-                      ? `Service #${editingService.id} · Update pricing, duration, and booking visibility`
-                      : 'Configure procedure details, fee, and clinic booking availability'}
+                      ? `Service #${editingService.id} · Update pricing, duration, and visibility`
+                      : 'Configure procedure details, fee, and booking availability'}
                   </p>
                 </div>
               </div>
@@ -596,7 +597,7 @@ export function ServicesPage() {
             </div>
 
             <form onSubmit={handleFormSubmit} className="flex flex-col flex-1 min-h-0">
-              <div className="p-6 space-y-4 overflow-y-auto flex-1">
+              <div className="p-6 space-y-5 overflow-y-auto flex-1">
                 {formErrors.general && (
                   <div
                     role="alert"
@@ -606,6 +607,41 @@ export function ServicesPage() {
                     <span>{formErrors.general}</span>
                   </div>
                 )}
+
+                {/* Live Compact Preview Strip */}
+                <div className="px-3.5 py-2.5 rounded-xl bg-slate-50/90 dark:bg-gray-900/60 border border-slate-200/80 dark:border-gray-700/70 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                          formData.is_active === 1 ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-slate-400'
+                        }`}
+                        aria-hidden="true"
+                      />
+                      <span className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">
+                        {formData.name.trim() || 'Untitled Dental Procedure'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getCategoryBadgeClasses(formData.category)}`}
+                      >
+                        {formData.category || 'General'}
+                      </span>
+                      <span className="text-[11px] text-slate-400 dark:text-slate-500 tabular-nums">
+                        · {formData.duration_minutes}m
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0 tabular-nums">
+                    <span className="block text-sm font-extrabold text-[#0F766E] dark:text-teal-300">
+                      ₱{Number(formData.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </span>
+                    <span className="block text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                      {formData.is_active === 1 ? 'Bookable' : 'Hidden'}
+                    </span>
+                  </div>
+                </div>
 
                 {/* Service Name */}
                 <div className="space-y-1.5">
@@ -629,7 +665,7 @@ export function ServicesPage() {
                     className={`w-full px-3.5 py-2.5 border rounded-xl text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors ${
                       formErrors.name
                         ? 'border-rose-400 bg-rose-50/30 dark:bg-rose-950/30'
-                        : 'border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900/70'
+                        : 'border-slate-300 dark:border-gray-600/90 bg-white dark:bg-gray-900/70 hover:border-slate-400 dark:hover:border-gray-500'
                     }`}
                   />
                   {formErrors.name && <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.name}</p>}
@@ -644,18 +680,24 @@ export function ServicesPage() {
                     >
                       Category
                     </label>
-                    <select
-                      id="service-category-select"
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className="w-full px-3.5 py-2.5 border border-slate-300 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-900/70 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors"
-                    >
-                      {CATEGORY_OPTIONS.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      <select
+                        id="service-category-select"
+                        value={formData.category}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                        className="w-full appearance-none pl-3.5 pr-9 py-2.5 border border-slate-300 dark:border-gray-600/90 hover:border-slate-400 dark:hover:border-gray-500 rounded-xl text-sm bg-white dark:bg-gray-900/70 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors cursor-pointer"
+                      >
+                        {CATEGORY_OPTIONS.map((cat) => (
+                          <option key={cat} value={cat} className="bg-white dark:bg-gray-800 text-slate-800 dark:text-slate-100">
+                            {cat}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown
+                        className="w-4 h-4 text-slate-400 dark:text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                        aria-hidden="true"
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-1.5">
@@ -665,8 +707,8 @@ export function ServicesPage() {
                     >
                       Treatment Fee (PHP) <span className="text-rose-500 dark:text-rose-400">*</span>
                     </label>
-                    <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-400 font-semibold text-sm pointer-events-none">
+                    <div className="relative flex items-center">
+                      <span className="absolute left-0 inset-y-0 w-9 flex items-center justify-center text-slate-500 dark:text-slate-400 font-semibold text-sm border-r border-slate-200 dark:border-gray-700/80 pointer-events-none">
                         ₱
                       </span>
                       <input
@@ -681,10 +723,10 @@ export function ServicesPage() {
                           setFormData({ ...formData, price: e.target.value });
                           if (formErrors.price) setFormErrors((prev) => ({ ...prev, price: undefined }));
                         }}
-                        className={`w-full pl-8 pr-3.5 py-2.5 border rounded-xl text-sm font-medium tabular-nums text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors ${
+                        className={`w-full pl-11 pr-3.5 py-2.5 border rounded-xl text-sm font-medium tabular-nums text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors ${
                           formErrors.price
                             ? 'border-rose-400 bg-rose-50/30 dark:bg-rose-950/30'
-                            : 'border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900/70'
+                            : 'border-slate-300 dark:border-gray-600/90 bg-white dark:bg-gray-900/70 hover:border-slate-400 dark:hover:border-gray-500'
                         }`}
                       />
                     </div>
@@ -694,8 +736,11 @@ export function ServicesPage() {
 
                 {/* Duration Quick-Select Pills */}
                 <div className="space-y-1.5">
-                  <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Duration <span className="text-rose-500 dark:text-rose-400">*</span>
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <Clock className="w-3 h-3 text-teal-600 dark:text-teal-400" aria-hidden="true" />
+                    <span>
+                      Duration <span className="text-rose-500 dark:text-rose-400">*</span>
+                    </span>
                   </span>
                   <div className="grid grid-cols-3 sm:grid-cols-6 gap-2" role="group" aria-label="Service duration in minutes">
                     {DURATION_OPTIONS.map((mins) => {
@@ -713,8 +758,8 @@ export function ServicesPage() {
                           }}
                           className={`py-2 px-2 rounded-xl text-xs font-semibold tabular-nums border transition-all cursor-pointer ${
                             selected
-                              ? 'bg-teal-50 dark:bg-teal-500/15 border-teal-500 dark:border-teal-400 text-[#0F766E] dark:text-teal-200 ring-1 ring-teal-500/30'
-                              : 'bg-white dark:bg-gray-900/60 border-slate-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 hover:border-teal-400 dark:hover:border-teal-500/60'
+                              ? 'bg-teal-50 dark:bg-teal-500/15 border-teal-500 dark:border-teal-400 text-[#0F766E] dark:text-teal-200 ring-1 ring-teal-500/30 shadow-2xs'
+                              : 'bg-white dark:bg-gray-900/60 border-slate-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 hover:border-teal-400 dark:hover:border-teal-500/60 hover:text-slate-900 dark:hover:text-slate-100'
                           }`}
                         >
                           {mins}m
@@ -750,7 +795,7 @@ export function ServicesPage() {
                     placeholder="Brief clinical scope, preparation notes, or patient expectations..."
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-white dark:bg-gray-900/70 border border-slate-300 dark:border-gray-600 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl text-sm leading-relaxed focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors"
+                    className="w-full px-3.5 py-2.5 bg-white dark:bg-gray-900/70 border border-slate-300 dark:border-gray-600/90 hover:border-slate-400 dark:hover:border-gray-500 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl text-sm leading-relaxed focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors"
                   />
                 </div>
 
@@ -763,15 +808,30 @@ export function ServicesPage() {
                       : 'bg-slate-50/70 dark:bg-gray-900/50 border-slate-200 dark:border-gray-700'
                   }`}
                 >
-                  <div className="min-w-0">
-                    <span className="block text-xs font-semibold text-slate-800 dark:text-slate-100">
-                      Available for Online Booking
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                        formData.is_active === 1
+                          ? 'bg-emerald-100/80 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
+                          : 'bg-slate-200/80 dark:bg-gray-800 text-slate-500 dark:text-slate-400'
+                      }`}
+                    >
+                      {formData.is_active === 1 ? (
+                        <CheckCircle className="w-4 h-4" aria-hidden="true" />
+                      ) : (
+                        <Lock className="w-4 h-4" aria-hidden="true" />
+                      )}
                     </span>
-                    <span className="block text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      {formData.is_active === 1
-                        ? 'Visible to patients and staff when scheduling appointments.'
-                        : 'Hidden from new bookings; historical records remain intact.'}
-                    </span>
+                    <div className="min-w-0">
+                      <span className="block text-xs font-semibold text-slate-800 dark:text-slate-100">
+                        Available for Online Booking
+                      </span>
+                      <span className="block text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        {formData.is_active === 1
+                          ? 'Visible to patients and staff when scheduling appointments.'
+                          : 'Hidden from new bookings; historical records remain intact.'}
+                      </span>
+                    </div>
                   </div>
                   <div className="relative inline-flex items-center shrink-0">
                     <input
@@ -798,9 +858,15 @@ export function ServicesPage() {
                 <button
                   type="submit"
                   disabled={formSubmitting}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-[#0D9488] text-white font-semibold text-xs shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-[#0D9488] text-white font-semibold text-xs shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
                 >
-                  {formSubmitting && <RefreshCw className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}
+                  {formSubmitting ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                  ) : editingService ? (
+                    <CheckCircle className="w-3.5 h-3.5" aria-hidden="true" />
+                  ) : (
+                    <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                  )}
                   <span>{editingService ? 'Save Changes' : 'Create Service'}</span>
                 </button>
               </div>
