@@ -17,7 +17,12 @@ import {
   ShieldCheck,
   UserCheck,
   Eye,
-  Lock
+  EyeOff,
+  Lock,
+  Copy,
+  Check,
+  FileText,
+  ChevronDown
 } from 'lucide-react';
 import { dentistsApi } from '../api';
 import { useAuth } from '../../auth';
@@ -27,8 +32,10 @@ import { MobileSortControl } from '../../../components/ui/MobileSortControl';
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 const SPECIALIZATION_OPTIONS = [
   'General Dentistry',
+  'General & Cosmetic Dentistry',
   'Orthodontics',
   'Endodontics',
+  'Endodontics & Micro-Dentistry',
   'Periodontics',
   'Pediatric Dentistry',
   'Prosthodontics',
@@ -36,7 +43,13 @@ const SPECIALIZATION_OPTIONS = [
   'Cosmetic Dentistry',
 ];
 
-const OPERATORY_CHAIR_OPTIONS = ['Chair 1', 'Chair 2', 'Chair 3', 'Chair 4', 'Surgical Suite'];
+const OPERATORY_CHAIR_OPTIONS = [
+  'Operatory Chair 1',
+  'Operatory Chair 2',
+  'Operatory Chair 3',
+  'Operatory Chair 4',
+  'Surgical Suite',
+];
 
 function getDentistInitials(firstName = '', lastName = '') {
   const first = (firstName || '').trim().charAt(0);
@@ -72,6 +85,20 @@ export function DentistListPage() {
 
   const [dentists, setDentists] = useState([]);
   const [viewingDentist, setViewingDentist] = useState(null);
+  const [copiedField, setCopiedField] = useState(null);
+
+  const handleCopyContact = async (field, value) => {
+    if (!value) return;
+    try {
+      await navigator.clipboard?.writeText(String(value));
+      setCopiedField(field);
+      setTimeout(() => {
+        setCopiedField((prev) => (prev === field ? null : prev));
+      }, 1600);
+    } catch {
+      // Clipboard API unavailable in non-secure context
+    }
+  };
   const [meta, setMeta] = useState({ total: 0, page: 1, per_page: 10, last_page: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -87,6 +114,7 @@ export function DentistListPage() {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingDentist, setEditingDentist] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -95,7 +123,7 @@ export function DentistListPage() {
     license_number: '',
     specialization: 'General Dentistry',
     phone: '',
-    default_operatory_chair: 'Chair 1',
+    default_operatory_chair: 'Operatory Chair 1',
     bio: '',
     is_active: 1,
   });
@@ -167,11 +195,12 @@ export function DentistListPage() {
       license_number: '',
       specialization: 'General Dentistry',
       phone: '',
-      default_operatory_chair: 'Chair 1',
+      default_operatory_chair: 'Operatory Chair 1',
       bio: '',
       is_active: 1,
     });
     setFormErrors({});
+    setShowPassword(false);
     setIsModalOpen(true);
   };
 
@@ -191,6 +220,7 @@ export function DentistListPage() {
       is_active: dentist.is_active ? 1 : 0,
     });
     setFormErrors({});
+    setShowPassword(false);
     setIsModalOpen(true);
   };
 
@@ -603,242 +633,498 @@ export function DentistListPage() {
       )}
 
       {/* Dentist Modal (Create / Edit) */}
-      {isModalOpen && (
-        <DialogOverlay
-          onClose={() => setIsModalOpen(false)} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-black/65 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90dvh] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/50 dark:bg-gray-900/40">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-                {editingDentist ? 'Edit Dentist Profile' : 'Register Licensed Dentist'}
-              </h2>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg p-1"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {isModalOpen && (() => {
+        const specializationChoices =
+          formData.specialization && !SPECIALIZATION_OPTIONS.includes(formData.specialization)
+            ? [formData.specialization, ...SPECIALIZATION_OPTIONS]
+            : SPECIALIZATION_OPTIONS;
+        const chairChoices =
+          formData.default_operatory_chair && !OPERATORY_CHAIR_OPTIONS.includes(formData.default_operatory_chair)
+            ? [formData.default_operatory_chair, ...OPERATORY_CHAIR_OPTIONS]
+            : OPERATORY_CHAIR_OPTIONS;
+        const bioLength = (formData.bio || '').length;
 
-            <form onSubmit={handleFormSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
-              {formErrors.general && (
-                <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-sm rounded-lg">
-                  {formErrors.general}
-                </div>
-              )}
-
-              {/* Names */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                    First Name <span className="text-rose-500 dark:text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g., Maria"
-                    value={formData.first_name}
-                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                    className={`w-full px-3.5 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-teal-500 focus:outline-none ${
-                      formErrors.first_name ? 'border-rose-400 dark:border-rose-500 bg-rose-50/30 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600'
-                    }`}
-                  />
-                  {formErrors.first_name && (
-                    <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{formErrors.first_name}</p>
+        return (
+          <DialogOverlay
+            onClose={() => setIsModalOpen(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/70 backdrop-blur-sm"
+          >
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-slate-200/90 dark:border-gray-700/80 w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90dvh] flex flex-col">
+              {/* Header */}
+              <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-100 dark:border-gray-700/80 bg-slate-50/70 dark:bg-gray-900/50">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  {editingDentist ? (
+                    editingDentist.avatar_url ? (
+                      <img
+                        src={editingDentist.avatar_url}
+                        alt={`Dr. ${editingDentist.first_name} ${editingDentist.last_name}`}
+                        className="w-11 h-11 rounded-full object-cover border border-teal-200 dark:border-teal-500/35 shrink-0"
+                      />
+                    ) : (
+                      <div className="w-11 h-11 rounded-full bg-teal-50 dark:bg-teal-500/15 ring-1 ring-inset ring-teal-200/90 dark:ring-teal-500/30 text-[#0F766E] dark:text-teal-300 flex items-center justify-center font-bold text-sm shrink-0">
+                        {getDentistInitials(editingDentist.first_name, editingDentist.last_name)}
+                      </div>
+                    )
+                  ) : (
+                    <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-500/15 ring-1 ring-inset ring-teal-200/90 dark:ring-teal-500/30 text-[#0F766E] dark:text-teal-300 flex items-center justify-center shrink-0">
+                      <Stethoscope className="w-5 h-5" aria-hidden="true" />
+                    </div>
                   )}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                    Last Name <span className="text-rose-500 dark:text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g., Santos"
-                    value={formData.last_name}
-                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                    className={`w-full px-3.5 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-teal-500 focus:outline-none ${
-                      formErrors.last_name ? 'border-rose-400 dark:border-rose-500 bg-rose-50/30 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600'
-                    }`}
-                  />
-                  {formErrors.last_name && (
-                    <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{formErrors.last_name}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Credentials / Auth (Only for new dentist) */}
-              {!editingDentist && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                      Account Email <span className="text-rose-500 dark:text-rose-400">*</span>
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      placeholder="dr.santos@toothcare.com"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className={`w-full px-3.5 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-teal-500 focus:outline-none ${
-                        formErrors.email ? 'border-rose-400 dark:border-rose-500 bg-rose-50/30 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600'
-                      }`}
-                    />
-                    {formErrors.email && <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{formErrors.email}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                      Initial Password <span className="text-rose-500 dark:text-rose-400">*</span>
-                    </label>
-                    <input
-                      type="password"
-                      required
-                      placeholder="••••••••"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className={`w-full px-3.5 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-teal-500 focus:outline-none ${
-                        formErrors.password ? 'border-rose-400 dark:border-rose-500 bg-rose-50/30 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600'
-                      }`}
-                    />
-                    {formErrors.password && (
-                      <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{formErrors.password}</p>
-                    )}
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-base font-bold text-slate-900 dark:text-slate-50 truncate">
+                        {editingDentist ? 'Edit Dentist Profile' : 'Register Licensed Dentist'}
+                      </h2>
+                      {editingDentist && (
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold border ${
+                            editingDentist.is_active
+                              ? 'bg-emerald-50 dark:bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-500/30'
+                              : 'bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-gray-600'
+                          }`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${editingDentist.is_active ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-slate-400'}`}
+                            aria-hidden="true"
+                          />
+                          {editingDentist.is_active ? 'Active Practice' : 'Inactive'}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                      {editingDentist
+                        ? `Dentist #${editingDentist.id} · Update clinical credentials, chair assignment, and bio`
+                        : 'Create a licensed dentist account and configure clinic assignment'}
+                    </p>
                   </div>
                 </div>
-              )}
-
-              {/* License Number & Phone */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                    PRC License Number <span className="text-rose-500 dark:text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    disabled={!!editingDentist}
-                    placeholder="PRC-DEN-009876"
-                    value={formData.license_number}
-                    onChange={(e) => setFormData({ ...formData, license_number: e.target.value })}
-                    className={`w-full px-3.5 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none font-mono ${
-                      editingDentist
-                        ? 'bg-slate-100 dark:bg-gray-900/50 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-gray-700 cursor-not-allowed'
-                        : 'border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100'
-                    }`}
-                  />
-                  {formErrors.license_number && (
-                    <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{formErrors.license_number}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                    Direct Contact Phone <span className="text-rose-500 dark:text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    placeholder="+63 917 555 1234"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className={`w-full px-3.5 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-teal-500 focus:outline-none ${
-                      formErrors.phone ? 'border-rose-400 dark:border-rose-500 bg-rose-50/30 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600'
-                    }`}
-                  />
-                  {formErrors.phone && <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{formErrors.phone}</p>}
-                </div>
-              </div>
-
-              {/* Specialization & Operatory Chair */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                    Specialization
-                  </label>
-                  <select
-                    value={formData.specialization}
-                    onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
-                    className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                  >
-                    {SPECIALIZATION_OPTIONS.map((spec) => (
-                      <option key={spec} value={spec}>
-                        {spec}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                    Default Operatory Chair
-                  </label>
-                  <select
-                    value={formData.default_operatory_chair}
-                    onChange={(e) => setFormData({ ...formData, default_operatory_chair: e.target.value })}
-                    className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                  >
-                    {OPERATORY_CHAIR_OPTIONS.map((chair) => (
-                      <option key={chair} value={chair}>
-                        {chair}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Bio */}
-              <div>
-                <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                  Professional Bio & Clinical Background
-                </label>
-                <textarea
-                  rows="3"
-                  placeholder="Doctor's education, certifications, and special clinical interests..."
-                  value={formData.bio}
-                  onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                  className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                />
-              </div>
-
-              {/* Active Toggle (Only for create) */}
-              {!editingDentist && (
-                <div className="flex items-center gap-3 pt-2">
-                  <input
-                    type="checkbox"
-                    id="dentist-active"
-                    checked={formData.is_active === 1}
-                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked ? 1 : 0 })}
-                    className="w-4 h-4 text-teal-600 rounded border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-teal-500"
-                  />
-                  <label htmlFor="dentist-active" className="text-sm font-medium text-slate-700 dark:text-slate-200 cursor-pointer">
-                    Enable immediate active practice status and appointment availability
-                  </label>
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-gray-700">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 font-medium text-sm rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors"
+                  aria-label="Close dentist form"
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-gray-700/70 rounded-xl p-1.5 transition-colors cursor-pointer shrink-0"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={formSubmitting}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 dark:bg-[#0F766E] hover:bg-teal-700 dark:hover:bg-teal-600 text-white font-medium text-sm rounded-lg shadow-sm transition-colors disabled:opacity-50"
-                >
-                  {formSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
-                  {editingDentist ? 'Save Changes' : 'Register Dentist'}
+                  <X className="w-5 h-5" />
                 </button>
               </div>
-            </form>
-          </div>
-        </DialogOverlay>
-      )}
+
+              <form onSubmit={handleFormSubmit} className="flex flex-col flex-1 min-h-0">
+                <div className="p-6 space-y-5 overflow-y-auto flex-1">
+                  {formErrors.general && (
+                    <div
+                      role="alert"
+                      className="flex items-center gap-2 p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/70 text-rose-700 dark:text-rose-200 text-xs font-medium rounded-xl"
+                    >
+                      <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
+                      <span>{formErrors.general}</span>
+                    </div>
+                  )}
+
+                  {/* Live Compact Dentist Preview Strip */}
+                  <div className="px-3.5 py-2.5 rounded-xl bg-slate-50/90 dark:bg-gray-900/60 border border-slate-200/80 dark:border-gray-700/70 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-full bg-teal-50 dark:bg-teal-500/15 ring-1 ring-inset ring-teal-200/90 dark:ring-teal-500/30 text-[#0F766E] dark:text-teal-300 flex items-center justify-center font-bold text-xs shrink-0">
+                        {getDentistInitials(formData.first_name, formData.last_name)}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                              formData.is_active === 1 ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-slate-400'
+                            }`}
+                            aria-hidden="true"
+                          />
+                          <span className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">
+                            Dr. {formData.first_name.trim() || 'First'} {formData.last_name.trim() || 'Last'}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getSpecializationBadgeClasses(formData.specialization)}`}
+                          >
+                            {formData.specialization || 'General Dentistry'}
+                          </span>
+                          <span className="text-[10.5px] text-slate-400 dark:text-slate-500 truncate">
+                            · {formData.default_operatory_chair || 'Operatory Chair 1'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <span className="font-mono text-[11px] font-semibold text-slate-500 dark:text-slate-400 tabular-nums shrink-0 hidden sm:inline">
+                      {formData.license_number.trim() || 'PRC-PENDING'}
+                    </span>
+                  </div>
+
+                  {/* Identity & Credentials */}
+                  <div className="space-y-3.5">
+                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                      Identity &amp; Credentials
+                    </h3>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="dentist-first-name"
+                          className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                        >
+                          First Name <span className="text-rose-500 dark:text-rose-400">*</span>
+                        </label>
+                        <input
+                          id="dentist-first-name"
+                          type="text"
+                          required
+                          placeholder="e.g., Maria"
+                          value={formData.first_name}
+                          onChange={(e) => {
+                            setFormData({ ...formData, first_name: e.target.value });
+                            if (formErrors.first_name) setFormErrors((prev) => ({ ...prev, first_name: undefined }));
+                          }}
+                          className={`w-full px-3.5 py-2.5 border rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors ${
+                            formErrors.first_name
+                              ? 'border-rose-400 dark:border-rose-500 bg-rose-50/30 dark:bg-rose-950/30'
+                              : 'border-slate-300 dark:border-gray-600/90 hover:border-slate-400 dark:hover:border-gray-500 bg-white dark:bg-gray-900/70'
+                          }`}
+                        />
+                        {formErrors.first_name && (
+                          <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.first_name}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="dentist-last-name"
+                          className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                        >
+                          Last Name <span className="text-rose-500 dark:text-rose-400">*</span>
+                        </label>
+                        <input
+                          id="dentist-last-name"
+                          type="text"
+                          required
+                          placeholder="e.g., Santos"
+                          value={formData.last_name}
+                          onChange={(e) => {
+                            setFormData({ ...formData, last_name: e.target.value });
+                            if (formErrors.last_name) setFormErrors((prev) => ({ ...prev, last_name: undefined }));
+                          }}
+                          className={`w-full px-3.5 py-2.5 border rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors ${
+                            formErrors.last_name
+                              ? 'border-rose-400 dark:border-rose-500 bg-rose-50/30 dark:bg-rose-950/30'
+                              : 'border-slate-300 dark:border-gray-600/90 hover:border-slate-400 dark:hover:border-gray-500 bg-white dark:bg-gray-900/70'
+                          }`}
+                        />
+                        {formErrors.last_name && (
+                          <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.last_name}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Credentials / Auth (Only for new dentist) */}
+                    {!editingDentist && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        <div className="space-y-1.5">
+                          <label
+                            htmlFor="dentist-email"
+                            className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                          >
+                            Account Email <span className="text-rose-500 dark:text-rose-400">*</span>
+                          </label>
+                          <input
+                            id="dentist-email"
+                            type="email"
+                            required
+                            placeholder="dr.santos@toothcare.com"
+                            value={formData.email}
+                            onChange={(e) => {
+                              setFormData({ ...formData, email: e.target.value });
+                              if (formErrors.email) setFormErrors((prev) => ({ ...prev, email: undefined }));
+                            }}
+                            className={`w-full px-3.5 py-2.5 border rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors ${
+                              formErrors.email
+                                ? 'border-rose-400 dark:border-rose-500 bg-rose-50/30 dark:bg-rose-950/30'
+                                : 'border-slate-300 dark:border-gray-600/90 hover:border-slate-400 dark:hover:border-gray-500 bg-white dark:bg-gray-900/70'
+                            }`}
+                          />
+                          {formErrors.email && <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.email}</p>}
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label
+                            htmlFor="dentist-password"
+                            className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                          >
+                            Initial Password <span className="text-rose-500 dark:text-rose-400">*</span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              id="dentist-password"
+                              type={showPassword ? 'text' : 'password'}
+                              required
+                              placeholder="Min. 8 characters"
+                              value={formData.password}
+                              onChange={(e) => {
+                                setFormData({ ...formData, password: e.target.value });
+                                if (formErrors.password) setFormErrors((prev) => ({ ...prev, password: undefined }));
+                              }}
+                              className={`w-full pl-3.5 pr-10 py-2.5 border rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors ${
+                                formErrors.password
+                                  ? 'border-rose-400 dark:border-rose-500 bg-rose-50/30 dark:bg-rose-950/30'
+                                  : 'border-slate-300 dark:border-gray-600/90 hover:border-slate-400 dark:hover:border-gray-500 bg-white dark:bg-gray-900/70'
+                              }`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword((prev) => !prev)}
+                              aria-label={showPassword ? 'Hide password' : 'Show password'}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                            >
+                              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                          {formErrors.password && (
+                            <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.password}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* License Number & Phone */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <label
+                            htmlFor="dentist-license"
+                            className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                          >
+                            PRC License Number <span className="text-rose-500 dark:text-rose-400">*</span>
+                          </label>
+                          {editingDentist && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                              <Lock className="w-2.5 h-2.5" aria-hidden="true" />
+                              Locked
+                            </span>
+                          )}
+                        </div>
+                        <input
+                          id="dentist-license"
+                          type="text"
+                          required
+                          disabled={!!editingDentist}
+                          placeholder="e.g., PRC-009876"
+                          value={formData.license_number}
+                          onChange={(e) => {
+                            setFormData({ ...formData, license_number: e.target.value });
+                            if (formErrors.license_number) setFormErrors((prev) => ({ ...prev, license_number: undefined }));
+                          }}
+                          className={`w-full px-3.5 py-2.5 border rounded-xl text-sm font-mono tabular-nums placeholder:font-sans placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors ${
+                            editingDentist
+                              ? 'bg-slate-100 dark:bg-gray-900/50 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-gray-700 cursor-not-allowed'
+                              : formErrors.license_number
+                              ? 'border-rose-400 dark:border-rose-500 bg-rose-50/30 dark:bg-rose-950/30 text-slate-900 dark:text-slate-100'
+                              : 'border-slate-300 dark:border-gray-600/90 hover:border-slate-400 dark:hover:border-gray-500 bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100'
+                          }`}
+                        />
+                        {formErrors.license_number && (
+                          <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.license_number}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="dentist-phone"
+                          className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                        >
+                          Direct Contact Phone <span className="text-rose-500 dark:text-rose-400">*</span>
+                        </label>
+                        <input
+                          id="dentist-phone"
+                          type="tel"
+                          required
+                          placeholder="+63 917 555 1234"
+                          value={formData.phone}
+                          onChange={(e) => {
+                            setFormData({ ...formData, phone: e.target.value });
+                            if (formErrors.phone) setFormErrors((prev) => ({ ...prev, phone: undefined }));
+                          }}
+                          className={`w-full px-3.5 py-2.5 border rounded-xl text-sm tabular-nums text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors ${
+                            formErrors.phone
+                              ? 'border-rose-400 dark:border-rose-500 bg-rose-50/30 dark:bg-rose-950/30'
+                              : 'border-slate-300 dark:border-gray-600/90 hover:border-slate-400 dark:hover:border-gray-500 bg-white dark:bg-gray-900/70'
+                          }`}
+                        />
+                        {formErrors.phone && <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.phone}</p>}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Clinical Assignment */}
+                  <div className="space-y-3.5 pt-1 border-t border-slate-100 dark:border-gray-700/70">
+                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 pt-3">
+                      Clinical Assignment
+                    </h3>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="dentist-specialization"
+                          className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                        >
+                          Specialization
+                        </label>
+                        <div className="relative">
+                          <select
+                            id="dentist-specialization"
+                            value={formData.specialization}
+                            onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
+                            className="w-full appearance-none pl-3.5 pr-9 py-2.5 border border-slate-300 dark:border-gray-600/90 hover:border-slate-400 dark:hover:border-gray-500 rounded-xl text-sm bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors cursor-pointer"
+                          >
+                            {specializationChoices.map((spec) => (
+                              <option key={spec} value={spec} className="bg-white dark:bg-gray-800 text-slate-800 dark:text-slate-100">
+                                {spec}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown
+                            className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                            aria-hidden="true"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="dentist-chair"
+                          className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                        >
+                          Default Operatory Chair
+                        </label>
+                        <div className="relative">
+                          <select
+                            id="dentist-chair"
+                            value={formData.default_operatory_chair}
+                            onChange={(e) => setFormData({ ...formData, default_operatory_chair: e.target.value })}
+                            className="w-full appearance-none pl-3.5 pr-9 py-2.5 border border-slate-300 dark:border-gray-600/90 hover:border-slate-400 dark:hover:border-gray-500 rounded-xl text-sm bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors cursor-pointer"
+                          >
+                            {chairChoices.map((chair) => (
+                              <option key={chair} value={chair} className="bg-white dark:bg-gray-800 text-slate-800 dark:text-slate-100">
+                                {chair}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown
+                            className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                            aria-hidden="true"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bio */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <label
+                          htmlFor="dentist-bio"
+                          className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                        >
+                          <span>Professional Bio &amp; Clinical Background</span>
+                          <span className="text-[10px] font-medium normal-case tracking-normal text-slate-400 dark:text-slate-500">
+                            Optional
+                          </span>
+                        </label>
+                        <span className="text-[11px] text-slate-400 dark:text-slate-500 tabular-nums shrink-0">
+                          {bioLength} / 600
+                        </span>
+                      </div>
+                      <textarea
+                        id="dentist-bio"
+                        rows="3"
+                        maxLength={600}
+                        placeholder="Education, board certifications, and clinical focus areas..."
+                        value={formData.bio}
+                        onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                        className="w-full px-3.5 py-2.5 border border-slate-300 dark:border-gray-600/90 hover:border-slate-400 dark:hover:border-gray-500 bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl text-sm leading-relaxed focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Active Practice Switch Card (Create Mode) */}
+                  {!editingDentist && (
+                    <label
+                      htmlFor="dentist-active"
+                      className={`flex items-center justify-between gap-3 p-3.5 rounded-xl border transition-colors cursor-pointer ${
+                        formData.is_active === 1
+                          ? 'bg-emerald-50/60 dark:bg-emerald-500/10 border-emerald-200/90 dark:border-emerald-500/30'
+                          : 'bg-slate-50/70 dark:bg-gray-900/50 border-slate-200 dark:border-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                            formData.is_active === 1
+                              ? 'bg-emerald-100/80 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
+                              : 'bg-slate-200/80 dark:bg-gray-800 text-slate-500 dark:text-slate-400'
+                          }`}
+                        >
+                          {formData.is_active === 1 ? (
+                            <CheckCircle className="w-4 h-4" aria-hidden="true" />
+                          ) : (
+                            <Lock className="w-4 h-4" aria-hidden="true" />
+                          )}
+                        </span>
+                        <div className="min-w-0">
+                          <span className="block text-xs font-semibold text-slate-800 dark:text-slate-100">
+                            Active Practice Status
+                          </span>
+                          <span className="block text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            {formData.is_active === 1
+                              ? 'Allow immediate portal login and appointment scheduling.'
+                              : 'Create account in inactive state until ready to accept bookings.'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="relative inline-flex items-center shrink-0">
+                        <input
+                          type="checkbox"
+                          id="dentist-active"
+                          checked={formData.is_active === 1}
+                          onChange={(e) => setFormData({ ...formData, is_active: e.target.checked ? 1 : 0 })}
+                          className="sr-only peer"
+                        />
+                        <div className="w-10 h-6 rounded-full bg-slate-300 dark:bg-gray-600 peer-checked:bg-[#0D9488] peer-focus-visible:ring-2 peer-focus-visible:ring-[#0D9488] transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:rounded-full after:bg-white after:shadow-xs after:transition-transform peer-checked:after:translate-x-4" />
+                      </div>
+                    </label>
+                  )}
+                </div>
+
+                {/* Pinned Footer Actions */}
+                <div className="px-6 py-3.5 border-t border-slate-100 dark:border-gray-700/80 bg-slate-50/60 dark:bg-gray-900/45 flex items-center justify-end gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2 rounded-xl border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={formSubmitting}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-[#0D9488] text-white font-semibold text-xs shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    {formSubmitting ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                    ) : editingDentist ? (
+                      <CheckCircle className="w-3.5 h-3.5" aria-hidden="true" />
+                    ) : (
+                      <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                    )}
+                    <span>{editingDentist ? 'Save Changes' : 'Register Dentist'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </DialogOverlay>
+        );
+      })()}
 
       {/* Confirmation Modal */}
       {confirmModal.isOpen && confirmModal.dentist && (
@@ -863,7 +1149,7 @@ export function DentistListPage() {
               </div>
             </div>
 
-            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
               {confirmModal.targetStatus === 0
                 ? "Deactivating this practitioner's active status will suspend their login access and prevent new appointment booking. All prior patient consultations, treatment records, and appointment history are preserved."
                 : 'Activating this practitioner will re-enable their portal login access and restore their clinical availability for appointment scheduling.'}
@@ -898,132 +1184,261 @@ export function DentistListPage() {
       )}
 
       {/* Read-Only Dentist Details Modal */}
-      {viewingDentist && (
-        <DialogOverlay
-          onClose={() => setViewingDentist(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/45 dark:bg-black/65 backdrop-blur-sm"
-        >
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 w-full max-w-lg overflow-hidden">
-            <div className="flex items-start justify-between gap-4 px-6 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/60 dark:bg-gray-900/40">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-full bg-teal-50 dark:bg-teal-500/15 border border-teal-200/80 dark:border-teal-500/30 text-[#0F766E] dark:text-teal-300 flex items-center justify-center font-bold text-sm shrink-0">
-                  {getDentistInitials(viewingDentist.first_name, viewingDentist.last_name)}
-                </div>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-base font-bold text-slate-900 dark:text-slate-50">
-                      Dr. {viewingDentist.first_name} {viewingDentist.last_name}
-                    </h2>
-                    {viewingDentist.is_active ? (
-                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-500/25">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" aria-hidden="true" />
-                        Active Practice
+      {viewingDentist && (() => {
+        const isActive = Boolean(viewingDentist.is_active);
+        const hasBio = Boolean(String(viewingDentist.bio || '').trim());
+
+        return (
+          <DialogOverlay
+            onClose={() => setViewingDentist(null)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/70 backdrop-blur-sm"
+          >
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-slate-200/90 dark:border-gray-700/80 w-full max-w-lg overflow-hidden max-h-[90dvh] flex flex-col">
+              {/* Header */}
+              <div className="flex items-start justify-between gap-3 px-6 py-4 border-b border-slate-100 dark:border-gray-700/80 bg-slate-50/70 dark:bg-gray-900/50">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  {viewingDentist.avatar_url ? (
+                    <img
+                      src={viewingDentist.avatar_url}
+                      alt={`Dr. ${viewingDentist.first_name} ${viewingDentist.last_name}`}
+                      className="w-11 h-11 rounded-full object-cover border border-teal-200 dark:border-teal-500/35 shrink-0"
+                    />
+                  ) : (
+                    <div className="w-11 h-11 rounded-full bg-teal-50 dark:bg-teal-500/15 ring-1 ring-inset ring-teal-200/90 dark:ring-teal-500/30 text-[#0F766E] dark:text-teal-300 flex items-center justify-center font-bold text-sm shrink-0">
+                      {getDentistInitials(viewingDentist.first_name, viewingDentist.last_name)}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-base font-bold text-slate-900 dark:text-slate-50 truncate">
+                        Dr. {viewingDentist.first_name} {viewingDentist.last_name}
+                      </h2>
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold border ${
+                          isActive
+                            ? 'bg-emerald-50 dark:bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-500/30'
+                            : 'bg-slate-100 dark:bg-gray-700/70 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-gray-600'
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-slate-400'}`}
+                          aria-hidden="true"
+                        />
+                        {isActive ? 'Active Practice' : 'Inactive'}
                       </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-gray-700/70 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-gray-600">
-                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400" aria-hidden="true" />
-                        Inactive
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                      <span className="font-mono text-xs text-slate-400 dark:text-slate-500 tabular-nums">
+                        Dentist #{viewingDentist.id}
                       </span>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 mt-1">
-                    <span className="font-mono text-xs text-slate-400 dark:text-slate-500 tabular-nums">
-                      Dentist #{viewingDentist.id}
-                    </span>
-                    <span className="text-slate-300 dark:text-gray-600" aria-hidden="true">·</span>
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${getSpecializationBadgeClasses(viewingDentist.specialization)}`}>
-                      {viewingDentist.specialization}
-                    </span>
+                      <span className="text-slate-300 dark:text-gray-600" aria-hidden="true">·</span>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-semibold border ${getSpecializationBadgeClasses(viewingDentist.specialization)}`}
+                      >
+                        {viewingDentist.specialization}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setViewingDentist(null)}
-                aria-label="Close dentist details"
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors cursor-pointer shrink-0"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-5 text-sm">
-              <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-slate-50/80 dark:bg-gray-900/50 border border-slate-200/80 dark:border-gray-700/80">
-                <div>
-                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">PRC License</span>
-                  <span className="mt-0.5 inline-flex items-center gap-1.5 font-mono text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-50 tabular-nums">
-                    <ShieldCheck className="w-3.5 h-3.5 text-[#0D9488] dark:text-teal-400 shrink-0" aria-hidden="true" />
-                    {viewingDentist.license_number}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Assigned Operatory</span>
-                  <span className="mt-0.5 block text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-50">
-                    {viewingDentist.default_operatory_chair || 'Chair 1'}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
-                  Contact Information
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-slate-50/70 dark:bg-gray-900/40 border border-slate-200/70 dark:border-gray-700/70 text-xs">
-                  <div>
-                    <span className="text-slate-500 dark:text-slate-400 block mb-0.5">Account Email</span>
-                    <span className="inline-flex items-center gap-1.5 font-medium text-slate-800 dark:text-slate-100 break-all">
-                      <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
-                      {viewingDentist.email || '—'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 dark:text-slate-400 block mb-0.5">Contact Phone</span>
-                    <span className="inline-flex items-center gap-1.5 font-medium text-slate-800 dark:text-slate-100 tabular-nums">
-                      <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
-                      {viewingDentist.phone || '—'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
-                  Clinical Biography
-                </span>
-                <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-gray-900/40 border border-slate-200/70 dark:border-gray-700/70">
-                  <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
-                    {viewingDentist.bio || 'No biography recorded.'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-gray-700">
                 <button
                   type="button"
                   onClick={() => setViewingDentist(null)}
-                  className="px-4 py-2 rounded-lg border border-slate-200 dark:border-gray-600 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                  aria-label="Close dentist details"
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-gray-700/70 transition-colors cursor-pointer shrink-0"
                 >
-                  Close
+                  <X className="w-5 h-5" />
                 </button>
-                {canManageDentists && (
+              </div>
+
+              {/* Body */}
+              <div className="p-6 space-y-5 overflow-y-auto flex-1 text-xs">
+                {/* Key Credentials Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="p-3.5 rounded-xl bg-slate-50/85 dark:bg-gray-900/55 border border-slate-200/80 dark:border-gray-700/80 space-y-1">
+                    <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                      <ShieldCheck className="w-3.5 h-3.5 text-[#0D9488] dark:text-teal-400" aria-hidden="true" />
+                      PRC License
+                    </span>
+                    <span className="block font-mono text-sm font-bold text-slate-900 dark:text-slate-50 tabular-nums">
+                      {viewingDentist.license_number}
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-slate-50/85 dark:bg-gray-900/55 border border-slate-200/80 dark:border-gray-700/80 space-y-1">
+                    <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                      <Stethoscope className="w-3.5 h-3.5 text-[#0D9488] dark:text-teal-400" aria-hidden="true" />
+                      Assigned Operatory
+                    </span>
+                    <span className="block text-sm font-bold text-slate-900 dark:text-slate-50">
+                      {viewingDentist.default_operatory_chair || 'Operatory Chair 1'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Contact Information */}
+                <div className="space-y-2">
+                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    Contact Information
+                  </h3>
+                  <div className="rounded-xl border border-slate-200/80 dark:border-gray-700/80 bg-white dark:bg-gray-900/40 divide-y divide-slate-100 dark:divide-gray-700/70">
+                    {/* Email Row */}
+                    <div className="px-3.5 py-3 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shrink-0">
+                          <Mail className="w-3.5 h-3.5" aria-hidden="true" />
+                        </span>
+                        <div className="min-w-0">
+                          <span className="text-[10.5px] text-slate-400 dark:text-slate-500 block">Account Email</span>
+                          {viewingDentist.email ? (
+                            <a
+                              href={`mailto:${viewingDentist.email}`}
+                              title={viewingDentist.email}
+                              className="font-semibold text-slate-800 dark:text-slate-100 hover:text-teal-600 dark:hover:text-teal-300 block truncate transition-colors"
+                            >
+                              {viewingDentist.email}
+                            </a>
+                          ) : (
+                            <span className="text-slate-400 dark:text-slate-500 italic block">Not provided</span>
+                          )}
+                        </div>
+                      </div>
+                      {viewingDentist.email && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopyContact('email', viewingDentist.email)}
+                          aria-label="Copy dentist email"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10.5px] font-semibold text-slate-500 dark:text-slate-400 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors shrink-0 cursor-pointer"
+                        >
+                          {copiedField === 'email' ? (
+                            <>
+                              <Check className="w-3 h-3 text-emerald-500" aria-hidden="true" />
+                              <span className="text-emerald-600 dark:text-emerald-400">Copied</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" aria-hidden="true" />
+                              <span>Copy</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Phone Row */}
+                    <div className="px-3.5 py-3 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shrink-0">
+                          <Phone className="w-3.5 h-3.5" aria-hidden="true" />
+                        </span>
+                        <div className="min-w-0">
+                          <span className="text-[10.5px] text-slate-400 dark:text-slate-500 block">Contact Phone</span>
+                          {viewingDentist.phone ? (
+                            <a
+                              href={`tel:${viewingDentist.phone}`}
+                              className="font-semibold text-slate-800 dark:text-slate-100 hover:text-teal-600 dark:hover:text-teal-300 tabular-nums block truncate transition-colors"
+                            >
+                              {viewingDentist.phone}
+                            </a>
+                          ) : (
+                            <span className="text-slate-400 dark:text-slate-500 italic block">Not provided</span>
+                          )}
+                        </div>
+                      </div>
+                      {viewingDentist.phone && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopyContact('phone', viewingDentist.phone)}
+                          aria-label="Copy dentist phone"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10.5px] font-semibold text-slate-500 dark:text-slate-400 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors shrink-0 cursor-pointer"
+                        >
+                          {copiedField === 'phone' ? (
+                            <>
+                              <Check className="w-3 h-3 text-emerald-500" aria-hidden="true" />
+                              <span className="text-emerald-600 dark:text-emerald-400">Copied</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" aria-hidden="true" />
+                              <span>Copy</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Clinical Biography */}
+                <div className="space-y-2">
+                  <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    <FileText className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" aria-hidden="true" />
+                    Clinical Biography
+                  </span>
+                  <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-gray-900/45 border border-slate-200/80 dark:border-gray-700/80">
+                    <p
+                      className={`text-xs sm:text-sm leading-relaxed text-justify ${
+                        hasBio
+                          ? 'text-slate-700 dark:text-slate-200'
+                          : 'text-slate-400 dark:text-slate-500 italic'
+                      }`}
+                    >
+                      {hasBio ? viewingDentist.bio : 'No clinical biography recorded.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-3.5 border-t border-slate-100 dark:border-gray-700/80 bg-slate-50/60 dark:bg-gray-900/45 flex flex-wrap items-center justify-between gap-2.5">
+                <div>
+                  {canManageDentists && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = viewingDentist;
+                        setViewingDentist(null);
+                        handleStatusToggleClick(target);
+                      }}
+                      className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
+                        isActive
+                          ? 'border-amber-300/80 dark:border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-500/10'
+                          : 'border-emerald-300/80 dark:border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10'
+                      }`}
+                    >
+                      <Power className="w-3.5 h-3.5" aria-hidden="true" />
+                      <span>{isActive ? 'Deactivate' : 'Activate'}</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2.5 ml-auto">
                   <button
                     type="button"
-                    onClick={() => {
-                      const target = viewingDentist;
-                      setViewingDentist(null);
-                      openEditModal(target);
-                    }}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#0F766E] hover:bg-[#0D9488] text-white text-xs font-semibold transition-colors cursor-pointer"
+                    onClick={() => setViewingDentist(null)}
+                    className="px-4 py-2 rounded-xl border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                   >
-                    <Edit2 className="w-3.5 h-3.5" aria-hidden="true" />
-                    Edit Profile
+                    Close
                   </button>
-                )}
+                  {canManageDentists && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = viewingDentist;
+                        setViewingDentist(null);
+                        openEditModal(target);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-[#0D9488] text-white text-xs font-semibold transition-colors shadow-xs cursor-pointer"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" aria-hidden="true" />
+                      <span>Edit Profile</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        </DialogOverlay>
-      )}
+          </DialogOverlay>
+        );
+      })()}
     </div>
   );
 }

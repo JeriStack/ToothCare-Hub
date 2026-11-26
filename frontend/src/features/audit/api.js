@@ -13,11 +13,11 @@ export const auditApi = {
   },
 
   /**
-   * Fetch security-focused authentication / authorization failure events
+   * Fetch security-focused authentication / authorization failure events (paginated)
    */
   async getSecurityEvents(params = {}) {
     const response = await apiClient.get('/admin/security/events', { params });
-    return response.data?.data || [];
+    return response.data;
   },
 
   /**

@@ -15,7 +15,8 @@ import {
   X,
   FileText,
   Eye,
-  Lock
+  Lock,
+  ChevronDown
 } from 'lucide-react';
 import { servicesApi } from '../api';
 import { useAuth } from '../../auth';
@@ -24,6 +25,7 @@ import { MobileSortControl } from '../../../components/ui/MobileSortControl';
 
 
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
+import { useClinicSettings } from '../../system/useClinicSettings';
 const DURATION_OPTIONS = [15, 30, 45, 60, 90, 120];
 const CATEGORY_OPTIONS = [
   'General',
@@ -61,6 +63,7 @@ function getCategoryBadgeClasses(category) {
 
 export function ServicesPage() {
   const { user, hasPermission } = useAuth();
+  const clinicSettings = useClinicSettings();
   const canManageServices = Boolean(
     (typeof hasPermission === 'function' && hasPermission('services.manage')) || user?.role === 'ADMIN'
   );
@@ -149,13 +152,16 @@ export function ServicesPage() {
 
   const openCreateModal = () => {
     if (!canManageServices) return;
+    const defaultDuration = DURATION_OPTIONS.includes(Number(clinicSettings.slot_duration_default_minutes))
+      ? Number(clinicSettings.slot_duration_default_minutes)
+      : 30;
     setEditingService(null);
     setFormData({
       name: '',
       category: 'General',
       description: '',
       price: '',
-      duration_minutes: 30,
+      duration_minutes: defaultDuration,
       is_active: 1,
     });
     setFormErrors({});
@@ -567,148 +573,306 @@ export function ServicesPage() {
       {isModalOpen && (
         <DialogOverlay
           onClose={() => setIsModalOpen(false)} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-black/65 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/50 dark:bg-gray-900/60">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                {editingService ? 'Edit Dental Service' : 'Add New Dental Service'}
-              </h2>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-slate-200/90 dark:border-gray-700/80 w-full max-w-lg overflow-hidden max-h-[90dvh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-100 dark:border-gray-700/80 bg-slate-50/70 dark:bg-gray-900/50">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-500/15 ring-1 ring-inset ring-teal-200/90 dark:ring-teal-500/30 text-[#0F766E] dark:text-teal-300 flex items-center justify-center shrink-0">
+                  {editingService ? <Edit2 className="w-4 h-4" aria-hidden="true" /> : <Sparkles className="w-4 h-4" aria-hidden="true" />}
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-base font-bold text-slate-900 dark:text-slate-50 truncate">
+                    {editingService ? 'Edit Dental Service' : 'Add Dental Service'}
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                    {editingService
+                      ? `Service #${editingService.id} · Update pricing, duration, and visibility`
+                      : 'Configure procedure details, fee, and booking availability'}
+                  </p>
+                </div>
+              </div>
               <button
+                type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg p-1"
+                aria-label="Close service form"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-gray-700/70 rounded-xl p-1.5 transition-colors cursor-pointer shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleFormSubmit} className="p-6 space-y-4">
-              {formErrors.general && (
-                <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/70 text-rose-700 dark:text-rose-200 text-sm rounded-lg">
-                  {formErrors.general}
-                </div>
-              )}
-
-              {/* Service Name */}
-              <div>
-                <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                  Procedure Name <span className="text-rose-500 dark:text-rose-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g., Comprehensive Oral Prophylaxis"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className={`w-full px-3.5 py-2 border rounded-lg text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 focus:outline-none ${
-                    formErrors.name ? 'border-rose-400 bg-rose-50/30 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700'
-                  }`}
-                />
-                {formErrors.name && <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{formErrors.name}</p>}
-              </div>
-
-              {/* Category & Duration */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                    Category
-                  </label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 focus:outline-none"
+            <form onSubmit={handleFormSubmit} className="flex flex-col flex-1 min-h-0">
+              <div className="p-6 space-y-5 overflow-y-auto flex-1">
+                {formErrors.general && (
+                  <div
+                    role="alert"
+                    className="flex items-center gap-2 p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/70 text-rose-700 dark:text-rose-200 text-xs font-medium rounded-xl"
                   >
-                    {CATEGORY_OPTIONS.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
+                    <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
+                    <span>{formErrors.general}</span>
+                  </div>
+                )}
+
+                {/* Live Compact Preview Strip */}
+                <div className="px-3.5 py-2.5 rounded-xl bg-slate-50/90 dark:bg-gray-900/60 border border-slate-200/80 dark:border-gray-700/70 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                          formData.is_active === 1 ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-slate-400'
+                        }`}
+                        aria-hidden="true"
+                      />
+                      <span className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">
+                        {formData.name.trim() || 'Untitled Dental Procedure'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getCategoryBadgeClasses(formData.category)}`}
+                      >
+                        {formData.category || 'General'}
+                      </span>
+                      <span className="text-[11px] text-slate-400 dark:text-slate-500 tabular-nums">
+                        · {formData.duration_minutes}m
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0 tabular-nums">
+                    <span className="block text-sm font-extrabold text-[#0F766E] dark:text-teal-300">
+                      ₱{Number(formData.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </span>
+                    <span className="block text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                      {formData.is_active === 1 ? 'Bookable' : 'Hidden'}
+                    </span>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                    Duration (Minutes) <span className="text-rose-500 dark:text-rose-400">*</span>
-                  </label>
-                  <select
-                    value={formData.duration_minutes}
-                    onChange={(e) => setFormData({ ...formData, duration_minutes: Number(e.target.value) })}
-                    className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 focus:outline-none"
+                {/* Service Name */}
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="service-name-input"
+                    className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
                   >
-                    {DURATION_OPTIONS.map((mins) => (
-                      <option key={mins} value={mins}>
-                        {mins} minutes
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Price */}
-              <div>
-                <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                  Treatment Fee (PHP ₱) <span className="text-rose-500 dark:text-rose-400">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-2.5 text-slate-400 dark:text-slate-400 font-semibold text-sm">₱</span>
+                    Procedure Name <span className="text-rose-500 dark:text-rose-400">*</span>
+                  </label>
                   <input
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    id="service-name-input"
+                    type="text"
                     required
-                    placeholder="1500.00"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    className={`w-full pl-8 pr-3.5 py-2 border rounded-lg text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 focus:outline-none ${
-                      formErrors.price ? 'border-rose-400 bg-rose-50/30 dark:bg-rose-950/30' : 'border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700'
+                    maxLength={150}
+                    placeholder="e.g., Dental Prophylaxis (Cleaning)"
+                    value={formData.name}
+                    onChange={(e) => {
+                      setFormData({ ...formData, name: e.target.value });
+                      if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: undefined }));
+                    }}
+                    className={`w-full px-3.5 py-2.5 border rounded-xl text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors ${
+                      formErrors.name
+                        ? 'border-rose-400 bg-rose-50/30 dark:bg-rose-950/30'
+                        : 'border-slate-300 dark:border-gray-600/90 bg-white dark:bg-gray-900/70 hover:border-slate-400 dark:hover:border-gray-500'
                     }`}
                   />
+                  {formErrors.name && <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.name}</p>}
                 </div>
-                {formErrors.price && <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{formErrors.price}</p>}
-              </div>
 
-              {/* Description */}
-              <div>
-                <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                  Clinical Description
+                {/* Category & Treatment Fee */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="service-category-select"
+                      className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                    >
+                      Category
+                    </label>
+                    <div className="relative">
+                      <select
+                        id="service-category-select"
+                        value={formData.category}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                        className="w-full appearance-none pl-3.5 pr-9 py-2.5 border border-slate-300 dark:border-gray-600/90 hover:border-slate-400 dark:hover:border-gray-500 rounded-xl text-sm bg-white dark:bg-gray-900/70 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors cursor-pointer"
+                      >
+                        {CATEGORY_OPTIONS.map((cat) => (
+                          <option key={cat} value={cat} className="bg-white dark:bg-gray-800 text-slate-800 dark:text-slate-100">
+                            {cat}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown
+                        className="w-4 h-4 text-slate-400 dark:text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                        aria-hidden="true"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="service-price-input"
+                      className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                    >
+                      Treatment Fee (PHP) <span className="text-rose-500 dark:text-rose-400">*</span>
+                    </label>
+                    <div className="relative flex items-center">
+                      <span className="absolute left-0 inset-y-0 w-9 flex items-center justify-center text-slate-500 dark:text-slate-400 font-semibold text-sm border-r border-slate-200 dark:border-gray-700/80 pointer-events-none">
+                        ₱
+                      </span>
+                      <input
+                        id="service-price-input"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        required
+                        placeholder="1500.00"
+                        value={formData.price}
+                        onChange={(e) => {
+                          setFormData({ ...formData, price: e.target.value });
+                          if (formErrors.price) setFormErrors((prev) => ({ ...prev, price: undefined }));
+                        }}
+                        className={`w-full pl-11 pr-3.5 py-2.5 border rounded-xl text-sm font-medium tabular-nums text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors ${
+                          formErrors.price
+                            ? 'border-rose-400 bg-rose-50/30 dark:bg-rose-950/30'
+                            : 'border-slate-300 dark:border-gray-600/90 bg-white dark:bg-gray-900/70 hover:border-slate-400 dark:hover:border-gray-500'
+                        }`}
+                      />
+                    </div>
+                    {formErrors.price && <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.price}</p>}
+                  </div>
+                </div>
+
+                {/* Duration Quick-Select Pills */}
+                <div className="space-y-1.5">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <Clock className="w-3 h-3 text-teal-600 dark:text-teal-400" aria-hidden="true" />
+                    <span>
+                      Duration <span className="text-rose-500 dark:text-rose-400">*</span>
+                    </span>
+                  </span>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2" role="group" aria-label="Service duration in minutes">
+                    {DURATION_OPTIONS.map((mins) => {
+                      const selected = Number(formData.duration_minutes) === mins;
+                      return (
+                        <button
+                          key={mins}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => {
+                            setFormData({ ...formData, duration_minutes: mins });
+                            if (formErrors.duration_minutes) {
+                              setFormErrors((prev) => ({ ...prev, duration_minutes: undefined }));
+                            }
+                          }}
+                          className={`py-2 px-2 rounded-xl text-xs font-semibold tabular-nums border transition-all cursor-pointer ${
+                            selected
+                              ? 'bg-teal-50 dark:bg-teal-500/15 border-teal-500 dark:border-teal-400 text-[#0F766E] dark:text-teal-200 ring-1 ring-teal-500/30 shadow-2xs'
+                              : 'bg-white dark:bg-gray-900/60 border-slate-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 hover:border-teal-400 dark:hover:border-teal-500/60 hover:text-slate-900 dark:hover:text-slate-100'
+                          }`}
+                        >
+                          {mins}m
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {formErrors.duration_minutes && (
+                    <p className="text-xs text-rose-600 dark:text-rose-400">{formErrors.duration_minutes}</p>
+                  )}
+                </div>
+
+                {/* Description */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <label
+                      htmlFor="service-desc-input"
+                      className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                    >
+                      <span>Clinical Description</span>
+                      <span className="text-[10px] font-medium normal-case tracking-normal text-slate-400 dark:text-slate-500">
+                        Optional
+                      </span>
+                    </label>
+                    <span className="text-[11px] text-slate-400 dark:text-slate-500 tabular-nums">
+                      {(formData.description || '').length} / 500
+                    </span>
+                  </div>
+                  <textarea
+                    id="service-desc-input"
+                    rows="3"
+                    maxLength={500}
+                    placeholder="Brief clinical scope, preparation notes, or patient expectations..."
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-white dark:bg-gray-900/70 border border-slate-300 dark:border-gray-600/90 hover:border-slate-400 dark:hover:border-gray-500 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl text-sm leading-relaxed focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors"
+                  />
+                </div>
+
+                {/* Active Booking Switch Card */}
+                <label
+                  htmlFor="service-active"
+                  className={`flex items-center justify-between gap-3 p-3.5 rounded-xl border transition-colors cursor-pointer ${
+                    formData.is_active === 1
+                      ? 'bg-emerald-50/60 dark:bg-emerald-500/10 border-emerald-200/90 dark:border-emerald-500/30'
+                      : 'bg-slate-50/70 dark:bg-gray-900/50 border-slate-200 dark:border-gray-700'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                        formData.is_active === 1
+                          ? 'bg-emerald-100/80 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
+                          : 'bg-slate-200/80 dark:bg-gray-800 text-slate-500 dark:text-slate-400'
+                      }`}
+                    >
+                      {formData.is_active === 1 ? (
+                        <CheckCircle className="w-4 h-4" aria-hidden="true" />
+                      ) : (
+                        <Lock className="w-4 h-4" aria-hidden="true" />
+                      )}
+                    </span>
+                    <div className="min-w-0">
+                      <span className="block text-xs font-semibold text-slate-800 dark:text-slate-100">
+                        Available for Online Booking
+                      </span>
+                      <span className="block text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        {formData.is_active === 1
+                          ? 'Visible to patients and staff when scheduling appointments.'
+                          : 'Hidden from new bookings; historical records remain intact.'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="relative inline-flex items-center shrink-0">
+                    <input
+                      type="checkbox"
+                      id="service-active"
+                      checked={formData.is_active === 1}
+                      onChange={(e) => setFormData({ ...formData, is_active: e.target.checked ? 1 : 0 })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-10 h-6 rounded-full bg-slate-300 dark:bg-gray-600 peer-checked:bg-[#0D9488] peer-focus-visible:ring-2 peer-focus-visible:ring-[#0D9488] transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:rounded-full after:bg-white after:shadow-xs after:transition-transform peer-checked:after:translate-x-4" />
+                  </div>
                 </label>
-                <textarea
-                  rows="3"
-                  placeholder="Detail instructions, scope, or patient notes..."
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3.5 py-2 bg-white dark:bg-gray-700 border border-slate-300 dark:border-gray-600 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 rounded-lg text-base sm:text-sm focus:ring-2 focus:ring-teal-500 dark:focus:ring-teal-400 focus:outline-none"
-                />
               </div>
 
-              {/* Active Toggle */}
-              <div className="flex items-center gap-3 pt-2">
-                <input
-                  type="checkbox"
-                  id="service-active"
-                  checked={formData.is_active === 1}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked ? 1 : 0 })}
-                  className="w-4 h-4 text-teal-600 rounded border-slate-300 dark:border-gray-600 focus:ring-teal-500"
-                />
-                <label htmlFor="service-active" className="text-sm font-medium text-slate-700 dark:text-slate-200 cursor-pointer">
-                  Enable active booking availability for this service
-                </label>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-gray-700">
+              {/* Footer Actions */}
+              <div className="px-6 py-3.5 border-t border-slate-100 dark:border-gray-700/80 bg-slate-50/60 dark:bg-gray-900/45 flex items-center justify-end gap-2.5">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 font-medium text-sm rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors"
+                  className="px-4 py-2 rounded-xl border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={formSubmitting}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 dark:bg-[#0F766E] hover:bg-teal-700 dark:hover:bg-[#0D9488] text-white font-medium text-sm rounded-lg shadow-sm transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-[#0D9488] text-white font-semibold text-xs shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
                 >
-                  {formSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
-                  {editingService ? 'Save Changes' : 'Create Service'}
+                  {formSubmitting ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                  ) : editingService ? (
+                    <CheckCircle className="w-3.5 h-3.5" aria-hidden="true" />
+                  ) : (
+                    <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                  )}
+                  <span>{editingService ? 'Save Changes' : 'Create Service'}</span>
                 </button>
               </div>
             </form>
@@ -737,7 +901,7 @@ export function ServicesPage() {
               </div>
             </div>
 
-            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
               {confirmModal.targetStatus === 0
                 ? 'Deactivating this service will remove it from future appointment bookings. All past patient appointments, treatments, and billing records referencing this service will remain securely preserved.'
                 : 'Activating this service will immediately make it selectable for patients and receptionists when booking new dental appointments.'}
@@ -772,108 +936,179 @@ export function ServicesPage() {
       )}
 
       {/* Read-Only Service Details Modal */}
-      {viewingService && (
-        <DialogOverlay
-          onClose={() => setViewingService(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/45 dark:bg-black/65 backdrop-blur-sm"
-        >
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 w-full max-w-lg overflow-hidden">
-            <div className="flex items-start justify-between gap-4 px-6 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/60 dark:bg-gray-900/40">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">{viewingService.name}</h2>
-                  {viewingService.is_active ? (
-                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-500/25">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" aria-hidden="true" />
-                      Active
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-gray-700/70 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-gray-600">
-                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400" aria-hidden="true" />
-                      Inactive
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 mt-1.5">
-                  <span className="font-mono text-xs text-slate-400 dark:text-slate-500 tabular-nums">
-                    Service #{viewingService.id}
-                  </span>
-                  <span className="text-slate-300 dark:text-gray-600" aria-hidden="true">·</span>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${getCategoryBadgeClasses(viewingService.category)}`}>
-                    {viewingService.category || 'General'}
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setViewingService(null)}
-                aria-label="Close service details"
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors cursor-pointer shrink-0"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      {viewingService && (() => {
+        const hasDescription = Boolean(String(viewingService.description || '').trim());
+        const isActive = Boolean(viewingService.is_active);
 
-            <div className="p-6 space-y-5 text-sm">
-              <div className="grid grid-cols-3 gap-3 p-4 rounded-xl bg-slate-50/80 dark:bg-gray-900/50 border border-slate-200/80 dark:border-gray-700/80">
-                <div>
-                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Standard Fee</span>
-                  <span className="mt-0.5 block text-sm font-bold text-slate-900 dark:text-slate-50 tabular-nums">
-                    ₱{Number(viewingService.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                  </span>
+        return (
+          <DialogOverlay
+            onClose={() => setViewingService(null)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/70 backdrop-blur-sm"
+          >
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-slate-200/90 dark:border-gray-700/80 w-full max-w-lg overflow-hidden max-h-[90dvh] flex flex-col">
+              {/* Header */}
+              <div className="flex items-start justify-between gap-3 px-6 py-4 border-b border-slate-100 dark:border-gray-700/80 bg-slate-50/70 dark:bg-gray-900/50">
+                <div className="flex items-start gap-3.5 min-w-0">
+                  <div className="w-11 h-11 rounded-xl bg-teal-50 dark:bg-teal-500/15 ring-1 ring-inset ring-teal-200/90 dark:ring-teal-500/30 text-[#0F766E] dark:text-teal-300 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-5 h-5" aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-base font-bold text-slate-900 dark:text-slate-50 truncate">
+                        {viewingService.name}
+                      </h2>
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold border ${
+                          isActive
+                            ? 'bg-emerald-50 dark:bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-500/30'
+                            : 'bg-slate-100 dark:bg-gray-700/70 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-gray-600'
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-slate-400'}`}
+                          aria-hidden="true"
+                        />
+                        {isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                      <span className="font-mono text-xs text-slate-400 dark:text-slate-500 tabular-nums">
+                        Service #{viewingService.id}
+                      </span>
+                      <span className="text-slate-300 dark:text-gray-600" aria-hidden="true">·</span>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-semibold border ${getCategoryBadgeClasses(viewingService.category)}`}
+                      >
+                        {viewingService.category || 'General'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Duration</span>
-                  <span className="mt-0.5 block text-sm font-bold text-slate-900 dark:text-slate-50 tabular-nums">
-                    {viewingService.duration_minutes} min
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Booking Status</span>
-                  <span className={`mt-0.5 block text-sm font-bold ${viewingService.is_active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                    {viewingService.is_active ? 'Bookable' : 'Hidden'}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
-                  Clinical Description
-                </span>
-                <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-gray-900/40 border border-slate-200/70 dark:border-gray-700/70">
-                  <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
-                    {viewingService.description || 'No clinical description provided.'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-gray-700">
                 <button
                   type="button"
                   onClick={() => setViewingService(null)}
-                  className="px-4 py-2 rounded-lg border border-slate-200 dark:border-gray-600 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                  aria-label="Close service details"
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-gray-700/70 transition-colors cursor-pointer shrink-0"
                 >
-                  Close
+                  <X className="w-5 h-5" />
                 </button>
-                {canManageServices && (
+              </div>
+
+              {/* Body */}
+              <div className="p-6 space-y-5 overflow-y-auto flex-1 text-xs">
+                {/* Key Specs Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div className="p-3.5 rounded-xl bg-slate-50/85 dark:bg-gray-900/55 border border-slate-200/80 dark:border-gray-700/80 space-y-1">
+                    <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 block">
+                      Standard Fee
+                    </span>
+                    <span className="block text-base font-extrabold text-[#0F766E] dark:text-teal-300 tabular-nums tracking-tight">
+                      ₱{Number(viewingService.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-slate-50/85 dark:bg-gray-900/55 border border-slate-200/80 dark:border-gray-700/80 space-y-1">
+                    <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                      <Clock className="w-3 h-3 text-teal-600 dark:text-teal-400" aria-hidden="true" />
+                      Duration
+                    </span>
+                    <span className="block text-base font-extrabold text-slate-900 dark:text-slate-50 tabular-nums tracking-tight">
+                      {viewingService.duration_minutes} min
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-slate-50/85 dark:bg-gray-900/55 border border-slate-200/80 dark:border-gray-700/80 space-y-1">
+                    <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                      {isActive ? (
+                        <CheckCircle className="w-3 h-3 text-emerald-500 dark:text-emerald-400" aria-hidden="true" />
+                      ) : (
+                        <Lock className="w-3 h-3 text-slate-400" aria-hidden="true" />
+                      )}
+                      Booking Status
+                    </span>
+                    <span
+                      className={`block text-base font-extrabold tracking-tight ${
+                        isActive
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : 'text-slate-500 dark:text-slate-400'
+                      }`}
+                    >
+                      {isActive ? 'Bookable' : 'Hidden'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Clinical Description */}
+                <div className="space-y-2">
+                  <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    <FileText className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" aria-hidden="true" />
+                    Clinical Description
+                  </span>
+                  <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-gray-900/45 border border-slate-200/80 dark:border-gray-700/80">
+                    <p
+                      className={`text-xs sm:text-sm leading-relaxed ${
+                        hasDescription
+                          ? 'text-slate-700 dark:text-slate-200'
+                          : 'text-slate-400 dark:text-slate-500 italic'
+                      }`}
+                    >
+                      {hasDescription ? viewingService.description : 'No clinical description provided.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-3.5 border-t border-slate-100 dark:border-gray-700/80 bg-slate-50/60 dark:bg-gray-900/45 flex flex-wrap items-center justify-between gap-2.5">
+                <div>
+                  {canManageServices && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = viewingService;
+                        setViewingService(null);
+                        handleStatusToggleClick(target);
+                      }}
+                      className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
+                        isActive
+                          ? 'border-rose-200 dark:border-rose-500/35 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10'
+                          : 'border-emerald-200 dark:border-emerald-500/35 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10'
+                      }`}
+                    >
+                      <Power className="w-3.5 h-3.5" aria-hidden="true" />
+                      <span>{isActive ? 'Deactivate' : 'Activate'}</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2.5 ml-auto">
                   <button
                     type="button"
-                    onClick={() => {
-                      const target = viewingService;
-                      setViewingService(null);
-                      openEditModal(target);
-                    }}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#0F766E] hover:bg-[#0D9488] text-white text-xs font-semibold transition-colors cursor-pointer"
+                    onClick={() => setViewingService(null)}
+                    className="px-4 py-2 rounded-xl border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                   >
-                    <Edit2 className="w-3.5 h-3.5" aria-hidden="true" />
-                    Edit Service
+                    Close
                   </button>
-                )}
+                  {canManageServices && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = viewingService;
+                        setViewingService(null);
+                        openEditModal(target);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-[#0D9488] text-white text-xs font-semibold transition-colors shadow-xs cursor-pointer"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" aria-hidden="true" />
+                      <span>Edit Service</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        </DialogOverlay>
-      )}
+          </DialogOverlay>
+        );
+      })()}
     </div>
   );
 }

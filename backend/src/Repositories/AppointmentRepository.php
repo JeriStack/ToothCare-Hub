@@ -701,11 +701,32 @@ class AppointmentRepository
             $params[':service_id'] = $serviceId;
         }
         if ($search !== null && trim($search) !== '') {
-            $term = '%' . str_replace(['%', '_'], ['\\%', '\\_'], trim($search)) . '%';
-            $where[] = '(p.first_name LIKE :s1 OR p.last_name LIKE :s2 OR s.name LIKE :s3)';
+            $rawSearch = trim($search);
+            $term = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $rawSearch) . '%';
+            $driver = (string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+            $fullNameExpr = $driver === 'sqlite'
+                ? "(p.first_name || ' ' || p.last_name)"
+                : "CONCAT(p.first_name, ' ', p.last_name)";
+            $searchClauses = [
+                'p.first_name LIKE :s1',
+                'p.last_name LIKE :s2',
+                "{$fullNameExpr} LIKE :s3",
+                'p.phone LIKE :s4',
+                's.name LIKE :s5',
+            ];
             $params[':s1'] = $term;
             $params[':s2'] = $term;
             $params[':s3'] = $term;
+            $params[':s4'] = $term;
+            $params[':s5'] = $term;
+
+            $refNum = ltrim($rawSearch, '#');
+            if (preg_match('/^(?:TC-)?(\d+)$/i', $refNum, $m) === 1) {
+                $searchClauses[] = 'a.id = :s_id';
+                $params[':s_id'] = (int) $m[1];
+            }
+
+            $where[] = '(' . implode(' OR ', $searchClauses) . ')';
         }
 
         $whereSql = implode(' AND ', $where);

@@ -82,6 +82,7 @@ $router->group('/api/v1', function (Router $r): void {
     $r->get('/users/{id}/avatar', [UserController::class, 'serveAvatar'], [AuthenticationMiddleware::class]);
 
     // 3. Public Catalog Endpoints (Active items for booking/discovery)
+    $r->get('/clinic/settings', [ClinicSettingsController::class, 'publicIndex']);
     $r->get('/services', [ServiceController::class, 'listPublic']);
     $r->get('/dentists', [DentistController::class, 'listPublic']);
     $r->get('/dentists/{id}', [DentistController::class, 'showPublic']);

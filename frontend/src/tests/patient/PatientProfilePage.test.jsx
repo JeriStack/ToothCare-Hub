@@ -172,4 +172,22 @@ describe('PatientProfilePage Component', () => {
 
     expect(screen.queryByAltText('Juan Dela Cruz profile photo')).toBeNull();
   });
+
+  it('keeps Account Details minimized by default and toggles open/closed as a dropdown', async () => {
+    render(<PatientProfilePage onProfileUpdated={vi.fn()} />);
+    await screen.findByDisplayValue('Juan');
+
+    const toggleBtn = screen.getByRole('button', { name: /Account Details/i });
+    expect(toggleBtn).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('Patient Record')).toBeNull();
+
+    fireEvent.click(toggleBtn);
+    expect(toggleBtn).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Patient Record')).toBeDefined();
+    expect(screen.getByText('#10')).toBeDefined();
+
+    fireEvent.click(toggleBtn);
+    expect(toggleBtn).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('Patient Record')).toBeNull();
+  });
 });

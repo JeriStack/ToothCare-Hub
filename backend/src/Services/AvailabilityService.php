@@ -122,6 +122,53 @@ class AvailabilityService
     }
 
     /**
+     * Dynamically resolve the max booking horizon (days) from clinic_settings,
+     * falling back to static config/app.php when unset.
+     */
+    public function getEffectiveMaxBookingHorizonDays(): int
+    {
+        try {
+            $pdo = $this->database->getConnection();
+            $stmt = $pdo->prepare("SELECT setting_value FROM clinic_settings WHERE setting_key = 'booking_advance_days_max' LIMIT 1");
+            $stmt->execute();
+            $raw = $stmt->fetchColumn();
+            if ($raw !== false && is_numeric($raw)) {
+                $days = (int) $raw;
+                if ($days >= 7 && $days <= 365) {
+                    return $days;
+                }
+            }
+        } catch (Throwable) {
+            // Fall back to static scheduling config
+        }
+
+        return $this->maxBookingHorizonDays;
+    }
+
+    /**
+     * Dynamically resolve default slot duration (minutes) from clinic_settings.
+     */
+    public function getEffectiveDefaultSlotDurationMinutes(): int
+    {
+        try {
+            $pdo = $this->database->getConnection();
+            $stmt = $pdo->prepare("SELECT setting_value FROM clinic_settings WHERE setting_key = 'slot_duration_default_minutes' LIMIT 1");
+            $stmt->execute();
+            $raw = $stmt->fetchColumn();
+            if ($raw !== false && is_numeric($raw)) {
+                $mins = (int) $raw;
+                if ($mins >= 15 && $mins <= 120) {
+                    return $mins;
+                }
+            }
+        } catch (Throwable) {
+            // Fall back safely
+        }
+
+        return 30;
+    }
+
+    /**
      * Map a structured conflict reason code to a safe, patient-facing rejection reason template.
      */
     public static function getSuggestedRejectionReason(string $reasonCode): string
@@ -218,10 +265,11 @@ class AvailabilityService
             throw HttpException::unprocessableEntity('Availability cannot be queried for past dates.');
         }
 
-        $maxHorizonDt = $todayDt->modify("+{$this->maxBookingHorizonDays} days");
+        $maxHorizonDays = $this->getEffectiveMaxBookingHorizonDays();
+        $maxHorizonDt = $todayDt->modify("+{$maxHorizonDays} days");
         if ($endDt > $maxHorizonDt) {
             throw HttpException::unprocessableEntity(
-                "Requested date range exceeds the maximum booking horizon of {$this->maxBookingHorizonDays} days."
+                "Requested date range exceeds the maximum booking horizon of {$maxHorizonDays} days."
             );
         }
 
@@ -229,7 +277,10 @@ class AvailabilityService
             throw HttpException::unprocessableEntity('End date must be on or after start date.');
         }
 
-        $durationMinutes = (int) $service['duration_minutes'];
+        $rawServiceDuration = (int) ($service['duration_minutes'] ?? 0);
+        $durationMinutes = $rawServiceDuration > 0
+            ? $rawServiceDuration
+            : $this->getEffectiveDefaultSlotDurationMinutes();
         $bufferMinutes = $this->defaultBufferMinutes;
         $dentistLabel = 'Dr. ' . trim(($dentist['first_name'] ?? '') . ' ' . ($dentist['last_name'] ?? ''));
 
@@ -573,11 +624,12 @@ class AvailabilityService
                     'Appointments cannot be scheduled in the past.'
                 );
             }
-            if ($slotDateDt > $todayDt->modify("+{$this->maxBookingHorizonDays} days")) {
+            $maxHorizonDays = $this->getEffectiveMaxBookingHorizonDays();
+            if ($slotDateDt > $todayDt->modify("+{$maxHorizonDays} days")) {
                 return $this->buildValidationResult(
                     false,
                     self::REASON_BOOKING_HORIZON_EXCEEDED,
-                    "Requested appointment exceeds the maximum booking horizon of {$this->maxBookingHorizonDays} days."
+                    "Requested appointment exceeds the maximum booking horizon of {$maxHorizonDays} days."
                 );
             }
         }
@@ -1452,7 +1504,8 @@ class AvailabilityService
             ];
         }
 
-        $maxHorizonDt = $todayDt->modify("+{$this->maxBookingHorizonDays} days");
+        $maxHorizonDays = $this->getEffectiveMaxBookingHorizonDays();
+        $maxHorizonDt = $todayDt->modify("+{$maxHorizonDays} days");
 
         // 1. Next available dates for the same dentist (scan next 14 days in a single call)
         $scanStart = $reqDt->modify('+1 day');

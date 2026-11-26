@@ -204,6 +204,7 @@ class AdminControlCenterApiTest extends TestCase
         $this->assertSame(200, $resPerms->getStatusCode());
         $permData = json_decode($resPerms->getBody(), true)['data'];
         $this->assertArrayHasKey('grouped', $permData);
+        $this->assertSame(RoleRepository::PROTECTED_ADMIN_PERMISSIONS, $permData['protected_admin_permissions']);
 
         // 2. Sync permissions for Receptionist (role id = 4): remove 'patients.manage'
         $resSync = $this->app->handle($this->createAuthRequest(
@@ -213,6 +214,9 @@ class AdminControlCenterApiTest extends TestCase
             ['permissions' => ['patients.view', 'appointments.view']]
         ));
         $this->assertSame(200, $resSync->getStatusCode());
+        $syncBody = json_decode($resSync->getBody(), true)['data'];
+        $this->assertArrayHasKey('diff', $syncBody);
+        $this->assertContains('patients.manage', $syncBody['diff']['removed']);
         $this->assertTrue($this->roleRepo->roleHasPermission('RECEPTIONIST', 'patients.view'));
         $this->assertFalse($this->roleRepo->roleHasPermission('RECEPTIONIST', 'patients.manage'));
 
@@ -254,8 +258,9 @@ class AdminControlCenterApiTest extends TestCase
     {
         $this->auditRepo->record('AUTH_LOGIN_FAILED', 'users', $this->patientUser['id'], null, '192.168.1.10', 'TestAgent', ['reason' => 'INVALID_CREDENTIALS']);
         $this->auditRepo->record('PATIENT_PROFILE_UPDATED', 'patients', 1, $this->adminUser['id'], '10.0.0.1', 'AdminAgent', ['field' => 'phone']);
+        $this->auditRepo->record('APPOINTMENT_COMPLETED', 'appointment', 104, $this->adminUser['id'], '127.0.0.1', 'AdminAgent', null);
 
-        // 1. Filter audit logs by target_type
+        // 1. Filter audit logs by target_type (including singular/plural alias normalization)
         $resFiltered = $this->app->handle($this->createAuthRequest(
             'GET',
             '/api/v1/admin/audit-logs',
@@ -268,6 +273,18 @@ class AdminControlCenterApiTest extends TestCase
         $this->assertCount(1, $logs);
         $this->assertSame('PATIENT_PROFILE_UPDATED', $logs[0]['action']);
 
+        $resApptAlias = $this->app->handle($this->createAuthRequest(
+            'GET',
+            '/api/v1/admin/audit-logs',
+            $this->adminUser,
+            [],
+            ['target_type' => 'appointments']
+        ));
+        $this->assertSame(200, $resApptAlias->getStatusCode());
+        $apptLogs = json_decode($resApptAlias->getBody(), true)['data'];
+        $this->assertCount(1, $apptLogs);
+        $this->assertSame('APPOINTMENT_COMPLETED', $apptLogs[0]['action']);
+
         // 2. Security events endpoint
         $resSec = $this->app->handle($this->createAuthRequest('GET', '/api/v1/admin/security/events', $this->adminUser));
         $this->assertSame(200, $resSec->getStatusCode());
@@ -275,11 +292,22 @@ class AdminControlCenterApiTest extends TestCase
         $this->assertGreaterThanOrEqual(1, count($secEvents));
         $this->assertSame('AUTH_LOGIN_FAILED', $secEvents[0]['action']);
 
-        // 3. CSV export
+        // 3. CSV export (including security_only filter)
         $resExport = $this->app->handle($this->createAuthRequest('GET', '/api/v1/admin/audit-logs/export', $this->adminUser));
         $this->assertSame(200, $resExport->getStatusCode());
         $this->assertStringContainsString('Timestamp (UTC)', $resExport->getBody());
         $this->assertStringContainsString('AUTH_LOGIN_FAILED', $resExport->getBody());
+
+        $resSecExport = $this->app->handle($this->createAuthRequest(
+            'GET',
+            '/api/v1/admin/audit-logs/export',
+            $this->adminUser,
+            [],
+            ['security_only' => '1']
+        ));
+        $this->assertSame(200, $resSecExport->getStatusCode());
+        $this->assertStringContainsString('AUTH_LOGIN_FAILED', $resSecExport->getBody());
+        $this->assertStringNotContainsString('PATIENT_PROFILE_UPDATED', $resSecExport->getBody());
     }
 
     public function testClinicSettingsReportsAndSystemHealthEndpoints(): void
@@ -291,10 +319,34 @@ class AdminControlCenterApiTest extends TestCase
         $resUpdSet = $this->app->handle($this->createAuthRequest('PUT', '/api/v1/admin/clinic/settings', $this->adminUser, [
             'clinic_name' => 'ToothCare Premier Clinic',
             'cancellation_cutoff_hours' => 48,
+            'booking_advance_days_max' => 30,
+            'slot_duration_default_minutes' => 45,
         ]));
         $this->assertSame(200, $resUpdSet->getStatusCode());
         $updatedSettings = json_decode($resUpdSet->getBody(), true)['data'];
         $this->assertSame('ToothCare Premier Clinic', $updatedSettings['clinic_name']['value']);
+        $this->assertSame(30, $updatedSettings['booking_advance_days_max']['value']);
+
+        // 1b. Public clinic settings endpoint exposes live branding & booking rules without admin auth
+        $resPublicSet = $this->app->handle(Request::create('GET', '/api/v1/clinic/settings'));
+        $this->assertSame(200, $resPublicSet->getStatusCode());
+        $publicSet = json_decode($resPublicSet->getBody(), true)['data'];
+        $this->assertSame('ToothCare Premier Clinic', $publicSet['clinic_name']);
+        $this->assertSame(48, $publicSet['cancellation_cutoff_hours']);
+        $this->assertSame(30, $publicSet['booking_advance_days_max']);
+        $this->assertSame(45, $publicSet['slot_duration_default_minutes']);
+
+        // 1c. AvailabilityService dynamically honors updated booking_advance_days_max from clinic_settings
+        $availabilityService = new \App\Services\AvailabilityService();
+        $this->assertSame(30, $availabilityService->getEffectiveMaxBookingHorizonDays());
+        $this->assertSame(45, $availabilityService->getEffectiveDefaultSlotDurationMinutes());
+
+        // 1d. Invalid settings values are rejected with 422
+        $resBadSet = $this->app->handle($this->createAuthRequest('PUT', '/api/v1/admin/clinic/settings', $this->adminUser, [
+            'clinic_email' => 'not-an-email',
+            'booking_advance_days_max' => 3,
+        ]));
+        $this->assertSame(422, $resBadSet->getStatusCode());
 
         // 2. Reports
         $resApptRep = $this->app->handle($this->createAuthRequest('GET', '/api/v1/admin/reports/appointments', $this->adminUser));

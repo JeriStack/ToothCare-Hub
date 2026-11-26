@@ -32,7 +32,7 @@ describe('DentistAppointmentsPage Component', () => {
       patient_last_name: 'Tan',
       patient_phone: '09179876543',
       patient_gender: 'MALE',
-      patient_medical_alerts: null,
+      patient_medical_alerts: 'None recorded',
       service_name: 'Dental Cleaning',
       service_duration: 45,
       start_at: '2026-11-21 11:00:00',
@@ -59,9 +59,13 @@ describe('DentistAppointmentsPage Component', () => {
       expect(screen.getByText(/Asthma/i)).toBeDefined();
       expect(screen.getByText(/Root Canal Therapy/i)).toBeDefined();
     });
+
+    // Placeholder "None recorded" alerts and redundant chief-complaint quotes must not clutter the table
+    expect(screen.queryByText(/None recorded/i)).toBeNull();
+    expect(screen.queryByText(/Severe molar ache/i)).toBeNull();
   });
 
-  it('filters appointments when changing status dropdown', async () => {
+  it('filters appointments when changing status dropdown including Declined (REJECTED)', async () => {
     render(<DentistAppointmentsPage onSelectAppointment={vi.fn()} />);
 
     await waitFor(() => {
@@ -71,9 +75,18 @@ describe('DentistAppointmentsPage Component', () => {
     const statusSelect = screen.getByLabelText(/Filter appointments by status/i);
     fireEvent.change(statusSelect, { target: { value: 'CONFIRMED' } });
 
-    expect(appointmentsApi.listDentist).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'CONFIRMED' })
-    );
+    await waitFor(() => {
+      expect(appointmentsApi.listDentist).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'CONFIRMED' })
+      );
+    });
+
+    fireEvent.change(statusSelect, { target: { value: 'REJECTED' } });
+    await waitFor(() => {
+      expect(appointmentsApi.listDentist).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'REJECTED' })
+      );
+    });
   });
 
   it('calls onSelectAppointment when clinician clicks Manage button', async () => {

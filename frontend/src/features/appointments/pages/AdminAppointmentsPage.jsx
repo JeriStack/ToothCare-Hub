@@ -165,7 +165,7 @@ function formatClockTime(isoOrDate) {
   }
 }
 
-export function AdminAppointmentsPage() {
+export function AdminAppointmentsPage({ initialStatus = '', initialDate = '' } = {}) {
   const auth = useOptionalAuth();
   const user = auth?.user || null;
   const hasPermission = auth?.hasPermission;
@@ -194,14 +194,20 @@ export function AdminAppointmentsPage() {
   const requestSeqRef = useRef(0);
 
   // Filter State
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [dentistId, setDentistId] = useState('');
   const [serviceId, setServiceId] = useState('');
-  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState(initialDate);
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    setStatusFilter(initialStatus || '');
+    setSelectedDate(initialDate || '');
+    setPage(1);
+  }, [initialStatus, initialDate]);
 
   // Toast / Status Banner
   const [notification, setNotification] = useState(null);
@@ -650,118 +656,202 @@ export function AdminAppointmentsPage() {
 
       {/* Operational Summary Strip (Real Backend Counts) */}
       {summary && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+          {/* Pending Review */}
+          <button
+            type="button"
+            aria-pressed={statusFilter === 'PENDING'}
+            onClick={() => {
+              setStatusFilter(statusFilter === 'PENDING' ? '' : 'PENDING');
+              setPage(1);
+            }}
+            className={`group text-left p-4 sm:p-5 rounded-2xl border shadow-xs transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+              statusFilter === 'PENDING'
+                ? 'bg-amber-50/80 dark:bg-amber-500/12 border-amber-300 dark:border-amber-500/50 ring-1 ring-amber-300/60 dark:ring-amber-500/30'
+                : 'bg-white dark:bg-gray-800/95 border-slate-200/90 dark:border-gray-700/80 hover:border-amber-300/80 dark:hover:border-amber-500/40 hover:-translate-y-0.5'
+            }`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Pending Review
+                </span>
+                <div className="mt-1.5 text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 tabular-nums">
+                  {summary.pending_review ?? 0}
+                </div>
+              </div>
+              <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-500/15 ring-1 ring-inset ring-amber-200/80 dark:ring-amber-500/25 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <Clock className="w-4 h-4" aria-hidden="true" />
+              </div>
+            </div>
+            <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-gray-700/70 flex items-center justify-between gap-2 text-[11px]">
+              <span className="inline-flex items-center gap-1.5 font-medium text-amber-700 dark:text-amber-300 truncate">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 dark:bg-amber-400 shrink-0" aria-hidden="true" />
+                <span className="truncate">Awaiting front-desk decision</span>
+              </span>
+              {statusFilter === 'PENDING' ? (
+                <span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-200 shrink-0">
+                  Filtered
+                </span>
+              ) : (
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all shrink-0" aria-hidden="true" />
+              )}
+            </div>
+          </button>
+
+          {/* Confirmed */}
+          <button
+            type="button"
+            aria-pressed={statusFilter === 'CONFIRMED'}
+            onClick={() => {
+              setStatusFilter(statusFilter === 'CONFIRMED' ? '' : 'CONFIRMED');
+              setPage(1);
+            }}
+            className={`group text-left p-4 sm:p-5 rounded-2xl border shadow-xs transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 ${
+              statusFilter === 'CONFIRMED'
+                ? 'bg-emerald-50/80 dark:bg-emerald-500/12 border-emerald-300 dark:border-emerald-500/50 ring-1 ring-emerald-300/60 dark:ring-emerald-500/30'
+                : 'bg-white dark:bg-gray-800/95 border-slate-200/90 dark:border-gray-700/80 hover:border-emerald-300/80 dark:hover:border-emerald-500/40 hover:-translate-y-0.5'
+            }`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Confirmed
+                </span>
+                <div className="mt-1.5 text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 tabular-nums">
+                  {summary.confirmed ?? 0}
+                </div>
+              </div>
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 ring-1 ring-inset ring-emerald-200/80 dark:ring-emerald-500/25 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
+              </div>
+            </div>
+            <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-gray-700/70 flex items-center justify-between gap-2 text-[11px]">
+              <span className="inline-flex items-center gap-1.5 font-medium text-emerald-700 dark:text-emerald-300 truncate">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 shrink-0" aria-hidden="true" />
+                <span className="truncate">Approved clinic bookings</span>
+              </span>
+              {statusFilter === 'CONFIRMED' ? (
+                <span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 shrink-0">
+                  Filtered
+                </span>
+              ) : (
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all shrink-0" aria-hidden="true" />
+              )}
+            </div>
+          </button>
+
+          {/* Today's Appointments */}
+          <button
+            type="button"
+            aria-pressed={selectedDate === clinicTodayIso}
+            onClick={() => {
+              setSelectedDate(selectedDate === clinicTodayIso ? '' : clinicTodayIso);
+              setPage(1);
+            }}
+            className={`group text-left p-4 sm:p-5 rounded-2xl border shadow-xs transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 ${
+              selectedDate === clinicTodayIso
+                ? 'bg-teal-50/80 dark:bg-teal-500/12 border-teal-300 dark:border-teal-500/50 ring-1 ring-teal-300/60 dark:ring-teal-500/30'
+                : 'bg-white dark:bg-gray-800/95 border-slate-200/90 dark:border-gray-700/80 hover:border-teal-300/80 dark:hover:border-teal-500/40 hover:-translate-y-0.5'
+            }`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Today&apos;s Appointments
+                </span>
+                <div className="mt-1.5 text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 tabular-nums">
+                  {summary.today_appointments ?? 0}
+                </div>
+              </div>
+              <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-500/15 ring-1 ring-inset ring-teal-200/80 dark:ring-teal-500/25 text-[#0D9488] dark:text-teal-400 flex items-center justify-center shrink-0">
+                <Calendar className="w-4 h-4" aria-hidden="true" />
+              </div>
+            </div>
+            <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-gray-700/70 flex items-center justify-between gap-2 text-[11px]">
+              <span className="inline-flex items-center gap-1.5 font-medium text-teal-700 dark:text-teal-300 truncate">
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-500 dark:bg-teal-400 shrink-0" aria-hidden="true" />
+                <span className="truncate">Scheduled for today (PST)</span>
+              </span>
+              {selectedDate === clinicTodayIso ? (
+                <span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-teal-100 dark:bg-teal-500/20 text-teal-800 dark:text-teal-200 shrink-0">
+                  Filtered
+                </span>
+              ) : (
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-teal-500 group-hover:translate-x-0.5 transition-all shrink-0" aria-hidden="true" />
+              )}
+            </div>
+          </button>
+
+          {/* Scheduling Conflicts */}
           <button
             type="button"
             onClick={() => {
               setStatusFilter(statusFilter === 'PENDING' ? '' : 'PENDING');
               setPage(1);
             }}
-            className={`text-left p-4 rounded-2xl border transition-colors cursor-pointer ${
-              statusFilter === 'PENDING'
-                ? 'bg-amber-50/70 dark:bg-amber-500/10 border-amber-300 dark:border-amber-500/40'
-                : 'bg-white dark:bg-gray-800/95 border-slate-200/90 dark:border-gray-700/80 hover:border-slate-300 dark:hover:border-gray-600'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Pending Review
-              </span>
-              <Clock className="w-4 h-4 text-amber-500 dark:text-amber-400" aria-hidden="true" />
-            </div>
-            <div className="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-50 tabular-nums">
-              {summary.pending_review ?? 0}
-            </div>
-            <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">Awaiting front-desk decision</p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setStatusFilter(statusFilter === 'CONFIRMED' ? '' : 'CONFIRMED');
-              setPage(1);
-            }}
-            className={`text-left p-4 rounded-2xl border transition-colors cursor-pointer ${
-              statusFilter === 'CONFIRMED'
-                ? 'bg-emerald-50/70 dark:bg-emerald-500/10 border-emerald-300 dark:border-emerald-500/40'
-                : 'bg-white dark:bg-gray-800/95 border-slate-200/90 dark:border-gray-700/80 hover:border-slate-300 dark:hover:border-gray-600'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Confirmed
-              </span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-500 dark:text-emerald-400" aria-hidden="true" />
-            </div>
-            <div className="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-50 tabular-nums">
-              {summary.confirmed ?? 0}
-            </div>
-            <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">Approved clinic bookings</p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedDate(selectedDate === clinicTodayIso ? '' : clinicTodayIso);
-              setPage(1);
-            }}
-            className={`text-left p-4 rounded-2xl border transition-colors cursor-pointer ${
-              selectedDate === clinicTodayIso
-                ? 'bg-teal-50/70 dark:bg-teal-500/10 border-teal-300 dark:border-teal-500/40'
-                : 'bg-white dark:bg-gray-800/95 border-slate-200/90 dark:border-gray-700/80 hover:border-slate-300 dark:hover:border-gray-600'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Today&apos;s Appointments
-              </span>
-              <Calendar className="w-4 h-4 text-[#0D9488] dark:text-teal-400" aria-hidden="true" />
-            </div>
-            <div className="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-50 tabular-nums">
-              {summary.today_appointments ?? 0}
-            </div>
-            <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">Scheduled for today (PST)</p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setStatusFilter('PENDING');
-              setPage(1);
-            }}
-            className={`text-left p-4 rounded-2xl border transition-colors cursor-pointer ${
+            className={`group text-left p-4 sm:p-5 rounded-2xl border shadow-xs transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 ${
               (summary.scheduling_conflicts ?? 0) > 0
-                ? 'bg-rose-50/70 dark:bg-rose-500/10 border-rose-200/90 dark:border-rose-500/30 hover:border-rose-300 dark:hover:border-rose-500/50'
-                : 'bg-white dark:bg-gray-800/95 border-slate-200/90 dark:border-gray-700/80 hover:border-slate-300 dark:hover:border-gray-600'
+                ? 'bg-rose-50/75 dark:bg-rose-500/12 border-rose-200/90 dark:border-rose-500/40 hover:border-rose-300 dark:hover:border-rose-400/60 hover:-translate-y-0.5'
+                : 'bg-white dark:bg-gray-800/95 border-slate-200/90 dark:border-gray-700/80 hover:border-slate-300 dark:hover:border-gray-600 hover:-translate-y-0.5'
             }`}
           >
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Scheduling Conflicts
-              </span>
-              <ShieldAlert
-                className={`w-4 h-4 ${
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Scheduling Conflicts
+                </span>
+                <div
+                  className={`mt-1.5 text-3xl font-extrabold tracking-tight tabular-nums ${
+                    (summary.scheduling_conflicts ?? 0) > 0
+                      ? 'text-rose-600 dark:text-rose-400'
+                      : 'text-slate-900 dark:text-slate-50'
+                  }`}
+                >
+                  {summary.scheduling_conflicts ?? 0}
+                </div>
+              </div>
+              <div
+                className={`w-9 h-9 rounded-xl ring-1 ring-inset flex items-center justify-center shrink-0 ${
                   (summary.scheduling_conflicts ?? 0) > 0
-                    ? 'text-rose-500 dark:text-rose-400'
-                    : 'text-slate-400 dark:text-slate-500'
+                    ? 'bg-rose-100/80 dark:bg-rose-500/20 ring-rose-200/80 dark:ring-rose-500/30 text-rose-600 dark:text-rose-400'
+                    : 'bg-slate-100/80 dark:bg-gray-700/70 ring-slate-200/80 dark:ring-gray-600/70 text-slate-500 dark:text-slate-400'
+                }`}
+              >
+                <ShieldAlert className="w-4 h-4" aria-hidden="true" />
+              </div>
+            </div>
+            <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-gray-700/70 flex items-center justify-between gap-2 text-[11px]">
+              <span
+                className={`inline-flex items-center gap-1.5 font-medium truncate ${
+                  (summary.scheduling_conflicts ?? 0) > 0
+                    ? 'text-rose-700 dark:text-rose-300'
+                    : 'text-slate-500 dark:text-slate-400'
+                }`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                    (summary.scheduling_conflicts ?? 0) > 0
+                      ? 'bg-rose-500 dark:bg-rose-400'
+                      : 'bg-emerald-500 dark:bg-emerald-400'
+                  }`}
+                  aria-hidden="true"
+                />
+                <span className="truncate">
+                  {(summary.scheduling_conflicts ?? 0) > 0
+                    ? 'Pending requests failing validation'
+                    : 'No pending availability conflicts'}
+                </span>
+              </span>
+              <ChevronRight
+                className={`w-3.5 h-3.5 transition-all shrink-0 group-hover:translate-x-0.5 ${
+                  (summary.scheduling_conflicts ?? 0) > 0
+                    ? 'text-rose-400 group-hover:text-rose-500'
+                    : 'text-slate-400 group-hover:text-slate-500 dark:group-hover:text-slate-300'
                 }`}
                 aria-hidden="true"
               />
             </div>
-            <div
-              className={`mt-2 text-2xl font-bold tabular-nums ${
-                (summary.scheduling_conflicts ?? 0) > 0
-                  ? 'text-rose-600 dark:text-rose-400'
-                  : 'text-slate-900 dark:text-slate-50'
-              }`}
-            >
-              {summary.scheduling_conflicts ?? 0}
-            </div>
-            <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-              {(summary.scheduling_conflicts ?? 0) > 0
-                ? 'Pending requests failing validation'
-                : 'No pending availability conflicts'}
-            </p>
           </button>
         </div>
       )}

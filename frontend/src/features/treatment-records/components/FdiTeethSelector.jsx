@@ -12,6 +12,9 @@ const QUADRANT_1 = [18, 17, 16, 15, 14, 13, 12, 11];
 const QUADRANT_2 = [21, 22, 23, 24, 25, 26, 27, 28];
 const QUADRANT_4 = [48, 47, 46, 45, 44, 43, 42, 41];
 const QUADRANT_3 = [31, 32, 33, 34, 35, 36, 37, 38];
+const UPPER_ARCH = [...QUADRANT_1, ...QUADRANT_2];
+const LOWER_ARCH = [...QUADRANT_4, ...QUADRANT_3];
+const FULL_MOUTH = [...UPPER_ARCH, ...LOWER_ARCH];
 
 const TOOTH_NAMES = {
   1: 'Central Incisor',
@@ -51,21 +54,18 @@ export function FdiTeethSelector({
     } else {
       next.add(tooth);
     }
-    // Return sorted array of numbers
     onChange(Array.from(next).sort((a, b) => a - b));
   };
 
-  const selectUpperArch = () => {
+  const toggleGroup = (teethGroup) => {
     if (readOnly) return;
+    const allSelected = teethGroup.every((t) => selectedSet.has(t));
     const next = new Set(selectedSet);
-    [...QUADRANT_1, ...QUADRANT_2].forEach((t) => next.add(t));
-    onChange(Array.from(next).sort((a, b) => a - b));
-  };
-
-  const selectLowerArch = () => {
-    if (readOnly) return;
-    const next = new Set(selectedSet);
-    [...QUADRANT_4, ...QUADRANT_3].forEach((t) => next.add(t));
+    if (allSelected) {
+      teethGroup.forEach((t) => next.delete(t));
+    } else {
+      teethGroup.forEach((t) => next.add(t));
+    }
     onChange(Array.from(next).sort((a, b) => a - b));
   };
 
@@ -73,6 +73,10 @@ export function FdiTeethSelector({
     if (readOnly) return;
     onChange([]);
   };
+
+  const isUpperSelected = UPPER_ARCH.every((t) => selectedSet.has(t));
+  const isLowerSelected = LOWER_ARCH.every((t) => selectedSet.has(t));
+  const isFullSelected = FULL_MOUTH.every((t) => selectedSet.has(t));
 
   const renderToothButton = (tooth) => {
     const isSelected = selectedSet.has(tooth);
@@ -84,47 +88,96 @@ export function FdiTeethSelector({
         onClick={() => toggleTooth(tooth)}
         aria-pressed={isSelected}
         title={getToothDescription(tooth)}
-        className={`w-full min-h-11 rounded-lg text-xs font-semibold flex flex-col items-center justify-center transition-all ${
+        className={`w-full min-h-11 rounded-lg text-xs font-semibold tabular-nums flex flex-col items-center justify-center transition-all ${
           isSelected
-            ? 'bg-[#0D9488] text-white border-2 border-[#0F766E] dark:border-teal-300 shadow-sm ring-2 ring-[#0D9488]/30 dark:ring-teal-400/35'
+            ? 'bg-[#0D9488] text-white border-2 border-[#0F766E] dark:border-teal-300 shadow-xs ring-2 ring-[#0D9488]/25 dark:ring-teal-400/30 cursor-pointer'
             : readOnly
             ? 'bg-slate-100 dark:bg-gray-700/70 text-slate-400 dark:text-gray-400 border border-slate-200 dark:border-gray-600 cursor-not-allowed opacity-60'
-            : 'bg-white dark:bg-gray-800 text-slate-700 dark:text-gray-200 border border-slate-200 dark:border-gray-600 hover:border-teal-400 dark:hover:border-teal-400 hover:bg-teal-50/50 dark:hover:bg-teal-900/40 hover:text-teal-900 dark:hover:text-teal-200'
+            : 'bg-white dark:bg-gray-800/90 text-slate-700 dark:text-gray-200 border border-slate-200 dark:border-gray-700 hover:border-teal-400 dark:hover:border-teal-400 hover:bg-teal-50/50 dark:hover:bg-teal-500/15 hover:text-teal-900 dark:hover:text-teal-200 cursor-pointer'
         }`}
       >
         <span>{tooth}</span>
-        {isSelected && <Check className="w-2.5 h-2.5 mt-0.5" />}
+        {isSelected && <Check className="w-2.5 h-2.5 mt-0.5" aria-hidden="true" />}
       </button>
     );
   };
 
+  const renderQuadrantHeader = (label, teethGroup, alignRight = false, tone = 'teal') => {
+    const allInQ = teethGroup.every((t) => selectedSet.has(t));
+    const colorClass =
+      tone === 'teal'
+        ? 'text-teal-800/90 dark:text-teal-300/90 hover:text-teal-700 dark:hover:text-teal-200'
+        : 'text-sky-800/90 dark:text-sky-300/90 hover:text-sky-700 dark:hover:text-sky-200';
+    return (
+      <div className={`flex items-center ${alignRight ? 'lg:justify-end' : 'justify-start'}`}>
+        {readOnly ? (
+          <span className={`text-[10.5px] font-bold uppercase tracking-wide ${colorClass}`}>
+            {label}
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => toggleGroup(teethGroup)}
+            aria-pressed={allInQ}
+            title={`Toggle all teeth in ${label}`}
+            className={`text-[10.5px] font-bold uppercase tracking-wide transition-colors cursor-pointer ${colorClass}`}
+          >
+            {label} {allInQ ? '✓' : ''}
+          </button>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div className="space-y-4" role="group" aria-label="FDI Dental Arch Chart">
+    <div className="space-y-3" role="group" aria-label="FDI Dental Arch Chart">
       {!readOnly && (
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-          <span className="font-medium text-slate-600 dark:text-gray-300">
-            Click teeth numbers to indicate areas treated (FDI 2-Digit Notation):
+          <span className="text-slate-500 dark:text-slate-400">
+            Tap teeth or quadrant labels to mark treated areas
           </span>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
-              onClick={selectUpperArch}
-              className="min-h-11 sm:min-h-9 px-3 py-1.5 text-slate-600 dark:text-gray-200 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950/50 rounded-lg border border-slate-200 dark:border-gray-700 font-medium"
+              aria-pressed={isUpperSelected}
+              onClick={() => toggleGroup(UPPER_ARCH)}
+              className={`min-h-10 sm:min-h-8 px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors cursor-pointer ${
+                isUpperSelected
+                  ? 'bg-teal-50 dark:bg-teal-500/15 border-teal-400 dark:border-teal-500 text-teal-800 dark:text-teal-200'
+                  : 'border-slate-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 hover:border-teal-400 dark:hover:border-teal-500 hover:text-teal-700 dark:hover:text-teal-300'
+              }`}
             >
-              + Upper Arch
+              Upper Arch
             </button>
             <button
               type="button"
-              onClick={selectLowerArch}
-              className="min-h-11 sm:min-h-9 px-3 py-1.5 text-slate-600 dark:text-gray-200 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950/50 rounded-lg border border-slate-200 dark:border-gray-700 font-medium"
+              aria-pressed={isLowerSelected}
+              onClick={() => toggleGroup(LOWER_ARCH)}
+              className={`min-h-10 sm:min-h-8 px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors cursor-pointer ${
+                isLowerSelected
+                  ? 'bg-sky-50 dark:bg-sky-500/15 border-sky-400 dark:border-sky-500 text-sky-800 dark:text-sky-200'
+                  : 'border-slate-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 hover:border-sky-400 dark:hover:border-sky-500 hover:text-sky-700 dark:hover:text-sky-300'
+              }`}
             >
-              + Lower Arch
+              Lower Arch
+            </button>
+            <button
+              type="button"
+              aria-pressed={isFullSelected}
+              onClick={() => toggleGroup(FULL_MOUTH)}
+              className={`min-h-10 sm:min-h-8 px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors cursor-pointer ${
+                isFullSelected
+                  ? 'bg-teal-600 border-teal-600 text-white'
+                  : 'border-slate-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 hover:border-teal-400 dark:hover:border-teal-500 hover:text-teal-700 dark:hover:text-teal-300'
+              }`}
+            >
+              Full Mouth
             </button>
             {selectedTeeth.length > 0 && (
               <button
                 type="button"
                 onClick={clearAll}
-                className="min-h-11 sm:min-h-9 px-3 py-1.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg border border-rose-200 dark:border-rose-800/70 font-medium"
+                className="min-h-10 sm:min-h-8 px-2.5 py-1 rounded-lg border border-rose-200 dark:border-rose-500/35 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 text-xs font-medium transition-colors cursor-pointer"
               >
                 Clear
               </button>
@@ -134,29 +187,23 @@ export function FdiTeethSelector({
       )}
 
       {/* Chart Layout */}
-      <div className="bg-slate-50/80 dark:bg-gray-900/70 rounded-xl border border-slate-200/90 dark:border-gray-700 p-3 sm:p-5">
-        <div className="space-y-4">
+      <div className="bg-slate-50/80 dark:bg-gray-900/65 rounded-xl border border-slate-200/90 dark:border-gray-700/80 p-3 sm:p-4">
+        <div className="space-y-3.5">
           {/* Maxillary (Upper Arch) */}
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400 mb-2 text-center">
-              ▲ Upper Arch (Maxillary) — Midline ▲
+            <div className="text-[10.5px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2 text-center">
+              Upper Arch (Maxillary)
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 sm:gap-3">
-              {/* Quadrant 1: 18 -> 11 */}
-              <div className="p-2 sm:p-2.5 rounded-lg bg-teal-50/40 dark:bg-teal-950/35 border border-teal-100/80 dark:border-teal-800/50 space-y-1.5">
-                <div className="text-[10px] font-bold uppercase tracking-wide text-teal-800/80 dark:text-teal-300/90">
-                  Q1 · Upper Right
-                </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
+              <div className="p-2.5 rounded-xl bg-teal-50/40 dark:bg-teal-500/[0.06] border border-teal-200/60 dark:border-teal-500/20 space-y-2">
+                {renderQuadrantHeader('Q1 · Upper Right', QUADRANT_1, false, 'teal')}
                 <div className="grid grid-cols-4 min-[460px]:grid-cols-8 gap-1.5">
                   {QUADRANT_1.map(renderToothButton)}
                 </div>
               </div>
 
-              {/* Quadrant 2: 21 -> 28 */}
-              <div className="p-2 sm:p-2.5 rounded-lg bg-teal-50/40 dark:bg-teal-950/35 border border-teal-100/80 dark:border-teal-800/50 space-y-1.5">
-                <div className="text-[10px] font-bold uppercase tracking-wide text-teal-800/80 dark:text-teal-300/90 lg:text-right">
-                  Q2 · Upper Left
-                </div>
+              <div className="p-2.5 rounded-xl bg-teal-50/40 dark:bg-teal-500/[0.06] border border-teal-200/60 dark:border-teal-500/20 space-y-2">
+                {renderQuadrantHeader('Q2 · Upper Left', QUADRANT_2, true, 'teal')}
                 <div className="grid grid-cols-4 min-[460px]:grid-cols-8 gap-1.5">
                   {QUADRANT_2.map(renderToothButton)}
                 </div>
@@ -164,55 +211,51 @@ export function FdiTeethSelector({
             </div>
           </div>
 
-          <div className="border-t border-dashed border-slate-200 dark:border-gray-700 my-1" />
+          <div className="border-t border-dashed border-slate-200 dark:border-gray-700/80" />
 
           {/* Mandibular (Lower Arch) */}
           <div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 sm:gap-3">
-              {/* Quadrant 4: 48 -> 41 */}
-              <div className="p-2 sm:p-2.5 rounded-lg bg-sky-50/40 dark:bg-sky-950/35 border border-sky-100/80 dark:border-sky-800/50 space-y-1.5">
-                <div className="text-[10px] font-bold uppercase tracking-wide text-sky-800/80 dark:text-sky-300/90">
-                  Q4 · Lower Right
-                </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
+              <div className="p-2.5 rounded-xl bg-sky-50/40 dark:bg-sky-500/[0.06] border border-sky-200/60 dark:border-sky-500/20 space-y-2">
+                {renderQuadrantHeader('Q4 · Lower Right', QUADRANT_4, false, 'sky')}
                 <div className="grid grid-cols-4 min-[460px]:grid-cols-8 gap-1.5">
                   {QUADRANT_4.map(renderToothButton)}
                 </div>
               </div>
 
-              {/* Quadrant 3: 31 -> 38 */}
-              <div className="p-2 sm:p-2.5 rounded-lg bg-sky-50/40 dark:bg-sky-950/35 border border-sky-100/80 dark:border-sky-800/50 space-y-1.5">
-                <div className="text-[10px] font-bold uppercase tracking-wide text-sky-800/80 dark:text-sky-300/90 lg:text-right">
-                  Q3 · Lower Left
-                </div>
+              <div className="p-2.5 rounded-xl bg-sky-50/40 dark:bg-sky-500/[0.06] border border-sky-200/60 dark:border-sky-500/20 space-y-2">
+                {renderQuadrantHeader('Q3 · Lower Left', QUADRANT_3, true, 'sky')}
                 <div className="grid grid-cols-4 min-[460px]:grid-cols-8 gap-1.5">
                   {QUADRANT_3.map(renderToothButton)}
                 </div>
               </div>
             </div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400 mt-2 text-center">
-              ▼ Lower Arch (Mandibular) — Midline ▼
+            <div className="text-[10.5px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500 mt-2 text-center">
+              Lower Arch (Mandibular)
             </div>
           </div>
         </div>
       </div>
 
       {/* Selected Teeth Badges */}
-      <div className="flex flex-wrap items-center gap-2 pt-1">
-        <span className="text-xs font-semibold text-slate-600 dark:text-gray-300">Selected Teeth ({selectedTeeth.length}):</span>
+      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+        <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 tabular-nums">
+          Selected ({selectedTeeth.length}):
+        </span>
         {selectedTeeth.length === 0 ? (
-          <span className="text-xs text-slate-400 dark:text-gray-400 italic">None selected (or full-mouth general procedure)</span>
+          <span className="text-xs text-slate-400 dark:text-slate-500">Full-mouth / general</span>
         ) : (
           selectedTeeth.map((t) => (
             <span
               key={t}
-              className="inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-full text-xs font-medium bg-[#CCFBF1] dark:bg-teal-900/60 text-[#0F766E] dark:text-teal-200 border border-teal-200 dark:border-teal-700"
+              className="inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-full text-xs font-semibold tabular-nums bg-teal-50 dark:bg-teal-500/15 text-[#0F766E] dark:text-teal-200 border border-teal-200/80 dark:border-teal-500/30"
             >
               #{t}
               {!readOnly && (
                 <button
                   type="button"
                   onClick={() => toggleTooth(Number(t))}
-                  className="inline-flex items-center justify-center w-6 h-6 rounded-full hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488]"
+                  className="inline-flex items-center justify-center w-5 h-5 rounded-full hover:text-rose-600 dark:hover:text-rose-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] cursor-pointer"
                   aria-label={`Remove tooth ${t}`}
                 >
                   <X className="w-3 h-3" />

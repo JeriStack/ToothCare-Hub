@@ -56,6 +56,25 @@ class DentistTimeOffController
         $records = $this->timeOffRepo->findByDentistId($dentistId, $from, $to);
 
         $currentUser = $request->getUser();
+        if ($currentUser === null) {
+            try {
+                $authService = new \App\Services\AuthService();
+                $authService->initializeSession();
+                if (
+                    session_status() === PHP_SESSION_ACTIVE
+                    && !empty($_SESSION['user_id'])
+                    && !$authService->isCurrentSessionExpired()
+                ) {
+                    $userRepo = new \App\Repositories\UserRepository($this->database);
+                    $resolved = $userRepo->findById((int) $_SESSION['user_id']);
+                    if ($resolved !== null && (int) ($resolved['is_active'] ?? 0) === 1) {
+                        $currentUser = $resolved;
+                    }
+                }
+            } catch (\Throwable) {
+                $currentUser = null;
+            }
+        }
         $isAdmin = $currentUser && ($currentUser['role'] ?? '') === 'ADMIN';
         $isOwnDentist = $currentUser && (int) ($currentUser['id'] ?? 0) === (int) $dentist['user_id'];
 

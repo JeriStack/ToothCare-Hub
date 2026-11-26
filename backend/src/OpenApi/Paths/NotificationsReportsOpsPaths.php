@@ -243,6 +243,7 @@ final class NotificationsReportsOpsPaths
     #[OA\Get(path: '/admin/system/health', operationId: 'getAdminSystemHealth', summary: 'System Infrastructure & Dependency Health Diagnostics (Admin)', tags: ['Operations'], security: [['CookieAuth' => []]], responses: [new OA\Response(response: 200, description: 'Database, PHP-FPM, Realtime, Rate Limiter, & Backup diagnostics')])]
     public function systemHealth(): void {}
 
+    #[OA\Get(path: '/clinic/settings', operationId: 'getPublicClinicSettings', summary: 'Get Public Clinic Identity & Booking Rules', tags: ['Settings'], responses: [new OA\Response(response: 200, description: 'Public clinic branding, contact info, and booking policy settings')])]
     #[OA\Get(path: '/admin/clinic/settings', operationId: 'getClinicSettings', summary: 'Get Clinic Settings (Admin)', tags: ['Settings'], security: [['CookieAuth' => []]], responses: [new OA\Response(response: 200, description: 'Settings map')])]
     #[OA\Put(path: '/admin/clinic/settings', operationId: 'updateClinicSettings', summary: 'Update Clinic Settings (Admin)', tags: ['Settings'], security: [['CookieAuth' => [], 'CsrfToken' => []]], responses: [new OA\Response(response: 200, description: 'Settings updated')])]
     public function clinicSettings(): void {}

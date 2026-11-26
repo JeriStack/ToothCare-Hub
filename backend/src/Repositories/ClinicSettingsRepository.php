@@ -12,11 +12,72 @@ use PDO;
  */
 class ClinicSettingsRepository
 {
+    public const PUBLIC_SETTING_DEFAULTS = [
+        'clinic_name' => 'ToothCare Hub',
+        'clinic_tagline' => 'Healthier Smiles, Brighter Futures.',
+        'clinic_phone' => '+63 912 345 6789',
+        'clinic_email' => 'contact@toothcarehub.example.com',
+        'clinic_address' => '123 Dental Wellness Plaza, Manila, Philippines',
+        'clinic_timezone' => 'Asia/Manila',
+        'booking_advance_days_max' => 60,
+        'cancellation_cutoff_hours' => 24,
+        'slot_duration_default_minutes' => 30,
+    ];
+
+    private const INTEGER_KEYS = [
+        'booking_advance_days_max',
+        'cancellation_cutoff_hours',
+        'slot_duration_default_minutes',
+        'compliance_lock_hours',
+    ];
+
     private Database $database;
 
     public function __construct(?Database $database = null)
     {
         $this->database = $database ?? Database::getInstance();
+    }
+
+    /**
+     * Retrieve public & operational clinic settings as flat key => typed value map.
+     *
+     * @return array<string, mixed>
+     */
+    public function getPublicSettings(): array
+    {
+        $defaults = self::PUBLIC_SETTING_DEFAULTS;
+        try {
+            $all = $this->getAll();
+            foreach (array_keys($defaults) as $key) {
+                if (isset($all[$key])) {
+                    $defaults[$key] = $all[$key]['value'];
+                }
+            }
+        } catch (\Throwable) {
+            // Fall back cleanly to defaults if table is unavailable
+        }
+
+        return $defaults;
+    }
+
+    /**
+     * Read a single integer setting with safe fallback.
+     */
+    public function getInt(string $key, int $default): int
+    {
+        try {
+            $pdo = $this->database->getConnection();
+            $stmt = $pdo->prepare('SELECT setting_value FROM clinic_settings WHERE setting_key = ? LIMIT 1');
+            $stmt->execute([$key]);
+            $raw = $stmt->fetchColumn();
+            if ($raw !== false && is_numeric($raw)) {
+                return (int) $raw;
+            }
+        } catch (\Throwable) {
+            // Fall back safely
+        }
+
+        return $default;
     }
 
     /**
@@ -67,17 +128,19 @@ class ClinicSettingsRepository
         $pdo = $this->database->getConnection();
         $checkStmt = $pdo->prepare('SELECT id FROM clinic_settings WHERE setting_key = ? LIMIT 1');
         $updStmt = $pdo->prepare('UPDATE clinic_settings SET setting_value = ?, updated_at = NOW() WHERE setting_key = ?');
-        $insStmt = $pdo->prepare('INSERT INTO clinic_settings (setting_key, setting_value, created_at, updated_at) VALUES (?, ?, NOW(), NOW())');
+        $insStmt = $pdo->prepare('INSERT INTO clinic_settings (setting_key, setting_value, value_type, is_public, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())');
 
         foreach ($settings as $key => $val) {
             $cleanKey = trim((string) $key);
             $strVal = is_array($val) ? json_encode($val) : (string) $val;
+            $valueType = in_array($cleanKey, self::INTEGER_KEYS, true) ? 'integer' : (is_array($val) ? 'json' : 'string');
+            $isPublic = array_key_exists($cleanKey, self::PUBLIC_SETTING_DEFAULTS) ? 1 : 0;
 
             $checkStmt->execute([$cleanKey]);
             if ($checkStmt->fetchColumn()) {
                 $updStmt->execute([$strVal, $cleanKey]);
             } else {
-                $insStmt->execute([$cleanKey, $strVal]);
+                $insStmt->execute([$cleanKey, $strVal, $valueType, $isPublic]);
             }
         }
     }

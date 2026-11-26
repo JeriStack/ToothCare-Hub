@@ -56,6 +56,7 @@ class RolePermissionController
         return Response::success([
             'catalog' => $flat,
             'grouped' => $grouped,
+            'protected_admin_permissions' => RoleRepository::PROTECTED_ADMIN_PERMISSIONS,
         ]);
     }
 
@@ -90,6 +91,9 @@ class RolePermissionController
         $this->roleRepository->syncRolePermissions($roleId, $permissionSlugs);
         $updatedPermissions = $this->roleRepository->getRolePermissions($roleId);
 
+        $addedPermissions = array_values(array_diff($updatedPermissions, $previousPermissions));
+        $removedPermissions = array_values(array_diff($previousPermissions, $updatedPermissions));
+
         try {
             $outboxService = new \App\Services\Realtime\RealtimeOutboxService();
             $outboxService->notifyRevocationBestEffort([
@@ -111,6 +115,8 @@ class RolePermissionController
                 'role' => $role['name'],
                 'granted_count' => count($updatedPermissions),
                 'permissions' => $updatedPermissions,
+                'added' => $addedPermissions,
+                'removed' => $removedPermissions,
                 'before' => [
                     'permissions' => $previousPermissions,
                     'granted_count' => count($previousPermissions),
@@ -124,6 +130,10 @@ class RolePermissionController
 
         $updatedRole = $this->roleRepository->findById($roleId);
         $updatedRole['permissions'] = $updatedPermissions;
+        $updatedRole['diff'] = [
+            'added' => $addedPermissions,
+            'removed' => $removedPermissions,
+        ];
 
         return Response::success($updatedRole);
     }
