@@ -165,7 +165,7 @@ function formatClockTime(isoOrDate) {
   }
 }
 
-export function AdminAppointmentsPage() {
+export function AdminAppointmentsPage({ initialStatus = '', initialDate = '' } = {}) {
   const auth = useOptionalAuth();
   const user = auth?.user || null;
   const hasPermission = auth?.hasPermission;
@@ -194,14 +194,20 @@ export function AdminAppointmentsPage() {
   const requestSeqRef = useRef(0);
 
   // Filter State
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [dentistId, setDentistId] = useState('');
   const [serviceId, setServiceId] = useState('');
-  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState(initialDate);
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    setStatusFilter(initialStatus || '');
+    setSelectedDate(initialDate || '');
+    setPage(1);
+  }, [initialStatus, initialDate]);
 
   // Toast / Status Banner
   const [notification, setNotification] = useState(null);

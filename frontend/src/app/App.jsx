@@ -328,6 +328,7 @@ function AppContent() {
   const [toastMessage, setToastMessage] = useState(null);
   const [bookingPrefill, setBookingPrefill] = useState(null);
   const [selectedDentistAppointmentId, setSelectedDentistAppointmentId] = useState(null);
+  const [adminTriageInitialFilters, setAdminTriageInitialFilters] = useState({ statusFilter: '', date: '' });
   const [dentistApptInitialStatus, setDentistApptInitialStatus] = useState('ALL');
   const [legalOriginRoute, setLegalOriginRoute] = useState(null);
   const userMenuRef = useRef(null);
@@ -369,8 +370,14 @@ function AppContent() {
   };
 
   // Admin Sub-Route Navigation with URL History Sync
-  const handleAdminNav = (tab) => {
+  const handleAdminNav = (tab, options = {}) => {
     setActiveTab(tab);
+    if (tab === 'triage') {
+      setAdminTriageInitialFilters({
+        statusFilter: options?.statusFilter || '',
+        date: options?.date || '',
+      });
+    }
     setIsMobileMenuOpen(false);
     setIsUserMenuOpen(false);
     const subPath = tab === 'dashboard' ? '/admin' : `/admin/${tab}`;
@@ -1356,11 +1363,14 @@ function AppContent() {
           {currentRole === 'ADMIN' && (
             <>
               {activeTab === 'dashboard' && (
-                <AdminDashboard onNavigateTab={(tab) => handleAdminNav(tab)} />
+                <AdminDashboard onNavigateTab={(tab, options) => handleAdminNav(tab, options)} />
               )}
 
               {activeTab === 'triage' && (
-                <AdminAppointmentsPage />
+                <AdminAppointmentsPage
+                  initialStatus={adminTriageInitialFilters.statusFilter}
+                  initialDate={adminTriageInitialFilters.date}
+                />
               )}
 
               {activeTab === 'patients' && (

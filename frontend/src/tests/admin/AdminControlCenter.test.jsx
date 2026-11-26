@@ -105,6 +105,63 @@ describe('Administrator Control Center Frontend Suite', () => {
     expect(mockNav).toHaveBeenCalledWith('users');
   });
 
+  it('supports interactive lifecycle deep-linking, 14-day trend inspection, and activity filtering on AdminDashboard', async () => {
+    dashboardApi.getMetrics.mockResolvedValue({
+      counts: {
+        patients: { total: 8, active: 8, inactive: 0 },
+        dentists: { total: 4, active: 4, inactive: 0 },
+        services: { total: 5, active: 5, inactive: 0 },
+        appointments: { total: 16, today: 0, upcoming: 2, pending: 4, confirmed: 2, completed: 3, cancelled: 4, rejected: 1 },
+      },
+      appointment_trends: [
+        { date: '2026-11-25', total: 0, completed: 0, pending: 0 },
+        { date: '2026-11-26', total: 5, completed: 3, pending: 2 },
+      ],
+      outbox_summary: {
+        email_outbox: { sent: 10 },
+        realtime_outbox: { published: 168 },
+        totals: { pending: 0, processing: 0, completed: 178, failed: 0 },
+      },
+      recent: { patients: [], services: [] },
+      today_schedule: [],
+      review_queue_peek: [],
+      recent_activity: [
+        {
+          id: 1,
+          action: 'AUTH_LOGIN_SUCCESS',
+          actor_email: 'admin@toothcare.com',
+          actor_role: 'ADMIN',
+          created_at: '2026-11-26 09:00:00',
+        },
+        {
+          id: 2,
+          action: 'DENTIST_SELF_PROFILE_UPDATED',
+          actor_email: 'dentist@toothcare.com',
+          actor_role: 'DENTIST',
+          created_at: '2026-11-26 09:15:00',
+        },
+      ],
+      recent_errors: [],
+      system_alerts: { pending_triage: 4, recent_security_events: 0, active_rate_limits: 0, failed_outbox_jobs: 0 },
+    });
+
+    const mockNav = vi.fn();
+    render(<AdminDashboard onNavigateTab={mockNav} />);
+
+    expect(await screen.findByText('100% OK')).toBeInTheDocument();
+    expect(screen.getByText('5 visits')).toBeInTheDocument();
+
+    // Clicking Pending lifecycle tile deep-links into triage with PENDING filter
+    fireEvent.click(screen.getByRole('button', { name: /^Pending\s*4$/i }));
+    expect(mockNav).toHaveBeenCalledWith('triage', { statusFilter: 'PENDING' });
+
+    // Switching Recent Activity filter to "Changes" hides noisy AUTH_LOGIN_SUCCESS rows
+    expect(screen.getByText('AUTH LOGIN SUCCESS')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^Changes$/i }));
+    expect(screen.queryByText('AUTH LOGIN SUCCESS')).not.toBeInTheDocument();
+    expect(screen.getByText('DENTIST SELF PROFILE UPDATED')).toBeInTheDocument();
+  });
+
   it('renders UserManagementPage and provisions a new staff account', async () => {
     usersApi.getUsers.mockResolvedValue({
       data: [
