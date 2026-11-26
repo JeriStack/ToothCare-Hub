@@ -29,6 +29,7 @@ import {
   BarChart3,
   Settings,
   Activity,
+  Archive,
 } from 'lucide-react';
 import { rolesApi } from '../api';
 import { PermissionMatrixSkeleton } from '../../../components/skeletons';
@@ -46,6 +47,8 @@ function getModuleIcon(modName = '') {
   switch (String(modName).toLowerCase()) {
     case 'appointments':
       return Calendar;
+    case 'archives':
+      return Archive;
     case 'clinical':
       return ClipboardList;
     case 'dashboard':

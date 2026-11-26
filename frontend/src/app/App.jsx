@@ -21,6 +21,7 @@ import {
   Activity,
   BarChart3,
   Server,
+  Archive,
 } from 'lucide-react';
 import {
   AuthProvider,
@@ -65,6 +66,7 @@ const AuditTrailPage = lazy(() => import('../features/audit/pages/AuditTrailPage
 const ReportsPage = lazy(() => import('../features/reports/pages/ReportsPage').then((m) => ({ default: m.ReportsPage })));
 const SystemHealthPage = lazy(() => import('../features/system/pages/SystemHealthPage').then((m) => ({ default: m.SystemHealthPage })));
 const StaffProfilePage = lazy(() => import('../features/staff/pages/StaffProfilePage').then((m) => ({ default: m.StaffProfilePage })));
+const ArchiveCenterPage = lazy(() => import('../features/archives/pages/ArchiveCenterPage').then((m) => ({ default: m.ArchiveCenterPage })));
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { LoadingProvider, useRouteLoading } from '../contexts/LoadingContext';
 import { ThemeProvider } from '../contexts/ThemeContext';
@@ -94,7 +96,7 @@ function getInitialTab() {
   const path = window.location.pathname.toLowerCase();
   if (path.startsWith('/patient/')) {
     const sub = path.replace('/patient/', '').split('/')[0];
-    if (['dashboard', 'book', 'services', 'dentists', 'appointments', 'notifications', 'profile'].includes(sub)) {
+    if (['dashboard', 'book', 'services', 'dentists', 'appointments', 'archives', 'notifications', 'profile'].includes(sub)) {
       return sub;
     }
   }
@@ -112,6 +114,7 @@ function getInitialTab() {
         'users',
         'roles',
         'audit',
+        'archives',
         'reports',
         'system',
         'notifications',
@@ -123,7 +126,7 @@ function getInitialTab() {
   }
   if (path.startsWith('/dentist/')) {
     const sub = path.replace('/dentist/', '').split('/')[0];
-    if (['dashboard', 'appointments', 'treatment-records', 'notifications', 'profile'].includes(sub)) {
+    if (['dashboard', 'appointments', 'treatment-records', 'archives', 'notifications', 'profile'].includes(sub)) {
       return sub;
     }
   }
@@ -214,6 +217,7 @@ function getSidebarSections(currentRole, hasPermission, { onPatientNav, onAdminN
           { key: 'services', label: 'Services', icon: Sparkles, onSelect: () => onPatientNav('services') },
           { key: 'dentists', label: 'Dentists', icon: Stethoscope, onSelect: () => onPatientNav('dentists') },
           { key: 'appointments', label: 'My Appointments', icon: FileText, onSelect: () => onPatientNav('appointments') },
+          { key: 'archives', label: 'My Archive', icon: Archive, onSelect: () => onPatientNav('archives') },
           { key: 'notifications', label: 'Notifications', icon: Bell, onSelect: () => onPatientNav('notifications') },
           { key: 'profile', label: 'My Profile', icon: Shield, onSelect: () => onPatientNav('profile') },
         ],
@@ -240,6 +244,12 @@ function getSidebarSections(currentRole, hasPermission, { onPatientNav, onAdminN
         label: 'Audit Trail',
         icon: Activity,
         onSelect: () => onAdminNav('audit'),
+      },
+      hasPermission('archives.view') && {
+        key: 'archives',
+        label: 'Archive Vault',
+        icon: Archive,
+        onSelect: () => onAdminNav('archives'),
       },
       hasPermission('reports.view') && {
         key: 'reports',
@@ -290,6 +300,7 @@ function getSidebarSections(currentRole, hasPermission, { onPatientNav, onAdminN
           { key: 'dashboard', label: 'Overview', icon: Clock, onSelect: () => onDentistNav('dashboard') },
           { key: 'appointments', label: 'Assigned Appointments', icon: Calendar, onSelect: () => onDentistNav('appointments') },
           { key: 'treatment-records', label: 'Treatment Records', icon: FileText, onSelect: () => onDentistNav('treatment-records') },
+          { key: 'archives', label: 'Clinical Archive', icon: Archive, onSelect: () => onDentistNav('archives') },
           { key: 'profile', label: 'My Profile', icon: Shield, onSelect: () => onDentistNav('profile') },
         ],
       },
@@ -1273,6 +1284,10 @@ function AppContent() {
                 <AppointmentHistoryPage onNavigateToBook={() => handlePatientNav('book')} />
               )}
 
+              {activeTab === 'archives' && (
+                <ArchiveCenterPage />
+              )}
+
               {activeTab === 'notifications' && (
                 <PatientNotificationsPage
                   onNavigateToAppointments={() => handlePatientNav('appointments')}
@@ -1329,6 +1344,10 @@ function AppContent() {
 
               {activeTab === 'audit' && hasPermission('audit_logs.view') && (
                 <AuditTrailPage />
+              )}
+
+              {activeTab === 'archives' && hasPermission('archives.view') && (
+                <ArchiveCenterPage />
               )}
 
               {activeTab === 'reports' && hasPermission('reports.view') && (
@@ -1405,6 +1424,10 @@ function AppContent() {
                 <AuditTrailPage />
               )}
 
+              {activeTab === 'archives' && (
+                <ArchiveCenterPage />
+              )}
+
               {activeTab === 'reports' && (
                 <ReportsPage />
               )}
@@ -1456,6 +1479,10 @@ function AppContent() {
 
               {activeTab === 'treatment-records' && (
                 <DentistTreatmentRecordsPage />
+              )}
+
+              {activeTab === 'archives' && (
+                <ArchiveCenterPage />
               )}
 
               {activeTab === 'notifications' && (

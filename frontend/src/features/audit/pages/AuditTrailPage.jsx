@@ -38,6 +38,7 @@ const MODULE_OPTIONS = [
   { value: 'email_outbox', label: 'Email Outbox' },
   { value: 'clinic_settings', label: 'Clinic Settings' },
   { value: 'audit_logs', label: 'Audit Logs' },
+  { value: 'archives', label: 'Archives' },
 ];
 
 const DATE_PRESETS = [

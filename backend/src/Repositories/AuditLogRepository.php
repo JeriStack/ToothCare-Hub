@@ -44,6 +44,7 @@ class AuditLogRepository
         'email_outbox' => ['email_outbox', 'email_job', 'email_jobs'],
         'clinic_settings' => ['clinic_settings', 'settings'],
         'audit_logs' => ['audit_logs', 'audit_log'],
+        'archives' => ['archives', 'archive', 'archive_record', 'archive_records'],
     ];
 
     public function __construct(?Database $database = null)

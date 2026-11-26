@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Controllers\AppointmentController;
+use App\Controllers\ArchiveController;
 use App\Controllers\AuditLogController;
 use App\Controllers\EmailOutboxController;
 use App\Controllers\AuthController;
@@ -259,6 +260,14 @@ $router->group('/api/v1', function (Router $r): void {
     $r->patch('/treatment-records/{id}', [TreatmentRecordController::class, 'update'], [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN']), AuthorizationMiddleware::hasPermission('treatment_records.amend', ['DENTIST', 'ADMIN'])]);
     $r->put('/treatment-records/{id}', [TreatmentRecordController::class, 'update'], [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN']), AuthorizationMiddleware::hasPermission('treatment_records.amend', ['DENTIST', 'ADMIN'])]);
     $r->get('/appointments/{id}/treatment-record', [TreatmentRecordController::class, 'showByAppointment'], [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN']), AuthorizationMiddleware::hasPermission('treatment_records.view', ['DENTIST', 'ADMIN'])]);
+
+    // Role-Aware Compliance Archive Vault (Admin, Receptionist, Dentist, Patient — strictly scoped server-side)
+    $r->get('/archives/summary', [ArchiveController::class, 'summary'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('archives.view', ['ADMIN', 'RECEPTIONIST', 'DENTIST', 'PATIENT'])]);
+    $r->get('/archives/export', [ArchiveController::class, 'export'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('archives.export', ['ADMIN', 'RECEPTIONIST'])]);
+    $r->get('/archives', [ArchiveController::class, 'index'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('archives.view', ['ADMIN', 'RECEPTIONIST', 'DENTIST', 'PATIENT'])]);
+    $r->post('/archives', [ArchiveController::class, 'store'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('archives.create', ['ADMIN', 'RECEPTIONIST', 'DENTIST'])]);
+    $r->get('/archives/{id}', [ArchiveController::class, 'show'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('archives.view', ['ADMIN', 'RECEPTIONIST', 'DENTIST', 'PATIENT'])]);
+    $r->post('/archives/{id}/restore', [ArchiveController::class, 'restore'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('archives.restore', ['ADMIN'])]);
 
     // 8. Future Phases - Structured Placeholders
     $notImplemented = fn (string $name) => function (Request $req) use ($name) {

@@ -2170,6 +2170,207 @@ paths:
         -
           CookieAuth: []
           CsrfToken: []
+  /archives:
+    get:
+      tags:
+        - Archives
+      summary: 'List Role-Scoped Archived Records (Server-Side Paginated & Sortable)'
+      operationId: listArchives
+      parameters:
+        -
+          name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        -
+          name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 10
+            maximum: 100
+            minimum: 1
+        -
+          name: entity_type
+          in: query
+          schema:
+            type: string
+            enum:
+              - appointment
+              - treatment_record
+              - patient
+              - dentist
+              - service
+              - user
+        -
+          name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - ARCHIVED
+              - RESTORED
+              - LOCKED_RETENTION
+        -
+          name: retention_category
+          in: query
+          schema:
+            type: string
+            enum:
+              - CLINICAL_7Y
+              - OPERATIONAL_3Y
+              - ACCOUNT_5Y
+              - CATALOG_LEGACY
+        -
+          name: search
+          in: query
+          schema:
+            type: string
+            maxLength: 120
+        -
+          name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+        -
+          name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+        -
+          name: include_examples
+          in: query
+          schema:
+            type: boolean
+            default: true
+        -
+          name: sort_by
+          in: query
+          schema:
+            type: string
+            default: archived_at
+            enum:
+              - archived_at
+              - entity_type
+              - status
+              - retention_until
+              - title
+              - reference_code
+              - id
+        -
+          name: sort_dir
+          in: query
+          schema:
+            type: string
+            default: desc
+            enum:
+              - asc
+              - desc
+      responses:
+        '200':
+          description: 'Paginated role-scoped archive records'
+        '403':
+          description: 'Unauthorized entity type or permission'
+        '422':
+          description: 'Invalid filters or sorting'
+      security:
+        -
+          CookieAuth: []
+    post:
+      tags:
+        - Archives
+      summary: 'Archive Eligible Live Entity with Tamper-Evident SHA-256 Snapshot'
+      operationId: createArchiveRecord
+      responses:
+        '201':
+          description: 'Archive record created'
+        '403':
+          description: 'Role/ownership denied'
+        '409':
+          description: 'Already archived or ineligible state'
+        '422':
+          description: 'Validation error'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /archives/summary:
+    get:
+      tags:
+        - Archives
+      summary: 'Get Role-Scoped Archive KPIs & Actor Capabilities'
+      operationId: getArchiveSummary
+      responses:
+        '200':
+          description: 'Archive summary metrics and capabilities'
+      security:
+        -
+          CookieAuth: []
+  /archives/export:
+    get:
+      tags:
+        - Archives
+      summary: 'Export Filtered Role-Scoped Archives to CSV (Admin/Receptionist)'
+      operationId: exportArchivesCsv
+      responses:
+        '200':
+          description: 'CSV export stream'
+        '403':
+          description: 'Requires archives.export'
+      security:
+        -
+          CookieAuth: []
+  '/archives/{id}':
+    get:
+      tags:
+        - Archives
+      summary: 'Inspect Single Archive Snapshot with SHA-256 Verification'
+      operationId: getArchiveDetail
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Archive snapshot & integrity digest'
+        '403':
+          description: 'Ownership/role denied'
+        '404':
+          description: 'Archive record not found'
+      security:
+        -
+          CookieAuth: []
+  '/archives/{id}/restore':
+    post:
+      tags:
+        - Archives
+      summary: 'Restore Soft-Archived Record to Active Operations (Admin Only)'
+      operationId: restoreArchiveRecord
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Record restored'
+        '403':
+          description: 'Requires archives.restore'
+        '409':
+          description: 'Immutable clinical lock or already restored'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
   /services:
     get:
       tags:
@@ -3509,3 +3710,6 @@ tags:
   -
     name: Legal
     description: 'Public Terms of Service and Privacy Policy documents, versioning, and auditable user legal acceptance records'
+  -
+    name: Archives
+    description: Archives

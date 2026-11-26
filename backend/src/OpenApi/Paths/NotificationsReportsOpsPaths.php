@@ -247,4 +247,48 @@ final class NotificationsReportsOpsPaths
     #[OA\Get(path: '/admin/clinic/settings', operationId: 'getClinicSettings', summary: 'Get Clinic Settings (Admin)', tags: ['Settings'], security: [['CookieAuth' => []]], responses: [new OA\Response(response: 200, description: 'Settings map')])]
     #[OA\Put(path: '/admin/clinic/settings', operationId: 'updateClinicSettings', summary: 'Update Clinic Settings (Admin)', tags: ['Settings'], security: [['CookieAuth' => [], 'CsrfToken' => []]], responses: [new OA\Response(response: 200, description: 'Settings updated')])]
     public function clinicSettings(): void {}
+
+    // --- Role-Aware Compliance Archive Vault ---
+    #[OA\Get(
+        path: '/archives',
+        operationId: 'listArchives',
+        summary: 'List Role-Scoped Archived Records (Server-Side Paginated & Sortable)',
+        tags: ['Archives'],
+        security: [['CookieAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'page', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1, default: 1)),
+            new OA\Parameter(name: 'per_page', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1, maximum: 100, default: 10)),
+            new OA\Parameter(name: 'entity_type', in: 'query', schema: new OA\Schema(type: 'string', enum: ['appointment', 'treatment_record', 'patient', 'dentist', 'service', 'user'])),
+            new OA\Parameter(name: 'status', in: 'query', schema: new OA\Schema(type: 'string', enum: ['ARCHIVED', 'RESTORED', 'LOCKED_RETENTION'])),
+            new OA\Parameter(name: 'retention_category', in: 'query', schema: new OA\Schema(type: 'string', enum: ['CLINICAL_7Y', 'OPERATIONAL_3Y', 'ACCOUNT_5Y', 'CATALOG_LEGACY'])),
+            new OA\Parameter(name: 'search', in: 'query', schema: new OA\Schema(type: 'string', maxLength: 120)),
+            new OA\Parameter(name: 'date_from', in: 'query', schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'date_to', in: 'query', schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'include_examples', in: 'query', schema: new OA\Schema(type: 'boolean', default: true)),
+            new OA\Parameter(name: 'sort_by', in: 'query', schema: new OA\Schema(type: 'string', enum: ['archived_at', 'entity_type', 'status', 'retention_until', 'title', 'reference_code', 'id'], default: 'archived_at')),
+            new OA\Parameter(name: 'sort_dir', in: 'query', schema: new OA\Schema(type: 'string', enum: ['asc', 'desc'], default: 'desc')),
+        ],
+        responses: [new OA\Response(response: 200, description: 'Paginated role-scoped archive records'), new OA\Response(response: 403, description: 'Unauthorized entity type or permission'), new OA\Response(response: 422, description: 'Invalid filters or sorting')]
+    )]
+    #[OA\Post(
+        path: '/archives',
+        operationId: 'createArchiveRecord',
+        summary: 'Archive Eligible Live Entity with Tamper-Evident SHA-256 Snapshot',
+        tags: ['Archives'],
+        security: [['CookieAuth' => [], 'CsrfToken' => []]],
+        responses: [new OA\Response(response: 201, description: 'Archive record created'), new OA\Response(response: 403, description: 'Role/ownership denied'), new OA\Response(response: 409, description: 'Already archived or ineligible state'), new OA\Response(response: 422, description: 'Validation error')]
+    )]
+    public function archivesCollection(): void {}
+
+    #[OA\Get(path: '/archives/summary', operationId: 'getArchiveSummary', summary: 'Get Role-Scoped Archive KPIs & Actor Capabilities', tags: ['Archives'], security: [['CookieAuth' => []]], responses: [new OA\Response(response: 200, description: 'Archive summary metrics and capabilities')])]
+    public function archivesSummary(): void {}
+
+    #[OA\Get(path: '/archives/export', operationId: 'exportArchivesCsv', summary: 'Export Filtered Role-Scoped Archives to CSV (Admin/Receptionist)', tags: ['Archives'], security: [['CookieAuth' => []]], responses: [new OA\Response(response: 200, description: 'CSV export stream'), new OA\Response(response: 403, description: 'Requires archives.export')])]
+    public function archivesExport(): void {}
+
+    #[OA\Get(path: '/archives/{id}', operationId: 'getArchiveDetail', summary: 'Inspect Single Archive Snapshot with SHA-256 Verification', tags: ['Archives'], security: [['CookieAuth' => []]], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Archive snapshot & integrity digest'), new OA\Response(response: 403, description: 'Ownership/role denied'), new OA\Response(response: 404, description: 'Archive record not found')])]
+    public function archiveById(): void {}
+
+    #[OA\Post(path: '/archives/{id}/restore', operationId: 'restoreArchiveRecord', summary: 'Restore Soft-Archived Record to Active Operations (Admin Only)', tags: ['Archives'], security: [['CookieAuth' => [], 'CsrfToken' => []]], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Record restored'), new OA\Response(response: 403, description: 'Requires archives.restore'), new OA\Response(response: 409, description: 'Immutable clinical lock or already restored')])]
+    public function restoreArchive(): void {}
 }
