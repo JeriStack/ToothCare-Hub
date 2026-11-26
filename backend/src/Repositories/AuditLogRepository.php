@@ -32,6 +32,20 @@ class AuditLogRepository
         'websocket_ticket',
     ];
 
+    private const TARGET_TYPE_ALIASES = [
+        'users' => ['users', 'user'],
+        'patients' => ['patients', 'patient'],
+        'dentists' => ['dentists', 'dentist'],
+        'appointments' => ['appointments', 'appointment'],
+        'services' => ['services', 'service'],
+        'roles' => ['roles', 'role'],
+        'treatment_records' => ['treatment_records', 'treatment_record'],
+        'legal_documents' => ['legal_documents', 'legal_document'],
+        'email_outbox' => ['email_outbox', 'email_job', 'email_jobs'],
+        'clinic_settings' => ['clinic_settings', 'settings'],
+        'audit_logs' => ['audit_logs', 'audit_log'],
+    ];
+
     public function __construct(?Database $database = null)
     {
         $this->database = $database ?? Database::getInstance();
@@ -155,8 +169,18 @@ class AuditLogRepository
         }
 
         if (!empty($filters['target_type'])) {
-            $where[] = 'al.target_type = ?';
-            $params[] = trim((string) $filters['target_type']);
+            $normalizedTarget = strtolower(trim((string) $filters['target_type']));
+            $aliases = self::TARGET_TYPE_ALIASES[$normalizedTarget] ?? [$normalizedTarget];
+            if (count($aliases) === 1) {
+                $where[] = 'al.target_type = ?';
+                $params[] = $aliases[0];
+            } else {
+                $placeholders = implode(', ', array_fill(0, count($aliases), '?'));
+                $where[] = "al.target_type IN ({$placeholders})";
+                foreach ($aliases as $alias) {
+                    $params[] = $alias;
+                }
+            }
         }
 
         if (!empty($filters['actor_user_id'])) {
@@ -164,14 +188,21 @@ class AuditLogRepository
             $params[] = (int) $filters['actor_user_id'];
         }
 
-        if (!empty($filters['date_from'])) {
+        $dateFrom = !empty($filters['date_from'])
+            ? trim((string) $filters['date_from'])
+            : (!empty($filters['date']) ? trim((string) $filters['date']) : '');
+        $dateTo = !empty($filters['date_to'])
+            ? trim((string) $filters['date_to'])
+            : (!empty($filters['date']) ? trim((string) $filters['date']) : '');
+
+        if ($dateFrom !== '') {
             $where[] = 'al.created_at >= ?';
-            $params[] = trim((string) $filters['date_from']) . ' 00:00:00';
+            $params[] = $dateFrom . ' 00:00:00';
         }
 
-        if (!empty($filters['date_to'])) {
+        if ($dateTo !== '') {
             $where[] = 'al.created_at <= ?';
-            $params[] = trim((string) $filters['date_to']) . ' 23:59:59';
+            $params[] = $dateTo . ' 23:59:59';
         }
 
         $whereSql = count($where) > 0 ? 'WHERE ' . implode(' AND ', $where) : '';

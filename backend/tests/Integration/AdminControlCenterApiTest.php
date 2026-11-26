@@ -258,8 +258,9 @@ class AdminControlCenterApiTest extends TestCase
     {
         $this->auditRepo->record('AUTH_LOGIN_FAILED', 'users', $this->patientUser['id'], null, '192.168.1.10', 'TestAgent', ['reason' => 'INVALID_CREDENTIALS']);
         $this->auditRepo->record('PATIENT_PROFILE_UPDATED', 'patients', 1, $this->adminUser['id'], '10.0.0.1', 'AdminAgent', ['field' => 'phone']);
+        $this->auditRepo->record('APPOINTMENT_COMPLETED', 'appointment', 104, $this->adminUser['id'], '127.0.0.1', 'AdminAgent', null);
 
-        // 1. Filter audit logs by target_type
+        // 1. Filter audit logs by target_type (including singular/plural alias normalization)
         $resFiltered = $this->app->handle($this->createAuthRequest(
             'GET',
             '/api/v1/admin/audit-logs',
@@ -272,6 +273,18 @@ class AdminControlCenterApiTest extends TestCase
         $this->assertCount(1, $logs);
         $this->assertSame('PATIENT_PROFILE_UPDATED', $logs[0]['action']);
 
+        $resApptAlias = $this->app->handle($this->createAuthRequest(
+            'GET',
+            '/api/v1/admin/audit-logs',
+            $this->adminUser,
+            [],
+            ['target_type' => 'appointments']
+        ));
+        $this->assertSame(200, $resApptAlias->getStatusCode());
+        $apptLogs = json_decode($resApptAlias->getBody(), true)['data'];
+        $this->assertCount(1, $apptLogs);
+        $this->assertSame('APPOINTMENT_COMPLETED', $apptLogs[0]['action']);
+
         // 2. Security events endpoint
         $resSec = $this->app->handle($this->createAuthRequest('GET', '/api/v1/admin/security/events', $this->adminUser));
         $this->assertSame(200, $resSec->getStatusCode());
@@ -279,11 +292,22 @@ class AdminControlCenterApiTest extends TestCase
         $this->assertGreaterThanOrEqual(1, count($secEvents));
         $this->assertSame('AUTH_LOGIN_FAILED', $secEvents[0]['action']);
 
-        // 3. CSV export
+        // 3. CSV export (including security_only filter)
         $resExport = $this->app->handle($this->createAuthRequest('GET', '/api/v1/admin/audit-logs/export', $this->adminUser));
         $this->assertSame(200, $resExport->getStatusCode());
         $this->assertStringContainsString('Timestamp (UTC)', $resExport->getBody());
         $this->assertStringContainsString('AUTH_LOGIN_FAILED', $resExport->getBody());
+
+        $resSecExport = $this->app->handle($this->createAuthRequest(
+            'GET',
+            '/api/v1/admin/audit-logs/export',
+            $this->adminUser,
+            [],
+            ['security_only' => '1']
+        ));
+        $this->assertSame(200, $resSecExport->getStatusCode());
+        $this->assertStringContainsString('AUTH_LOGIN_FAILED', $resSecExport->getBody());
+        $this->assertStringNotContainsString('PATIENT_PROFILE_UPDATED', $resSecExport->getBody());
     }
 
     public function testClinicSettingsReportsAndSystemHealthEndpoints(): void

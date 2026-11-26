@@ -350,4 +350,78 @@ describe('Administrator Control Center Frontend Suite', () => {
       expect(screen.getByText('patients.view, reports.view')).toBeInTheDocument();
     });
   });
+
+  it('uses a single calendar date filter, supports Security stream pagination, and exports filtered CSV', async () => {
+    auditApi.getLogs.mockResolvedValue({
+      data: [
+        {
+          id: 902,
+          action: 'APPOINTMENT_COMPLETED',
+          target_type: 'appointment',
+          target_id: 104,
+          actor_email: 'dentist@toothcare.com',
+          actor_role: 'DENTIST',
+          ip_address: '127.0.0.1',
+          payload: null,
+          created_at: '2026-11-24 16:36:17',
+        },
+      ],
+      meta: { total: 1, page: 1, per_page: 25, last_page: 1 },
+    });
+    auditApi.getSecurityEvents.mockResolvedValue({
+      data: [
+        {
+          id: 903,
+          action: 'AUTH_LOGIN_FAILED',
+          target_type: 'users',
+          target_id: 12,
+          actor_email: 'System / Anonymous',
+          actor_role: 'SYSTEM',
+          ip_address: '172.21.0.1',
+          payload: { reason: 'INVALID_CREDENTIALS' },
+          created_at: '2026-11-24 12:48:46',
+        },
+      ],
+      meta: { total: 1, page: 1, per_page: 25, last_page: 1 },
+    });
+    auditApi.exportCsv.mockResolvedValue();
+
+    const { container } = render(<AuditTrailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('APPOINTMENT_COMPLETED')).toBeInTheDocument();
+    });
+
+    // Verify only ONE calendar date input is rendered
+    const dateInputs = container.querySelectorAll('input[type="date"]');
+    expect(dateInputs).toHaveLength(1);
+
+    // Selecting a date sends matching single-day date_from & date_to
+    fireEvent.change(dateInputs[0], { target: { value: '2026-11-24' } });
+    await waitFor(() => {
+      expect(auditApi.getLogs).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          date_from: '2026-11-24',
+          date_to: '2026-11-24',
+        })
+      );
+    });
+
+    // Switch to Security & Failed Logins stream and export CSV
+    fireEvent.click(screen.getByRole('tab', { name: /Security & Failed Logins/i }));
+    await waitFor(() => {
+      expect(screen.getByText('AUTH_LOGIN_FAILED')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Export CSV Log/i }));
+    await waitFor(() => {
+      expect(auditApi.exportCsv).toHaveBeenCalledWith(
+        expect.objectContaining({
+          date_from: '2026-11-24',
+          date_to: '2026-11-24',
+          security_only: 1,
+        })
+      );
+    });
+  });
 });

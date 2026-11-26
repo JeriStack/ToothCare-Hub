@@ -15,6 +15,22 @@ use App\Repositories\AuditLogRepository;
  */
 class AuditLogController
 {
+    private const SECURITY_ACTIONS = [
+        'AUTH_LOGIN_FAILED',
+        'AUTH_LOGIN_RATE_LIMITED',
+        'AUTH_LOGIN_BLOCKED',
+        'AUTH_PASSWORD_RESET_REQUESTED',
+        'AUTH_PASSWORD_RESET_COMPLETED',
+        'USER_ACTIVATED',
+        'USER_DEACTIVATED',
+        'USER_STATUS_UPDATED',
+        'USER_ROLE_UPDATED',
+        'PATIENT_ACTIVATED',
+        'PATIENT_DEACTIVATED',
+        'ROLE_PERMISSIONS_UPDATED',
+        'ADMIN_LOCKOUT_PREVENTED',
+    ];
+
     private AuditLogRepository $auditLogRepository;
 
     public function __construct(?AuditLogRepository $auditLogRepository = null)
@@ -35,6 +51,7 @@ class AuditLogController
             'action' => $request->getQuery('action'),
             'target_type' => $request->getQuery('target_type'),
             'actor_user_id' => $request->getQuery('actor_user_id'),
+            'date' => $request->getQuery('date'),
             'date_from' => $request->getQuery('date_from'),
             'date_to' => $request->getQuery('date_to'),
         ];
@@ -63,9 +80,19 @@ class AuditLogController
             'action' => $request->getQuery('action'),
             'target_type' => $request->getQuery('target_type'),
             'actor_user_id' => $request->getQuery('actor_user_id'),
+            'date' => $request->getQuery('date'),
             'date_from' => $request->getQuery('date_from'),
             'date_to' => $request->getQuery('date_to'),
         ];
+
+        $securityOnly = in_array(
+            strtolower((string) ($request->getQuery('security_only') ?? $request->getQuery('view') ?? '')),
+            ['1', 'true', 'security'],
+            true
+        );
+        if ($securityOnly) {
+            $filters['actions'] = self::SECURITY_ACTIONS;
+        }
 
         $csv = $this->auditLogRepository->exportCsv($filters);
 
@@ -103,34 +130,22 @@ class AuditLogController
 
         $filters = [
             'search' => $request->getQuery('search'),
+            'target_type' => $request->getQuery('target_type'),
+            'date' => $request->getQuery('date'),
             'date_from' => $request->getQuery('date_from'),
             'date_to' => $request->getQuery('date_to'),
-        ];
-
-        $securityActions = [
-            'AUTH_LOGIN_FAILED',
-            'AUTH_LOGIN_RATE_LIMITED',
-            'AUTH_LOGIN_BLOCKED',
-            'AUTH_PASSWORD_RESET_REQUESTED',
-            'AUTH_PASSWORD_RESET_COMPLETED',
-            'USER_ACTIVATED',
-            'USER_DEACTIVATED',
-            'USER_STATUS_UPDATED',
-            'USER_ROLE_UPDATED',
-            'PATIENT_ACTIVATED',
-            'PATIENT_DEACTIVATED',
-            'ROLE_PERMISSIONS_UPDATED',
-            'ADMIN_LOCKOUT_PREVENTED',
         ];
 
         $page = max(1, (int) ($request->getQuery('page') ?? 1));
         $rawPerPage = $request->getQuery('per_page') ?? $request->getQuery('limit') ?? 25;
         $perPage = max(1, min(100, (int) $rawPerPage));
+        $sortBy = (string) ($request->getQuery('sort_by') ?? 'created_at');
+        $sortDir = (string) ($request->getQuery('sort_dir') ?? 'DESC');
 
         $result = $this->auditLogRepository->list(
-            [...$filters, 'actions' => $securityActions],
-            'created_at',
-            'DESC',
+            [...$filters, 'actions' => self::SECURITY_ACTIONS],
+            $sortBy,
+            $sortDir,
             $page,
             $perPage
         );
