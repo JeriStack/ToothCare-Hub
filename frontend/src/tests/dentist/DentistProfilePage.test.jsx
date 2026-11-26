@@ -176,4 +176,22 @@ describe('DentistProfilePage Component', () => {
 
     expect(screen.queryByAltText('Dr. Maria Santos profile photo')).toBeNull();
   });
+
+  it('keeps Account Details minimized by default and toggles open/closed as a dropdown', async () => {
+    render(<DentistProfilePage onProfileUpdated={vi.fn()} />);
+    await screen.findByDisplayValue('Maria');
+
+    const toggleBtn = screen.getByRole('button', { name: /Account Details/i });
+    expect(toggleBtn).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('Practice Status')).toBeNull();
+
+    fireEvent.click(toggleBtn);
+    expect(toggleBtn).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Practice Status')).toBeDefined();
+    expect(screen.getByText('Active & Licensed')).toBeDefined();
+
+    fireEvent.click(toggleBtn);
+    expect(toggleBtn).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('Practice Status')).toBeNull();
+  });
 });

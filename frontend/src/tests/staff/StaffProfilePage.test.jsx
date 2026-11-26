@@ -169,4 +169,22 @@ describe('StaffProfilePage Component', () => {
 
     expect(screen.queryByAltText('Clarisse Mendoza profile photo')).toBeNull();
   });
+
+  it('keeps Account Details minimized by default and toggles open/closed as a dropdown', async () => {
+    render(<StaffProfilePage onProfileUpdated={vi.fn()} />);
+    await screen.findByDisplayValue('Clarisse');
+
+    const toggleBtn = screen.getByRole('button', { name: /Account Details/i });
+    expect(toggleBtn).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('System Access')).toBeNull();
+
+    fireEvent.click(toggleBtn);
+    expect(toggleBtn).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('System Access')).toBeDefined();
+    expect(screen.getByText('2 granted')).toBeDefined();
+
+    fireEvent.click(toggleBtn);
+    expect(toggleBtn).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('System Access')).toBeNull();
+  });
 });
