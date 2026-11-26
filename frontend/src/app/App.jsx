@@ -245,7 +245,7 @@ function getSidebarSections(currentRole, hasPermission, { onPatientNav, onAdminN
         icon: Activity,
         onSelect: () => onAdminNav('audit'),
       },
-      hasPermission('archives.view') && {
+      (currentRole === 'ADMIN' || hasPermission('archives.view')) && {
         key: 'archives',
         label: 'Archive Vault',
         icon: Archive,
