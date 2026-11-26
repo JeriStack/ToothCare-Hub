@@ -245,7 +245,7 @@ function getSidebarSections(currentRole, hasPermission, { onPatientNav, onAdminN
         icon: Activity,
         onSelect: () => onAdminNav('audit'),
       },
-      (currentRole === 'ADMIN' || hasPermission('archives.view')) && {
+      currentRole === 'ADMIN' && {
         key: 'archives',
         label: 'Archive Vault',
         icon: Archive,
@@ -276,6 +276,9 @@ function getSidebarSections(currentRole, hasPermission, { onPatientNav, onAdminN
           { key: 'services', label: 'Services & Fees', icon: Stethoscope, onSelect: () => onAdminNav('services') },
           { key: 'dentists', label: 'Dentist Roster', icon: Shield, onSelect: () => onAdminNav('dentists') },
           { key: 'schedules', label: 'Hours & Schedules', icon: Clock, onSelect: () => onAdminNav('schedules') },
+          ...(currentRole === 'RECEPTIONIST'
+            ? [{ key: 'archives', label: 'Archive Vault', icon: Archive, onSelect: () => onAdminNav('archives') }]
+            : []),
           { key: 'profile', label: 'My Profile', icon: Shield, onSelect: () => onAdminNav('profile') },
         ],
       },
@@ -1346,7 +1349,7 @@ function AppContent() {
                 <AuditTrailPage />
               )}
 
-              {activeTab === 'archives' && hasPermission('archives.view') && (
+              {activeTab === 'archives' && (
                 <ArchiveCenterPage />
               )}
 
