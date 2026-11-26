@@ -114,12 +114,49 @@ body {
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color 150ms ease-out, color 150ms ease-out;
+  transition: background-color 220ms cubic-bezier(0.22, 1, 0.36, 1), color 220ms ease-out;
+}
+
+/* Global Light <-> Dark Theme Switch Animation (View Transitions circular ripple + graceful CSS fallback) */
+html.theme-view-transition::view-transition-old(root),
+html.theme-view-transition::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+html.theme-view-transition::view-transition-old(root) {
+  z-index: 1;
+}
+
+html.theme-view-transition::view-transition-new(root) {
+  z-index: 9999;
+}
+
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition:
+    background-color 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    fill 240ms ease-out,
+    stroke 240ms ease-out,
+    box-shadow 280ms ease-out !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  body {
-    transition: none;
+  body,
+  html.theme-transitioning,
+  html.theme-transitioning *,
+  html.theme-transitioning *::before,
+  html.theme-transitioning *::after {
+    transition: none !important;
+  }
+
+  html.theme-view-transition::view-transition-old(root),
+  html.theme-view-transition::view-transition-new(root) {
+    animation: none !important;
   }
 }
 

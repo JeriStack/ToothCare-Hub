@@ -5,8 +5,10 @@ import React, {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
+import { flushSync } from 'react-dom';
 import {
   DEFAULT_THEME,
   THEMES,
@@ -15,6 +17,7 @@ import {
   normalizeTheme,
   persistTheme,
   readStoredTheme,
+  runThemeTransition,
 } from '../utils/theme';
 
 const ThemeContext = createContext(null);
@@ -33,6 +36,9 @@ export function ThemeProvider({ children, defaultTheme }) {
     }
     return readStoredTheme();
   });
+
+  const themeRef = useRef(theme);
+  themeRef.current = theme;
 
   useIsomorphicLayoutEffect(() => {
     applyThemeToDocument(theme);
@@ -56,23 +62,44 @@ export function ThemeProvider({ children, defaultTheme }) {
     };
   }, []);
 
-  const setTheme = useCallback((nextTheme) => {
-    const resolved = normalizeTheme(
-      typeof nextTheme === 'function' ? nextTheme(theme) : nextTheme
-    );
-    persistTheme(resolved);
-    applyThemeToDocument(resolved);
-    setThemeState(resolved);
-  }, [theme]);
+  const commitTheme = useCallback((resolved, originSource = null) => {
+    if (resolved === themeRef.current) {
+      persistTheme(resolved);
+      applyThemeToDocument(resolved);
+      return;
+    }
 
-  const toggleTheme = useCallback(() => {
-    setThemeState((prevTheme) => {
-      const next = prevTheme === THEMES.DARK ? THEMES.LIGHT : THEMES.DARK;
-      persistTheme(next);
-      applyThemeToDocument(next);
-      return next;
-    });
+    runThemeTransition(() => {
+      persistTheme(resolved);
+      applyThemeToDocument(resolved);
+      themeRef.current = resolved;
+      try {
+        flushSync(() => {
+          setThemeState(resolved);
+        });
+      } catch {
+        setThemeState(resolved);
+      }
+    }, originSource);
   }, []);
+
+  const setTheme = useCallback(
+    (nextTheme, originSource = null) => {
+      const resolved = normalizeTheme(
+        typeof nextTheme === 'function' ? nextTheme(themeRef.current) : nextTheme
+      );
+      commitTheme(resolved, originSource);
+    },
+    [commitTheme]
+  );
+
+  const toggleTheme = useCallback(
+    (originSource = null) => {
+      const next = themeRef.current === THEMES.DARK ? THEMES.LIGHT : THEMES.DARK;
+      commitTheme(next, originSource);
+    },
+    [commitTheme]
+  );
 
   const value = useMemo(
     () => ({

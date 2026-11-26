@@ -1,7 +1,12 @@
 import React from 'react';
 import { Moon, Sun } from 'lucide-react';
 import { useOptionalTheme } from '../../contexts/ThemeContext';
-import { applyThemeToDocument, persistTheme, readStoredTheme } from '../../utils/theme';
+import {
+  applyThemeToDocument,
+  persistTheme,
+  readStoredTheme,
+  runThemeTransition,
+} from '../../utils/theme';
 
 const VARIANT_CLASSES = {
   header:
@@ -11,8 +16,8 @@ const VARIANT_CLASSES = {
 };
 
 /**
- * Accessible two-state theme toggle (Light <-> Dark).
- * Renders a Sun icon when Light Mode is active and a Moon icon when Dark Mode is active.
+ * Accessible two-state theme toggle (Light <-> Dark) with animated icon morph
+ * and smooth global circular View Transition ripple (with CSS cross-fade fallback).
  */
 export function ThemeToggle({
   variant = 'surface',
@@ -24,14 +29,16 @@ export function ThemeToggle({
     ? themeContext.isDark
     : typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
 
-  const handleToggle = () => {
+  const handleToggle = (event) => {
     if (themeContext) {
-      themeContext.toggleTheme();
+      themeContext.toggleTheme(event);
       return;
     }
     const next = readStoredTheme() === 'dark' ? 'light' : 'dark';
-    persistTheme(next);
-    applyThemeToDocument(next);
+    runThemeTransition(() => {
+      persistTheme(next);
+      applyThemeToDocument(next);
+    }, event);
   };
 
   const nextLabel = isDark ? 'Switch to light mode' : 'Switch to dark mode';
@@ -47,20 +54,28 @@ export function ThemeToggle({
       title={nextLabel}
       data-testid="theme-toggle"
       data-theme-state={isDark ? 'dark' : 'light'}
-      className={`inline-flex items-center justify-center gap-2 min-h-11 sm:min-h-10 ${
+      className={`group inline-flex items-center justify-center gap-2 min-h-11 sm:min-h-10 ${
         showLabel ? 'px-3 py-2' : 'w-11 h-11 sm:w-10 sm:h-10 p-2'
-      } rounded-xl text-xs font-semibold transition-colors duration-200 motion-reduce:transition-none cursor-pointer focus:outline-none focus-visible:ring-2 ${variantClasses} ${className}`}
+      } rounded-xl text-xs font-semibold transition-all duration-200 active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100 cursor-pointer focus:outline-none focus-visible:ring-2 ${variantClasses} ${className}`}
     >
-      {isDark ? (
-        <Moon className="w-4 h-4 shrink-0 text-teal-300" aria-hidden="true" />
-      ) : (
+      <span className="relative w-4 h-4 shrink-0 flex items-center justify-center overflow-hidden" aria-hidden="true">
         <Sun
-          className={`w-4 h-4 shrink-0 ${
+          className={`w-4 h-4 absolute transition-all duration-300 ease-out motion-reduce:transition-none ${
             variant === 'header' ? 'text-amber-300' : 'text-amber-500'
+          } ${
+            isDark
+              ? 'opacity-0 -rotate-90 scale-0'
+              : 'opacity-100 rotate-0 scale-100 group-hover:rotate-12'
           }`}
-          aria-hidden="true"
         />
-      )}
+        <Moon
+          className={`w-4 h-4 absolute text-teal-300 transition-all duration-300 ease-out motion-reduce:transition-none ${
+            isDark
+              ? 'opacity-100 rotate-0 scale-100 group-hover:-rotate-12'
+              : 'opacity-0 rotate-90 scale-0'
+          }`}
+        />
+      </span>
       {showLabel && <span className="whitespace-nowrap">{currentLabel}</span>}
     </button>
   );

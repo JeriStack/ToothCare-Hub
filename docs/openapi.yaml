@@ -2046,6 +2046,15 @@ paths:
       security:
         -
           CookieAuth: []
+  /clinic/settings:
+    get:
+      tags:
+        - Settings
+      summary: 'Get Public Clinic Identity & Booking Rules'
+      operationId: getPublicClinicSettings
+      responses:
+        '200':
+          description: 'Public clinic branding, contact info, and booking policy settings'
   /admin/clinic/settings:
     get:
       tags:
