@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Key,
+  Shield,
   ShieldCheck,
   Stethoscope,
   Briefcase,
@@ -19,6 +20,15 @@ import {
   X,
   Check,
   Sparkles,
+  LayoutGrid,
+  Calendar,
+  ClipboardList,
+  LayoutDashboard,
+  Mail,
+  FileText,
+  BarChart3,
+  Settings,
+  Activity,
 } from 'lucide-react';
 import { rolesApi } from '../api';
 import { PermissionMatrixSkeleton } from '../../../components/skeletons';
@@ -30,6 +40,39 @@ const DEFAULT_PROTECTED_ADMIN_PERMISSIONS = [
   'audit_logs.view',
   'settings.manage',
 ];
+
+function getModuleIcon(modName = '') {
+  switch (String(modName).toLowerCase()) {
+    case 'appointments':
+      return Calendar;
+    case 'clinical':
+      return ClipboardList;
+    case 'dashboard':
+      return LayoutDashboard;
+    case 'dentists':
+      return Stethoscope;
+    case 'email':
+      return Mail;
+    case 'legal':
+      return FileText;
+    case 'patients':
+      return User;
+    case 'reports':
+      return BarChart3;
+    case 'security':
+      return Shield;
+    case 'services':
+      return Sparkles;
+    case 'settings':
+      return Settings;
+    case 'system':
+      return Activity;
+    case 'users':
+      return Users;
+    default:
+      return Key;
+  }
+}
 
 function getRoleVisuals(slug = '') {
   switch (String(slug).toLowerCase()) {
@@ -631,39 +674,137 @@ export function RolePermissionMatrixPage() {
           </div>
         </div>
 
-        {/* Module Filter Pills */}
+        {/* Module Filter Cards */}
         {allModuleEntries.length > 1 && (
-          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter by module">
-            <button
-              type="button"
-              aria-pressed={selectedModule === 'ALL'}
-              onClick={() => setSelectedModule('ALL')}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer ${
-                selectedModule === 'ALL'
-                  ? 'bg-teal-50 dark:bg-teal-500/15 border-teal-400 dark:border-teal-500 text-[#0F766E] dark:text-teal-200'
-                  : 'bg-slate-50 dark:bg-gray-900/50 border-slate-200/80 dark:border-gray-700 text-slate-600 dark:text-slate-400 hover:border-teal-400'
-              }`}
-            >
-              All Modules
-            </button>
-            {allModuleEntries.map(([modName, perms]) => {
-              const active = selectedModule === modName;
-              return (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Filter by Module
+              </span>
+              {selectedModule !== 'ALL' ? (
                 <button
-                  key={modName}
                   type="button"
-                  aria-pressed={active}
-                  onClick={() => setSelectedModule(active ? 'ALL' : modName)}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer tabular-nums ${
-                    active
-                      ? 'bg-teal-50 dark:bg-teal-500/15 border-teal-400 dark:border-teal-500 text-[#0F766E] dark:text-teal-200'
-                      : 'bg-slate-50 dark:bg-gray-900/50 border-slate-200/80 dark:border-gray-700 text-slate-600 dark:text-slate-400 hover:border-teal-400'
+                  onClick={() => setSelectedModule('ALL')}
+                  className="text-[11px] font-semibold text-[#0F766E] dark:text-teal-400 hover:underline cursor-pointer"
+                >
+                  Reset module filter
+                </button>
+              ) : (
+                <span className="text-[11px] text-slate-400 dark:text-slate-500 tabular-nums">
+                  {allModuleEntries.length} modules · {totalPermissionCount} capabilities
+                </span>
+              )}
+            </div>
+
+            <div
+              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-2"
+              role="group"
+              aria-label="Filter by module"
+            >
+              <button
+                type="button"
+                aria-pressed={selectedModule === 'ALL'}
+                onClick={() => setSelectedModule('ALL')}
+                className={`group relative flex flex-col justify-between gap-2 p-2.5 rounded-xl border text-left transition-all cursor-pointer min-w-0 ${
+                  selectedModule === 'ALL'
+                    ? 'bg-teal-50/90 dark:bg-teal-500/15 border-teal-400 dark:border-teal-500/70 ring-1 ring-teal-400/25 shadow-2xs'
+                    : 'bg-slate-50/70 dark:bg-gray-900/55 border-slate-200/80 dark:border-gray-700/80 hover:border-teal-400/70 dark:hover:border-teal-500/50 hover:bg-white dark:hover:bg-gray-800/80'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-1.5">
+                  <span
+                    className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                      selectedModule === 'ALL'
+                        ? 'bg-[#0D9488] text-white'
+                        : 'bg-white dark:bg-gray-800 text-slate-500 dark:text-slate-400 border border-slate-200/80 dark:border-gray-700 group-hover:text-teal-600 dark:group-hover:text-teal-300'
+                    }`}
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" aria-hidden="true" />
+                  </span>
+                  <span
+                    className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold tabular-nums ${
+                      selectedModule === 'ALL'
+                        ? 'bg-teal-100/90 dark:bg-teal-500/25 text-[#0F766E] dark:text-teal-200'
+                        : 'bg-slate-200/70 dark:bg-gray-800 text-slate-600 dark:text-slate-400'
+                    }`}
+                  >
+                    {totalPermissionCount}
+                  </span>
+                </div>
+                <span
+                  className={`text-xs font-semibold truncate ${
+                    selectedModule === 'ALL'
+                      ? 'text-[#0F766E] dark:text-teal-200'
+                      : 'text-slate-700 dark:text-slate-200'
                   }`}
                 >
-                  {formatModuleLabel(modName)} ({perms.length})
-                </button>
-              );
-            })}
+                  All Modules
+                </span>
+              </button>
+
+              {allModuleEntries.map(([modName, perms]) => {
+                const active = selectedModule === modName;
+                const ModIcon = getModuleIcon(modName);
+                const hasModifiedInMod = perms.some((perm) =>
+                  visibleRoles.some((r) => isCellModified(r.id, perm.slug))
+                );
+
+                return (
+                  <button
+                    key={modName}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setSelectedModule(active ? 'ALL' : modName)}
+                    className={`group relative flex flex-col justify-between gap-2 p-2.5 rounded-xl border text-left transition-all cursor-pointer min-w-0 ${
+                      active
+                        ? 'bg-teal-50/90 dark:bg-teal-500/15 border-teal-400 dark:border-teal-500/70 ring-1 ring-teal-400/25 shadow-2xs'
+                        : hasModifiedInMod
+                        ? 'bg-amber-50/50 dark:bg-amber-500/10 border-amber-300/80 dark:border-amber-500/40 hover:border-teal-400/70'
+                        : 'bg-slate-50/70 dark:bg-gray-900/55 border-slate-200/80 dark:border-gray-700/80 hover:border-teal-400/70 dark:hover:border-teal-500/50 hover:bg-white dark:hover:bg-gray-800/80'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span
+                        className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                          active
+                            ? 'bg-[#0D9488] text-white'
+                            : 'bg-white dark:bg-gray-800 text-slate-500 dark:text-slate-400 border border-slate-200/80 dark:border-gray-700 group-hover:text-teal-600 dark:group-hover:text-teal-300'
+                        }`}
+                      >
+                        <ModIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                      </span>
+                      <div className="flex items-center gap-1">
+                        {hasModifiedInMod && (
+                          <span
+                            className="w-2 h-2 rounded-full bg-amber-400 shrink-0"
+                            title="Has unsaved changes"
+                            aria-hidden="true"
+                          />
+                        )}
+                        <span
+                          className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold tabular-nums ${
+                            active
+                              ? 'bg-teal-100/90 dark:bg-teal-500/25 text-[#0F766E] dark:text-teal-200'
+                              : 'bg-slate-200/70 dark:bg-gray-800 text-slate-600 dark:text-slate-400'
+                          }`}
+                        >
+                          {perms.length}
+                        </span>
+                      </div>
+                    </div>
+                    <span
+                      className={`text-xs font-semibold truncate ${
+                        active
+                          ? 'text-[#0F766E] dark:text-teal-200'
+                          : 'text-slate-700 dark:text-slate-200'
+                      }`}
+                    >
+                      {formatModuleLabel(modName)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 
