@@ -916,7 +916,7 @@ export function AdminDashboard({ onNavigateTab }) {
               </div>
             ) : (
               <ul className="divide-y divide-slate-100 dark:divide-gray-700/80">
-                {todaySchedule.map((appt) => {
+                {todaySchedule.slice(0, 5).map((appt) => {
                   const st = SCHEDULE_STATUS_MAP[appt.status] || {
                     label: appt.status,
                     cls: 'bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-gray-600',
@@ -979,7 +979,7 @@ export function AdminDashboard({ onNavigateTab }) {
               </div>
             ) : (
               <ul className="divide-y divide-slate-100 dark:divide-gray-700/80">
-                {reviewQueue.map((req) => (
+                {reviewQueue.slice(0, 5).map((req) => (
                   <li key={req.id} className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-3 text-xs">
                     <div className="min-w-0">
                       <span className="font-semibold text-slate-800 dark:text-slate-100 block truncate">
@@ -1039,7 +1039,7 @@ export function AdminDashboard({ onNavigateTab }) {
               </p>
             ) : (
               <ul className="divide-y divide-slate-100 dark:divide-gray-700/80">
-                {recent.patients.map((p) => (
+                {recent.patients.slice(0, 5).map((p) => (
                   <li key={p.id} className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-2.5 text-xs">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-gray-900 border border-slate-200/80 dark:border-gray-700 text-[#12304A] dark:text-slate-200 flex items-center justify-center text-[11px] font-bold shrink-0">
@@ -1091,7 +1091,7 @@ export function AdminDashboard({ onNavigateTab }) {
               </p>
             ) : (
               <ul className="divide-y divide-slate-100 dark:divide-gray-700/80">
-                {recent.services.map((s) => (
+                {recent.services.slice(0, 5).map((s) => (
                   <li key={s.id} className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-2.5 text-xs">
                     <div className="min-w-0">
                       <span className="font-semibold text-slate-800 dark:text-slate-100 block truncate">
@@ -1179,7 +1179,7 @@ export function AdminDashboard({ onNavigateTab }) {
               </p>
             ) : (
               <ul className="divide-y divide-slate-100 dark:divide-gray-700/80">
-                {filteredActivity.slice(0, 6).map((act) => {
+                {filteredActivity.slice(0, 5).map((act) => {
                   const authEvent = isAuthOnlyAction(act.action);
                   return (
                     <li key={act.id} className="py-2.5 first:pt-0 last:pb-0 flex items-start justify-between gap-2 text-xs">
