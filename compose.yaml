@@ -75,6 +75,7 @@ services:
   mysql:
     image: mysql:8.0
     container_name: toothcare-mysql
+    stop_grace_period: 30s
     environment:
       MYSQL_DATABASE: ${DB_NAME:-toothcare_hub}
       MYSQL_USER: ${DB_USER:-toothcare_user}
@@ -151,9 +152,10 @@ services:
   realtime-worker:
     image: toothcare-php-fpm:latest
     container_name: toothcare-realtime-worker
+    init: true
     command: ["php", "bin/realtime-worker.php"]
     stop_signal: SIGTERM
-    stop_grace_period: 30s
+    stop_grace_period: 15s
     env_file:
       - path: .env
         required: false
@@ -196,9 +198,10 @@ services:
   email-worker:
     image: toothcare-php-fpm:latest
     container_name: toothcare-email-worker
+    init: true
     command: ["php", "bin/email-worker.php"]
     stop_signal: SIGTERM
-    stop_grace_period: 30s
+    stop_grace_period: 15s
     env_file:
       - path: .env
         required: false
@@ -238,13 +241,19 @@ services:
   reminder-scheduler:
     image: toothcare-php-fpm:latest
     container_name: toothcare-reminder-scheduler
+    init: true
     entrypoint: ["sh", "-c"]
     command:
       - |
+        child=""
+        trap 'echo "ToothCare Hub reminder scheduler stopping."; [ -n "$$child" ] && kill "$$child" 2>/dev/null || true; exit 0' TERM INT
         echo "ToothCare Hub reminder scheduler started."
         while true; do
           php bin/schedule-reminders.php || true
-          sleep "$${REMINDER_SCHEDULER_INTERVAL_SECONDS:-300}"
+          sleep "$${REMINDER_SCHEDULER_INTERVAL_SECONDS:-300}" &
+          child=$$!
+          wait "$$child"
+          child=""
         done
     stop_grace_period: 10s
     env_file:
@@ -283,9 +292,12 @@ services:
   db-backup:
     image: toothcare-php-fpm:latest
     container_name: toothcare-db-backup
+    init: true
     entrypoint: ["sh", "-c"]
     command:
       - |
+        child=""
+        trap 'echo "ToothCare Hub Backup Daemon stopping."; [ -n "$$child" ] && kill "$$child" 2>/dev/null || true; exit 0' TERM INT
         echo "ToothCare Hub Backup Daemon Initialized."
         while true; do
           HOUR=$$(date +%H)
@@ -294,10 +306,17 @@ services:
             echo "[CRON] Triggering automated 02:00 AM database backup..."
             php /var/www/backend/database/scripts/backup.php --type=daily || true
             php /var/www/backend/database/scripts/cleanup-backups.php --days=30 || true
-            sleep 65
+            sleep 65 &
+            child=$$!
+            wait "$$child"
+            child=""
           fi
-          sleep 30
+          sleep 30 &
+          child=$$!
+          wait "$$child"
+          child=""
         done
+    stop_grace_period: 10s
     env_file:
       - path: .env
         required: false
