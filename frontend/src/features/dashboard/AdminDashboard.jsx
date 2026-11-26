@@ -44,12 +44,12 @@ const EMPTY_ADMIN_COUNTS = {
 };
 
 const QUICK_ADMIN_ACTIONS = [
-  { key: 'users', label: 'User Accounts', subtitle: 'Staff & roles', icon: Users },
+  { key: 'users', label: 'User Accounts', subtitle: 'Manage Staff', icon: Users },
   { key: 'roles', label: 'DRBAC Matrix', subtitle: 'Permissions', icon: Key },
-  { key: 'audit', label: 'Audit Trail', subtitle: 'Activity logs', icon: Activity },
+  { key: 'audit', label: 'Audit Trail', subtitle: 'Forensic Logs', icon: Activity },
   { key: 'reports', label: 'Reports', subtitle: 'Analytics', icon: BarChart3 },
-  { key: 'schedules', label: 'Clinic Hours', subtitle: 'Operating hours', icon: Clock },
-  { key: 'system', label: 'System Health', subtitle: 'Services & jobs', icon: Server },
+  { key: 'schedules', label: 'Clinic Hours', subtitle: 'Operating Sched', icon: Clock },
+  { key: 'system', label: 'System Health', subtitle: 'Services & Backup', icon: Server },
 ];
 
 const SCHEDULE_STATUS_MAP = {
@@ -441,26 +441,20 @@ export function AdminDashboard({ onNavigateTab }) {
         </div>
       )}
 
-      {/* Quick Administrative Shortcuts */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+      {/* Quick Administrative Action Bar */}
+      <div className="portal-grid-6">
         {QUICK_ADMIN_ACTIONS.map(({ key, label, subtitle, icon: Icon }) => (
           <button
             key={key}
             type="button"
             onClick={() => navigateTab(key)}
-            className="flex items-center gap-3 px-3.5 py-3 bg-white dark:bg-gray-800/95 border border-slate-200/90 dark:border-gray-700/80 rounded-xl hover:border-teal-400 dark:hover:border-teal-500/70 hover:shadow-xs transition-all text-left group cursor-pointer"
+            className="flex flex-col items-center justify-center p-3.5 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl hover:border-teal-400 dark:hover:border-teal-500 hover:shadow-xs transition-all text-center group cursor-pointer"
           >
-            <div className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-500/15 text-teal-700 dark:text-teal-300 flex items-center justify-center shrink-0 group-hover:bg-teal-100 dark:group-hover:bg-teal-500/25 transition-colors">
+            <div className="p-2 bg-teal-50 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300 rounded-lg group-hover:scale-110 transition-transform mb-1.5">
               <Icon className="w-4 h-4" aria-hidden="true" />
             </div>
-            <div className="min-w-0">
-              <span className="block text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">
-                {label}
-              </span>
-              <span className="block text-[10.5px] text-slate-500 dark:text-slate-400 truncate">
-                {subtitle}
-              </span>
-            </div>
+            <span className="text-xs font-semibold text-slate-800 dark:text-slate-100">{label}</span>
+            <span className="text-[10px] text-slate-400 dark:text-slate-400">{subtitle}</span>
           </button>
         ))}
       </div>
