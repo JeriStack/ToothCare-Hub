@@ -914,244 +914,350 @@ export function PatientListPage() {
       })()}
 
       {/* Patient View & Edit Modal */}
-      {isModalOpen && selectedPatient && (
-        <DialogOverlay
-          onClose={() => setIsModalOpen(false)} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-black/65 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90dvh] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/50 dark:bg-gray-900/40">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-teal-50 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 rounded-lg">
-                  <User className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-                    Patient Profile #{selectedPatient.id}
-                  </h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Linked User ID #{selectedPatient.user_id} • Registered on{' '}
-                    {selectedPatient.created_at?.split(' ')[0] || 'Unknown'}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg p-1"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {isModalOpen && selectedPatient && (() => {
+        const visitCount = Number(selectedPatient.appointment_count ?? 0);
+        const isActive = Boolean(selectedPatient.is_active);
+        const alertLength = (formData.medical_alerts || '').length;
 
-            <form onSubmit={handleFormSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
-              {formErrors.general && (
-                <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-sm rounded-lg">
-                  {formErrors.general}
-                </div>
-              )}
-
-              {/* Patient Overview Summary */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-slate-50 dark:bg-gray-900/50 rounded-xl border border-slate-200 dark:border-gray-700 text-xs">
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400 block">Account Email:</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-100 break-all">{selectedPatient.email}</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400 block">Account Status:</span>
-                  <span
-                    className={`font-semibold ${
-                      selectedPatient.is_active ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-600 dark:text-slate-400'
-                    }`}
-                  >
-                    {selectedPatient.is_active ? 'Active' : 'Disabled'}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400 block">Total Bookings:</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-100">
-                    {selectedPatient.appointment_count ?? '0'} records
-                  </span>
-                </div>
-              </div>
-
-              {/* Names */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                    First Name <span className="text-rose-500 dark:text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.first_name}
-                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                    className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                    Last Name <span className="text-rose-500 dark:text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.last_name}
-                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                    className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* DOB, Gender, Phone */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                    Date of Birth <span className="text-rose-500 dark:text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.date_of_birth}
-                    onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
-                    className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                    Gender
-                  </label>
-                  <select
-                    value={formData.gender}
-                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                    className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                  >
-                    {GENDER_OPTIONS.map((g) => (
-                      <option key={g.value} value={g.value}>
-                        {g.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                    Phone <span className="text-rose-500 dark:text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Address */}
-              <div>
-                <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                  Residential Address
-                </label>
-                <input
-                  type="text"
-                  placeholder="Street, Barangay, City, Province"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                />
-              </div>
-
-              {/* Emergency Contact */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                    Emergency Contact Name
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Parent, Spouse, Guardian"
-                    value={formData.emergency_contact_name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, emergency_contact_name: e.target.value })
-                    }
-                    className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                    Emergency Contact Phone
-                  </label>
-                  <input
-                    type="tel"
-                    placeholder="+63 917 000 0000"
-                    value={formData.emergency_contact_phone}
-                    onChange={(e) =>
-                      setFormData({ ...formData, emergency_contact_phone: e.target.value })
-                    }
-                    className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Medical Alerts Banner & Input */}
-              <div className="p-3.5 rounded-xl border border-amber-200 dark:border-amber-800/70 bg-amber-50/50 dark:bg-amber-950/30 space-y-2">
-                <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200 font-semibold text-xs">
-                  <HeartPulse className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  Clinical Medical Alerts, Allergies, or Systemic Conditions
-                </div>
-                <textarea
-                  rows="2"
-                  placeholder="e.g., Allergic to penicillin, Asthma, Hypertension, Bleeding diathesis, Diabetic on insulin..."
-                  value={formData.medical_alerts}
-                  onChange={(e) => setFormData({ ...formData, medical_alerts: e.target.value })}
-                  className="w-full px-3.5 py-2 border border-amber-300 dark:border-amber-700 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
-                />
-                <p className="text-[11px] text-amber-700 dark:text-amber-300">
-                  These alerts appear prominently on dentist appointment screens and treatment records.
-                </p>
-              </div>
-
-              {/* Actions */}
-              <div className={`flex flex-wrap items-center gap-3 pt-4 border-t border-slate-100 dark:border-gray-700 ${canManageAccountStatus ? 'justify-between' : 'justify-end'}`}>
-                {canManageAccountStatus && (
-                  <button
-                    type="button"
-                    onClick={() => handleStatusToggleClick(selectedPatient)}
-                    className={`text-xs font-semibold px-3 py-2 rounded-lg border transition-colors cursor-pointer ${
-                      selectedPatient.is_active
-                        ? 'border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/50'
-                        : 'border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
-                    }`}
-                  >
-                    {selectedPatient.is_active ? 'Disable Account Login' : 'Enable Account Login'}
-                  </button>
-                )}
-
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 font-medium text-sm rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  {canManagePatients && (
-                    <button
-                      type="submit"
-                      disabled={formSubmitting}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 dark:bg-[#0F766E] hover:bg-teal-700 dark:hover:bg-teal-600 text-white font-medium text-sm rounded-lg shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
-                    >
-                      {formSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
-                      Save Profile Changes
-                    </button>
+        return (
+          <DialogOverlay
+            onClose={() => setIsModalOpen(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/70 backdrop-blur-sm"
+          >
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-slate-200/90 dark:border-gray-700/80 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90dvh] flex flex-col">
+              {/* Header */}
+              <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-100 dark:border-gray-700/80 bg-slate-50/70 dark:bg-gray-900/50">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  {selectedPatient.avatar_url ? (
+                    <img
+                      src={selectedPatient.avatar_url}
+                      alt={`${selectedPatient.first_name} ${selectedPatient.last_name}`}
+                      className="w-11 h-11 rounded-full object-cover border border-teal-200 dark:border-teal-500/35 shrink-0"
+                    />
+                  ) : (
+                    <div className="w-11 h-11 rounded-full bg-teal-50 dark:bg-teal-500/15 ring-1 ring-inset ring-teal-200/90 dark:ring-teal-500/30 text-[#0F766E] dark:text-teal-300 flex items-center justify-center font-bold text-sm shrink-0">
+                      {getPatientInitials(selectedPatient.first_name, selectedPatient.last_name)}
+                    </div>
                   )}
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-base font-bold text-slate-900 dark:text-slate-50 truncate">
+                        Edit Patient Profile
+                      </h2>
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold border ${
+                          isActive
+                            ? 'bg-emerald-50 dark:bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-500/30'
+                            : 'bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-gray-600'
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-slate-400'}`}
+                          aria-hidden="true"
+                        />
+                        {isActive ? 'Active' : 'Disabled'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums truncate">
+                      Patient #{selectedPatient.id} · User #{selectedPatient.user_id} · Registered {formatReadableDate(selectedPatient.created_at)}
+                    </p>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  aria-label="Close edit patient profile"
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-gray-700/70 rounded-xl p-1.5 transition-colors cursor-pointer shrink-0"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-            </form>
-          </div>
-        </DialogOverlay>
-      )}
+
+              <form onSubmit={handleFormSubmit} className="flex flex-col flex-1 min-h-0">
+                <div className="p-6 space-y-5 overflow-y-auto flex-1">
+                  {formErrors.general && (
+                    <div
+                      role="alert"
+                      className="flex items-center gap-2 p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/70 text-rose-700 dark:text-rose-200 text-xs font-medium rounded-xl"
+                    >
+                      <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
+                      <span>{formErrors.general}</span>
+                    </div>
+                  )}
+
+                  {/* Account Snapshot Bar */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                    <div className="px-3.5 py-2.5 rounded-xl bg-slate-50/85 dark:bg-gray-900/55 border border-slate-200/80 dark:border-gray-700/80 flex items-center gap-2.5 min-w-0">
+                      <span className="w-7 h-7 rounded-lg bg-white dark:bg-gray-800 border border-slate-200/70 dark:border-gray-700 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+                        <Mail className="w-3.5 h-3.5" aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0">
+                        <span className="text-[10.5px] text-slate-400 dark:text-slate-500 block">Account Email</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-100 block truncate" title={selectedPatient.email}>
+                          {selectedPatient.email || 'Not linked'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="px-3.5 py-2.5 rounded-xl bg-slate-50/85 dark:bg-gray-900/55 border border-slate-200/80 dark:border-gray-700/80 flex items-center gap-2.5">
+                      <span className="w-7 h-7 rounded-lg bg-white dark:bg-gray-800 border border-slate-200/70 dark:border-gray-700 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+                        <FileText className="w-3.5 h-3.5" aria-hidden="true" />
+                      </span>
+                      <div>
+                        <span className="text-[10.5px] text-slate-400 dark:text-slate-500 block">Total Bookings</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-100 tabular-nums block">
+                          {visitCount} {visitCount === 1 ? 'visit' : 'visits'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Personal Details */}
+                  <div className="space-y-3.5">
+                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                      Personal Details
+                    </h3>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="edit-patient-first-name"
+                          className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                        >
+                          First Name <span className="text-rose-500 dark:text-rose-400">*</span>
+                        </label>
+                        <input
+                          id="edit-patient-first-name"
+                          type="text"
+                          required
+                          value={formData.first_name}
+                          onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                          className="w-full px-3.5 py-2.5 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 rounded-xl text-sm focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="edit-patient-last-name"
+                          className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                        >
+                          Last Name <span className="text-rose-500 dark:text-rose-400">*</span>
+                        </label>
+                        <input
+                          id="edit-patient-last-name"
+                          type="text"
+                          required
+                          value={formData.last_name}
+                          onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                          className="w-full px-3.5 py-2.5 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 rounded-xl text-sm focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="edit-patient-dob"
+                          className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                        >
+                          Date of Birth <span className="text-rose-500 dark:text-rose-400">*</span>
+                        </label>
+                        <input
+                          id="edit-patient-dob"
+                          type="date"
+                          required
+                          value={formData.date_of_birth}
+                          onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
+                          className="w-full px-3.5 py-2.5 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 rounded-xl text-sm tabular-nums focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="edit-patient-gender"
+                          className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                        >
+                          Gender
+                        </label>
+                        <select
+                          id="edit-patient-gender"
+                          value={formData.gender}
+                          onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                          className="w-full px-3.5 py-2.5 border border-slate-300 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors"
+                        >
+                          {GENDER_OPTIONS.map((g) => (
+                            <option key={g.value} value={g.value}>
+                              {g.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="edit-patient-phone"
+                          className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                        >
+                          Phone <span className="text-rose-500 dark:text-rose-400">*</span>
+                        </label>
+                        <input
+                          id="edit-patient-phone"
+                          type="tel"
+                          required
+                          value={formData.phone}
+                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                          className="w-full px-3.5 py-2.5 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 rounded-xl text-sm tabular-nums focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Address & Emergency Contact */}
+                  <div className="space-y-3.5 pt-1 border-t border-slate-100 dark:border-gray-700/70">
+                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 pt-3">
+                      Address &amp; Emergency Contact
+                    </h3>
+
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="edit-patient-address"
+                        className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                      >
+                        <span>Residential Address</span>
+                        <span className="text-[10px] font-medium normal-case tracking-normal text-slate-400 dark:text-slate-500">
+                          Optional
+                        </span>
+                      </label>
+                      <input
+                        id="edit-patient-address"
+                        type="text"
+                        placeholder="Street, Barangay, City, Province"
+                        value={formData.address}
+                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                        className="w-full px-3.5 py-2.5 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl text-sm focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="edit-patient-ec-name"
+                          className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                        >
+                          <span>Emergency Contact Name</span>
+                          <span className="text-[10px] font-medium normal-case tracking-normal text-slate-400 dark:text-slate-500">
+                            Optional
+                          </span>
+                        </label>
+                        <input
+                          id="edit-patient-ec-name"
+                          type="text"
+                          placeholder="e.g., Parent, Spouse, Guardian"
+                          value={formData.emergency_contact_name}
+                          onChange={(e) =>
+                            setFormData({ ...formData, emergency_contact_name: e.target.value })
+                          }
+                          className="w-full px-3.5 py-2.5 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl text-sm focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="edit-patient-ec-phone"
+                          className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                        >
+                          <span>Emergency Contact Phone</span>
+                          <span className="text-[10px] font-medium normal-case tracking-normal text-slate-400 dark:text-slate-500">
+                            Optional
+                          </span>
+                        </label>
+                        <input
+                          id="edit-patient-ec-phone"
+                          type="tel"
+                          placeholder="+63 917 000 0000"
+                          value={formData.emergency_contact_phone}
+                          onChange={(e) =>
+                            setFormData({ ...formData, emergency_contact_phone: e.target.value })
+                          }
+                          className="w-full px-3.5 py-2.5 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl text-sm tabular-nums focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Clinical Medical Alerts */}
+                  <div className="p-4 rounded-xl border border-amber-200/90 dark:border-amber-500/30 bg-amber-50/60 dark:bg-amber-950/25 space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <label
+                        htmlFor="edit-patient-alerts"
+                        className="flex items-center gap-2 text-amber-900 dark:text-amber-200 font-semibold text-xs"
+                      >
+                        <HeartPulse className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" aria-hidden="true" />
+                        <span>Clinical Medical Alerts &amp; Allergies</span>
+                      </label>
+                      <span className="text-[11px] text-amber-700/80 dark:text-amber-300/70 tabular-nums shrink-0">
+                        {alertLength} / 500
+                      </span>
+                    </div>
+                    <textarea
+                      id="edit-patient-alerts"
+                      rows="2"
+                      maxLength={500}
+                      placeholder="e.g., Allergic to penicillin, Asthma, Hypertension, Diabetic on insulin..."
+                      value={formData.medical_alerts}
+                      onChange={(e) => setFormData({ ...formData, medical_alerts: e.target.value })}
+                      className="w-full px-3.5 py-2.5 border border-amber-300/80 dark:border-amber-600/60 bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl text-sm leading-relaxed focus:ring-2 focus:ring-amber-500/25 focus:border-amber-500 focus:outline-none transition-colors"
+                    />
+                    <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80">
+                      Leave blank if none. Recorded alerts surface on dentist appointment views and treatment charts.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Pinned Footer Actions */}
+                <div className="px-6 py-3.5 border-t border-slate-100 dark:border-gray-700/80 bg-slate-50/60 dark:bg-gray-900/45 flex flex-wrap items-center justify-between gap-2.5">
+                  <div>
+                    {canManageAccountStatus && (
+                      <button
+                        type="button"
+                        onClick={() => handleStatusToggleClick(selectedPatient)}
+                        className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border transition-colors cursor-pointer ${
+                          isActive
+                            ? 'border-amber-300/80 dark:border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-500/10'
+                            : 'border-emerald-300/80 dark:border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10'
+                        }`}
+                      >
+                        <Power className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span>{isActive ? 'Disable Account' : 'Enable Account'}</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2.5 ml-auto">
+                    <button
+                      type="button"
+                      onClick={() => setIsModalOpen(false)}
+                      className="px-4 py-2 rounded-xl border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    {canManagePatients && (
+                      <button
+                        type="submit"
+                        disabled={formSubmitting}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-[#0D9488] text-white font-semibold text-xs shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                      >
+                        {formSubmitting && <RefreshCw className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}
+                        <span>Save Changes</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </form>
+            </div>
+          </DialogOverlay>
+        );
+      })()}
 
       {/* Confirmation Dialog */}
       {canManageAccountStatus && confirmModal.isOpen && confirmModal.patient && (
