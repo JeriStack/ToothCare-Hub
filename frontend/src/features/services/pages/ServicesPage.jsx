@@ -25,6 +25,7 @@ import { MobileSortControl } from '../../../components/ui/MobileSortControl';
 
 
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
+import { useClinicSettings } from '../../system/useClinicSettings';
 const DURATION_OPTIONS = [15, 30, 45, 60, 90, 120];
 const CATEGORY_OPTIONS = [
   'General',
@@ -62,6 +63,7 @@ function getCategoryBadgeClasses(category) {
 
 export function ServicesPage() {
   const { user, hasPermission } = useAuth();
+  const clinicSettings = useClinicSettings();
   const canManageServices = Boolean(
     (typeof hasPermission === 'function' && hasPermission('services.manage')) || user?.role === 'ADMIN'
   );
@@ -150,13 +152,16 @@ export function ServicesPage() {
 
   const openCreateModal = () => {
     if (!canManageServices) return;
+    const defaultDuration = DURATION_OPTIONS.includes(Number(clinicSettings.slot_duration_default_minutes))
+      ? Number(clinicSettings.slot_duration_default_minutes)
+      : 30;
     setEditingService(null);
     setFormData({
       name: '',
       category: 'General',
       description: '',
       price: '',
-      duration_minutes: 30,
+      duration_minutes: defaultDuration,
       is_active: 1,
     });
     setFormErrors({});

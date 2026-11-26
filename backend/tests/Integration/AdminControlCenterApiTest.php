@@ -319,10 +319,34 @@ class AdminControlCenterApiTest extends TestCase
         $resUpdSet = $this->app->handle($this->createAuthRequest('PUT', '/api/v1/admin/clinic/settings', $this->adminUser, [
             'clinic_name' => 'ToothCare Premier Clinic',
             'cancellation_cutoff_hours' => 48,
+            'booking_advance_days_max' => 30,
+            'slot_duration_default_minutes' => 45,
         ]));
         $this->assertSame(200, $resUpdSet->getStatusCode());
         $updatedSettings = json_decode($resUpdSet->getBody(), true)['data'];
         $this->assertSame('ToothCare Premier Clinic', $updatedSettings['clinic_name']['value']);
+        $this->assertSame(30, $updatedSettings['booking_advance_days_max']['value']);
+
+        // 1b. Public clinic settings endpoint exposes live branding & booking rules without admin auth
+        $resPublicSet = $this->app->handle(Request::create('GET', '/api/v1/clinic/settings'));
+        $this->assertSame(200, $resPublicSet->getStatusCode());
+        $publicSet = json_decode($resPublicSet->getBody(), true)['data'];
+        $this->assertSame('ToothCare Premier Clinic', $publicSet['clinic_name']);
+        $this->assertSame(48, $publicSet['cancellation_cutoff_hours']);
+        $this->assertSame(30, $publicSet['booking_advance_days_max']);
+        $this->assertSame(45, $publicSet['slot_duration_default_minutes']);
+
+        // 1c. AvailabilityService dynamically honors updated booking_advance_days_max from clinic_settings
+        $availabilityService = new \App\Services\AvailabilityService();
+        $this->assertSame(30, $availabilityService->getEffectiveMaxBookingHorizonDays());
+        $this->assertSame(45, $availabilityService->getEffectiveDefaultSlotDurationMinutes());
+
+        // 1d. Invalid settings values are rejected with 422
+        $resBadSet = $this->app->handle($this->createAuthRequest('PUT', '/api/v1/admin/clinic/settings', $this->adminUser, [
+            'clinic_email' => 'not-an-email',
+            'booking_advance_days_max' => 3,
+        ]));
+        $this->assertSame(422, $resBadSet->getStatusCode());
 
         // 2. Reports
         $resApptRep = $this->app->handle($this->createAuthRequest('GET', '/api/v1/admin/reports/appointments', $this->adminUser));

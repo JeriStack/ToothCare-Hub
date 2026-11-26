@@ -5,10 +5,12 @@ import { AdminDashboard } from '../../features/dashboard/AdminDashboard';
 import { UserManagementPage } from '../../features/users/pages/UserManagementPage';
 import { RolePermissionMatrixPage } from '../../features/roles/pages/RolePermissionMatrixPage';
 import { AuditTrailPage } from '../../features/audit/pages/AuditTrailPage';
+import { SystemHealthPage } from '../../features/system/pages/SystemHealthPage';
 import { dashboardApi } from '../../features/dashboard/api';
 import { usersApi } from '../../features/users/api';
 import { rolesApi } from '../../features/roles/api';
 import { auditApi } from '../../features/audit/api';
+import { systemApi } from '../../features/system/api';
 
 vi.mock('../../features/dashboard/api', () => ({
   dashboardApi: {
@@ -38,6 +40,35 @@ vi.mock('../../features/audit/api', () => ({
     getLogs: vi.fn(),
     getSecurityEvents: vi.fn(),
     exportCsv: vi.fn(),
+  },
+}));
+
+vi.mock('../../features/system/api', () => ({
+  systemApi: {
+    getHealth: vi.fn(),
+    getSettings: vi.fn(),
+    getPublicSettings: vi.fn(),
+    updateSettings: vi.fn(),
+  },
+}));
+
+vi.mock('../../features/system/emailOutboxApi', () => ({
+  emailOutboxApi: {
+    getStats: vi.fn().mockResolvedValue({
+      total: 10,
+      pending: 0,
+      processing: 0,
+      sent: 10,
+      retrying: 0,
+      failed: 0,
+      exhausted: 0,
+      avg_delivery_delay_seconds: 3.1,
+      mail: { enabled: true, operational: true, configuration_errors: [] },
+      worker: { enabled: true, configuration_valid: true },
+    }),
+    getJobs: vi.fn().mockResolvedValue({ data: [], meta: {} }),
+    retry: vi.fn(),
+    abandon: vi.fn(),
   },
 }));
 
@@ -423,5 +454,73 @@ describe('Administrator Control Center Frontend Suite', () => {
         })
       );
     });
+  });
+
+  it('renders SystemHealthPage telemetry and saves Global Clinic Operating Settings with live broadcast', async () => {
+    systemApi.getHealth.mockResolvedValue({
+      system_status: 'operational',
+      environment: 'development',
+      services: {
+        database: { status: 'healthy', latency_ms: 1.2, threads_connected: 4, size_mb: 3.1, uptime_seconds: 7200 },
+        php_fpm: { status: 'healthy', version: '8.5.12', memory_usage_mb: 4, memory_peak_mb: 6, memory_limit: '256M', opcache_enabled: true },
+        realtime: { status: 'healthy', host: 'realtime', port: 4000, latency_ms: 2.5, active_connections: 3, outbox_pending: 0, outbox_failed: 0 },
+        rate_limiter: { status: 'active', throttled_targets: 0 },
+        backups: { status: 'host_managed', volume_name: 'mysql-data', directory_accessible: false },
+      },
+    });
+    systemApi.getSettings.mockResolvedValue({
+      clinic_name: { value: 'ToothCare Hub' },
+      clinic_tagline: { value: 'Healthier Smiles, Brighter Futures.' },
+      clinic_phone: { value: '+63 912 345 6789' },
+      clinic_email: { value: 'contact@toothcarehub.example.com' },
+      clinic_address: { value: '123 Dental Wellness Plaza, Manila' },
+      booking_advance_days_max: { value: 60 },
+      cancellation_cutoff_hours: { value: 24 },
+      slot_duration_default_minutes: { value: 30 },
+    });
+    systemApi.updateSettings.mockResolvedValue({
+      clinic_name: { value: 'ToothCare Premier' },
+      clinic_tagline: { value: 'Healthier Smiles, Brighter Futures.' },
+      clinic_phone: { value: '+63 912 345 6789' },
+      clinic_email: { value: 'contact@toothcarehub.example.com' },
+      clinic_address: { value: '123 Dental Wellness Plaza, Manila' },
+      booking_advance_days_max: { value: 45 },
+      cancellation_cutoff_hours: { value: 12 },
+      slot_duration_default_minutes: { value: 45 },
+    });
+
+    const broadcastSpy = vi.fn();
+    window.addEventListener('toothcare:clinic-settings-updated', broadcastSpy);
+
+    render(<SystemHealthPage />);
+
+    expect(await screen.findByText('All Systems Operational')).toBeInTheDocument();
+    expect(screen.getByText('OPcache On')).toBeInTheDocument();
+    expect(screen.getByText('0 throttled')).toBeInTheDocument();
+
+    // Save button starts disabled until a setting is modified
+    const saveBtn = screen.getByRole('button', { name: /Save Configuration/i });
+    expect(saveBtn).toBeDisabled();
+
+    // Update Clinic Display Name and Default Slot Duration preset (45m)
+    fireEvent.change(screen.getByLabelText(/Clinic Display Name/i), {
+      target: { value: 'ToothCare Premier' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '45m' }));
+
+    expect(saveBtn).not.toBeDisabled();
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(systemApi.updateSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clinic_name: 'ToothCare Premier',
+          slot_duration_default_minutes: 45,
+        })
+      );
+      expect(broadcastSpy).toHaveBeenCalledTimes(1);
+    });
+
+    window.removeEventListener('toothcare:clinic-settings-updated', broadcastSpy);
   });
 });

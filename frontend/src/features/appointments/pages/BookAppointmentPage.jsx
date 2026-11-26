@@ -18,6 +18,7 @@ import { dentistsApi } from '../../dentists/api';
 import { appointmentsApi } from '../api';
 import { AvailabilitySlotPicker } from '../../schedules/components/AvailabilitySlotPicker';
 import { BookingStepSkeleton } from '../../../components/skeletons/BookingStepSkeleton';
+import { useClinicSettings } from '../../system/useClinicSettings';
 
 const CLINIC_TIME_ZONE = 'Asia/Manila';
 
@@ -42,6 +43,7 @@ export function BookAppointmentPage({
   initialDentist = null,
   onNavigateToAppointments,
 }) {
+  const clinicSettings = useClinicSettings();
   // Wizard steps: 1: Service, 2: Dentist, 3: Date & Slot, 4: Review, 5: Confirmed
   const [step, setStep] = useState(initialService && initialDentist ? 3 : initialService ? 2 : 1);
 
@@ -494,10 +496,14 @@ export function BookAppointmentPage({
                 type="date"
                 value={selectedDate}
                 min={clinicIsoDate()}
+                max={addDaysIso(clinicIsoDate(), clinicSettings.booking_advance_days_max || 60)}
                 onChange={(e) => handleDateChange(e.target.value)}
                 className="w-full min-h-11 text-base sm:text-xs font-medium border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
               />
             </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              Bookings are open up to {clinicSettings.booking_advance_days_max || 60} days in advance.
+            </p>
           </div>
 
           {/* Dynamic Slot Picker */}
@@ -624,7 +630,12 @@ export function BookAppointmentPage({
               className="tch-check mt-0.5 text-[#0D9488] focus:ring-[#0D9488] border-slate-300 dark:border-gray-600 rounded cursor-pointer"
             />
             <label htmlFor="policy-agree" className="text-xs text-slate-600 dark:text-slate-300 cursor-pointer select-none">
-              <strong className="text-slate-800 dark:text-slate-100">Clinic Scheduling Policy:</strong> I understand that my appointment request will be placed in <span className="font-semibold text-amber-700 dark:text-amber-400">PENDING</span> status until reviewed by clinic staff. Cancellations must be made at least 2 hours in advance.
+              <strong className="text-slate-800 dark:text-slate-100">Clinic Scheduling Policy:</strong> I understand that my appointment request will be placed in <span className="font-semibold text-amber-700 dark:text-amber-400">PENDING</span> status until reviewed by clinic staff.{' '}
+              {clinicSettings.cancellation_cutoff_hours > 0
+                ? `Confirmed appointment cancellations must be made at least ${clinicSettings.cancellation_cutoff_hours} ${
+                    clinicSettings.cancellation_cutoff_hours === 1 ? 'hour' : 'hours'
+                  } in advance.`
+                : 'Cancellations may be submitted prior to the scheduled appointment time.'}
             </label>
           </div>
 
