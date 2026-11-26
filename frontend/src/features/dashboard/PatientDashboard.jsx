@@ -1156,7 +1156,7 @@ export function PatientDashboard({
                   <Clock className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
                   Clinic Cancellation Policy
                 </p>
-                <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
+                <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed text-justify">
                   Appointments can be cancelled online up to 24 hours prior to your scheduled consultation.
                   For cancellations within 24 hours, please call the clinic directly at (02) 8123-4567.
                 </p>

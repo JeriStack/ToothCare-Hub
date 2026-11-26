@@ -1177,7 +1177,7 @@ export function PatientListPage() {
               </div>
             </div>
 
-            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
               {confirmModal.targetStatus === 0
                 ? 'Disabling this account will revoke login access and online booking privileges for this patient. All past clinical records, appointments, and diagnostic data will remain completely intact.'
                 : 'Enabling this account will restore full access for the patient to log in and schedule appointments.'}

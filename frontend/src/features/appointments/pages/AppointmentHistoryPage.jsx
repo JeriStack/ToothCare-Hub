@@ -543,7 +543,7 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
 
             <div className="bg-amber-50 dark:bg-amber-950/50 p-3 rounded-xl border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-200 space-y-1">
               <p className="font-semibold">Clinic Cancellation Policy:</p>
-              <p>
+              <p className="text-justify">
                 Appointments cancelled will release the time slot back to the clinic roster. If you need to change your
                 time instead, consider <strong>Rescheduling</strong>.
               </p>

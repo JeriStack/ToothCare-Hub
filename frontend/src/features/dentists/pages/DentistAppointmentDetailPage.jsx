@@ -445,7 +445,7 @@ export function DentistAppointmentDetailPage({ appointmentId, onBack }) {
               </button>
             </div>
 
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
               Mark this visit for <strong className="text-slate-900 dark:text-slate-100">{appointment.patient_first_name} {appointment.patient_last_name}</strong> as <strong className="text-slate-900 dark:text-slate-100">Completed</strong>?
             </p>
 
