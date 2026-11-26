@@ -104,7 +104,11 @@ export function DentistAppointmentDetailPage({ appointmentId, onBack }) {
 
   const isConfirmed = appointment.status === 'CONFIRMED';
   const isCompleted = appointment.status === 'COMPLETED';
-  const hasMedicalAlerts = Boolean(appointment.patient_medical_alerts);
+  const normalizedAlert = String(appointment.patient_medical_alerts || '').trim().toLowerCase();
+  const hasMedicalAlerts = Boolean(
+    normalizedAlert &&
+      !['none', 'none recorded', 'none reported', 'no allergies', 'no known allergies', 'n/a', 'na', 'nil', '-'].includes(normalizedAlert)
+  );
 
   return (
     <div className="space-y-6">

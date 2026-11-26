@@ -328,6 +328,7 @@ function AppContent() {
   const [toastMessage, setToastMessage] = useState(null);
   const [bookingPrefill, setBookingPrefill] = useState(null);
   const [selectedDentistAppointmentId, setSelectedDentistAppointmentId] = useState(null);
+  const [dentistApptInitialStatus, setDentistApptInitialStatus] = useState('ALL');
   const [legalOriginRoute, setLegalOriginRoute] = useState(null);
   const userMenuRef = useRef(null);
   const userMenuTriggerRef = useRef(null);
@@ -379,9 +380,12 @@ function AppContent() {
   };
 
   // Dentist Sub-Route Navigation with URL History Sync
-  const handleDentistNav = (tab) => {
+  const handleDentistNav = (tab, options = {}) => {
     setActiveTab(tab);
-    setSelectedDentistAppointmentId(null);
+    setSelectedDentistAppointmentId(options?.appointmentId ?? null);
+    if (tab === 'appointments') {
+      setDentistApptInitialStatus(options?.statusFilter || 'ALL');
+    }
     setIsMobileMenuOpen(false);
     setIsUserMenuOpen(false);
     const subPath = tab === 'dashboard' ? '/dentist' : `/dentist/${tab}`;
@@ -952,10 +956,9 @@ function AppContent() {
                   if (refType === 'schedules') {
                     handleDentistNav('dashboard');
                   } else {
-                    if (notif?.reference_id) {
-                      setSelectedDentistAppointmentId(notif.reference_id);
-                    }
-                    handleDentistNav('appointments');
+                    handleDentistNav('appointments', {
+                      appointmentId: notif?.reference_id || null,
+                    });
                   }
                 } else {
                   if (refType === 'schedules') {
@@ -1422,14 +1425,8 @@ function AppContent() {
               {activeTab === 'dashboard' && (
                 <DentistDashboard
                   dentistId={user?.dentist?.id || user?.id || 1}
-                  onNavigateTab={(tab) => {
-                    setActiveTab(tab);
-                    setSelectedDentistAppointmentId(null);
-                  }}
-                  onSelectAppointment={(id) => {
-                    setSelectedDentistAppointmentId(id);
-                    setActiveTab('appointments');
-                  }}
+                  onNavigateTab={(tab, options) => handleDentistNav(tab, options)}
+                  onSelectAppointment={(id) => handleDentistNav('appointments', { appointmentId: id })}
                 />
               )}
 
@@ -1441,6 +1438,7 @@ function AppContent() {
                   />
                 ) : (
                   <DentistAppointmentsPage
+                    initialStatus={dentistApptInitialStatus}
                     onSelectAppointment={(id) => setSelectedDentistAppointmentId(id)}
                   />
                 )
@@ -1456,8 +1454,9 @@ function AppContent() {
                     if (notif?.reference_type === 'schedules') {
                       handleDentistNav('dashboard');
                     } else {
-                      if (notif?.reference_id) setSelectedDentistAppointmentId(notif.reference_id);
-                      handleDentistNav('appointments');
+                      handleDentistNav('appointments', {
+                        appointmentId: notif?.reference_id || null,
+                      });
                     }
                   }}
                 />

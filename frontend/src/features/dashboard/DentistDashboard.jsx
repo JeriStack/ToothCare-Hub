@@ -162,6 +162,7 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
   // Today's Queue interactive filters
   const [queueSearch, setQueueSearch] = useState('');
   const [queueStatusFilter, setQueueStatusFilter] = useState('ALL');
+  const [showAllLeaves, setShowAllLeaves] = useState(false);
 
   // Leave Request Modal State
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
@@ -447,6 +448,7 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
             subtitle: 'Scheduled for today',
             ariaLabel: `Today's Visits: ${metrics.todayCount} scheduled`,
             targetTab: 'appointments',
+            navOptions: { statusFilter: 'ALL' },
             Icon: Calendar,
             accentBar: 'from-teal-500/80 via-teal-400/60 to-transparent',
             glow: 'group-hover:bg-teal-500/10 dark:group-hover:bg-teal-400/10',
@@ -463,6 +465,7 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
             subtitle: 'Confirmed clinical visits',
             ariaLabel: `Upcoming Confirmed: ${metrics.upcomingCount} visits`,
             targetTab: 'appointments',
+            navOptions: { statusFilter: 'CONFIRMED' },
             Icon: CheckCircle2,
             accentBar: 'from-emerald-500/80 via-emerald-400/60 to-transparent',
             glow: 'group-hover:bg-emerald-500/10 dark:group-hover:bg-emerald-400/10',
@@ -479,6 +482,7 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
             subtitle: 'Pending approval',
             ariaLabel: `Awaiting Review: ${metrics.pendingCount} visits`,
             targetTab: 'appointments',
+            navOptions: { statusFilter: 'PENDING' },
             Icon: Clock,
             accentBar: 'from-amber-500/85 via-amber-400/60 to-transparent',
             glow: 'group-hover:bg-amber-500/10 dark:group-hover:bg-amber-400/10',
@@ -504,11 +508,11 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
             dot: 'bg-sky-500 dark:bg-sky-400',
             subText: 'text-sky-700 dark:text-sky-300',
           },
-        ].map(({ key, label, value, subtitle, ariaLabel, targetTab, Icon, accentBar, glow, hoverBorder, iconWrap, dot, subText }) => (
+        ].map(({ key, label, value, subtitle, ariaLabel, targetTab, navOptions, Icon, accentBar, glow, hoverBorder, iconWrap, dot, subText }) => (
           <button
             key={key}
             type="button"
-            onClick={() => onNavigateTab && onNavigateTab(targetTab)}
+            onClick={() => onNavigateTab && (navOptions ? onNavigateTab(targetTab, navOptions) : onNavigateTab(targetTab))}
             aria-label={ariaLabel}
             className={`relative overflow-hidden text-left p-5 rounded-2xl bg-white dark:bg-gray-800/90 border border-slate-200/90 dark:border-gray-700/80 shadow-xs hover:shadow-md hover:-translate-y-0.5 ${hoverBorder} transition-all duration-200 cursor-pointer group focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0D9488]`}
           >
@@ -1036,7 +1040,7 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
               </div>
             ) : (
               <div className="space-y-2.5 text-xs">
-                {timeOffList.slice(0, 3).map((t) => (
+                {(showAllLeaves ? timeOffList : timeOffList.slice(0, 3)).map((t) => (
                   <div
                     key={t.id}
                     className="p-3 rounded-xl bg-amber-50/55 dark:bg-amber-500/[0.07] border border-amber-200/75 dark:border-amber-500/25 space-y-1.5"
@@ -1058,6 +1062,16 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
                     </p>
                   </div>
                 ))}
+
+                {timeOffList.length > 3 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllLeaves((prev) => !prev)}
+                    className="w-full py-1.5 rounded-lg text-[11px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer"
+                  >
+                    {showAllLeaves ? 'Show fewer leaves' : `Show all ${timeOffList.length} leaves`}
+                  </button>
+                )}
 
                 <button
                   type="button"
