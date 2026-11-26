@@ -110,15 +110,17 @@ function CollapsibleReportCard({
   isMinimized,
   onToggleMinimize,
   noBodyPadding = false,
+  className = '',
+  bodyClassName = '',
   children,
 }) {
   return (
     <section
       aria-label={title}
-      className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 shadow-xs overflow-hidden transition-all"
+      className={`bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 shadow-xs overflow-hidden transition-all flex flex-col ${className}`}
     >
       <div
-        className={`px-5 py-3.5 flex items-center justify-between gap-3 bg-slate-50/60 dark:bg-gray-900/55 ${
+        className={`px-5 py-3.5 flex items-center justify-between gap-3 bg-slate-50/60 dark:bg-gray-900/55 shrink-0 ${
           isMinimized ? '' : 'border-b border-slate-100 dark:border-gray-700/80'
         }`}
       >
@@ -161,7 +163,9 @@ function CollapsibleReportCard({
         </div>
       </div>
 
-      {!isMinimized && <div className={noBodyPadding ? '' : 'p-5'}>{children}</div>}
+      {!isMinimized && (
+        <div className={`flex-1 ${noBodyPadding ? '' : 'p-5'} ${bodyClassName}`}>{children}</div>
+      )}
     </section>
   );
 }
@@ -923,7 +927,11 @@ export function ReportsPage() {
           </div>
 
           {/* Visual Analytics Charts (Status Distribution & Fixed Interactive Daily Volume) */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+          <div
+            className={`grid grid-cols-1 lg:grid-cols-2 gap-5 ${
+              !minimizedCards.status && !minimizedCards.volume ? 'items-stretch' : 'items-start'
+            }`}
+          >
             {/* Appointment Status Distribution */}
             <CollapsibleReportCard
               cardKey="status"
@@ -932,6 +940,8 @@ export function ReportsPage() {
               summaryBadge={`${totalAppointments} total`}
               isMinimized={Boolean(minimizedCards.status)}
               onToggleMinimize={toggleCardMinimize}
+              className={!minimizedCards.status && !minimizedCards.volume ? 'h-full' : ''}
+              bodyClassName="flex flex-col justify-between"
             >
               {totalAppointments === 0 ? (
                 <p className="text-xs text-slate-500 dark:text-gray-400 py-8 text-center">
@@ -1016,13 +1026,15 @@ export function ReportsPage() {
               }
               isMinimized={Boolean(minimizedCards.volume)}
               onToggleMinimize={toggleCardMinimize}
+              className={!minimizedCards.status && !minimizedCards.volume ? 'h-full' : ''}
+              bodyClassName="flex flex-col"
             >
               {dailySeries.length === 0 ? (
-                <p className="text-xs text-slate-500 dark:text-gray-400 py-8 text-center">
+                <p className="text-xs text-slate-500 dark:text-gray-400 py-8 text-center my-auto">
                   No daily appointment activity in the selected period.
                 </p>
               ) : (
-                <div className="space-y-4">
+                <div className="flex-1 flex flex-col justify-between gap-4">
                   {/* Active / Peak Day Insight Banner */}
                   {activeVolumeDay && (
                     <div className="p-3 rounded-xl bg-slate-50 dark:bg-gray-900/60 border border-slate-200/70 dark:border-gray-700/80 flex flex-wrap items-center justify-between gap-2 text-xs">
@@ -1053,14 +1065,14 @@ export function ReportsPage() {
                   )}
 
                   {/* Column Chart with Explicit Pixel Heights */}
-                  <div className="relative pt-2">
+                  <div className="flex-1 flex flex-col justify-end pt-2">
                     <div
-                      className="flex items-end gap-2 h-44 px-1 pb-1 overflow-x-auto border-b border-slate-200/80 dark:border-gray-700/80"
+                      className="flex items-end gap-2 h-56 px-1 pb-1 overflow-x-auto border-b border-slate-200/80 dark:border-gray-700/80"
                       role="img"
                       aria-label="Daily appointment volume chart"
                     >
                       {dailySeries.map((d) => {
-                        const barPx = Math.max(14, Math.round((d.count / maxDailyCount) * 116));
+                        const barPx = Math.max(16, Math.round((d.count / maxDailyCount) * 164));
                         const completedPx =
                           d.count > 0 && d.completed > 0
                             ? Math.max(4, Math.round((d.completed / d.count) * barPx))
