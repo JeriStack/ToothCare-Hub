@@ -772,108 +772,179 @@ export function ServicesPage() {
       )}
 
       {/* Read-Only Service Details Modal */}
-      {viewingService && (
-        <DialogOverlay
-          onClose={() => setViewingService(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/45 dark:bg-black/65 backdrop-blur-sm"
-        >
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 w-full max-w-lg overflow-hidden">
-            <div className="flex items-start justify-between gap-4 px-6 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/60 dark:bg-gray-900/40">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">{viewingService.name}</h2>
-                  {viewingService.is_active ? (
-                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-500/25">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" aria-hidden="true" />
-                      Active
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-gray-700/70 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-gray-600">
-                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400" aria-hidden="true" />
-                      Inactive
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 mt-1.5">
-                  <span className="font-mono text-xs text-slate-400 dark:text-slate-500 tabular-nums">
-                    Service #{viewingService.id}
-                  </span>
-                  <span className="text-slate-300 dark:text-gray-600" aria-hidden="true">·</span>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${getCategoryBadgeClasses(viewingService.category)}`}>
-                    {viewingService.category || 'General'}
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setViewingService(null)}
-                aria-label="Close service details"
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors cursor-pointer shrink-0"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      {viewingService && (() => {
+        const hasDescription = Boolean(String(viewingService.description || '').trim());
+        const isActive = Boolean(viewingService.is_active);
 
-            <div className="p-6 space-y-5 text-sm">
-              <div className="grid grid-cols-3 gap-3 p-4 rounded-xl bg-slate-50/80 dark:bg-gray-900/50 border border-slate-200/80 dark:border-gray-700/80">
-                <div>
-                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Standard Fee</span>
-                  <span className="mt-0.5 block text-sm font-bold text-slate-900 dark:text-slate-50 tabular-nums">
-                    ₱{Number(viewingService.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                  </span>
+        return (
+          <DialogOverlay
+            onClose={() => setViewingService(null)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/70 backdrop-blur-sm"
+          >
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-slate-200/90 dark:border-gray-700/80 w-full max-w-lg overflow-hidden max-h-[90dvh] flex flex-col">
+              {/* Header */}
+              <div className="flex items-start justify-between gap-3 px-6 py-4 border-b border-slate-100 dark:border-gray-700/80 bg-slate-50/70 dark:bg-gray-900/50">
+                <div className="flex items-start gap-3.5 min-w-0">
+                  <div className="w-11 h-11 rounded-xl bg-teal-50 dark:bg-teal-500/15 ring-1 ring-inset ring-teal-200/90 dark:ring-teal-500/30 text-[#0F766E] dark:text-teal-300 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-5 h-5" aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-base font-bold text-slate-900 dark:text-slate-50 truncate">
+                        {viewingService.name}
+                      </h2>
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold border ${
+                          isActive
+                            ? 'bg-emerald-50 dark:bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-500/30'
+                            : 'bg-slate-100 dark:bg-gray-700/70 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-gray-600'
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-slate-400'}`}
+                          aria-hidden="true"
+                        />
+                        {isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                      <span className="font-mono text-xs text-slate-400 dark:text-slate-500 tabular-nums">
+                        Service #{viewingService.id}
+                      </span>
+                      <span className="text-slate-300 dark:text-gray-600" aria-hidden="true">·</span>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-semibold border ${getCategoryBadgeClasses(viewingService.category)}`}
+                      >
+                        {viewingService.category || 'General'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Duration</span>
-                  <span className="mt-0.5 block text-sm font-bold text-slate-900 dark:text-slate-50 tabular-nums">
-                    {viewingService.duration_minutes} min
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Booking Status</span>
-                  <span className={`mt-0.5 block text-sm font-bold ${viewingService.is_active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                    {viewingService.is_active ? 'Bookable' : 'Hidden'}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
-                  Clinical Description
-                </span>
-                <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-gray-900/40 border border-slate-200/70 dark:border-gray-700/70">
-                  <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
-                    {viewingService.description || 'No clinical description provided.'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-gray-700">
                 <button
                   type="button"
                   onClick={() => setViewingService(null)}
-                  className="px-4 py-2 rounded-lg border border-slate-200 dark:border-gray-600 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                  aria-label="Close service details"
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-gray-700/70 transition-colors cursor-pointer shrink-0"
                 >
-                  Close
+                  <X className="w-5 h-5" />
                 </button>
-                {canManageServices && (
+              </div>
+
+              {/* Body */}
+              <div className="p-6 space-y-5 overflow-y-auto flex-1 text-xs">
+                {/* Key Specs Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div className="p-3.5 rounded-xl bg-slate-50/85 dark:bg-gray-900/55 border border-slate-200/80 dark:border-gray-700/80 space-y-1">
+                    <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 block">
+                      Standard Fee
+                    </span>
+                    <span className="block text-base font-extrabold text-[#0F766E] dark:text-teal-300 tabular-nums tracking-tight">
+                      ₱{Number(viewingService.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-slate-50/85 dark:bg-gray-900/55 border border-slate-200/80 dark:border-gray-700/80 space-y-1">
+                    <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                      <Clock className="w-3 h-3 text-teal-600 dark:text-teal-400" aria-hidden="true" />
+                      Duration
+                    </span>
+                    <span className="block text-base font-extrabold text-slate-900 dark:text-slate-50 tabular-nums tracking-tight">
+                      {viewingService.duration_minutes} min
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-slate-50/85 dark:bg-gray-900/55 border border-slate-200/80 dark:border-gray-700/80 space-y-1">
+                    <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                      {isActive ? (
+                        <CheckCircle className="w-3 h-3 text-emerald-500 dark:text-emerald-400" aria-hidden="true" />
+                      ) : (
+                        <Lock className="w-3 h-3 text-slate-400" aria-hidden="true" />
+                      )}
+                      Booking Status
+                    </span>
+                    <span
+                      className={`block text-base font-extrabold tracking-tight ${
+                        isActive
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : 'text-slate-500 dark:text-slate-400'
+                      }`}
+                    >
+                      {isActive ? 'Bookable' : 'Hidden'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Clinical Description */}
+                <div className="space-y-2">
+                  <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    <FileText className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" aria-hidden="true" />
+                    Clinical Description
+                  </span>
+                  <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-gray-900/45 border border-slate-200/80 dark:border-gray-700/80">
+                    <p
+                      className={`text-xs sm:text-sm leading-relaxed ${
+                        hasDescription
+                          ? 'text-slate-700 dark:text-slate-200'
+                          : 'text-slate-400 dark:text-slate-500 italic'
+                      }`}
+                    >
+                      {hasDescription ? viewingService.description : 'No clinical description provided.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-3.5 border-t border-slate-100 dark:border-gray-700/80 bg-slate-50/60 dark:bg-gray-900/45 flex flex-wrap items-center justify-between gap-2.5">
+                <div>
+                  {canManageServices && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = viewingService;
+                        setViewingService(null);
+                        handleStatusToggleClick(target);
+                      }}
+                      className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
+                        isActive
+                          ? 'border-rose-200 dark:border-rose-500/35 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10'
+                          : 'border-emerald-200 dark:border-emerald-500/35 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10'
+                      }`}
+                    >
+                      <Power className="w-3.5 h-3.5" aria-hidden="true" />
+                      <span>{isActive ? 'Deactivate' : 'Activate'}</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2.5 ml-auto">
                   <button
                     type="button"
-                    onClick={() => {
-                      const target = viewingService;
-                      setViewingService(null);
-                      openEditModal(target);
-                    }}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#0F766E] hover:bg-[#0D9488] text-white text-xs font-semibold transition-colors cursor-pointer"
+                    onClick={() => setViewingService(null)}
+                    className="px-4 py-2 rounded-xl border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                   >
-                    <Edit2 className="w-3.5 h-3.5" aria-hidden="true" />
-                    Edit Service
+                    Close
                   </button>
-                )}
+                  {canManageServices && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = viewingService;
+                        setViewingService(null);
+                        openEditModal(target);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-[#0D9488] text-white text-xs font-semibold transition-colors shadow-xs cursor-pointer"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" aria-hidden="true" />
+                      <span>Edit Service</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        </DialogOverlay>
-      )}
+          </DialogOverlay>
+        );
+      })()}
     </div>
   );
 }
