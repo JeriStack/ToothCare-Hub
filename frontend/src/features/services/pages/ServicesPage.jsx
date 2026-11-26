@@ -830,7 +830,7 @@ export function ServicesPage() {
               </div>
             </div>
 
-            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
               {confirmModal.targetStatus === 0
                 ? 'Deactivating this service will remove it from future appointment bookings. All past patient appointments, treatments, and billing records referencing this service will remain securely preserved.'
                 : 'Activating this service will immediately make it selectable for patients and receptionists when booking new dental appointments.'}
