@@ -503,7 +503,7 @@ export function RolePermissionMatrixPage() {
                   </span>
                 </div>
 
-                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed text-justify">
                   {r.description}
                 </p>
 
