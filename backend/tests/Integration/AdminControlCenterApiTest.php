@@ -204,6 +204,7 @@ class AdminControlCenterApiTest extends TestCase
         $this->assertSame(200, $resPerms->getStatusCode());
         $permData = json_decode($resPerms->getBody(), true)['data'];
         $this->assertArrayHasKey('grouped', $permData);
+        $this->assertSame(RoleRepository::PROTECTED_ADMIN_PERMISSIONS, $permData['protected_admin_permissions']);
 
         // 2. Sync permissions for Receptionist (role id = 4): remove 'patients.manage'
         $resSync = $this->app->handle($this->createAuthRequest(
@@ -213,6 +214,9 @@ class AdminControlCenterApiTest extends TestCase
             ['permissions' => ['patients.view', 'appointments.view']]
         ));
         $this->assertSame(200, $resSync->getStatusCode());
+        $syncBody = json_decode($resSync->getBody(), true)['data'];
+        $this->assertArrayHasKey('diff', $syncBody);
+        $this->assertContains('patients.manage', $syncBody['diff']['removed']);
         $this->assertTrue($this->roleRepo->roleHasPermission('RECEPTIONIST', 'patients.view'));
         $this->assertFalse($this->roleRepo->roleHasPermission('RECEPTIONIST', 'patients.manage'));
 

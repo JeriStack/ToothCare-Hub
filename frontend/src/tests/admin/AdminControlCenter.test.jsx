@@ -237,6 +237,82 @@ describe('Administrator Control Center Frontend Suite', () => {
     });
   });
 
+  it('supports roles.manage lockout guard, search filtering, module bulk toggle, and batch Save All Changes', async () => {
+    rolesApi.getRoles.mockResolvedValue([
+      {
+        id: 1,
+        name: 'Administrator',
+        slug: 'admin',
+        description: 'Full access',
+        users_count: 1,
+        permissions: ['roles.manage', 'patients.view'],
+      },
+      {
+        id: 4,
+        name: 'Receptionist',
+        slug: 'receptionist',
+        description: 'Front desk',
+        users_count: 2,
+        permissions: ['patients.view'],
+      },
+    ]);
+    rolesApi.getPermissions.mockResolvedValue({
+      protected_admin_permissions: ['users.view', 'users.manage', 'roles.manage', 'audit_logs.view', 'settings.manage'],
+      grouped: {
+        security: [{ id: 10, name: 'Manage Roles & Permissions', slug: 'roles.manage' }],
+        patients: [
+          { id: 3, name: 'View Patients', slug: 'patients.view' },
+          { id: 4, name: 'Manage Patients', slug: 'patients.manage' },
+        ],
+      },
+    });
+    rolesApi.syncRolePermissions.mockResolvedValue({ ok: true });
+
+    const refreshSpy = vi.fn();
+    window.addEventListener('toothcare:permissions-refresh', refreshSpy);
+
+    render(<RolePermissionMatrixPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Manage Roles & Permissions')).toBeInTheDocument();
+      expect(screen.getByText('Manage Patients')).toBeInTheDocument();
+    });
+
+    // roles.manage must be locked on Administrator
+    const lockedRolesManage = screen.getByRole('button', {
+      name: 'Manage Roles & Permissions locked for Administrator',
+    });
+    expect(lockedRolesManage).toBeDisabled();
+
+    // Search narrows down visible capabilities
+    const searchInput = screen.getByLabelText('Search permissions');
+    fireEvent.change(searchInput, { target: { value: 'patients' } });
+    expect(screen.queryByText('Manage Roles & Permissions')).not.toBeInTheDocument();
+    expect(screen.getByText('Manage Patients')).toBeInTheDocument();
+    fireEvent.change(searchInput, { target: { value: '' } });
+
+    // Bulk toggle patients module for Receptionist grants remaining patients.manage
+    const bulkBtn = screen.getByTitle('Grant all patients permissions for Receptionist');
+    fireEvent.click(bulkBtn);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Save All Changes' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Discard All' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save All Changes' }));
+
+    await waitFor(() => {
+      expect(rolesApi.syncRolePermissions).toHaveBeenCalledWith(
+        4,
+        expect.arrayContaining(['patients.view', 'patients.manage'])
+      );
+      expect(refreshSpy).toHaveBeenCalledTimes(1);
+    });
+
+    window.removeEventListener('toothcare:permissions-refresh', refreshSpy);
+  });
+
   it('renders AuditTrailPage and inspects event payloads with Before/After diffs', async () => {
     auditApi.getLogs.mockResolvedValue({
       data: [

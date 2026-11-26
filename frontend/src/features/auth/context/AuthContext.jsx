@@ -117,14 +117,29 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     fetchCurrentUser();
 
+    let lastPermRefreshAt = 0;
+
     const handleUnauthorized = () => {
       clearStoredAuthUser();
       setUser(null);
     };
 
+    const handlePermissionsRefresh = () => {
+      const now = Date.now();
+      if (now - lastPermRefreshAt < 1500) {
+        return;
+      }
+      lastPermRefreshAt = now;
+      void fetchCurrentUser({ silent: true });
+    };
+
     window.addEventListener('toothcare:unauthorized', handleUnauthorized);
+    window.addEventListener('toothcare:permissions-refresh', handlePermissionsRefresh);
+    window.addEventListener('toothcare:forbidden', handlePermissionsRefresh);
     return () => {
       window.removeEventListener('toothcare:unauthorized', handleUnauthorized);
+      window.removeEventListener('toothcare:permissions-refresh', handlePermissionsRefresh);
+      window.removeEventListener('toothcare:forbidden', handlePermissionsRefresh);
     };
   }, [fetchCurrentUser]);
 
