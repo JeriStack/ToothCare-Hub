@@ -134,7 +134,8 @@ describe('AdminAppointmentsPage Component', () => {
 
     await waitFor(() => {
       expect(appointmentsApi.listAdmin).toHaveBeenCalledWith(
-        expect.objectContaining({ start_date: '2026-11-25', end_date: '2026-11-25', per_page: 15 })
+        expect.objectContaining({ start_date: '2026-11-25', end_date: '2026-11-25', per_page: 15 }),
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
       );
     });
 

@@ -238,10 +238,10 @@ class PatientRepository
         $conditions = [];
         $params = [];
 
-        // 1. Search across name, phone, email
+        // 1. Search across name, phone, email (wildcard-escaped for literal matching)
         if (!empty($filters['search'])) {
-            $search = '%' . trim((string) $filters['search']) . '%';
-            $conditions[] = '(p.first_name LIKE :s1 OR p.last_name LIKE :s2 OR p.phone LIKE :s3 OR u.email LIKE :s4)';
+            $search = '%' . \App\Support\ServerTableQuery::escapeLike((string) $filters['search']) . '%';
+            $conditions[] = "(p.first_name LIKE :s1 ESCAPE '!' OR p.last_name LIKE :s2 ESCAPE '!' OR p.phone LIKE :s3 ESCAPE '!' OR u.email LIKE :s4 ESCAPE '!')";
             $params[':s1'] = $search;
             $params[':s2'] = $search;
             $params[':s3'] = $search;
@@ -260,19 +260,26 @@ class PatientRepository
             $params[':gender'] = strtoupper(trim((string) $filters['gender']));
         }
 
-        $whereClause = !empty($conditions) ? 'WHERE ' . implode(' AND ', $conditions) : '';
+        $hasFilters = !empty($conditions);
+        $whereClause = $hasFilters ? 'WHERE ' . implode(' AND ', $conditions) : '';
 
-        // Total count
+        // Filtered count
         $countSql = "SELECT COUNT(*) FROM patients p INNER JOIN users u ON p.user_id = u.id {$whereClause}";
         $countStmt = $pdo->prepare($countSql);
         foreach ($params as $key => $val) {
             $countStmt->bindValue($key, $val);
         }
         $countStmt->execute();
-        $total = (int) $countStmt->fetchColumn();
+        $filteredTotal = (int) $countStmt->fetchColumn();
+
+        // Unfiltered total count (reuses filteredTotal when no user filters applied)
+        $totalRecords = $hasFilters
+            ? (int) $pdo->query('SELECT COUNT(*) FROM patients p INNER JOIN users u ON p.user_id = u.id')->fetchColumn()
+            : $filteredTotal;
 
         // Sort validation
-        $sortColumn = self::ALLOWED_SORT_COLUMNS[$sortBy] ?? 'p.created_at';
+        $resolvedSortKey = array_key_exists($sortBy, self::ALLOWED_SORT_COLUMNS) ? $sortBy : 'created_at';
+        $sortColumn = self::ALLOWED_SORT_COLUMNS[$resolvedSortKey];
         $direction = strtoupper($sortDir) === 'ASC' ? 'ASC' : 'DESC';
 
         $dataSql = "
@@ -311,16 +318,16 @@ class PatientRepository
 
         $rows = $dataStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $lastPage = $total > 0 ? (int) ceil($total / $perPage) : 1;
-
         return [
             'data' => $rows,
-            'meta' => [
-                'total' => $total,
-                'page' => $page,
-                'per_page' => $perPage,
-                'last_page' => $lastPage,
-            ],
+            'meta' => \App\Support\ServerTableQuery::buildMeta(
+                $totalRecords,
+                $filteredTotal,
+                $page,
+                $perPage,
+                $resolvedSortKey,
+                $direction
+            ),
         ];
     }
 

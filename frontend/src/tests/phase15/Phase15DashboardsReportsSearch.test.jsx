@@ -224,7 +224,8 @@ describe('Phase 15: Dashboards, Reports, and Appointment Search UI', () => {
 
     await waitFor(() => {
       expect(appointmentsApi.listAdmin).toHaveBeenCalledWith(
-        expect.objectContaining({ service_id: '2', per_page: 15 })
+        expect.objectContaining({ service_id: '2', per_page: 15 }),
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
       );
     });
 
@@ -232,7 +233,8 @@ describe('Phase 15: Dashboards, Reports, and Appointment Search UI', () => {
     fireEvent.change(screen.getByLabelText(/Appointment date/i), { target: { value: '2026-12-20' } });
     await waitFor(() => {
       expect(appointmentsApi.listAdmin).toHaveBeenCalledWith(
-        expect.objectContaining({ service_id: '2', start_date: '2026-12-20', end_date: '2026-12-20', per_page: 15 })
+        expect.objectContaining({ service_id: '2', start_date: '2026-12-20', end_date: '2026-12-20', per_page: 15 }),
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
       );
     });
 

@@ -148,7 +148,8 @@ class ServiceRepository
         $offset = ($page - 1) * $perPage;
 
         // Sorting allowlist protection against SQL injection
-        $sortColumn = self::SORT_ALLOWLIST[$sortBy] ?? 'name';
+        $resolvedSortKey = array_key_exists($sortBy, self::SORT_ALLOWLIST) ? $sortBy : 'name';
+        $sortColumn = self::SORT_ALLOWLIST[$resolvedSortKey];
         $direction = strtoupper($sortDir) === 'DESC' ? 'DESC' : 'ASC';
 
         $where = [];
@@ -156,8 +157,8 @@ class ServiceRepository
 
         // Search query (name or description or category)
         if (!empty($filters['search'])) {
-            $searchTerm = '%' . str_replace(['%', '_'], ['\\%', '\\_'], trim((string) $filters['search'])) . '%';
-            $where[] = '(name LIKE ? OR description LIKE ? OR category LIKE ?)';
+            $searchTerm = '%' . \App\Support\ServerTableQuery::escapeLike((string) $filters['search']) . '%';
+            $where[] = "(name LIKE ? ESCAPE '!' OR description LIKE ? ESCAPE '!' OR category LIKE ? ESCAPE '!')";
             $params[] = $searchTerm;
             $params[] = $searchTerm;
             $params[] = $searchTerm;
@@ -175,37 +176,55 @@ class ServiceRepository
             $params[] = trim((string) $filters['category']);
         }
 
-        $whereSql = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+        $hasFilters = !empty($where);
+        $whereSql = $hasFilters ? 'WHERE ' . implode(' AND ', $where) : '';
 
-        // Count total matching items
+        // Count filtered matching items
         $countStmt = $pdo->prepare("SELECT COUNT(*) FROM services {$whereSql}");
         $countStmt->execute($params);
-        $totalItems = (int) $countStmt->fetchColumn();
+        $filteredItems = (int) $countStmt->fetchColumn();
 
-        // Retrieve paginated items
+        $totalRecords = $hasFilters
+            ? (int) $pdo->query('SELECT COUNT(*) FROM services')->fetchColumn()
+            : $filteredItems;
+
+        // Retrieve paginated items with explicit columns and bound LIMIT/OFFSET
         $sql = "
-            SELECT * FROM services
+            SELECT id, name, category, description, price, duration_minutes, is_active, created_at, updated_at
+            FROM services
             {$whereSql}
             ORDER BY {$sortColumn} {$direction}, id {$direction}
-            LIMIT {$perPage} OFFSET {$offset}
+            LIMIT ? OFFSET ?
         ";
 
         $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
+        $pos = 1;
+        foreach ($params as $val) {
+            $stmt->bindValue($pos++, $val);
+        }
+        $stmt->bindValue($pos++, $perPage, PDO::PARAM_INT);
+        $stmt->bindValue($pos, $offset, PDO::PARAM_INT);
+        $stmt->execute();
         $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $totalPages = $totalItems > 0 ? (int) ceil($totalItems / $perPage) : 1;
+        $totalPages = $filteredItems > 0 ? (int) ceil($filteredItems / $perPage) : 1;
 
         return [
             'items' => $items,
             'pagination' => [
-                'total' => $totalItems,
-                'total_items' => $totalItems,
+                'total' => $filteredItems,
+                'total_items' => $filteredItems,
+                'total_records' => $totalRecords,
+                'filtered_records' => $filteredItems,
                 'page' => $page,
                 'current_page' => $page,
                 'per_page' => $perPage,
                 'last_page' => $totalPages,
                 'total_pages' => $totalPages,
+                'sorting' => [
+                    'sort_by' => $resolvedSortKey,
+                    'sort_dir' => strtolower($direction),
+                ],
             ],
         ];
     }

@@ -1211,6 +1211,17 @@ class AppointmentService
     public function listAdminAppointments(array $filters = [], int $page = 1, int $perPage = 20): array
     {
         $normalized = $this->normalizeSearchFilters($filters, true, true);
+        $sort = \App\Support\ServerTableQuery::parseSort(
+            $filters,
+            AppointmentRepository::ADMIN_SORT_ALLOWLIST,
+            'start_at',
+            'DESC',
+            'a.id',
+            true
+        );
+        $normalized['sort_by'] = $sort['sort_by'];
+        $normalized['sort_dir'] = $sort['sort_dir'];
+
         $page = max(1, $page);
         $perPage = max(1, min(100, $perPage));
 
@@ -1368,12 +1379,14 @@ class AppointmentService
 
         return [
             'items' => $result['items'],
-            'meta' => [
-                'total' => $result['total'],
-                'page' => $result['page'],
-                'per_page' => $result['per_page'],
-                'last_page' => $result['total_pages'],
-            ],
+            'meta' => \App\Support\ServerTableQuery::buildMeta(
+                (int) ($result['total_records'] ?? $result['total'] ?? 0),
+                (int) ($result['filtered_records'] ?? $result['total'] ?? 0),
+                (int) ($result['page'] ?? $page),
+                (int) ($result['per_page'] ?? $perPage),
+                'start_at',
+                'ASC'
+            ),
         ];
     }
 

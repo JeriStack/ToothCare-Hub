@@ -7,7 +7,6 @@ import {
   XCircle,
   Search,
   RefreshCw,
-  ChevronLeft,
   ChevronRight,
   Eye,
   Check,
@@ -28,6 +27,7 @@ import { useOptionalAuth } from '../../auth/context/AuthContext';
 import { useDashboardSync } from '../../../hooks/useDashboardSync';
 import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
+import { SortableColumnHeader, ServerTableFooter } from '../../../components/ui/ServerTableControls';
 
 const CLINIC_TIME_ZONE = 'Asia/Manila';
 
@@ -184,7 +184,17 @@ export function AdminAppointmentsPage({ initialStatus = '', initialDate = '' } =
 
   // Core Data State
   const [appointments, setAppointments] = useState([]);
-  const [meta, setMeta] = useState({ total: 0, page: 1, per_page: 15, last_page: 1 });
+  const [meta, setMeta] = useState({
+    total: 0,
+    total_records: 0,
+    filtered_records: 0,
+    page: 1,
+    current_page: 1,
+    per_page: 15,
+    last_page: 1,
+    total_pages: 1,
+    sorting: { sort_by: 'start_at', sort_dir: 'desc' },
+  });
   const [summary, setSummary] = useState(null);
   const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -192,16 +202,32 @@ export function AdminAppointmentsPage({ initialStatus = '', initialDate = '' } =
   const [dentists, setDentists] = useState([]);
   const [services, setServices] = useState([]);
   const requestSeqRef = useRef(0);
+  const abortControllerRef = useRef(null);
 
-  // Filter State
+  // Filter, Sorting & Pagination State (Server-Driven)
   const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [dentistId, setDentistId] = useState('');
   const [serviceId, setServiceId] = useState('');
   const [selectedDate, setSelectedDate] = useState(initialDate);
+  const [sortBy, setSortBy] = useState('start_at');
+  const [sortDir, setSortDir] = useState('desc');
+  const [perPage, setPerPage] = useState(15);
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleSort = useCallback((columnKey) => {
+    setSortBy((prevCol) => {
+      if (prevCol === columnKey) {
+        setSortDir((prevDir) => (prevDir === 'asc' ? 'desc' : 'asc'));
+        return prevCol;
+      }
+      setSortDir('asc');
+      return columnKey;
+    });
+    setPage(1);
+  }, []);
 
   useEffect(() => {
     setStatusFilter(initialStatus || '');
@@ -252,11 +278,11 @@ export function AdminAppointmentsPage({ initialStatus = '', initialDate = '' } =
   const [rescheduling, setRescheduling] = useState(false);
   const [rescheduleError, setRescheduleError] = useState(null);
 
-  // Debounce text search
+  // Debounce text search (300ms prevents excessive API churn during typing)
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchInput.trim());
-    }, 220);
+    }, 300);
     return () => clearTimeout(timer);
   }, [searchInput]);
 
@@ -272,15 +298,23 @@ export function AdminAppointmentsPage({ initialStatus = '', initialDate = '' } =
       .catch(() => {});
   }, []);
 
-  // Fetch paginated appointments + backend summary & availability checks
+  // Fetch paginated appointments + backend summary & availability checks (with AbortController + stale-response guard)
   const fetchAppointments = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
     setError(null);
     const currentSeq = ++requestSeqRef.current;
 
     const params = {
       page,
-      per_page: 15,
+      per_page: perPage,
+      sort_by: sortBy,
+      sort_dir: sortDir,
     };
     if (statusFilter) params.status = statusFilter;
     if (debouncedSearch) params.search = debouncedSearch;
@@ -292,9 +326,9 @@ export function AdminAppointmentsPage({ initialStatus = '', initialDate = '' } =
     }
 
     appointmentsApi
-      .listAdmin(params)
+      .listAdmin(params, { signal: controller.signal })
       .then((res) => {
-        if (currentSeq !== requestSeqRef.current) return;
+        if (currentSeq !== requestSeqRef.current || controller.signal.aborted) return;
         const list = Array.isArray(res?.data)
           ? res.data
           : Array.isArray(res?.data?.items)
@@ -302,7 +336,22 @@ export function AdminAppointmentsPage({ initialStatus = '', initialDate = '' } =
           : [];
         setAppointments(list);
         if (res?.meta) {
-          setMeta(res.meta);
+          const filtered = Number(res.meta.filtered_records ?? res.meta.total ?? list.length);
+          const totalAll = Number(res.meta.total_records ?? filtered);
+          const curPage = Number(res.meta.current_page ?? res.meta.page ?? page);
+          const curPerPage = Number(res.meta.per_page ?? perPage);
+          const lastPg = Number(res.meta.total_pages ?? res.meta.last_page ?? 1);
+          setMeta({
+            ...res.meta,
+            total: filtered,
+            total_records: totalAll,
+            filtered_records: filtered,
+            page: curPage,
+            current_page: curPage,
+            per_page: curPerPage,
+            last_page: lastPg,
+            total_pages: lastPg,
+          });
           if (res.meta.summary) {
             setSummary(res.meta.summary);
           }
@@ -310,19 +359,26 @@ export function AdminAppointmentsPage({ initialStatus = '', initialDate = '' } =
         setLastRefreshedAt(res?.meta?.summary?.refreshed_at || new Date());
       })
       .catch((err) => {
-        if (currentSeq !== requestSeqRef.current) return;
+        if (currentSeq !== requestSeqRef.current || controller.signal.aborted || err?.name === 'AbortError' || err?.isCancelled) {
+          return;
+        }
         setAppointments([]);
         setError(err.response?.data?.error?.message || err.message || 'Failed to load appointments.');
       })
       .finally(() => {
-        if (currentSeq === requestSeqRef.current) {
+        if (currentSeq === requestSeqRef.current && !controller.signal.aborted) {
           setLoading(false);
         }
       });
-  }, [page, statusFilter, debouncedSearch, dentistId, serviceId, selectedDate, refreshKey]);
+  }, [page, perPage, sortBy, sortDir, statusFilter, debouncedSearch, dentistId, serviceId, selectedDate, refreshKey]);
 
   useEffect(() => {
     fetchAppointments();
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [fetchAppointments]);
 
   // Real-time queue synchronization (auto-refreshes without page reload on booking/decision/schedule changes)
@@ -996,13 +1052,50 @@ export function AdminAppointmentsPage({ initialStatus = '', initialDate = '' } =
           <table role="table" className="tch-responsive-table w-full text-left border-collapse text-xs">
             <thead role="rowgroup">
               <tr role="row" className="bg-slate-50/75 dark:bg-gray-900/45 border-b border-slate-100 dark:border-gray-700/80 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                <th role="columnheader" className="py-3.5 px-5">Reference</th>
-                <th role="columnheader" className="py-3.5 px-4">Patient</th>
-                <th role="columnheader" className="py-3.5 px-4">Service</th>
-                <th role="columnheader" className="py-3.5 px-4">Dentist</th>
-                <th role="columnheader" className="py-3.5 px-4">Date &amp; Time</th>
+                <SortableColumnHeader
+                  columnKey="id"
+                  label="Reference"
+                  activeSortBy={sortBy}
+                  activeSortDir={sortDir}
+                  onSort={handleSort}
+                  className="pl-5 pr-4"
+                />
+                <SortableColumnHeader
+                  columnKey="patient_name"
+                  label="Patient"
+                  activeSortBy={sortBy}
+                  activeSortDir={sortDir}
+                  onSort={handleSort}
+                />
+                <SortableColumnHeader
+                  columnKey="service_name"
+                  label="Service"
+                  activeSortBy={sortBy}
+                  activeSortDir={sortDir}
+                  onSort={handleSort}
+                />
+                <SortableColumnHeader
+                  columnKey="dentist_name"
+                  label="Dentist"
+                  activeSortBy={sortBy}
+                  activeSortDir={sortDir}
+                  onSort={handleSort}
+                />
+                <SortableColumnHeader
+                  columnKey="start_at"
+                  label="Date & Time"
+                  activeSortBy={sortBy}
+                  activeSortDir={sortDir}
+                  onSort={handleSort}
+                />
                 <th role="columnheader" className="py-3.5 px-4">Availability</th>
-                <th role="columnheader" className="py-3.5 px-4">Status</th>
+                <SortableColumnHeader
+                  columnKey="status"
+                  label="Status"
+                  activeSortBy={sortBy}
+                  activeSortDir={sortDir}
+                  onSort={handleSort}
+                />
                 <th role="columnheader" className="py-3.5 px-5 text-right">Actions</th>
               </tr>
             </thead>
@@ -1243,43 +1336,21 @@ export function AdminAppointmentsPage({ initialStatus = '', initialDate = '' } =
           </table>
         </div>
 
-        {/* Pagination Footer */}
-        <div className="px-5 py-3.5 border-t border-slate-100 dark:border-gray-700/80 bg-slate-50/50 dark:bg-gray-900/35 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
-          <div className="tabular-nums">
-            Showing{' '}
-            <span className="font-semibold text-slate-700 dark:text-slate-200">
-              {appointments.length > 0 ? (meta.page - 1) * meta.per_page + 1 : 0}
-            </span>{' '}
-            to{' '}
-            <span className="font-semibold text-slate-700 dark:text-slate-200">
-              {Math.min(meta.page * meta.per_page, meta.total)}
-            </span>{' '}
-            of <span className="font-semibold text-slate-700 dark:text-slate-200">{meta.total}</span> records
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              disabled={meta.page <= 1 || loading}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              aria-label="Previous page"
-              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-slate-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 dark:text-slate-200 font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
-            >
-              <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" /> Previous
-            </button>
-            <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-gray-800 text-slate-700 dark:text-slate-200 font-semibold tabular-nums">
-              Page {meta.page} of {meta.last_page || 1}
-            </span>
-            <button
-              type="button"
-              disabled={meta.page >= (meta.last_page || 1) || loading}
-              onClick={() => setPage((p) => p + 1)}
-              aria-label="Next page"
-              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-slate-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 dark:text-slate-200 font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
-            >
-              Next <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
-            </button>
-          </div>
-        </div>
+        {/* Unified Server-Side Pagination Footer */}
+        <ServerTableFooter
+          page={meta.current_page || meta.page || page}
+          perPage={meta.per_page || perPage}
+          totalRecords={meta.total_records ?? meta.total ?? 0}
+          filteredRecords={meta.filtered_records ?? meta.total ?? 0}
+          totalPages={meta.total_pages || meta.last_page || 1}
+          onPageChange={(nextPage) => setPage(nextPage)}
+          onPerPageChange={(nextSize) => {
+            setPerPage(nextSize);
+            setPage(1);
+          }}
+          loading={loading}
+          itemLabel="appointments"
+        />
       </div>
 
       {/* DETAIL / AUDIT DRAWER MODAL */}

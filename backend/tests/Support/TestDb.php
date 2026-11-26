@@ -447,6 +447,16 @@ class TestDb
             (7, "08:00:00", "17:00:00", 1);
         ');
 
+        $pdo->exec('
+            CREATE INDEX IF NOT EXISTS idx_appointments_status_start ON appointments (status, start_at);
+            CREATE INDEX IF NOT EXISTS idx_appointments_dentist_start ON appointments (dentist_id, start_at);
+            CREATE INDEX IF NOT EXISTS idx_appointments_patient_start ON appointments (patient_id, start_at);
+            CREATE INDEX IF NOT EXISTS idx_appointments_service ON appointments (service_id);
+            CREATE INDEX IF NOT EXISTS idx_appointments_created_id ON appointments (created_at, id);
+            CREATE INDEX IF NOT EXISTS idx_audit_logs_target_created ON audit_logs (target_type, created_at, id);
+            CREATE INDEX IF NOT EXISTS idx_users_role_active_created ON users (role, is_active, created_at);
+        ');
+
         Database::getInstance()->setConnection($pdo);
 
         // Seed initial v1.0 DRAFT Terms of Service and Privacy Policy matching migration 033
