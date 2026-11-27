@@ -169,8 +169,11 @@ describe('ArchiveCenterPage (Role-Aware Compliance Archive Vault)', () => {
       expect(screen.getByText('ARC-EX-APT-001')).toBeInTheDocument();
     });
 
-    // Clean Patient UI: stripped redundant (Example) title suffix, 3 focused KPIs, no internal retention dropdown
+    // Clean Patient UI: stripped redundant (Example) title suffix, single-line table rows, 3 focused KPIs, no internal retention dropdown
     expect(screen.getByText('Completed Visit — Dental Prophylaxis')).toBeInTheDocument();
+    expect(screen.queryByText(/Quarterly operational archive/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Until Nov 15, 2029/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Receptionist$/i)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Past Visits/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Locked Clinical/i })).toBeInTheDocument();
     expect(screen.queryByText(/Example Records/i)).not.toBeInTheDocument();

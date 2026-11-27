@@ -114,11 +114,18 @@ class TreatmentRecordRepository
         $perPage = max(1, min(100, $perPage));
         $offset = ($page - 1) * $perPage;
 
-        $countStmt = $pdo->prepare('SELECT COUNT(*) FROM treatment_records WHERE dentist_id = ?');
-        $countStmt->execute([$dentistId]);
+        $filterByDentist = $dentistId > 0;
+
+        if ($filterByDentist) {
+            $countStmt = $pdo->prepare('SELECT COUNT(*) FROM treatment_records WHERE dentist_id = ?');
+            $countStmt->execute([$dentistId]);
+        } else {
+            $countStmt = $pdo->query('SELECT COUNT(*) FROM treatment_records');
+        }
         $total = (int) $countStmt->fetchColumn();
 
-        $stmt = $pdo->prepare('
+        $whereClause = $filterByDentist ? 'WHERE tr.dentist_id = ?' : '';
+        $stmt = $pdo->prepare("
             SELECT tr.*,
                    a.start_at AS appointment_start,
                    s.name AS service_name,
@@ -128,13 +135,16 @@ class TreatmentRecordRepository
             JOIN appointments a ON tr.appointment_id = a.id
             JOIN services s ON a.service_id = s.id
             JOIN patients p ON tr.patient_id = p.id
-            WHERE tr.dentist_id = ?
+            {$whereClause}
             ORDER BY tr.created_at DESC, tr.id DESC
             LIMIT ? OFFSET ?
-        ');
-        $stmt->bindValue(1, $dentistId, PDO::PARAM_INT);
-        $stmt->bindValue(2, $perPage, PDO::PARAM_INT);
-        $stmt->bindValue(3, $offset, PDO::PARAM_INT);
+        ");
+        $pos = 1;
+        if ($filterByDentist) {
+            $stmt->bindValue($pos++, $dentistId, PDO::PARAM_INT);
+        }
+        $stmt->bindValue($pos++, $perPage, PDO::PARAM_INT);
+        $stmt->bindValue($pos, $offset, PDO::PARAM_INT);
         $stmt->execute();
 
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];

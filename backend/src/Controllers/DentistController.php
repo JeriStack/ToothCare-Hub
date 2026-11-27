@@ -83,7 +83,11 @@ class DentistController
         $id = (int) $request->getParam('id');
         $dentist = $this->dentistRepository->findById($id);
 
-        if ($dentist === null || empty($dentist['is_active'])) {
+        if (
+            $dentist === null
+            || empty($dentist['is_active'])
+            || (array_key_exists('user_active', $dentist) && empty($dentist['user_active']))
+        ) {
             throw HttpException::notFound("Dentist profile #{$id} was not found or is currently unavailable.");
         }
 

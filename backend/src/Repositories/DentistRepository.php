@@ -377,7 +377,7 @@ class DentistRepository
                 u.email
             FROM dentists d
             INNER JOIN users u ON d.user_id = u.id
-            WHERE d.is_active = 1
+            WHERE d.is_active = 1 AND u.is_active = 1
             ORDER BY d.last_name ASC, d.first_name ASC
         ');
 

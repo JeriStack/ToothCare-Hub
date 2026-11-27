@@ -6,7 +6,7 @@
 services:
   nginx:
     ports:
-      - "${NGINX_PORT:-8080}:80"
+      - "${NGINX_HTTP_PORT:-${NGINX_PORT:-8080}}:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
@@ -17,6 +17,7 @@ services:
   php-fpm:
     volumes:
       - ./backend:/var/www/backend
+      - ./docker/php/dev-opcache.ini:/usr/local/etc/php/conf.d/zz-toothcare-dev.ini:ro
     environment:
       APP_DEBUG: "true"
       APP_ENV: "development"

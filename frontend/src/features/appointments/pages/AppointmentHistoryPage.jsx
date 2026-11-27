@@ -132,13 +132,39 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
     }
   };
 
+  // Clinic timezone helpers (Asia/Manila) to stay aligned with backend DATETIME values
+  const getClinicIsoDate = (date = new Date()) => {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Manila',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(date);
+    const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+    return `${map.year}-${map.month}-${map.day}`;
+  };
+
+  const getClinicNowSql = (date = new Date()) => {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Manila',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(date);
+    const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+    return `${map.year}-${map.month}-${map.day} ${map.hour}:${map.minute}:${map.second}`;
+  };
+
   // Open reschedule modal
   const handleOpenReschedule = (appt) => {
     setRescheduleModalAppt(appt);
-    // default date: tomorrow
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    setRescheduleDate(d.toISOString().split('T')[0]);
+    // default date: tomorrow in clinic timezone (Asia/Manila)
+    const tomorrow = new Date(Date.now() + 86400000);
+    setRescheduleDate(getClinicIsoDate(tomorrow));
     setRescheduleSlot(null);
     setRescheduleReason('');
     setRescheduleError(null);
@@ -186,7 +212,7 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
 
   // Filtered appointments
   const filteredAppointments = useMemo(() => {
-    const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    const nowStr = getClinicNowSql();
 
     return appointments.filter((appt) => {
       // Tab filter
@@ -672,7 +698,7 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
                 <input
                   type="date"
                   value={rescheduleDate}
-                  min={new Date().toISOString().split('T')[0]}
+                  min={getClinicIsoDate()}
                   onChange={(e) => {
                     setRescheduleDate(e.target.value);
                     setRescheduleSlot(null);

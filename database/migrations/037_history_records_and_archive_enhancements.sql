@@ -121,7 +121,7 @@ SELECT r.id, p.id, NOW()
 FROM roles r
 JOIN permissions p ON p.slug IN (
     'history.view', 'history.view_details', 'history.view_patient',
-    'history.view_appointment', 'archives.view_history'
+    'history.view_staff', 'history.view_appointment', 'archives.view_history'
 )
 WHERE r.slug = 'receptionist'
 ON DUPLICATE KEY UPDATE role_id = role_permissions.role_id;
@@ -131,7 +131,8 @@ INSERT INTO role_permissions (role_id, permission_id, granted_at)
 SELECT r.id, p.id, NOW()
 FROM roles r
 JOIN permissions p ON p.slug IN (
-    'history.view', 'history.view_details', 'history.view_appointment', 'archives.view_history'
+    'history.view', 'history.view_details', 'history.view_patient',
+    'history.view_appointment', 'archives.view_history'
 )
 WHERE r.slug = 'dentist'
 ON DUPLICATE KEY UPDATE role_id = role_permissions.role_id;

@@ -188,7 +188,7 @@ class AppointmentService
                 'status' => AppointmentValidator::STATUS_PENDING,
                 'chief_complaint' => $validated['chief_complaint'],
                 'operatory_chair' => $chair,
-                'rescheduled_from_id' => $input['rescheduled_from_id'] ?? null,
+                'rescheduled_from_id' => null,
             ], $pdo);
 
             // 9. Record Initial Status History
@@ -574,8 +574,14 @@ class AppointmentService
                 throw HttpException::notFound('Appointment not found.');
             }
 
+            // Role & ownership check: Dentists cannot cancel clinic appointments here
+            $upperRole = strtoupper($userRole);
+            if ($upperRole === 'DENTIST') {
+                throw HttpException::forbidden('Dentists are not authorized to cancel appointments from this endpoint.');
+            }
+
             // Ownership & cancellation cutoff policy check for patients
-            if (strtoupper($userRole) === 'PATIENT') {
+            if ($upperRole === 'PATIENT') {
                 $patient = $this->patientRepo->findByUserId($userId);
                 if (!$patient || (int) $appointment['patient_id'] !== (int) $patient['id']) {
                     throw HttpException::forbidden('You can only cancel your own appointments.');
@@ -1024,9 +1030,15 @@ class AppointmentService
             throw HttpException::notFound('Appointment not found.');
         }
 
-        if (strtoupper($userRole) === 'PATIENT') {
+        $upperRole = strtoupper($userRole);
+        if ($upperRole === 'PATIENT') {
             $patient = $this->patientRepo->findByUserId($userId);
             if (!$patient || (int) $appointment['patient_id'] !== (int) $patient['id']) {
+                throw HttpException::notFound('Appointment not found.');
+            }
+        } elseif ($upperRole === 'DENTIST') {
+            $dentist = $this->dentistRepo->findByUserId($userId);
+            if (!$dentist || (int) $appointment['dentist_id'] !== (int) $dentist['id']) {
                 throw HttpException::notFound('Appointment not found.');
             }
         }

@@ -382,7 +382,10 @@ function AppContent() {
   };
 
   // Patient Sub-Route Navigation with URL History Sync
-  const handlePatientNav = (tab) => {
+  const handlePatientNav = (tab, options = {}) => {
+    if (tab === 'book' && !options?.preservePrefill) {
+      setBookingPrefill(null);
+    }
     setActiveTab(tab);
     setIsMobileMenuOpen(false);
     setIsUserMenuOpen(false);
@@ -555,12 +558,38 @@ function AppContent() {
     };
   }, []);
 
+  // Shared helper: map role to its canonical portal route & URL
+  const navigateToRolePortal = (roleValue) => {
+    const normalized = String(roleValue || 'PATIENT').toUpperCase();
+    if (normalized === 'ADMIN' || normalized === 'RECEPTIONIST') {
+      navigateTo('ADMIN', '/admin');
+    } else if (normalized === 'DENTIST') {
+      navigateTo('DENTIST', '/dentist');
+    } else {
+      navigateTo('PATIENT', '/patient');
+    }
+  };
+
+  const renderToastBanner = () =>
+    toastMessage ? (
+      <div
+        role="status"
+        aria-live="polite"
+        className="fixed bottom-4 left-4 right-4 sm:left-auto sm:bottom-6 sm:right-6 sm:max-w-sm z-[60] bg-[#12304A] text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 border border-slate-700 text-xs"
+      >
+        <Sparkles className="w-4 h-4 text-teal-400 shrink-0" aria-hidden="true" />
+        <span className="min-w-0 break-words">{toastMessage}</span>
+      </div>
+    ) : null;
+
+  const isProtectedPortalRoute = (route) =>
+    route === 'PATIENT' || route === 'ADMIN' || route === 'RECEPTIONIST' || route === 'DENTIST';
+
   // Server-Governed Route & Role Authorization Guard
   useEffect(() => {
     if (isLoading) return;
 
-    const isProtectedRoute =
-      currentRoute === 'PATIENT' || currentRoute === 'ADMIN' || currentRoute === 'DENTIST';
+    const isProtectedRoute = isProtectedPortalRoute(currentRoute);
 
     if (isProtectedRoute) {
       if (!isAuthenticated) {
@@ -572,31 +601,35 @@ function AppContent() {
       const role = user?.role?.toUpperCase();
       const isAdminOrReceptionist = role === 'ADMIN' || role === 'RECEPTIONIST';
 
+      if (currentRoute === 'RECEPTIONIST') {
+        if (isAdminOrReceptionist) {
+          navigateTo('ADMIN', '/admin');
+        } else {
+          navigateToRolePortal(role);
+          showToast('Access restricted: Administrative or Front Desk authorization required.');
+        }
+        return;
+      }
+
       if (currentRoute === 'PATIENT' && role !== 'PATIENT') {
-        const dest = isAdminOrReceptionist ? '/admin' : '/dentist';
-        navigateTo(role, dest);
+        navigateToRolePortal(role);
         showToast(
           `Redirected to your authorized ${
             role === 'ADMIN' ? 'administrator' : role === 'RECEPTIONIST' ? 'front desk' : 'dentist'
           } portal.`
         );
       } else if (currentRoute === 'ADMIN' && !isAdminOrReceptionist) {
-        const dest = role === 'DENTIST' ? '/dentist' : '/patient';
-        navigateTo(role, dest);
+        navigateToRolePortal(role);
         showToast('Access restricted: Administrative or Front Desk authorization required.');
       } else if (currentRoute === 'DENTIST' && role !== 'DENTIST') {
-        const dest = isAdminOrReceptionist ? '/admin' : '/patient';
-        navigateTo(role, dest);
+        navigateToRolePortal(role);
         showToast('Access restricted: Dentist clinical authorization required.');
       }
     }
   }, [isLoading, isAuthenticated, user, currentRoute]);
 
   // Loading Session State Guard for Protected Portals
-  if (
-    isLoading &&
-    (currentRoute === 'PATIENT' || currentRoute === 'ADMIN' || currentRoute === 'DENTIST')
-  ) {
+  if (isLoading && isProtectedPortalRoute(currentRoute)) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center transition-colors">
         <div className="flex flex-col items-center gap-3">
@@ -607,78 +640,61 @@ function AppContent() {
     );
   }
 
-  // Unauthenticated Guard for Protected Portals
-  if (
-    !isLoading &&
-    !isAuthenticated &&
-    (currentRoute === 'PATIENT' || currentRoute === 'ADMIN' || currentRoute === 'DENTIST')
-  ) {
-    return (
-      <LoginPage
-        onSuccess={(loggedUser) => {
-          const role = loggedUser?.role?.toUpperCase();
-          const firstName =
-            loggedUser?.patient?.first_name ||
-            loggedUser?.dentist?.first_name ||
-            loggedUser?.first_name ||
-            'User';
-          showToast(`Welcome back, ${firstName}!`);
+  const handleLoginSuccess = (loggedUser) => {
+    const role = loggedUser?.role?.toUpperCase();
+    const firstName =
+      loggedUser?.patient?.first_name ||
+      loggedUser?.dentist?.first_name ||
+      loggedUser?.first_name ||
+      'User';
+    showToast(`Welcome back, ${firstName}!`);
+    navigateToRolePortal(role);
+  };
 
-          if (role === 'ADMIN') {
-            navigateTo('ADMIN', '/admin');
-          } else if (role === 'DENTIST') {
-            navigateTo('DENTIST', '/dentist');
-          } else {
-            navigateTo('PATIENT', '/patient');
-          }
-        }}
-        onNavigateRegister={() => navigateTo('REGISTER', '/register')}
-        onNavigateForgotPassword={() => navigateTo('FORGOT_PASSWORD', '/forgot-password')}
-        onNavigateHome={() => navigateTo('LANDING', '/')}
-      />
+  // Unauthenticated Guard for Protected Portals
+  if (!isLoading && !isAuthenticated && isProtectedPortalRoute(currentRoute)) {
+    return (
+      <>
+        <LoginPage
+          onSuccess={handleLoginSuccess}
+          onNavigateRegister={() => navigateTo('REGISTER', '/register')}
+          onNavigateForgotPassword={() => navigateTo('FORGOT_PASSWORD', '/forgot-password')}
+          onNavigateHome={() => navigateTo('LANDING', '/')}
+        />
+        {renderToastBanner()}
+      </>
     );
   }
 
   // 1. Auth Page Views
   if (currentRoute === 'LOGIN') {
     return (
-      <LoginPage
-        onSuccess={(loggedUser) => {
-          const role = loggedUser?.role?.toUpperCase();
-          const firstName =
-            loggedUser?.patient?.first_name ||
-            loggedUser?.dentist?.first_name ||
-            loggedUser?.first_name ||
-            'User';
-          showToast(`Welcome back, ${firstName}!`);
-
-          if (role === 'ADMIN') {
-            navigateTo('ADMIN', '/admin');
-          } else if (role === 'DENTIST') {
-            navigateTo('DENTIST', '/dentist');
-          } else {
-            navigateTo('PATIENT', '/patient');
-          }
-        }}
-        onNavigateRegister={() => navigateTo('REGISTER', '/register')}
-        onNavigateForgotPassword={() => navigateTo('FORGOT_PASSWORD', '/forgot-password')}
-        onNavigateHome={() => navigateTo('LANDING', '/')}
-      />
+      <>
+        <LoginPage
+          onSuccess={handleLoginSuccess}
+          onNavigateRegister={() => navigateTo('REGISTER', '/register')}
+          onNavigateForgotPassword={() => navigateTo('FORGOT_PASSWORD', '/forgot-password')}
+          onNavigateHome={() => navigateTo('LANDING', '/')}
+        />
+        {renderToastBanner()}
+      </>
     );
   }
 
   if (currentRoute === 'REGISTER') {
     return (
-      <RegisterPage
-        onSuccess={() => {
-          showToast('Account created successfully! Check your email for verification.');
-          navigateTo('LOGIN', '/login');
-        }}
-        onNavigateLogin={() => navigateTo('LOGIN', '/login')}
-        onNavigateHome={() => navigateTo('LANDING', '/')}
-        onNavigateTerms={() => navigateToLegal('TERMS_OF_SERVICE', '/terms-of-service', 'REGISTER')}
-        onNavigatePrivacy={() => navigateToLegal('PRIVACY_POLICY', '/privacy-policy', 'REGISTER')}
-      />
+      <>
+        <RegisterPage
+          onSuccess={() => {
+            showToast('Account created successfully! Check your email for verification.');
+          }}
+          onNavigateLogin={() => navigateTo('LOGIN', '/login')}
+          onNavigateHome={() => navigateTo('LANDING', '/')}
+          onNavigateTerms={() => navigateToLegal('TERMS_OF_SERVICE', '/terms-of-service', 'REGISTER')}
+          onNavigatePrivacy={() => navigateToLegal('PRIVACY_POLICY', '/privacy-policy', 'REGISTER')}
+        />
+        {renderToastBanner()}
+      </>
     );
   }
 
@@ -747,7 +763,7 @@ function AppContent() {
               navigateTo('PATIENT', '/patient');
               setActiveTab('book');
             } else {
-              navigateTo(role, role === 'ADMIN' ? '/admin' : '/dentist');
+              navigateToRolePortal(role);
             }
           } else {
             navigateTo('LOGIN', '/login');
@@ -756,8 +772,7 @@ function AppContent() {
         }}
         onLogin={() => {
           if (isAuthenticated) {
-            const role = user?.role?.toUpperCase() || 'PATIENT';
-            navigateTo(role, `/${role.toLowerCase()}`);
+            navigateToRolePortal(user?.role);
           } else {
             navigateTo('LOGIN', '/login');
           }
@@ -769,7 +784,7 @@ function AppContent() {
               navigateTo('PATIENT', '/patient/appointments');
               setActiveTab('appointments');
             } else {
-              navigateTo(role, `/${role.toLowerCase()}`);
+              navigateToRolePortal(role);
             }
           } else {
             navigateTo('LOGIN', '/login');
@@ -778,7 +793,8 @@ function AppContent() {
         onRegister={() => navigateTo('REGISTER', '/register')}
         onForgotPassword={() => navigateTo('FORGOT_PASSWORD', '/forgot-password')}
         onAdminLogin={() => {
-          if (isAuthenticated && user?.role === 'ADMIN') {
+          const role = user?.role?.toUpperCase();
+          if (isAuthenticated && (role === 'ADMIN' || role === 'RECEPTIONIST')) {
             navigateTo('ADMIN', '/admin');
           } else {
             navigateTo('LOGIN', '/login');
@@ -796,6 +812,7 @@ function AppContent() {
     const LegalPageComponent =
       currentRoute === 'PRIVACY_POLICY' ? PrivacyPolicyPage : TermsOfServicePage;
     return (
+      <>
       <Suspense
         fallback={
           <div className="min-h-dvh flex items-center justify-center bg-[#F5F8FA] dark:bg-gray-900">
@@ -835,7 +852,7 @@ function AppContent() {
                 navigateTo('PATIENT', '/patient');
                 setActiveTab('book');
               } else {
-                navigateTo(role, role === 'ADMIN' ? '/admin' : '/dentist');
+                navigateToRolePortal(role);
               }
             } else {
               navigateTo('LOGIN', '/login');
@@ -844,14 +861,14 @@ function AppContent() {
           }}
           onNavigateLogin={() => {
             if (isAuthenticated) {
-              const role = user?.role?.toUpperCase() || 'PATIENT';
-              navigateTo(role, `/${role.toLowerCase()}`);
+              navigateToRolePortal(user?.role);
             } else {
               navigateTo('LOGIN', '/login');
             }
           }}
           onAdminLogin={() => {
-            if (isAuthenticated && user?.role === 'ADMIN') {
+            const role = user?.role?.toUpperCase();
+            if (isAuthenticated && (role === 'ADMIN' || role === 'RECEPTIONIST')) {
               navigateTo('ADMIN', '/admin');
             } else {
               navigateTo('LOGIN', '/login');
@@ -859,12 +876,15 @@ function AppContent() {
           }}
         />
       </Suspense>
+      {renderToastBanner()}
+      </>
     );
   }
 
   // 2b. Public Landing Page (Production-ready without demo bars)
   if (currentRoute === 'LANDING') {
     return (
+      <>
       <LandingPage
         onHelpSupport={() => navigateTo('HELP_SUPPORT', '/help-support')}
         onTermsOfService={() => navigateToLegal('TERMS_OF_SERVICE', '/terms-of-service')}
@@ -879,7 +899,7 @@ function AppContent() {
               navigateTo('PATIENT', '/patient');
               setActiveTab('book');
             } else {
-              navigateTo(role, role === 'ADMIN' ? '/admin' : '/dentist');
+              navigateToRolePortal(role);
             }
           } else {
             navigateTo('LOGIN', '/login');
@@ -888,20 +908,22 @@ function AppContent() {
         }}
         onLogin={() => {
           if (isAuthenticated) {
-            const role = user?.role?.toUpperCase() || 'PATIENT';
-            navigateTo(role, `/${role.toLowerCase()}`);
+            navigateToRolePortal(user?.role);
           } else {
             navigateTo('LOGIN', '/login');
           }
         }}
         onAdminLogin={() => {
-          if (isAuthenticated && user?.role === 'ADMIN') {
+          const role = user?.role?.toUpperCase();
+          if (isAuthenticated && (role === 'ADMIN' || role === 'RECEPTIONIST')) {
             navigateTo('ADMIN', '/admin');
           } else {
             navigateTo('LOGIN', '/login');
           }
         }}
       />
+      {renderToastBanner()}
+      </>
     );
   }
 
@@ -985,6 +1007,8 @@ function AppContent() {
                 } else if (currentRole === 'DENTIST') {
                   if (refType === 'schedules') {
                     handleDentistNav('dashboard');
+                  } else if (refType === 'accounts') {
+                    handleDentistNav('profile');
                   } else {
                     handleDentistNav('appointments', {
                       appointmentId: notif?.reference_id || null,
@@ -1270,15 +1294,18 @@ function AppContent() {
                 <BookAppointmentPage
                   initialService={bookingPrefill?.service}
                   initialDentist={bookingPrefill?.dentist}
-                  onNavigateToAppointments={() => handlePatientNav('appointments')}
+                  onNavigateToAppointments={() => {
+                    setBookingPrefill(null);
+                    handlePatientNav('appointments');
+                  }}
                 />
               )}
 
               {activeTab === 'services' && (
                 <PatientServicesPage
                   onBookService={(service) => {
-                    setBookingPrefill((prev) => ({ ...prev, service }));
-                    handlePatientNav('book');
+                    setBookingPrefill({ service, dentist: null });
+                    handlePatientNav('book', { preservePrefill: true });
                   }}
                 />
               )}
@@ -1286,8 +1313,8 @@ function AppContent() {
               {activeTab === 'dentists' && (
                 <PatientDentistsPage
                   onBookDentist={(dentist) => {
-                    setBookingPrefill((prev) => ({ ...prev, dentist }));
-                    handlePatientNav('book');
+                    setBookingPrefill({ service: null, dentist });
+                    handlePatientNav('book', { preservePrefill: true });
                   }}
                 />
               )}
@@ -1510,6 +1537,8 @@ function AppContent() {
                   onSelectNotification={(notif) => {
                     if (notif?.reference_type === 'schedules') {
                       handleDentistNav('dashboard');
+                    } else if (notif?.reference_type === 'accounts') {
+                      handleDentistNav('profile');
                     } else {
                       handleDentistNav('appointments', {
                         appointmentId: notif?.reference_id || null,
@@ -1538,16 +1567,7 @@ function AppContent() {
       <NotificationToastContainer />
 
       {/* Floating Toast Feedback */}
-      {toastMessage && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed bottom-4 left-4 right-4 sm:left-auto sm:bottom-6 sm:right-6 sm:max-w-sm z-[60] bg-[#12304A] text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 border border-slate-700 text-xs"
-        >
-          <Sparkles className="w-4 h-4 text-teal-400 shrink-0" aria-hidden="true" />
-          <span className="min-w-0 break-words">{toastMessage}</span>
-        </div>
-      )}
+      {renderToastBanner()}
 
       {/* Authenticated Legal Re-Acceptance Workflow (only triggered on material policy updates) */}
       {isAuthenticated && user?.legal_status?.requires_reacceptance && (

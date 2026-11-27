@@ -67,7 +67,7 @@ server {
     }
 
     location ^~ /api/v1/internal/ { deny all; return 403; }
-    location = /api/v1/metrics    { deny all; return 403; }
+    location ^~ /api/v1/metrics   { deny all; return 403; }
     location = /stub_status       { deny all; return 403; }
 
     location /api/ {
@@ -93,5 +93,66 @@ server {
         proxy_read_timeout 86400s;
         proxy_send_timeout 86400s;
         proxy_buffering off;
+    }
+
+    # Deny dotfiles (.env, .git, etc.) except ACME HTTP-01 challenge
+    location ~ /\.(?!well-known).* {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    # Deny direct access to sensitive backend/source directories & extensions
+    location ~* /(config|src|tests|vendor|storage|database)/ {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    location ~* \.(env|git|yml|yaml|sql|md|log|ini|sh|bak)$ {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+}
+
+# Internal-only Docker network listener for PHP <-> Node.js service-to-service verification & metrics.
+# Port 8081 is NEVER published in Docker Compose `ports:`.
+server {
+    listen 8081;
+    server_name _;
+
+    resolver 127.0.0.11 valid=5s ipv6=off;
+    set $php_fpm_upstream "php-fpm:9000";
+
+    location ^~ /api/v1/internal/ {
+        client_max_body_size 256k;
+        fastcgi_pass $php_fpm_upstream;
+        include /etc/nginx/snippets/fastcgi-params.conf;
+        fastcgi_param SCRIPT_FILENAME /var/www/backend/public/index.php;
+        fastcgi_param SCRIPT_NAME /index.php;
+        fastcgi_param REQUEST_URI $request_uri;
+        fastcgi_param DOCUMENT_ROOT /var/www/backend/public;
+        fastcgi_intercept_errors off;
+    }
+
+    location = /api/v1/metrics {
+        fastcgi_pass $php_fpm_upstream;
+        include /etc/nginx/snippets/fastcgi-params.conf;
+        fastcgi_param SCRIPT_FILENAME /var/www/backend/public/index.php;
+        fastcgi_param SCRIPT_NAME /index.php;
+        fastcgi_param REQUEST_URI $request_uri;
+        fastcgi_param DOCUMENT_ROOT /var/www/backend/public;
+        fastcgi_intercept_errors off;
+    }
+
+    location = /stub_status {
+        stub_status on;
+        access_log off;
+    }
+
+    location / {
+        deny all;
+        return 403;
     }
 }

@@ -84,6 +84,8 @@ while ($running && $batches < $maxBatches) {
             }
         }
     } catch (Throwable $e) {
+        // Reset cached PDO handle so long-running daemons recover after MySQL restarts or wait_timeout disconnects
+        App\Core\Database::getInstance()->setConnection(null);
         $logger->error('Email worker batch failed', ['error' => get_class($e)]);
         fwrite(STDERR, "[email-worker] Batch failed: " . get_class($e) . "\n");
         $exit = 1;

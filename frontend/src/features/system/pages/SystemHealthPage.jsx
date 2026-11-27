@@ -23,6 +23,7 @@ import { systemApi } from '../api';
 import { broadcastClinicSettingsUpdate } from '../useClinicSettings';
 import { SystemHealthSkeleton } from '../../../components/skeletons';
 import { EmailDeliveryPanel } from '../components/EmailDeliveryPanel';
+import { useOptionalAuth } from '../../auth/context/AuthContext';
 
 const SLOT_DURATION_PRESETS = [15, 30, 45, 60];
 
@@ -106,7 +107,12 @@ export function SystemHealthPage() {
     slot_duration_default_minutes: Number(sData.slot_duration_default_minutes?.value ?? 30),
   });
 
+  const auth = useOptionalAuth();
+  const canViewHealth = auth?.hasPermission ? auth.hasPermission('system.health') : true;
+  const canManageSettings = auth?.hasPermission ? auth.hasPermission('settings.manage') : true;
+
   const fetchDiagnosticsOnly = useCallback(async () => {
+    if (!canViewHealth) return;
     try {
       const hData = await systemApi.getHealth();
       setHealth(hData);
@@ -115,30 +121,40 @@ export function SystemHealthPage() {
     } catch {
       // Silent during background poll
     }
-  }, []);
+  }, [canViewHealth]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [hData, sData] = await Promise.all([
-        systemApi.getHealth(),
-        systemApi.getSettings(),
+      const [healthResult, settingsResult] = await Promise.allSettled([
+        canViewHealth ? systemApi.getHealth() : Promise.resolve(null),
+        canManageSettings ? systemApi.getSettings() : Promise.resolve(null),
       ]);
 
-      setHealth(hData);
-      setLastCheckedAt(new Date());
-      setEmailRefreshTick((n) => n + 1);
+      let anySucceeded = false;
 
-      const normalized = mapSettingsPayload(sData);
-      setSavedSettings(normalized);
-      setSettingsForm(normalized);
-      setFormErrors({});
-    } catch {
-      showToast('Failed to retrieve system health diagnostics.', 'error');
+      if (healthResult.status === 'fulfilled' && healthResult.value) {
+        setHealth(healthResult.value);
+        setLastCheckedAt(new Date());
+        setEmailRefreshTick((n) => n + 1);
+        anySucceeded = true;
+      }
+
+      if (settingsResult.status === 'fulfilled' && settingsResult.value) {
+        const normalized = mapSettingsPayload(settingsResult.value);
+        setSavedSettings(normalized);
+        setSettingsForm(normalized);
+        setFormErrors({});
+        anySucceeded = true;
+      }
+
+      if (!anySucceeded && (canViewHealth || canManageSettings)) {
+        showToast('Failed to retrieve system health diagnostics.', 'error');
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [canViewHealth, canManageSettings]);
 
   useEffect(() => {
     fetchData();

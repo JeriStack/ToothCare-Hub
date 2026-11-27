@@ -228,7 +228,8 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
 
     setIsUpdatingAttendance(true);
     try {
-      await receptionistApi.updateAttendance(attendanceModalTarget.id, attendanceStatusChoice, attendanceNotes || null);
+      const targetAppointmentId = attendanceModalTarget.appointment_id ?? attendanceModalTarget.id;
+      await receptionistApi.updateAttendance(targetAppointmentId, attendanceStatusChoice, attendanceNotes || null);
       triggerToast(`Attendance updated for ${attendanceModalTarget.patient_first_name} ${attendanceModalTarget.patient_last_name}.`);
       setAttendanceModalTarget(null);
       setAttendanceNotes('');
@@ -864,9 +865,11 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
               ) : (
                 <div className="divide-y divide-slate-100 dark:divide-gray-700/70 -my-1">
                   {waitingList.map((item) => {
-                    const isInChair = item.status === 'IN_CONSULTATION';
+                    const itemApptId = item.appointment_id ?? item.id;
+                    const itemStatus = item.attendance_status ?? item.status;
+                    const isInChair = itemStatus === 'IN_CONSULTATION';
                     return (
-                      <div key={item.id} className="py-3 first:pt-1 last:pb-1 flex items-start justify-between gap-3">
+                      <div key={itemApptId} className="py-3 first:pt-1 last:pb-1 flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 min-w-0">
                           <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-gray-900/80 border border-slate-200/80 dark:border-gray-700 text-slate-700 dark:text-slate-200 flex items-center justify-center text-[11px] font-semibold shrink-0 mt-0.5">
                             {getInitials(item.patient_first_name, item.patient_last_name)}

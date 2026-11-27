@@ -39,12 +39,15 @@ export function DentistTreatmentRecordsPage() {
     setLoading(true);
     setError(null);
     try {
-      const [data, completedRes] = await Promise.all([
+      const [data, completedRes, documentedIndexRes] = await Promise.all([
         treatmentRecordsApi.list({
           page,
           per_page: perPage,
         }),
         appointmentsApi.listDentist({ status: 'COMPLETED', per_page: 50 }).catch(() => ({ items: [] })),
+        page === 1 && perPage >= 100
+          ? Promise.resolve(null)
+          : treatmentRecordsApi.list({ page: 1, per_page: 100 }).catch(() => null),
       ]);
       const items = Array.isArray(data) ? data : data.items || [];
       const resMeta = data.meta || {
@@ -57,8 +60,16 @@ export function DentistTreatmentRecordsPage() {
       setMeta(resMeta);
 
       const completedItems = Array.isArray(completedRes) ? completedRes : completedRes?.items || [];
-      const documentedApptIds = new Set(items.map((r) => Number(r.appointment_id)));
-      setPendingVisits(completedItems.filter((a) => !documentedApptIds.has(Number(a.id))));
+      const indexedItems = Array.isArray(documentedIndexRes)
+        ? documentedIndexRes
+        : documentedIndexRes?.items || items;
+      const documentedApptIds = new Set([
+        ...items.map((r) => Number(r.appointment_id)),
+        ...indexedItems.map((r) => Number(r.appointment_id)),
+      ]);
+      setPendingVisits(
+        completedItems.filter((a) => !a.has_treatment_record && !documentedApptIds.has(Number(a.id)))
+      );
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Failed to load treatment records.');
     } finally {

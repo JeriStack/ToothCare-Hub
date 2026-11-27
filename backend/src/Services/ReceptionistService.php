@@ -421,6 +421,10 @@ class ReceptionistService
             // Check existing user by email
             $existingUser = $this->userRepo->findByEmail($email);
             if ($existingUser !== null) {
+                if (strtoupper((string) ($existingUser['role'] ?? '')) !== 'PATIENT') {
+                    $pdo->rollBack();
+                    throw HttpException::conflict("The email '{$email}' already belongs to a staff account and cannot be registered as a patient.");
+                }
                 $userId = (int) $existingUser['id'];
                 $existingPatient = $this->patientRepo->findByUserId($userId);
                 if ($existingPatient !== null) {

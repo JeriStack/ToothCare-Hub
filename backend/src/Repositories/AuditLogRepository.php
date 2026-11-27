@@ -129,7 +129,8 @@ class AuditLogRepository
         string $sortBy = 'created_at',
         string $sortDir = 'DESC',
         int $page = 1,
-        int $perPage = 25
+        int $perPage = 25,
+        int $maxPerPage = 100
     ): array {
         $pdo = $this->database->getConnection();
 
@@ -228,7 +229,7 @@ class AuditLogRepository
         $direction = strtoupper($sortDir) === 'ASC' ? 'ASC' : 'DESC';
 
         $page = max(1, $page);
-        $perPage = max(1, min(100, $perPage));
+        $perPage = max(1, min(max(1, $maxPerPage), $perPage));
         $offset = ($page - 1) * $perPage;
 
         $stmt = $pdo->prepare("
@@ -293,7 +294,7 @@ class AuditLogRepository
      */
     public function exportCsv(array $filters = []): string
     {
-        $result = $this->list($filters, 'created_at', 'DESC', 1, 2000);
+        $result = $this->list($filters, 'created_at', 'DESC', 1, 2000, 2000);
         $rows = $result['data'];
 
         $fp = fopen('php://temp', 'r+');

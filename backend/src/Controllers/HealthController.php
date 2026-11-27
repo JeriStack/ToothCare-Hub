@@ -125,8 +125,8 @@ class HealthController
         try {
             $rtOutboxStmt = $pdo->query("
                 SELECT
-                    COALESCE(SUM(CASE WHEN status IN ('PENDING', 'PROCESSING') THEN 1 ELSE 0 END), 0) AS pending_count,
-                    COALESCE(SUM(CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END), 0) AS failed_count
+                    COALESCE(SUM(CASE WHEN status IN ('PENDING', 'PROCESSING', 'FAILED_RETRYABLE') THEN 1 ELSE 0 END), 0) AS pending_count,
+                    COALESCE(SUM(CASE WHEN status IN ('FAILED_PERMANENT', 'FAILED') THEN 1 ELSE 0 END), 0) AS failed_count
                 FROM realtime_outbox
             ");
             $rtOutboxRow = $rtOutboxStmt->fetch(PDO::FETCH_ASSOC);

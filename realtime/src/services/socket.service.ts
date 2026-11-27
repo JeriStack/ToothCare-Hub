@@ -214,10 +214,13 @@ export function createRealtimeService(
     close: () =>
       new Promise((resolve) => {
         clearInterval(revalidateTimer);
+        httpServer.closeIdleConnections?.();
         io.close(() => {
-          httpServer.close(() => {
+          if (httpServer.listening) {
+            httpServer.close(() => resolve());
+          } else {
             resolve();
-          });
+          }
         });
       }),
   };

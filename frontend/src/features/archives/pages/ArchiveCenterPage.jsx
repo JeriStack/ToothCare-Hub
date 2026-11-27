@@ -1274,34 +1274,17 @@ export function ArchiveCenterPage() {
                         <div className="font-semibold text-slate-900 dark:text-slate-100 truncate" title={displayTitle}>
                           {displayTitle}
                         </div>
-                        {row.archived_email ? (
-                          <div className="text-[11px] font-mono text-teal-700 dark:text-teal-300 truncate mt-0.5">
-                            {row.archived_email}
-                          </div>
-                        ) : (
-                          row.archive_reason && (
-                            <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5" title={row.archive_reason}>
-                              {row.archive_reason}
-                            </div>
-                          )
-                        )}
                       </td>
 
                       <td role="cell" data-label="Retention" className="py-3.5 px-4 whitespace-nowrap">
                         <div className="font-medium text-slate-700 dark:text-slate-200">
                           {RETENTION_LABELS[row.retention_category] || row.retention_category}
                         </div>
-                        <div className="text-[11px] text-slate-400 dark:text-slate-500 tabular-nums">
-                          Until {formatShortDate(row.retention_until)}
-                        </div>
                       </td>
 
                       <td role="cell" data-label="Archived" className="py-3.5 px-4 whitespace-nowrap">
                         <div className="text-slate-700 dark:text-slate-200 tabular-nums">
                           {formatShortDateTime(row.archived_at)}
-                        </div>
-                        <div className="text-[11px] text-slate-400 dark:text-slate-500">
-                          {formatActorRole(row.archived_by_role)}
                         </div>
                       </td>
 

@@ -268,9 +268,10 @@ export function PatientDashboard({
     setCancelError(null);
 
     try {
-      await appointmentsApi.cancel(cancelModalAppt.id, {
-        reason: cancelReason.trim() || 'Schedule conflict',
-      });
+      await appointmentsApi.cancel(
+        cancelModalAppt.id,
+        cancelReason.trim() || 'Schedule conflict'
+      );
       setActionSuccess('Your appointment has been cancelled successfully.');
       setCancelModalAppt(null);
       await fetchDashboardData();

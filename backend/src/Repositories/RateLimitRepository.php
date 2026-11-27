@@ -38,14 +38,15 @@ class RateLimitRepository
         try {
             $pdo = $this->database->getConnection();
 
-            // Try to find an unexpired bucket
-            $stmt = $pdo->prepare('SELECT hits, UNIX_TIMESTAMP(reset_at) as reset_timestamp FROM rate_limits WHERE rate_key = ? LIMIT 1');
+            // Try to find an unexpired bucket (parse DATETIME in PHP's configured timezone to avoid MySQL/SQLite TZ drift)
+            $stmt = $pdo->prepare('SELECT hits, reset_at FROM rate_limits WHERE rate_key = ? LIMIT 1');
             $stmt->execute([$key]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($row) {
                 $currentHits = (int) $row['hits'];
-                $currentReset = (int) ($row['reset_timestamp'] ?? (strtotime((string) ($row['reset_at'] ?? 'now'))));
+                $parsedReset = strtotime((string) ($row['reset_at'] ?? ''));
+                $currentReset = $parsedReset !== false ? $parsedReset : $now;
 
                 if ($now > $currentReset) {
                     // Window expired, reset bucket

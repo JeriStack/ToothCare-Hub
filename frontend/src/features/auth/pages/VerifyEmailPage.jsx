@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CheckCircle2, AlertCircle, Loader2, ArrowLeft, Mail, Send } from 'lucide-react';
 import { AuthLayout } from '../components/AuthLayout';
 import { useAuth } from '../context/AuthContext';
@@ -21,11 +21,20 @@ export function VerifyEmailPage({
   const [resendSuccess, setResendSuccess] = useState(false);
   const [resendError, setResendError] = useState(null);
 
+  const verifiedTokenRef = useRef(null);
+
   useEffect(() => {
     if (!token) {
       setStatus('NO_TOKEN');
       return;
     }
+
+    // Prevent double-submitting a single-use verification token across React StrictMode
+    // or parent AuthContext re-renders while initial session hydration finishes.
+    if (verifiedTokenRef.current === token) {
+      return;
+    }
+    verifiedTokenRef.current = token;
 
     let isMounted = true;
     const runVerification = async () => {

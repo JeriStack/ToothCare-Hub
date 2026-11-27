@@ -347,15 +347,24 @@ class DashboardRepository
             'processing' => 0,
             'sent' => 0,
             'retry_scheduled' => 0,
+            'failed_retryable' => 0,
             'failed' => 0,
+            'failed_permanent' => 0,
             'abandoned' => 0,
+            'cancelled' => 0,
         ];
         try {
             $stmt = $pdo->query('SELECT status, COUNT(*) AS cnt FROM email_outbox GROUP BY status');
             foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
                 $k = strtolower((string) $r['status']);
+                $cnt = (int) $r['cnt'];
                 if (array_key_exists($k, $email)) {
-                    $email[$k] = (int) $r['cnt'];
+                    $email[$k] = $cnt;
+                }
+                if ($k === 'failed_retryable') {
+                    $email['retry_scheduled'] += $cnt;
+                } elseif ($k === 'failed_permanent') {
+                    $email['failed'] += $cnt;
                 }
             }
         } catch (\Throwable $e) {
@@ -480,7 +489,8 @@ class DashboardRepository
             $total = (int) $countStmt->fetchColumn();
 
             $stmt = $pdo->prepare("
-                SELECT id, event_key, template_name, status, attempt_count, max_attempts,
+                SELECT id, event_key, template_key, template_key AS template_name, status,
+                       attempts, attempts AS attempt_count, max_attempts,
                        next_attempt_at, sent_at, created_at, updated_at, last_error
                 FROM email_outbox
                 WHERE {$whereSql}
@@ -533,21 +543,23 @@ class DashboardRepository
         // 1. Failed/Retryable email outbox jobs (bounded slice)
         try {
             $stmt = $pdo->query("
-                SELECT id, event_key, template_name, status, attempt_count, last_error, updated_at, created_at
+                SELECT id, event_key, template_key, status, attempts, last_error, updated_at, created_at
                 FROM email_outbox
-                WHERE status IN ('FAILED', 'RETRY_SCHEDULED', 'ABANDONED')
+                WHERE status IN ('FAILED_RETRYABLE', 'FAILED_PERMANENT', 'FAILED', 'RETRY_SCHEDULED', 'ABANDONED')
                 ORDER BY updated_at DESC, id DESC
                 LIMIT 100
             ");
             foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $statusUpper = strtoupper((string) $row['status']);
+                $isRetryable = in_array($statusUpper, ['FAILED_RETRYABLE', 'RETRY_SCHEDULED'], true);
                 $events[] = [
                     'id' => 'email-' . $row['id'],
                     'timestamp' => (string) ($row['updated_at'] ?: $row['created_at']),
-                    'severity' => $row['status'] === 'RETRY_SCHEDULED' ? 'WARNING' : 'ERROR',
+                    'severity' => $isRetryable ? 'WARNING' : 'ERROR',
                     'module' => 'email_outbox',
                     'correlation_id' => (string) ($row['event_key'] ?? ('email-' . $row['id'])),
-                    'summary' => $this->sanitizeErrorSummary($row['last_error'] ?? ('Email delivery ' . strtolower((string) $row['status']))),
-                    'resolution_status' => (string) $row['status'],
+                    'summary' => $this->sanitizeErrorSummary($row['last_error'] ?? ('Email delivery ' . strtolower($statusUpper))),
+                    'resolution_status' => $statusUpper,
                 ];
             }
         } catch (\Throwable $e) {
