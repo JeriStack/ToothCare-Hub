@@ -2699,6 +2699,256 @@ paths:
       security:
         -
           CookieAuth: []
+  /messages/conversations:
+    get:
+      tags:
+        - Messages
+      summary: 'List Authorized Patient-Dentist Conversations (Searchable & Filterable)'
+      operationId: listMessageConversations
+      parameters:
+        -
+          name: search
+          in: query
+          schema:
+            type: string
+            maxLength: 120
+        -
+          name: filter
+          in: query
+          schema:
+            type: string
+            default: all
+            enum:
+              - all
+              - unread
+        -
+          name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        -
+          name: limit
+          in: query
+          schema:
+            type: integer
+            default: 30
+            maximum: 50
+            minimum: 1
+      responses:
+        '200':
+          description: 'Authorized conversations, eligible contacts, and unread total'
+        '401':
+          description: Unauthenticated
+        '403':
+          description: 'Forbidden (restricted to active Patient and Dentist participants)'
+      security:
+        -
+          CookieAuth: []
+    post:
+      tags:
+        - Messages
+      summary: 'Find or Create a Private Patient-Dentist Conversation'
+      operationId: startMessageConversation
+      responses:
+        '201':
+          description: 'Conversation resolved or created'
+        '401':
+          description: Unauthenticated
+        '403':
+          description: 'Forbidden (unauthorized role or mismatched appointment)'
+        '409':
+          description: 'Target participant account is inactive or archived'
+        '422':
+          description: 'Missing or invalid participant ID'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /messages/unread-count:
+    get:
+      tags:
+        - Messages
+      summary: 'Get Total Unread Direct Message Count for Authenticated Patient or Dentist'
+      operationId: getUnreadMessageCount
+      responses:
+        '200':
+          description: 'Total unread direct messages'
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Forbidden
+      security:
+        -
+          CookieAuth: []
+  /messages/presence:
+    get:
+      tags:
+        - Messages
+      summary: 'Get Online Presence for Authorized Conversation Counterparts'
+      operationId: getMessageParticipantPresence
+      responses:
+        '200':
+          description: 'List of currently online counterpart user IDs'
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Forbidden
+      security:
+        -
+          CookieAuth: []
+  '/messages/conversations/{id}/messages':
+    get:
+      tags:
+        - Messages
+      summary: 'List Conversation Messages Using Server-Side Cursor Pagination'
+      operationId: listConversationMessages
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        -
+          name: before_id
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        -
+          name: limit
+          in: query
+          schema:
+            type: integer
+            default: 30
+            maximum: 50
+            minimum: 1
+      responses:
+        '200':
+          description: 'Cursor-paginated messages and conversation metadata'
+        '401':
+          description: Unauthenticated
+        '403':
+          description: 'Forbidden (not a conversation participant)'
+        '404':
+          description: 'Conversation not found'
+      security:
+        -
+          CookieAuth: []
+    post:
+      tags:
+        - Messages
+      summary: 'Send a Direct Message with Idempotency and Privacy-Safe Realtime Notification'
+      operationId: sendConversationMessage
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '201':
+          description: 'Message persisted and acknowledged'
+        '401':
+          description: Unauthenticated
+        '403':
+          description: 'Forbidden (not a conversation participant)'
+        '404':
+          description: 'Conversation not found'
+        '409':
+          description: 'Conversation unavailable (inactive or archived participant)'
+        '422':
+          description: 'Message empty or exceeds 2,000-character limit'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/messages/conversations/{id}/delivered':
+    post:
+      tags:
+        - Messages
+      summary: 'Mark Incoming Conversation Messages as Delivered'
+      operationId: markConversationDelivered
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: 'Delivery receipts updated'
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Forbidden
+        '404':
+          description: 'Conversation not found'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/messages/conversations/{id}/read':
+    post:
+      tags:
+        - Messages
+      summary: 'Mark Incoming Conversation Messages as Read and Reset Unread Count'
+      operationId: markConversationRead
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: 'Read receipts updated and unread count recalculated'
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Forbidden
+        '404':
+          description: 'Conversation not found'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  '/messages/conversations/{id}/typing':
+    post:
+      tags:
+        - Messages
+      summary: 'Emit Ephemeral Typing Indicator Signal to Authorized Counterpart'
+      operationId: sendConversationTypingSignal
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: 'Typing indicator dispatched'
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Forbidden
+        '404':
+          description: 'Conversation not found'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
   /services:
     get:
       tags:
@@ -4023,6 +4273,9 @@ tags:
   -
     name: Notifications
     description: 'Persistent in-app notifications and Socket.IO real-time connection tickets'
+  -
+    name: Messages
+    description: 'Private participant-scoped Patient-Dentist direct messaging, cursor pagination, receipts, typing, and presence'
   -
     name: Dashboards
     description: 'Role-appropriate database-driven executive, receptionist, dentist, and patient dashboards'
