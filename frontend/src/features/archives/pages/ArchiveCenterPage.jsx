@@ -31,6 +31,7 @@ import { useOptionalAuth } from '../../auth/context/AuthContext';
 import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 import { SortableColumnHeader, ServerTableFooter } from '../../../components/ui/ServerTableControls';
+import { MobileSortControl } from '../../../components/ui/MobileSortControl';
 
 const ENTITY_META = {
   appointment: {
@@ -1158,6 +1159,19 @@ export function ArchiveCenterPage() {
 
       {/* Archive Data Table */}
       <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 shadow-xs overflow-hidden">
+        <MobileSortControl
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onSort={handleSort}
+          options={[
+            { value: 'archived_at', label: 'Archived Date' },
+            { value: 'reference_code', label: 'Reference' },
+            { value: 'entity_type', label: 'Type' },
+            { value: 'title', label: 'Record' },
+            { value: 'retention_until', label: 'Retention' },
+            { value: 'status', label: 'Status' },
+          ]}
+        />
         <div tabIndex={0} role="region" aria-label="Archived records table" className="overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]">
           <table role="table" className="tch-responsive-table w-full text-left border-collapse text-xs">
             <thead role="rowgroup" className="sticky top-0 z-10">
@@ -1271,7 +1285,7 @@ export function ArchiveCenterPage() {
                       </td>
 
                       <td role="cell" data-label="Record" className="py-3.5 px-4 max-w-[320px]">
-                        <div className="font-semibold text-slate-900 dark:text-slate-100 truncate" title={displayTitle}>
+                        <div className="font-semibold text-slate-900 dark:text-slate-100 md:truncate" title={displayTitle}>
                           {displayTitle}
                         </div>
                       </td>
@@ -1382,9 +1396,9 @@ export function ArchiveCenterPage() {
             className="fixed inset-0 z-50 bg-slate-900/55 dark:bg-black/75 backdrop-blur-xs flex items-center justify-center p-4"
           >
             <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-2xl w-full max-w-2xl max-h-[90dvh] flex flex-col overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/70 dark:bg-gray-900/50 flex items-center justify-between gap-3">
+              <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/70 dark:bg-gray-900/50 flex items-start sm:items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2 text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400">
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400">
                     <span>
                       {inspectRecord.reference_code} · {ENTITY_META[inspectRecord.entity_type]?.singular || inspectRecord.entity_type} #{inspectRecord.entity_id}
                     </span>
@@ -1431,7 +1445,7 @@ export function ArchiveCenterPage() {
                 </div>
               </div>
 
-              <div className="p-6 overflow-y-auto space-y-4 text-xs">
+              <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs">
                 {/* Integrity Digest Banner */}
                 <div
                   className={`p-3.5 rounded-xl border flex items-start gap-3 ${
@@ -1522,26 +1536,28 @@ export function ArchiveCenterPage() {
                     <div className="p-6 text-center text-slate-400">Loading verified snapshot...</div>
                   ) : (
                     <div className="rounded-xl border border-slate-200 dark:border-gray-700 overflow-hidden">
-                      <table role="table" className="w-full text-left text-xs border-collapse">
-                        <thead className="bg-slate-50 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-700 text-slate-500 dark:text-slate-400 font-semibold">
-                          <tr>
-                            <th className="px-3.5 py-2">Field</th>
-                            <th className="px-3.5 py-2">Value</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-gray-700/70">
-                          {visibleEntries.map(([k, v]) => (
-                            <tr key={k} className="bg-white dark:bg-gray-800">
-                              <td className="px-3.5 py-2 font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                                {formatFieldLabel(k)}
-                              </td>
-                              <td className="px-3.5 py-2 text-slate-800 dark:text-slate-100 break-words">
-                                {formatSnapshotValue(v)}
-                              </td>
+                      <div className="overflow-x-auto">
+                        <table role="table" className="tch-responsive-table w-full text-left text-xs border-collapse">
+                          <thead role="rowgroup" className="bg-slate-50 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-700 text-slate-500 dark:text-slate-400 font-semibold">
+                            <tr role="row">
+                              <th role="columnheader" className="px-3.5 py-2">Field</th>
+                              <th role="columnheader" className="px-3.5 py-2">Value</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody role="rowgroup" className="divide-y divide-slate-100 dark:divide-gray-700/70">
+                            {visibleEntries.map(([k, v]) => (
+                              <tr role="row" key={k} className="bg-white dark:bg-gray-800">
+                                <td role="cell" data-label="Field" className="px-3.5 py-2 font-medium text-slate-600 dark:text-slate-300 md:whitespace-nowrap">
+                                  {formatFieldLabel(k)}
+                                </td>
+                                <td role="cell" data-label="Value" className="px-3.5 py-2 text-slate-800 dark:text-slate-100 tch-wrap-anywhere">
+                                  {formatSnapshotValue(v)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                       {snapshotEntries.length > snapPerPage && (
                         <ServerTableFooter
                           page={safeSnapPage}

@@ -344,7 +344,7 @@ export function AuditTrailPage() {
           <div
             role="tablist"
             aria-label="Audit event stream"
-            className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-gray-900/70 border border-slate-200/70 dark:border-gray-700/80 self-start"
+            className="inline-flex flex-wrap max-w-full p-1 rounded-xl bg-slate-100 dark:bg-gray-900/70 border border-slate-200/70 dark:border-gray-700/80 self-start gap-1"
           >
             <button
               type="button"
@@ -354,7 +354,7 @@ export function AuditTrailPage() {
                 setActiveTab('all');
                 setPage(1);
               }}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 min-h-11 sm:min-h-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 activeTab === 'all'
                   ? 'bg-white dark:bg-gray-800 text-[#0F766E] dark:text-teal-300 shadow-2xs ring-1 ring-slate-200/80 dark:ring-gray-700'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -371,7 +371,7 @@ export function AuditTrailPage() {
                 setActiveTab('security');
                 setPage(1);
               }}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 min-h-11 sm:min-h-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 activeTab === 'security'
                   ? 'bg-white dark:bg-gray-800 text-rose-700 dark:text-rose-300 shadow-2xs ring-1 ring-slate-200/80 dark:ring-gray-700'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -386,7 +386,7 @@ export function AuditTrailPage() {
             <div
               role="group"
               aria-label="Quick date range presets"
-              className="inline-flex items-center p-1 rounded-xl bg-slate-100 dark:bg-gray-900/70 border border-slate-200/70 dark:border-gray-700/80"
+              className="inline-flex flex-wrap max-w-full items-center p-1 rounded-xl bg-slate-100 dark:bg-gray-900/70 border border-slate-200/70 dark:border-gray-700/80 gap-1"
             >
               {DATE_PRESETS.map((preset) => {
                 const active = datePreset === preset.id;
@@ -396,7 +396,7 @@ export function AuditTrailPage() {
                     type="button"
                     aria-pressed={active}
                     onClick={() => handleSelectPreset(preset.id)}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                    className={`min-h-11 sm:min-h-0 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
                       active
                         ? 'bg-white dark:bg-gray-800 text-[#0F766E] dark:text-teal-300 shadow-2xs ring-1 ring-slate-200/80 dark:ring-gray-700'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'

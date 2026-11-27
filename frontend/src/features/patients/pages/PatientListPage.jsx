@@ -302,7 +302,7 @@ export function PatientListPage() {
       {/* Toast Notification */}
       {toast && (
         <div
-          className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm text-white ${
+          className={`fixed bottom-4 left-4 right-4 sm:left-auto sm:bottom-6 sm:right-6 sm:max-w-sm z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm text-white ${
             toast.type === 'error' ? 'bg-rose-600' : 'bg-emerald-600'
           }`}
         >

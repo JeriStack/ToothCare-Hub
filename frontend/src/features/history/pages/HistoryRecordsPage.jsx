@@ -20,6 +20,7 @@ import { RecordHistoryModal } from '../components/RecordHistoryModal';
 import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 import { SortableColumnHeader, ServerTableFooter } from '../../../components/ui/ServerTableControls';
+import { MobileSortControl } from '../../../components/ui/MobileSortControl';
 
 const RESULT_BADGE = {
   SUCCESS: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-500/30',
@@ -349,7 +350,7 @@ export function HistoryRecordsPage() {
                 type="button"
                 aria-label="Clear history search"
                 onClick={() => setSearchInput('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -405,7 +406,7 @@ export function HistoryRecordsPage() {
             <option value="DENIED">Denied</option>
           </select>
 
-          <div className="flex items-center gap-1.5">
+          <div className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-2 sm:col-span-2 lg:col-span-2">
             <input
               type="date"
               aria-label="History start date"
@@ -414,7 +415,7 @@ export function HistoryRecordsPage() {
                 setDateFrom(e.target.value);
                 setPage(1);
               }}
-              className="w-full px-2.5 py-2 rounded-xl bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-slate-700 dark:text-slate-100"
+              className="w-full min-w-0 px-2.5 py-2 rounded-xl bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-slate-700 dark:text-slate-100"
             />
             <input
               type="date"
@@ -424,7 +425,7 @@ export function HistoryRecordsPage() {
                 setDateTo(e.target.value);
                 setPage(1);
               }}
-              className="w-full px-2.5 py-2 rounded-xl bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-slate-700 dark:text-slate-100"
+              className="w-full min-w-0 px-2.5 py-2 rounded-xl bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-slate-700 dark:text-slate-100"
             />
           </div>
         </div>
@@ -457,7 +458,19 @@ export function HistoryRecordsPage() {
 
       {/* 9-Column Server-Side Data Table */}
       <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
+        <MobileSortControl
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onSort={handleSort}
+          options={[
+            { value: 'created_at', label: 'Timestamp' },
+            { value: 'id', label: 'Event ID' },
+            { value: 'actor_role', label: 'Role' },
+            { value: 'action', label: 'Action' },
+            { value: 'module', label: 'Module' },
+          ]}
+        />
+        <div tabIndex={0} role="region" aria-label="History records table" className="overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]">
           <table role="table" className="tch-responsive-table w-full text-left border-collapse text-xs">
             <thead role="rowgroup">
               <tr role="row" className="bg-slate-50/75 dark:bg-gray-900/45 border-b border-slate-100 dark:border-gray-700/80 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -494,7 +507,7 @@ export function HistoryRecordsPage() {
                     </td>
 
                     <td role="cell" data-label="Actor" className="py-3.5 px-3 max-w-[180px]">
-                      <div className="font-semibold text-slate-900 dark:text-slate-100 truncate">
+                      <div className="font-semibold text-slate-900 dark:text-slate-100 md:truncate">
                         {row.actor_name}
                       </div>
                       {row.actor_is_active === false && (
@@ -511,7 +524,7 @@ export function HistoryRecordsPage() {
                     </td>
 
                     <td role="cell" data-label="Action" className="py-3.5 px-3 max-w-[200px]">
-                      <div className="font-semibold text-slate-800 dark:text-slate-100 truncate">
+                      <div className="font-semibold text-slate-800 dark:text-slate-100 md:truncate">
                         {row.action_label}
                       </div>
                       {row.changes?.length > 0 && (
@@ -530,7 +543,7 @@ export function HistoryRecordsPage() {
                         <button
                           type="button"
                           onClick={() => openTimelineForAffected(row.affected_record)}
-                          className="font-mono text-[11px] font-semibold text-[#0F766E] dark:text-teal-300 hover:underline cursor-pointer"
+                          className="inline-flex items-center min-h-11 md:min-h-0 font-mono text-[11px] font-semibold text-[#0F766E] dark:text-teal-300 hover:underline cursor-pointer"
                         >
                           {row.affected_record.reference}
                         </button>
@@ -593,8 +606,8 @@ export function HistoryRecordsPage() {
           className="fixed inset-0 z-50 bg-slate-900/55 dark:bg-black/75 backdrop-blur-xs flex items-center justify-center p-4"
         >
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-2xl w-full max-w-2xl max-h-[90dvh] flex flex-col overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/75 dark:bg-gray-900/50 flex items-center justify-between gap-3">
-              <div>
+            <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/75 dark:bg-gray-900/50 flex items-center justify-between gap-3">
+              <div className="min-w-0">
                 <div className="font-mono text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                   {selectedEvent.event_ref} · {selectedEvent.module}
                 </div>
@@ -612,7 +625,7 @@ export function HistoryRecordsPage() {
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto space-y-4 text-xs">
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-50 dark:bg-gray-900/55 border border-slate-200/80 dark:border-gray-700">
                 <div>
                   <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Actor</div>
@@ -655,31 +668,35 @@ export function HistoryRecordsPage() {
                     Previous vs. Updated Values
                   </div>
                   <div className="rounded-xl border border-slate-200 dark:border-gray-700 overflow-hidden">
-                    <table role="table" className="w-full text-left border-collapse text-xs">
-                      <thead className="bg-slate-50 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-700 text-slate-500 dark:text-slate-400 font-semibold">
-                        <tr>
-                          <th className="px-3.5 py-2">Field</th>
-                          <th className="px-3.5 py-2">Previous Value</th>
-                          <th className="px-3.5 py-2">Updated Value</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-gray-700/70">
-                        {selectedEvent.changes.map((c) => (
-                          <tr key={c.field} className="bg-white dark:bg-gray-800">
-                            <td className="px-3.5 py-2 font-mono font-semibold text-slate-600 dark:text-slate-300">
-                              {c.field}
-                            </td>
-                            <td className="px-3.5 py-2 text-rose-700 dark:text-rose-300">
-                              {formatValue(c.before)}
-                            </td>
-                            <td className="px-3.5 py-2 font-semibold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
-                              <ArrowRight className="w-3 h-3 text-slate-400 shrink-0" aria-hidden="true" />
-                              <span>{formatValue(c.after)}</span>
-                            </td>
+                    <div className="overflow-x-auto">
+                      <table role="table" className="tch-responsive-table w-full text-left border-collapse text-xs">
+                        <thead role="rowgroup" className="bg-slate-50 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-700 text-slate-500 dark:text-slate-400 font-semibold">
+                          <tr role="row">
+                            <th role="columnheader" className="px-3.5 py-2">Field</th>
+                            <th role="columnheader" className="px-3.5 py-2">Previous Value</th>
+                            <th role="columnheader" className="px-3.5 py-2">Updated Value</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody role="rowgroup" className="divide-y divide-slate-100 dark:divide-gray-700/70">
+                          {selectedEvent.changes.map((c) => (
+                            <tr role="row" key={c.field} className="bg-white dark:bg-gray-800">
+                              <td role="cell" data-label="Field" className="px-3.5 py-2 font-mono font-semibold text-slate-600 dark:text-slate-300">
+                                {c.field}
+                              </td>
+                              <td role="cell" data-label="Previous Value" className="px-3.5 py-2 text-rose-700 dark:text-rose-300 tch-wrap-anywhere">
+                                {formatValue(c.before)}
+                              </td>
+                              <td role="cell" data-label="Updated Value" className="px-3.5 py-2 font-semibold text-emerald-700 dark:text-emerald-300 tch-wrap-anywhere">
+                                <span className="inline-flex items-center gap-1.5">
+                                  <ArrowRight className="w-3 h-3 text-slate-400 shrink-0" aria-hidden="true" />
+                                  <span>{formatValue(c.after)}</span>
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               )}

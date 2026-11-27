@@ -1234,8 +1234,8 @@ export function PatientDashboard({
               </button>
             </div>
 
-            <div className="p-5 space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-50 dark:bg-gray-900/60 border border-slate-100 dark:border-gray-700">
+            <div className="p-4 sm:p-5 space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-50 dark:bg-gray-900/60 border border-slate-100 dark:border-gray-700">
                 <div>
                   <span className="text-slate-400 dark:text-slate-500 font-medium">Service</span>
                   <p className="font-bold text-[#12304A] dark:text-slate-100 text-sm mt-0.5">
@@ -1288,7 +1288,7 @@ export function PatientDashboard({
                 </div>
               )}
 
-              <div className="pt-3 border-t border-slate-100 dark:border-gray-700 flex items-center justify-between">
+              <div className="pt-3 border-t border-slate-100 dark:border-gray-700 flex flex-wrap items-center justify-between gap-3">
                 <span className="text-[11px] text-slate-400 dark:text-slate-500">
                   ToothCare Hub Dental Center • 124 Ayala Avenue, Makati City
                 </span>

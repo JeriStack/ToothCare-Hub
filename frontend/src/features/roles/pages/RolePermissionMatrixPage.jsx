@@ -596,7 +596,7 @@ export function RolePermissionMatrixPage() {
         <div
           role="region"
           aria-label="Unsaved permission changes"
-          className="sticky top-3 z-20 p-3.5 rounded-2xl bg-amber-50/95 dark:bg-amber-950/90 border border-amber-300/90 dark:border-amber-600/60 shadow-md backdrop-blur-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+          className="sticky top-20 z-20 p-3.5 rounded-2xl bg-amber-50/95 dark:bg-amber-950/90 border border-amber-300/90 dark:border-amber-600/60 shadow-md backdrop-blur-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3"
         >
           <div className="flex items-center gap-2.5 text-xs text-amber-900 dark:text-amber-100">
             <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" aria-hidden="true" />
@@ -933,7 +933,7 @@ export function RolePermissionMatrixPage() {
                           const allLocked = editableInMod.length === 0;
 
                           return (
-                            <td key={`${moduleName}-${role.id}`} className="py-2 px-4 text-center">
+                            <td key={`${moduleName}-${role.id}`} data-role={role.name} className="py-2 px-4 text-center">
                               <button
                                 type="button"
                                 disabled={allLocked}
@@ -945,7 +945,7 @@ export function RolePermissionMatrixPage() {
                                     ? `Revoke all ${moduleName} permissions for ${role.name}`
                                     : `Grant all ${moduleName} permissions for ${role.name}`
                                 }
-                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-semibold tabular-nums border transition-colors ${
+                                className={`inline-flex items-center justify-center gap-1 min-h-11 md:min-h-0 px-2.5 md:px-2 py-1 md:py-0.5 rounded-md text-[11px] md:text-[10.5px] font-semibold tabular-nums border transition-colors ${
                                   allLocked
                                     ? 'bg-indigo-50/70 dark:bg-indigo-500/10 border-indigo-200/80 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-300 cursor-not-allowed'
                                     : grantedInMod === perms.length
