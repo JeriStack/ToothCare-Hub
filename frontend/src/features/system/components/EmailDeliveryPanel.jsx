@@ -327,94 +327,96 @@ export function EmailDeliveryPanel({ refreshSignal = 0 }) {
               <span>No failed email jobs.</span>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-gray-700/80">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="bg-slate-50 dark:bg-gray-900/70 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-gray-700">
-                    <th scope="col" className="py-2.5 px-4">
-                      Job
-                    </th>
-                    <th scope="col" className="py-2.5 px-3">
-                      Event
-                    </th>
-                    <th scope="col" className="py-2.5 px-3">
-                      Recipient
-                    </th>
-                    <th scope="col" className="py-2.5 px-3">
-                      Status
-                    </th>
-                    <th scope="col" className="py-2.5 px-3">
-                      Attempts
-                    </th>
-                    <th scope="col" className="py-2.5 px-3">
-                      Failure
-                    </th>
-                    <th scope="col" className="py-2.5 px-3">
-                      Last attempt / next retry
-                    </th>
-                    <th scope="col" className="py-2.5 px-4">
-                      <span className="sr-only">Actions</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-gray-700/70">
-                  {jobs.map((job) => (
-                    <tr key={job.id} className="align-top hover:bg-slate-50/50 dark:hover:bg-gray-700/30">
-                      <td className="py-2.5 px-4 font-mono text-xs text-slate-700 dark:text-slate-200">
-                        {job.reference}
-                      </td>
-                      <td className="py-2.5 px-3 text-xs text-slate-700 dark:text-slate-200">
-                        {EVENT_LABELS[job.event_type] || job.event_type}
-                      </td>
-                      <td className="py-2.5 px-3 font-mono text-xs text-slate-600 dark:text-slate-300">
-                        {job.recipient}
-                      </td>
-                      <td className="py-2.5 px-3">
-                        <span
-                          className={`inline-flex text-xs font-semibold px-2 py-0.5 rounded-full border ${
-                            STATUS_STYLES[job.status] || ''
-                          }`}
-                        >
-                          {job.exhausted ? 'Exhausted' : STATUS_LABELS[job.status] || job.status}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-3 font-mono text-xs tabular-nums">
-                        {job.attempts}/{job.max_attempts}
-                      </td>
-                      <td className="py-2.5 px-3 text-xs text-slate-600 dark:text-slate-300">
-                        <div className="font-semibold">
-                          {job.failure_category || '—'} {job.error_code ? `· ${job.error_code}` : ''}
-                        </div>
-                        <div>{job.error_message}</div>
-                      </td>
-                      <td className="py-2.5 px-3 text-xs text-slate-600 dark:text-slate-300">
-                        <div>{formatDate(job.last_attempt_at)}</div>
-                        {job.next_attempt_at && <div>Next: {formatDate(job.next_attempt_at)}</div>}
-                      </td>
-                      <td className="py-2.5 px-4 whitespace-nowrap text-right space-x-2">
-                        <button
-                          type="button"
-                          onClick={() => act(job, 'retry')}
-                          disabled={busyId === job.id}
-                          aria-label={`Retry ${job.reference}`}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg border border-teal-200 text-teal-800 hover:bg-teal-50 dark:border-teal-800 dark:text-teal-200 dark:hover:bg-teal-900/30 disabled:opacity-50 cursor-pointer"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" /> {job.exhausted ? 'Requeue' : 'Retry'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => act(job, 'abandon')}
-                          disabled={busyId === job.id}
-                          aria-label={`Abandon ${job.reference}`}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-gray-600 dark:text-slate-200 dark:hover:bg-gray-700 disabled:opacity-50 cursor-pointer"
-                        >
-                          <Ban className="w-3.5 h-3.5" /> Abandon
-                        </button>
-                      </td>
+            <div className="rounded-xl border border-slate-200/80 dark:border-gray-700/80 overflow-hidden">
+              <div tabIndex={0} role="region" aria-label="Failed email delivery jobs table" className="overflow-x-auto">
+                <table role="table" className="tch-responsive-table min-w-full text-sm">
+                  <thead role="rowgroup">
+                    <tr role="row" className="bg-slate-50 dark:bg-gray-900/70 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-gray-700">
+                      <th role="columnheader" scope="col" className="py-2.5 px-4">
+                        Job
+                      </th>
+                      <th role="columnheader" scope="col" className="py-2.5 px-3">
+                        Event
+                      </th>
+                      <th role="columnheader" scope="col" className="py-2.5 px-3">
+                        Recipient
+                      </th>
+                      <th role="columnheader" scope="col" className="py-2.5 px-3">
+                        Status
+                      </th>
+                      <th role="columnheader" scope="col" className="py-2.5 px-3">
+                        Attempts
+                      </th>
+                      <th role="columnheader" scope="col" className="py-2.5 px-3">
+                        Failure
+                      </th>
+                      <th role="columnheader" scope="col" className="py-2.5 px-3">
+                        Last attempt / next retry
+                      </th>
+                      <th role="columnheader" scope="col" className="py-2.5 px-4">
+                        <span className="sr-only">Actions</span>
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody role="rowgroup" className="divide-y divide-slate-100 dark:divide-gray-700/70">
+                    {jobs.map((job) => (
+                      <tr role="row" key={job.id} className="align-top hover:bg-slate-50/50 dark:hover:bg-gray-700/30">
+                        <td role="cell" data-label="Job" className="py-2.5 px-4 font-mono text-xs text-slate-700 dark:text-slate-200">
+                          {job.reference}
+                        </td>
+                        <td role="cell" data-label="Event" className="py-2.5 px-3 text-xs text-slate-700 dark:text-slate-200">
+                          {EVENT_LABELS[job.event_type] || job.event_type}
+                        </td>
+                        <td role="cell" data-label="Recipient" className="py-2.5 px-3 font-mono text-xs text-slate-600 dark:text-slate-300 tch-wrap-anywhere">
+                          {job.recipient}
+                        </td>
+                        <td role="cell" data-label="Status" className="py-2.5 px-3">
+                          <span
+                            className={`inline-flex text-xs font-semibold px-2 py-0.5 rounded-full border ${
+                              STATUS_STYLES[job.status] || ''
+                            }`}
+                          >
+                            {job.exhausted ? 'Exhausted' : STATUS_LABELS[job.status] || job.status}
+                          </span>
+                        </td>
+                        <td role="cell" data-label="Attempts" className="py-2.5 px-3 font-mono text-xs tabular-nums">
+                          {job.attempts}/{job.max_attempts}
+                        </td>
+                        <td role="cell" data-label="Failure" className="py-2.5 px-3 text-xs text-slate-600 dark:text-slate-300 tch-wrap-anywhere">
+                          <div className="font-semibold">
+                            {job.failure_category || '—'} {job.error_code ? `· ${job.error_code}` : ''}
+                          </div>
+                          <div>{job.error_message}</div>
+                        </td>
+                        <td role="cell" data-label="Last Attempt" className="py-2.5 px-3 text-xs text-slate-600 dark:text-slate-300">
+                          <div>{formatDate(job.last_attempt_at)}</div>
+                          {job.next_attempt_at && <div>Next: {formatDate(job.next_attempt_at)}</div>}
+                        </td>
+                        <td role="cell" data-label="Actions" className="py-2.5 px-4 whitespace-nowrap text-right space-x-2">
+                          <button
+                            type="button"
+                            onClick={() => act(job, 'retry')}
+                            disabled={busyId === job.id}
+                            aria-label={`Retry ${job.reference}`}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg border border-teal-200 text-teal-800 hover:bg-teal-50 dark:border-teal-800 dark:text-teal-200 dark:hover:bg-teal-900/30 disabled:opacity-50 cursor-pointer"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" /> {job.exhausted ? 'Requeue' : 'Retry'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => act(job, 'abandon')}
+                            disabled={busyId === job.id}
+                            aria-label={`Abandon ${job.reference}`}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-gray-600 dark:text-slate-200 dark:hover:bg-gray-700 disabled:opacity-50 cursor-pointer"
+                          >
+                            <Ban className="w-3.5 h-3.5" /> Abandon
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
               <ServerTableFooter
                 page={jobsMeta.page}
                 perPage={jobsMeta.per_page}

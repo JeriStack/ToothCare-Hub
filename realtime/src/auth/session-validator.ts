@@ -42,6 +42,12 @@ export class PhpSessionValidator implements SessionValidator {
         signal: controller.signal,
       });
 
+      if (res.status >= 500) {
+        // Treat upstream 5xx (e.g., PHP-FPM reload or transient DB hiccup) like a transient
+        // network error so active sockets are not mass-disconnected during rolling restarts.
+        return { active: true };
+      }
+
       if (!res.ok) {
         return { active: false, reason: 'SESSION_REVALIDATION_REJECTED' };
       }

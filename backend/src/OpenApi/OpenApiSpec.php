@@ -30,6 +30,7 @@ use OpenApi\Attributes as OA;
         new OA\Tag(name: 'Receptionist', description: 'Front-desk workspace, daily arrival check-ins, waiting queue, and walk-in intake'),
         new OA\Tag(name: 'Clinical', description: 'Versioned clinical treatment records and FDI tooth charting'),
         new OA\Tag(name: 'Notifications', description: 'Persistent in-app notifications and Socket.IO real-time connection tickets'),
+        new OA\Tag(name: 'Messages', description: 'Private participant-scoped Patient-Dentist direct messaging, cursor pagination, receipts, typing, and presence'),
         new OA\Tag(name: 'Dashboards', description: 'Role-appropriate database-driven executive, receptionist, dentist, and patient dashboards'),
         new OA\Tag(name: 'Reports', description: 'Database-driven operational reports (appointments, service utilization, dentist workload, patients)'),
         new OA\Tag(name: 'Operations', description: 'Audit logs, security events, email/realtime outbox monitoring, and redacted operational errors'),

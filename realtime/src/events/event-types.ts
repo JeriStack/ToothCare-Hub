@@ -16,6 +16,10 @@ export const ALLOWED_EVENT_TYPES = [
   'account.created',
   'account.updated',
   'notification.created',
+  'message.created',
+  'message.delivered',
+  'message.read',
+  'message.typing',
 ] as const;
 
 export type RealtimeEventType = (typeof ALLOWED_EVENT_TYPES)[number];
@@ -26,6 +30,7 @@ export const ALLOWED_ENTITY_TYPES = [
   'services',
   'accounts',
   'notifications',
+  'messages',
 ] as const;
 
 export type RealtimeEntityType = (typeof ALLOWED_ENTITY_TYPES)[number];
@@ -36,6 +41,7 @@ export interface RealtimeEventPayload {
   eventVersion: string;
   notificationId: number | null;
   appointmentId: number | null;
+  conversationId?: number | null;
   entityType: RealtimeEntityType;
   entityId: number | null;
   status: string | null;

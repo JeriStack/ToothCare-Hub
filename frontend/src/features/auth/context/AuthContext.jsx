@@ -230,7 +230,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const verifyEmail = async (token) => {
+  const verifyEmail = useCallback(async (token) => {
     try {
       const result = await authApi.verifyEmail(token);
       return { success: true, data: result };
@@ -241,9 +241,9 @@ export function AuthProvider({ children }) {
         'Email verification link is invalid or has expired.';
       return { success: false, error: message };
     }
-  };
+  }, []);
 
-  const resendVerification = async (email) => {
+  const resendVerification = useCallback(async (email) => {
     try {
       const result = await authApi.resendVerification(email);
       return { success: true, data: result };
@@ -254,7 +254,7 @@ export function AuthProvider({ children }) {
         'Unable to resend verification link.';
       return { success: false, error: message };
     }
-  };
+  }, []);
 
   const hasPermission = useCallback(
     (slug) => {

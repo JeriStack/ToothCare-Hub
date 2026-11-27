@@ -118,7 +118,7 @@ export function ServerTableFooter({
               value={size}
               disabled={loading}
               onChange={(e) => onPerPageChange(Number(e.target.value))}
-              className="appearance-none pl-2.5 pr-7 py-1.5 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] cursor-pointer disabled:opacity-50"
+              className="appearance-none min-h-11 sm:min-h-0 pl-2.5 pr-7 py-1.5 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] cursor-pointer disabled:opacity-50"
             >
               {normalizedOptions.map((opt) => (
                 <option key={opt} value={opt}>
@@ -138,7 +138,7 @@ export function ServerTableFooter({
             type="button"
             disabled={current <= 1 || loading}
             onClick={() => onPageChange(Math.max(1, current - 1))}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg font-semibold text-slate-700 dark:text-slate-200 hover:border-teal-400 dark:hover:border-teal-500 disabled:opacity-45 cursor-pointer disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center gap-1 min-h-11 sm:min-h-0 px-2.5 py-1.5 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg font-semibold text-slate-700 dark:text-slate-200 hover:border-teal-400 dark:hover:border-teal-500 disabled:opacity-45 cursor-pointer disabled:cursor-not-allowed transition-colors"
             aria-label="Previous page"
           >
             <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" />
@@ -153,7 +153,7 @@ export function ServerTableFooter({
             type="button"
             disabled={current >= last || loading}
             onClick={() => onPageChange(Math.min(last, current + 1))}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg font-semibold text-slate-700 dark:text-slate-200 hover:border-teal-400 dark:hover:border-teal-500 disabled:opacity-45 cursor-pointer disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center gap-1 min-h-11 sm:min-h-0 px-2.5 py-1.5 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg font-semibold text-slate-700 dark:text-slate-200 hover:border-teal-400 dark:hover:border-teal-500 disabled:opacity-45 cursor-pointer disabled:cursor-not-allowed transition-colors"
             aria-label="Next page"
           >
             <span>Next</span>

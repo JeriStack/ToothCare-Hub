@@ -84,6 +84,11 @@ class Config
             // Logging
             'log_level' => strtolower($this->env('LOG_LEVEL', 'debug')),
             'log_path' => $this->env('LOG_PATH', dirname(__DIR__, 2) . '/storage/logs/app.log'),
+
+            // Database Backup Settings
+            'backup_storage_dir' => $this->env('BACKUP_STORAGE_DIR', ''),
+            'backup_encryption_enabled' => $this->parseBool($this->env('BACKUP_ENCRYPTION_ENABLED', 'true')),
+            'backup_encryption_key' => $this->env('BACKUP_ENCRYPTION_KEY', ''),
         ];
 
         // Production security overrides

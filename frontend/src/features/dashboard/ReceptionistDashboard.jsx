@@ -228,7 +228,8 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
 
     setIsUpdatingAttendance(true);
     try {
-      await receptionistApi.updateAttendance(attendanceModalTarget.id, attendanceStatusChoice, attendanceNotes || null);
+      const targetAppointmentId = attendanceModalTarget.appointment_id ?? attendanceModalTarget.id;
+      await receptionistApi.updateAttendance(targetAppointmentId, attendanceStatusChoice, attendanceNotes || null);
       triggerToast(`Attendance updated for ${attendanceModalTarget.patient_first_name} ${attendanceModalTarget.patient_last_name}.`);
       setAttendanceModalTarget(null);
       setAttendanceNotes('');
@@ -326,7 +327,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
     <div className="space-y-8 pb-12">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#12304A] dark:bg-slate-900 text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 border border-teal-500/30 dark:border-teal-400/30 text-sm animate-in fade-in slide-in-from-bottom-3 duration-200">
+        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:bottom-6 sm:right-6 sm:max-w-sm z-50 bg-[#12304A] dark:bg-slate-900 text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 border border-teal-500/30 dark:border-teal-400/30 text-sm animate-in fade-in slide-in-from-bottom-3 duration-200">
           <CheckCircle2 className="w-5 h-5 text-teal-400 flex-shrink-0" />
           <span>{toastMessage}</span>
         </div>
@@ -864,9 +865,11 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
               ) : (
                 <div className="divide-y divide-slate-100 dark:divide-gray-700/70 -my-1">
                   {waitingList.map((item) => {
-                    const isInChair = item.status === 'IN_CONSULTATION';
+                    const itemApptId = item.appointment_id ?? item.id;
+                    const itemStatus = item.attendance_status ?? item.status;
+                    const isInChair = itemStatus === 'IN_CONSULTATION';
                     return (
-                      <div key={item.id} className="py-3 first:pt-1 last:pb-1 flex items-start justify-between gap-3">
+                      <div key={itemApptId} className="py-3 first:pt-1 last:pb-1 flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 min-w-0">
                           <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-gray-900/80 border border-slate-200/80 dark:border-gray-700 text-slate-700 dark:text-slate-200 flex items-center justify-center text-[11px] font-semibold shrink-0 mt-0.5">
                             {getInitials(item.patient_first_name, item.patient_last_name)}
@@ -1178,7 +1181,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
             )}
 
             <form onSubmit={handleRegisterPatient} className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">First Name *</label>
                   <input
@@ -1201,7 +1204,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Email Address *</label>
                   <input
@@ -1225,7 +1228,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Date of Birth</label>
                   <input
@@ -1260,7 +1263,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Emergency Contact Name</label>
                   <input

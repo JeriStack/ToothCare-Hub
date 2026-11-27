@@ -38,9 +38,35 @@ describe('responsive component contracts', () => {
     expect(calls).toEqual(['id', 'name']);
   });
 
-  it('shared touch-target utilities exist in global.css', () => {
+  it('MobileSortControl handles lowercase sortDir values ("asc" and "desc")', () => {
+    const calls = [];
+    const { rerender } = render(
+      <MobileSortControl
+        sortBy="created_at"
+        sortDir="asc"
+        onSort={(column) => calls.push(column)}
+        options={[{ value: 'created_at', label: 'Timestamp' }]}
+      />
+    );
+    expect(screen.getByRole('button', { name: /ascending/i })).toBeInTheDocument();
+    rerender(
+      <MobileSortControl
+        sortBy="created_at"
+        sortDir="desc"
+        onSort={(column) => calls.push(column)}
+        options={[{ value: 'created_at', label: 'Timestamp' }]}
+      />
+    );
+    expect(screen.getByRole('button', { name: /descending/i })).toBeInTheDocument();
+  });
+
+  it('shared touch-target and responsive table/sticky-header utilities exist in global.css', () => {
     const css = fs.readFileSync(path.join(SRC, 'styles', 'global.css'), 'utf8');
     expect(css).toMatch(/\.tch-tap\s*\{[^}]*min-block-size:\s*1\.5rem/);
     expect(css).toMatch(/\.tch-check\s*\{[^}]*inline-size:\s*1\.5rem/);
+    expect(css).toMatch(/scroll-padding-top:\s*calc\(4\.5rem\s*\+\s*env\(safe-area-inset-top/);
+    expect(css).toMatch(/max-inline-size:\s*none\s*!important/);
+    expect(css).toMatch(/\.tch-responsive-table\s+td\[data-label\]:last-child\s*>\s*div/);
+    expect(css).toMatch(/\.tch-matrix-table\s+tr\.tch-matrix-group-row/);
   });
 });

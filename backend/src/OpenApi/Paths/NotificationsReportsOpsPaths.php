@@ -355,4 +355,159 @@ final class NotificationsReportsOpsPaths
 
     #[OA\Get(path: '/history/appointments/{id}', operationId: 'getAppointmentHistoryTimeline', summary: 'Get Chronological Appointment Lifecycle & Reassignment Timeline', tags: ['History'], security: [['CookieAuth' => []]], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Appointment chronological history'), new OA\Response(response: 403, description: 'Unauthorized appointment access'), new OA\Response(response: 404, description: 'Appointment not found')])]
     public function appointmentHistoryTimeline(): void {}
+
+    // --- Patient-Dentist Direct Messaging ---
+    #[OA\Get(
+        path: '/messages/conversations',
+        operationId: 'listMessageConversations',
+        summary: 'List Authorized Patient-Dentist Conversations (Searchable & Filterable)',
+        tags: ['Messages'],
+        security: [['CookieAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'search', in: 'query', schema: new OA\Schema(type: 'string', maxLength: 120)),
+            new OA\Parameter(name: 'filter', in: 'query', schema: new OA\Schema(type: 'string', enum: ['all', 'unread'], default: 'all')),
+            new OA\Parameter(name: 'page', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1, default: 1)),
+            new OA\Parameter(name: 'limit', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1, maximum: 50, default: 30)),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Authorized conversations, eligible contacts, and unread total'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+            new OA\Response(response: 403, description: 'Forbidden (restricted to active Patient and Dentist participants)'),
+        ]
+    )]
+    #[OA\Post(
+        path: '/messages/conversations',
+        operationId: 'startMessageConversation',
+        summary: 'Find or Create a Private Patient-Dentist Conversation',
+        tags: ['Messages'],
+        security: [['CookieAuth' => [], 'CsrfToken' => []]],
+        responses: [
+            new OA\Response(response: 201, description: 'Conversation resolved or created'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+            new OA\Response(response: 403, description: 'Forbidden (unauthorized role or mismatched appointment)'),
+            new OA\Response(response: 409, description: 'Target participant account is inactive or archived'),
+            new OA\Response(response: 422, description: 'Missing or invalid participant ID'),
+        ]
+    )]
+    public function messageConversations(): void {}
+
+    #[OA\Get(
+        path: '/messages/unread-count',
+        operationId: 'getUnreadMessageCount',
+        summary: 'Get Total Unread Direct Message Count for Authenticated Patient or Dentist',
+        tags: ['Messages'],
+        security: [['CookieAuth' => []]],
+        responses: [
+            new OA\Response(response: 200, description: 'Total unread direct messages'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+            new OA\Response(response: 403, description: 'Forbidden'),
+        ]
+    )]
+    public function messagesUnreadCount(): void {}
+
+    #[OA\Get(
+        path: '/messages/presence',
+        operationId: 'getMessageParticipantPresence',
+        summary: 'Get Online Presence for Authorized Conversation Counterparts',
+        tags: ['Messages'],
+        security: [['CookieAuth' => []]],
+        responses: [
+            new OA\Response(response: 200, description: 'List of currently online counterpart user IDs'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+            new OA\Response(response: 403, description: 'Forbidden'),
+        ]
+    )]
+    public function messagesPresence(): void {}
+
+    #[OA\Get(
+        path: '/messages/conversations/{id}/messages',
+        operationId: 'listConversationMessages',
+        summary: 'List Conversation Messages Using Server-Side Cursor Pagination',
+        tags: ['Messages'],
+        security: [['CookieAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer', minimum: 1)),
+            new OA\Parameter(name: 'before_id', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1)),
+            new OA\Parameter(name: 'limit', in: 'query', schema: new OA\Schema(type: 'integer', minimum: 1, maximum: 50, default: 30)),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Cursor-paginated messages and conversation metadata'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+            new OA\Response(response: 403, description: 'Forbidden (not a conversation participant)'),
+            new OA\Response(response: 404, description: 'Conversation not found'),
+        ]
+    )]
+    #[OA\Post(
+        path: '/messages/conversations/{id}/messages',
+        operationId: 'sendConversationMessage',
+        summary: 'Send a Direct Message with Idempotency and Privacy-Safe Realtime Notification',
+        tags: ['Messages'],
+        security: [['CookieAuth' => [], 'CsrfToken' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer', minimum: 1)),
+        ],
+        responses: [
+            new OA\Response(response: 201, description: 'Message persisted and acknowledged'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+            new OA\Response(response: 403, description: 'Forbidden (not a conversation participant)'),
+            new OA\Response(response: 404, description: 'Conversation not found'),
+            new OA\Response(response: 409, description: 'Conversation unavailable (inactive or archived participant)'),
+            new OA\Response(response: 422, description: 'Message empty or exceeds 2,000-character limit'),
+        ]
+    )]
+    public function conversationMessages(): void {}
+
+    #[OA\Post(
+        path: '/messages/conversations/{id}/delivered',
+        operationId: 'markConversationDelivered',
+        summary: 'Mark Incoming Conversation Messages as Delivered',
+        tags: ['Messages'],
+        security: [['CookieAuth' => [], 'CsrfToken' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer', minimum: 1)),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Delivery receipts updated'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+            new OA\Response(response: 403, description: 'Forbidden'),
+            new OA\Response(response: 404, description: 'Conversation not found'),
+        ]
+    )]
+    public function markConversationDelivered(): void {}
+
+    #[OA\Post(
+        path: '/messages/conversations/{id}/read',
+        operationId: 'markConversationRead',
+        summary: 'Mark Incoming Conversation Messages as Read and Reset Unread Count',
+        tags: ['Messages'],
+        security: [['CookieAuth' => [], 'CsrfToken' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer', minimum: 1)),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Read receipts updated and unread count recalculated'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+            new OA\Response(response: 403, description: 'Forbidden'),
+            new OA\Response(response: 404, description: 'Conversation not found'),
+        ]
+    )]
+    public function markConversationRead(): void {}
+
+    #[OA\Post(
+        path: '/messages/conversations/{id}/typing',
+        operationId: 'sendConversationTypingSignal',
+        summary: 'Emit Ephemeral Typing Indicator Signal to Authorized Counterpart',
+        tags: ['Messages'],
+        security: [['CookieAuth' => [], 'CsrfToken' => []]],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer', minimum: 1)),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Typing indicator dispatched'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+            new OA\Response(response: 403, description: 'Forbidden'),
+            new OA\Response(response: 404, description: 'Conversation not found'),
+        ]
+    )]
+    public function sendConversationTyping(): void {}
 }

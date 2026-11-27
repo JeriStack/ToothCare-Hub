@@ -66,12 +66,18 @@ export function PatientNotificationsPage({ onNavigateToAppointments, onSelectNot
     }
     setError(null);
     try {
+      const params = { page: pageNum, per_page: 15 };
+      if (filter === 'UNREAD') {
+        params.unread_only = 1;
+      }
       const res = await notificationsApi.getNotifications(
-        { page: pageNum, per_page: 15 },
+        params,
         silent ? { background: true } : undefined
       );
       setNotifications(res.items || []);
-      setTotal(res.total || 0);
+      if (filter === 'ALL') {
+        setTotal(res.total || 0);
+      }
       setUnreadCount(res.unread_count || 0);
       setPage(res.page || 1);
       setTotalPages(res.total_pages || 1);
@@ -82,10 +88,14 @@ export function PatientNotificationsPage({ onNavigateToAppointments, onSelectNot
         setLoading(false);
       }
     }
-  }, []);
+  }, [filter]);
+
+  const hasLoadedOnceRef = React.useRef(false);
 
   useEffect(() => {
-    fetchList(page);
+    const isInitialLoad = !hasLoadedOnceRef.current;
+    hasLoadedOnceRef.current = true;
+    fetchList(page, !isInitialLoad);
   }, [fetchList, page]);
 
   useRealtimeNotifications({
@@ -209,7 +219,10 @@ export function PatientNotificationsPage({ onNavigateToAppointments, onSelectNot
             id="notifications-filter"
             aria-label="Filter notifications"
             value={filter}
-            onChange={(e) => setFilter(e.target.value)}
+            onChange={(e) => {
+              setFilter(e.target.value);
+              setPage(1);
+            }}
             className="w-full min-h-11 sm:min-h-0 px-3.5 py-2.5 rounded-xl bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400"
           >
             <option value="ALL">All Notifications ({total})</option>

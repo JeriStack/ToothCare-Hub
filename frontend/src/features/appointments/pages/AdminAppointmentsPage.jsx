@@ -28,6 +28,7 @@ import { useDashboardSync } from '../../../hooks/useDashboardSync';
 import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 import { SortableColumnHeader, ServerTableFooter } from '../../../components/ui/ServerTableControls';
+import { MobileSortControl } from '../../../components/ui/MobileSortControl';
 
 const CLINIC_TIME_ZONE = 'Asia/Manila';
 
@@ -1048,7 +1049,20 @@ export function AdminAppointmentsPage({ initialStatus = '', initialDate = '' } =
 
       {/* Appointment Table */}
       <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
+        <MobileSortControl
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onSort={handleSort}
+          options={[
+            { value: 'start_at', label: 'Appointment Date' },
+            { value: 'id', label: 'Reference' },
+            { value: 'patient_name', label: 'Patient' },
+            { value: 'service_name', label: 'Service' },
+            { value: 'dentist_name', label: 'Dentist' },
+            { value: 'status', label: 'Status' },
+          ]}
+        />
+        <div tabIndex={0} role="region" aria-label="Appointments triage table" className="overflow-x-auto">
           <table role="table" className="tch-responsive-table w-full text-left border-collapse text-xs">
             <thead role="rowgroup">
               <tr role="row" className="bg-slate-50/75 dark:bg-gray-900/45 border-b border-slate-100 dark:border-gray-700/80 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">

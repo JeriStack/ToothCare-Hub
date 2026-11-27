@@ -55,6 +55,29 @@ class RealtimePublisherClient
     }
 
     /**
+     * Query which of the provided user IDs currently have an active Socket.IO connection.
+     *
+     * @param list<int> $userIds
+     * @return list<int>
+     */
+    public function queryPresence(array $userIds): array
+    {
+        if (empty($userIds) || !$this->config->enabled || !$this->config->hasSecret()) {
+            return [];
+        }
+
+        $result = $this->postJson('/internal/presence', [
+            'userIds' => array_values(array_slice(array_map('intval', $userIds), 0, 100)),
+        ]);
+
+        if (!$result['ok'] || !isset($result['data']['onlineUserIds']) || !is_array($result['data']['onlineUserIds'])) {
+            return [];
+        }
+
+        return array_values(array_map('intval', $result['data']['onlineUserIds']));
+    }
+
+    /**
      * @param array<string, mixed> $payload
      * @return array{ok: bool, status: int, error: string|null, duplicate?: bool}
      */
@@ -96,6 +119,7 @@ class RealtimePublisherClient
                     'status' => $status,
                     'error' => null,
                     'duplicate' => (bool) ($decoded['duplicate'] ?? false),
+                    'data' => is_array($decoded) ? $decoded : [],
                 ];
             }
 

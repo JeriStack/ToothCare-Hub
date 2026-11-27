@@ -9,7 +9,12 @@ async function main(): Promise<void> {
 
   await service.start();
 
+  let shuttingDown = false;
   const handleShutdown = async (signal: string): Promise<void> => {
+    if (shuttingDown) {
+      return;
+    }
+    shuttingDown = true;
     logger.info('Received termination signal; shutting down gracefully', { signal });
 
     const forceTimer = setTimeout(() => {

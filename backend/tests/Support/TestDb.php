@@ -344,9 +344,9 @@ class TestDb
             (1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6), (1, 7), (1, 8), (1, 9), (1, 10),
             (1, 11), (1, 12), (1, 13), (1, 14), (1, 15), (1, 16), (1, 17), (1, 18), (1, 19), (1, 20), (1, 21), (1, 22),
             (1, 23), (1, 24), (1, 25), (1, 27), (1, 28), (1, 29), (1, 30), (1, 31), (1, 32), (1, 33), (1, 34), (1, 35), (1, 36), (1, 37),
-            (2, 3), (2, 5), (2, 7), (2, 9), (2, 11), (2, 12), (2, 13), (2, 14), (2, 15), (2, 28), (2, 29), (2, 32), (2, 33), (2, 36), (2, 37),
+            (2, 3), (2, 5), (2, 7), (2, 9), (2, 11), (2, 12), (2, 13), (2, 14), (2, 15), (2, 28), (2, 29), (2, 32), (2, 33), (2, 34), (2, 36), (2, 37),
             (3, 5), (3, 7), (3, 9), (3, 10), (3, 13), (3, 28), (3, 32), (3, 33), (3, 34), (3, 36), (3, 37),
-            (4, 3), (4, 4), (4, 5), (4, 7), (4, 9), (4, 10), (4, 11), (4, 28), (4, 29), (4, 31), (4, 32), (4, 33), (4, 34), (4, 36), (4, 37);
+            (4, 3), (4, 4), (4, 5), (4, 7), (4, 9), (4, 10), (4, 11), (4, 28), (4, 29), (4, 31), (4, 32), (4, 33), (4, 34), (4, 35), (4, 36), (4, 37);
 
             INSERT INTO clinic_settings (setting_key, setting_value, description, value_type, is_public) VALUES
             ("clinic_name", "ToothCare Hub", "Clinic display name", "string", 1),
@@ -663,6 +663,50 @@ class TestDb
                 $ex[10],
             ]);
         }
+
+        // Migration 038: Patient-Dentist Messaging tables & DRBAC permissions
+        $pdo->exec('
+            CREATE TABLE IF NOT EXISTS conversations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                patient_id INTEGER NOT NULL,
+                dentist_id INTEGER NOT NULL,
+                appointment_id INTEGER NULL,
+                status TEXT NOT NULL DEFAULT "ACTIVE",
+                last_message_id INTEGER NULL,
+                last_message_at TEXT NULL,
+                last_message_preview TEXT NULL,
+                last_message_sender_user_id INTEGER NULL,
+                patient_unread_count INTEGER NOT NULL DEFAULT 0,
+                dentist_unread_count INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(patient_id, dentist_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS conversation_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                conversation_id INTEGER NOT NULL,
+                sender_user_id INTEGER NOT NULL,
+                sender_role TEXT NOT NULL,
+                client_message_id TEXT NULL,
+                body TEXT NOT NULL,
+                appointment_id INTEGER NULL,
+                delivered_at TEXT NULL,
+                read_at TEXT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(conversation_id, sender_user_id, client_message_id)
+            );
+
+            INSERT OR IGNORE INTO permissions (name, slug, module, description) VALUES
+                ("View Direct Messages", "messages.view", "messages", "Access own Patient-Dentist direct message conversations and history"),
+                ("Send Direct Messages", "messages.send", "messages", "Send direct messages and read/typing updates in own Patient-Dentist conversations");
+
+            INSERT OR IGNORE INTO role_permissions (role_id, permission_id, granted_at)
+            SELECT r.id, p.id, CURRENT_TIMESTAMP
+            FROM roles r
+            JOIN permissions p ON p.slug IN ("messages.view", "messages.send")
+            WHERE r.slug IN ("patient", "dentist");
+        ');
 
         return $pdo;
     }

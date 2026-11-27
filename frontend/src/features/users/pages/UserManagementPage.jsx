@@ -191,7 +191,7 @@ export function UserManagementPage() {
       {/* Toast Notification */}
       {toast && (
         <div
-          className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-white text-sm font-medium ${
+          className={`fixed bottom-4 left-4 right-4 sm:left-auto sm:bottom-6 sm:right-6 sm:max-w-sm z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-white text-sm font-medium ${
             toast.type === 'error' ? 'bg-rose-600' : 'bg-emerald-600'
           }`}
         >
@@ -269,7 +269,8 @@ export function UserManagementPage() {
         <button
           type="button"
           onClick={fetchUsers}
-          className="p-2 border border-slate-200 dark:border-gray-600 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+          aria-label="Refresh User Directory"
+          className="inline-flex items-center justify-center min-h-11 md:min-h-0 md:w-10 p-2 border border-slate-200 dark:border-gray-600 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
           title="Refresh User Directory"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-teal-600 dark:text-teal-400' : ''}`} />
@@ -514,7 +515,7 @@ export function UserManagementPage() {
                     <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       Staff Role <span className="text-rose-500 dark:text-rose-400">*</span>
                     </span>
-                    <div className="grid grid-cols-3 gap-2" role="group" aria-label="Select staff role">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2" role="group" aria-label="Select staff role">
                       {STAFF_ROLE_CHOICES.map(({ value, label, subtitle, icon: RoleIcon }) => {
                         const selected = staffForm.role === value;
                         return (

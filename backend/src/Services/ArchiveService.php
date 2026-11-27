@@ -387,6 +387,31 @@ class ArchiveService
         $blockingAppointments = [];
         $consequences = [];
 
+        if ($entityType === 'appointment') {
+            $appt = $this->appointmentRepo->findById($entityId);
+            if (!$appt) {
+                throw HttpException::notFound("Appointment #{$entityId} was not found.");
+            }
+            if ($scope['role'] === 'DENTIST' && (int) ($appt['dentist_id'] ?? 0) !== (int) ($scope['dentist_id'] ?? 0)) {
+                throw HttpException::forbidden('Dentists can only check archive eligibility for their own assigned appointments.');
+            }
+            $apptStatus = strtoupper((string) ($appt['status'] ?? ''));
+            if (!in_array($apptStatus, ['COMPLETED', 'CANCELLED', 'REJECTED', 'NO_SHOW'], true)) {
+                $blockers[] = [
+                    'code' => 'APPOINTMENT_NOT_RESOLVED',
+                    'message' => "Only resolved appointments (COMPLETED, CANCELLED, REJECTED, NO_SHOW) can be archived. Current status: {$apptStatus}.",
+                ];
+            }
+        } elseif ($entityType === 'treatment_record') {
+            $tr = $this->treatmentRepo->findById($entityId);
+            if (!$tr) {
+                throw HttpException::notFound("Treatment record #{$entityId} was not found.");
+            }
+            if ($scope['role'] === 'DENTIST' && (int) ($tr['dentist_id'] ?? 0) !== (int) ($scope['dentist_id'] ?? 0)) {
+                throw HttpException::forbidden('Dentists can only check archive eligibility for their own clinical treatment records.');
+            }
+        }
+
         $existing = $this->archiveRepo->findActiveByEntity($entityType, $entityId);
         if ($existing !== null) {
             $blockers[] = [

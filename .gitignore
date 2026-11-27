@@ -1,14 +1,42 @@
 # ===== Environment & secrets =====
 .env
 .env.*
+**/.env
+**/.env.*
+*.env
+.envrc
 !.env.example
 !.env.testing.example
 !/**/.env.example
+!/**/.env.testing.example
+
+# Secret stores, cloud credentials & package manager auth tokens
+secrets/
+.secrets/
+*secret*.json
+*secret*.yaml
+*secret*.yml
+*credential*.json
+*service-account*.json
+auth.json
+.npmrc
+.netrc
+*.htpasswd
+
+# Private keys & TLS certificates
 *.pem
 *.key
 *.crt
+*.cer
+*.csr
+*.der
 *.pfx
 *.p12
+*.jks
+*.keystore
+*.ppk
+id_rsa
+id_ed25519
 
 # ===== Dependencies =====
 node_modules/
@@ -16,11 +44,12 @@ vendor/
 
 # ===== Build / generated assets =====
 /dist/
+/realtime/dist/
 build/
 /frontend/dist/*
 !/frontend/dist/index.html
 
-# ===== Logs =====
+# ===== Logs & diagnostic captures =====
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -28,6 +57,10 @@ yarn-error.log*
 pnpm-debug.log*
 /backend/storage/logs/*
 !/backend/storage/logs/.gitkeep
+*.har
+*.pcap
+*.heapsnapshot
+*.cpuprofile
 
 # ===== Cache & temporary files =====
 /backend/storage/cache/*
@@ -41,28 +74,48 @@ temp/
 # ===== Test / coverage output =====
 coverage/
 .phpunit.result.cache
+.phpunit.cache/
 .nyc_output/
 .vitest/
 playwright-report/
 test-results/
 
-# ===== Private uploads & database backups =====
+# ===== Private uploads, clinical/audit exports & database backups =====
 /storage/uploads/
 /backend/storage/uploads/
+/backend/storage/private/
+/backend/storage/exports/
+/backend/storage/sessions/
+/backend/storage/backups/
+exports/
+*.csv
+*.tsv
+*.xlsx
+*.xls
+*.parquet
 *.sql.bak
 *.sql.gz
 *.sql.gz.enc
+*.sql.enc
 *.dump
+*.backup
+*.rdb
 *.sqlite
 *.sqlite3
+*.sqlite-*
+*.db
+*.db-*
 /backups/
 backups/*
 !backups/.gitkeep
-*.key
 *.sha256
 *.backup-meta.json
 
-# ===== Docker / observability =====
+# ===== Docker / observability / local overrides =====
+compose.override.yaml
+compose.override.yml
+docker-compose.override.yaml
+docker-compose.override.yml
 docker/nginx/ssl/*
 !docker/nginx/ssl/.gitkeep
 grafana-data/
@@ -78,11 +131,9 @@ mysql-data/
 Thumbs.db
 Desktop.ini
 
-# Playwright
+# ===== Playwright =====
 /playwright-report/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
-
-# Playwright MCP session logs
 .playwright-mcp/

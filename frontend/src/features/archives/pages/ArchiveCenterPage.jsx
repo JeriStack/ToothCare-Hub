@@ -22,6 +22,8 @@ import {
   Fingerprint,
   History,
   Shield,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { archivesApi } from '../api';
 import { RecordHistoryModal } from '../../history/components/RecordHistoryModal';
@@ -29,6 +31,7 @@ import { useOptionalAuth } from '../../auth/context/AuthContext';
 import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 import { SortableColumnHeader, ServerTableFooter } from '../../../components/ui/ServerTableControls';
+import { MobileSortControl } from '../../../components/ui/MobileSortControl';
 
 const ENTITY_META = {
   appointment: {
@@ -88,34 +91,80 @@ const STATUS_BADGE = {
 };
 
 const RETENTION_LABELS = {
-  CLINICAL_7Y: 'Clinical · 7 Years',
-  OPERATIONAL_3Y: 'Operational · 3 Years',
-  ACCOUNT_5Y: 'Account · 5 Years',
-  CATALOG_LEGACY: 'Legacy Catalog · 3 Years',
+  CLINICAL_7Y: '7-Year Clinical',
+  OPERATIONAL_3Y: '3-Year Operational',
+  ACCOUNT_5Y: '5-Year Account',
+  CATALOG_LEGACY: '3-Year Legacy',
 };
 
 const ROLE_COPY = {
   ADMIN: {
     title: 'Compliance Archive Vault',
-    subtitle: 'Centralized retention vault covering appointments, 24h-locked clinical charts, inactive patients, retired dentists, discontinued services, and offboarded accounts.',
+    subtitle: 'Archived accounts, visits, clinical charts, and retired services.',
   },
   RECEPTIONIST: {
     title: 'Front-Desk Operational Archive',
-    subtitle: 'Audit resolved appointments, archived patient profiles, and legacy catalog services without cluttering active clinic queues.',
+    subtitle: 'Resolved appointments, archived patients, and retired services.',
   },
   DENTIST: {
     title: 'Clinical & Treatment Archive',
-    subtitle: 'Review your compliance-locked clinical charts and archived assigned patient appointments with SHA-256 integrity verification.',
+    subtitle: 'Locked clinical charts and past assigned visits.',
   },
   PATIENT: {
     title: 'My Visit & Clinical Archive',
-    subtitle: 'Read-only personal archive of your completed or past dental visits and compliance-preserved clinical summaries.',
+    subtitle: 'Your past dental visits and locked clinical records.',
   },
 };
 
+const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function formatShortDate(dateStr) {
+  if (!dateStr) return '—';
+  const match = String(dateStr).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return String(dateStr);
+  const [, year, month, day] = match;
+  const m = MONTH_SHORT[Number(month) - 1];
+  return m ? `${m} ${Number(day)}, ${year}` : String(dateStr).slice(0, 10);
+}
+
+function formatShortDateTime(dateTimeStr) {
+  if (!dateTimeStr) return '—';
+  const match = String(dateTimeStr).match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+  if (!match) return String(dateTimeStr).slice(0, 16);
+  const [, year, month, day, hourStr, minute] = match;
+  const m = MONTH_SHORT[Number(month) - 1];
+  if (!m) return String(dateTimeStr).slice(0, 16);
+  const hour24 = Number(hourStr);
+  const period = hour24 >= 12 ? 'PM' : 'AM';
+  const hour12 = hour24 % 12 || 12;
+  return `${m} ${Number(day)}, ${year} · ${hour12}:${minute} ${period}`;
+}
+
+function formatActorRole(roleStr) {
+  if (!roleStr) return 'System';
+  const lower = String(roleStr).trim().toLowerCase();
+  if (lower === 'admin') return 'Admin';
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
+
+function cleanRecordTitle(row) {
+  const raw = String(row?.title || '');
+  if (row?.is_example) {
+    return raw.replace(/\s*\(Example\)\s*$/i, '').trim() || raw;
+  }
+  return raw;
+}
+
+function formatFieldLabel(key) {
+  return String(key || '')
+    .replace(/_/g, ' ')
+    .replace(/\bid\b/gi, 'ID')
+    .replace(/\b\w/g, (ch) => ch.toUpperCase());
+}
+
 function formatSnapshotValue(val) {
   if (val === undefined || val === null || val === '') return '—';
-  if (Array.isArray(val)) return val.join(', ') || '(none)';
+  if (Array.isArray(val)) return val.join(', ') || 'None';
   if (typeof val === 'object') return JSON.stringify(val);
   return String(val);
 }
@@ -143,6 +192,8 @@ export function ArchiveCenterPage() {
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
   const [exporting, setExporting] = useState(false);
+  const [copiedKey, setCopiedKey] = useState(null);
+  const [copyStatusMsg, setCopyStatusMsg] = useState('');
 
   // Filters, Sorting & Pagination
   const [searchInput, setSearchInput] = useState('');
@@ -469,6 +520,21 @@ export function ArchiveCenterPage() {
     }
   };
 
+  const handleCopyText = useCallback(async (text, key, label) => {
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(String(text));
+      setCopiedKey(key);
+      setCopyStatusMsg(`${label} copied to clipboard.`);
+      setTimeout(() => {
+        setCopiedKey((curr) => (curr === key ? null : curr));
+      }, 2000);
+    } catch {
+      setCopyStatusMsg(`Unable to copy ${label.toLowerCase()}.`);
+      showToast(`Unable to copy ${label.toLowerCase()}.`, 'error');
+    }
+  }, [showToast]);
+
   const resetFilters = () => {
     setSearchInput('');
     setDebouncedSearch('');
@@ -485,7 +551,17 @@ export function ArchiveCenterPage() {
   const creatableTypes = summary?.creatable_entity_types || [];
   const canArchive = Boolean(summary?.capabilities?.can_archive);
   const canExport = Boolean(summary?.capabilities?.can_export);
-  const hasActiveFilters = Boolean(searchInput || entityType || accountType || statusFilter || retentionFilter || selectedDate || !includeExamples);
+  const isPatient = role === 'PATIENT';
+  const activeFilterCount = [
+    searchInput.trim(),
+    entityType,
+    accountType,
+    statusFilter,
+    retentionFilter,
+    selectedDate,
+    !includeExamples ? 'hide_examples' : '',
+  ].filter(Boolean).length;
+  const hasActiveFilters = activeFilterCount > 0;
 
   return (
     <div className="space-y-5">
@@ -507,20 +583,27 @@ export function ArchiveCenterPage() {
         </div>
       )}
 
+      {/* Screen-reader live region for clipboard/action feedback */}
+      <p role="status" aria-live="polite" className="sr-only">
+        {copyStatusMsg}
+      </p>
+
       {/* Page Header */}
-      <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 p-5 sm:p-6 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 px-5 py-4 sm:px-6 sm:py-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
         <div className="space-y-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-500/15 border border-teal-200/80 dark:border-teal-500/30 text-[#0F766E] dark:text-teal-300 flex items-center justify-center shrink-0">
               <Archive className="w-4 h-4" aria-hidden="true" />
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-[#12304A] dark:text-slate-50 tracking-tight">
+            <h1 className="text-lg sm:text-xl font-bold text-[#12304A] dark:text-slate-50 tracking-tight">
               {roleCopy.title}
             </h1>
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-gray-900/70 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-gray-700">
-              <ShieldCheck className="w-3 h-3 text-teal-600 dark:text-teal-400" aria-hidden="true" />
-              SHA-256 Verified
-            </span>
+            {!isPatient && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 dark:bg-gray-900/70 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-gray-700">
+                <ShieldCheck className="w-3 h-3 text-teal-600 dark:text-teal-400" aria-hidden="true" />
+                SHA-256 Verified
+              </span>
+            )}
           </div>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
             {roleCopy.subtitle}
@@ -565,77 +648,95 @@ export function ArchiveCenterPage() {
         </div>
       </div>
 
-      {/* KPI Summary Row */}
+      {/* Role-Tailored Interactive KPI Summary Row */}
       {role === 'ADMIN' ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
-          <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 p-4 shadow-xs">
+        <div role="group" aria-label="Archive summary filters" className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
+          <button
+            type="button"
+            aria-pressed={!accountType && !statusFilter && !entityType}
+            onClick={() => {
+              setAccountType('');
+              setStatusFilter('');
+              setEntityType('');
+              setPage(1);
+            }}
+            className={`text-left rounded-2xl border p-4 shadow-xs transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
+              !accountType && !statusFilter && !entityType
+                ? 'bg-slate-50/90 dark:bg-gray-800 border-slate-400 dark:border-slate-500'
+                : 'bg-white dark:bg-gray-800/95 border-slate-200/90 dark:border-gray-700/80 hover:border-slate-300 dark:hover:border-gray-600'
+            }`}
+          >
             <div className="text-[10.5px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Total Archived
             </div>
-            <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-slate-900 dark:text-slate-50">
-              {summary?.total_records ?? meta.total_records ?? 0}
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="text-2xl font-extrabold font-mono tabular-nums text-slate-900 dark:text-slate-50">
+                {summary?.total_records ?? meta.total_records ?? 0}
+              </span>
+              {(summary?.locked_retention ?? 0) > 0 && (
+                <span className="text-[11px] text-indigo-600 dark:text-indigo-300 font-medium">
+                  {summary.locked_retention} locked
+                </span>
+              )}
             </div>
-            <div className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
-              {summary?.locked_retention ?? 0} clinical locked
-            </div>
-          </div>
+          </button>
 
           <button
             type="button"
+            aria-pressed={accountType === 'PATIENT'}
             onClick={() => {
               setEntityType('');
+              setStatusFilter('');
               setAccountType(accountType === 'PATIENT' ? '' : 'PATIENT');
               setPage(1);
             }}
-            className={`text-left rounded-2xl border p-4 shadow-xs transition-colors cursor-pointer ${
+            className={`text-left rounded-2xl border p-4 shadow-xs transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
               accountType === 'PATIENT'
                 ? 'bg-indigo-50/70 dark:bg-indigo-500/15 border-indigo-400'
                 : 'bg-white dark:bg-gray-800/95 border-slate-200/90 dark:border-gray-700/80 hover:border-indigo-400/70'
             }`}
           >
             <div className="text-[10.5px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-300">
-              Archived Patients
+              Patients
             </div>
             <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-indigo-700 dark:text-indigo-300">
               {summary?.by_account_type?.PATIENT ?? 0}
-            </div>
-            <div className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
-              Patient Archives
             </div>
           </button>
 
           <button
             type="button"
+            aria-pressed={accountType === 'DENTIST'}
             onClick={() => {
               setEntityType('');
+              setStatusFilter('');
               setAccountType(accountType === 'DENTIST' ? '' : 'DENTIST');
               setPage(1);
             }}
-            className={`text-left rounded-2xl border p-4 shadow-xs transition-colors cursor-pointer ${
+            className={`text-left rounded-2xl border p-4 shadow-xs transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
               accountType === 'DENTIST'
                 ? 'bg-emerald-50/70 dark:bg-emerald-500/15 border-emerald-400'
                 : 'bg-white dark:bg-gray-800/95 border-slate-200/90 dark:border-gray-700/80 hover:border-emerald-400/70'
             }`}
           >
             <div className="text-[10.5px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-              Archived Dentists
+              Dentists
             </div>
             <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-emerald-700 dark:text-emerald-300">
               {summary?.by_account_type?.DENTIST ?? 0}
-            </div>
-            <div className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
-              Dentist Archives
             </div>
           </button>
 
           <button
             type="button"
+            aria-pressed={accountType === 'RECEPTIONIST'}
             onClick={() => {
               setEntityType('');
+              setStatusFilter('');
               setAccountType(accountType === 'RECEPTIONIST' ? '' : 'RECEPTIONIST');
               setPage(1);
             }}
-            className={`text-left rounded-2xl border p-4 shadow-xs transition-colors cursor-pointer ${
+            className={`text-left rounded-2xl border p-4 shadow-xs transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
               accountType === 'RECEPTIONIST'
                 ? 'bg-sky-50/70 dark:bg-sky-500/15 border-sky-400'
                 : 'bg-white dark:bg-gray-800/95 border-slate-200/90 dark:border-gray-700/80 hover:border-sky-400/70'
@@ -647,19 +748,18 @@ export function ArchiveCenterPage() {
             <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-sky-700 dark:text-sky-300">
               {summary?.by_account_type?.RECEPTIONIST ?? 0}
             </div>
-            <div className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
-              Receptionist Archives
-            </div>
           </button>
 
           <button
             type="button"
+            aria-pressed={accountType === 'ADMIN'}
             onClick={() => {
               setEntityType('');
+              setStatusFilter('');
               setAccountType(accountType === 'ADMIN' ? '' : 'ADMIN');
               setPage(1);
             }}
-            className={`text-left rounded-2xl border p-4 shadow-xs transition-colors cursor-pointer ${
+            className={`text-left rounded-2xl border p-4 shadow-xs transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 ${
               accountType === 'ADMIN'
                 ? 'bg-purple-50/70 dark:bg-purple-500/15 border-purple-400'
                 : 'bg-white dark:bg-gray-800/95 border-slate-200/90 dark:border-gray-700/80 hover:border-purple-400/70'
@@ -672,125 +772,299 @@ export function ArchiveCenterPage() {
             <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-purple-700 dark:text-purple-300">
               {summary?.by_account_type?.ADMIN ?? 0}
             </div>
-            <div className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
-              Admin Archives
-            </div>
           </button>
 
-          <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-teal-200/70 dark:border-teal-500/25 p-4 shadow-xs">
+          <button
+            type="button"
+            aria-pressed={statusFilter === 'RESTORED'}
+            onClick={() => {
+              setAccountType('');
+              setStatusFilter(statusFilter === 'RESTORED' ? '' : 'RESTORED');
+              setPage(1);
+            }}
+            className={`text-left rounded-2xl border p-4 shadow-xs transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
+              statusFilter === 'RESTORED'
+                ? 'bg-teal-50/70 dark:bg-teal-500/15 border-teal-400'
+                : 'bg-white dark:bg-gray-800/95 border-teal-200/70 dark:border-teal-500/25 hover:border-teal-400/70'
+            }`}
+          >
             <div className="text-[10.5px] font-bold uppercase tracking-wider text-[#0F766E] dark:text-teal-300">
               Restored
             </div>
             <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-[#0F766E] dark:text-teal-300">
               {summary?.restored_count ?? 0}
             </div>
-            <div className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
-              Returned to active use
+          </button>
+        </div>
+      ) : isPatient ? (
+        <div role="group" aria-label="Archive summary filters" className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <button
+            type="button"
+            aria-pressed={!entityType && !statusFilter}
+            onClick={() => {
+              setEntityType('');
+              setStatusFilter('');
+              setPage(1);
+            }}
+            className={`text-left rounded-2xl border px-4 py-3.5 shadow-xs transition-all cursor-pointer flex items-center justify-between gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
+              !entityType && !statusFilter
+                ? 'bg-teal-50/60 dark:bg-teal-500/10 border-teal-400/90 dark:border-teal-500/60'
+                : 'bg-white dark:bg-gray-800/95 border-slate-200/90 dark:border-gray-700/80 hover:border-teal-400/60'
+            }`}
+          >
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Total Records
+              </div>
+              <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-slate-900 dark:text-slate-50">
+                {summary?.total_records ?? meta.total_records ?? 0}
+              </div>
             </div>
-          </div>
+            <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-gray-900/70 text-slate-500 dark:text-slate-400 flex items-center justify-center shrink-0">
+              <Archive className="w-4 h-4" aria-hidden="true" />
+            </div>
+          </button>
+
+          <button
+            type="button"
+            aria-pressed={entityType === 'appointment'}
+            onClick={() => {
+              setStatusFilter('');
+              setEntityType(entityType === 'appointment' ? '' : 'appointment');
+              setPage(1);
+            }}
+            className={`text-left rounded-2xl border px-4 py-3.5 shadow-xs transition-all cursor-pointer flex items-center justify-between gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+              entityType === 'appointment'
+                ? 'bg-sky-50/70 dark:bg-sky-500/15 border-sky-400'
+                : 'bg-white dark:bg-gray-800/95 border-slate-200/90 dark:border-gray-700/80 hover:border-sky-400/70'
+            }`}
+          >
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-sky-700 dark:text-sky-300">
+                Past Visits
+              </div>
+              <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-sky-700 dark:text-sky-300">
+                {summary?.by_entity_type?.appointment ?? 0}
+              </div>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-500/15 text-sky-600 dark:text-sky-300 flex items-center justify-center shrink-0">
+              <Calendar className="w-4 h-4" aria-hidden="true" />
+            </div>
+          </button>
+
+          <button
+            type="button"
+            aria-pressed={statusFilter === 'LOCKED_RETENTION' || entityType === 'treatment_record'}
+            onClick={() => {
+              const nextLocked = statusFilter !== 'LOCKED_RETENTION';
+              setEntityType('');
+              setStatusFilter(nextLocked ? 'LOCKED_RETENTION' : '');
+              setPage(1);
+            }}
+            className={`text-left rounded-2xl border px-4 py-3.5 shadow-xs transition-all cursor-pointer flex items-center justify-between gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+              statusFilter === 'LOCKED_RETENTION' || entityType === 'treatment_record'
+                ? 'bg-indigo-50/70 dark:bg-indigo-500/15 border-indigo-400'
+                : 'bg-white dark:bg-gray-800/95 border-indigo-200/70 dark:border-indigo-500/25 hover:border-indigo-400/70'
+            }`}
+          >
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-300 flex items-center gap-1">
+                <Lock className="w-3 h-3" aria-hidden="true" />
+                Locked Clinical
+              </div>
+              <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-indigo-700 dark:text-indigo-300">
+                {summary?.locked_retention ?? 0}
+              </div>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 flex items-center justify-center shrink-0">
+              <FileText className="w-4 h-4" aria-hidden="true" />
+            </div>
+          </button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-          <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 p-4 shadow-xs">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        <div role="group" aria-label="Archive summary filters" className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <button
+            type="button"
+            aria-pressed={!statusFilter && !entityType}
+            onClick={() => {
+              setStatusFilter('');
+              setEntityType('');
+              setPage(1);
+            }}
+            className={`text-left rounded-2xl border px-4 py-3.5 shadow-xs transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
+              !statusFilter && !entityType
+                ? 'bg-teal-50/60 dark:bg-teal-500/10 border-teal-400/90'
+                : 'bg-white dark:bg-gray-800/95 border-slate-200/90 dark:border-gray-700/80 hover:border-teal-400/60'
+            }`}
+          >
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Total Archived
             </div>
             <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-slate-900 dark:text-slate-50">
               {summary?.total_records ?? meta.total_records ?? 0}
             </div>
-            <div className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
-              {summary?.active_archived ?? 0} reversible active
-            </div>
-          </div>
+          </button>
 
-          <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-indigo-200/70 dark:border-indigo-500/25 p-4 shadow-xs">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-300 flex items-center gap-1">
-              <Lock className="w-3 h-3" aria-hidden="true" />
-              Locked Clinical
+          <button
+            type="button"
+            aria-pressed={statusFilter === 'ARCHIVED'}
+            onClick={() => {
+              setStatusFilter(statusFilter === 'ARCHIVED' ? '' : 'ARCHIVED');
+              setPage(1);
+            }}
+            className={`text-left rounded-2xl border px-4 py-3.5 shadow-xs transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 ${
+              statusFilter === 'ARCHIVED'
+                ? 'bg-slate-100/80 dark:bg-gray-700/60 border-slate-400'
+                : 'bg-white dark:bg-gray-800/95 border-slate-200/90 dark:border-gray-700/80 hover:border-slate-400/70'
+            }`}
+          >
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+              Active Archived
             </div>
-            <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-indigo-700 dark:text-indigo-300">
-              {summary?.locked_retention ?? 0}
+            <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-slate-800 dark:text-slate-100">
+              {summary?.active_archived ?? 0}
             </div>
-            <div className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
-              Immutable 7-year retention
-            </div>
-          </div>
+          </button>
 
-          <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-emerald-200/70 dark:border-emerald-500/25 p-4 shadow-xs">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-              Restored
-            </div>
-            <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-emerald-700 dark:text-emerald-300">
-              {summary?.restored_count ?? 0}
-            </div>
-            <div className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
-              Returned to active clinic use
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 p-4 shadow-xs">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Example Records
-            </div>
-            <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-teal-700 dark:text-teal-300">
-              {summary?.example_count ?? 0}
-            </div>
-            <div className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
-              Seeded audit templates
-            </div>
-          </div>
+          {role === 'DENTIST' ? (
+            <button
+              type="button"
+              aria-pressed={statusFilter === 'LOCKED_RETENTION'}
+              onClick={() => {
+                setStatusFilter(statusFilter === 'LOCKED_RETENTION' ? '' : 'LOCKED_RETENTION');
+                setPage(1);
+              }}
+              className={`text-left rounded-2xl border px-4 py-3.5 shadow-xs transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+                statusFilter === 'LOCKED_RETENTION'
+                  ? 'bg-indigo-50/70 dark:bg-indigo-500/15 border-indigo-400'
+                  : 'bg-white dark:bg-gray-800/95 border-indigo-200/70 dark:border-indigo-500/25 hover:border-indigo-400/70'
+              }`}
+            >
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-300 flex items-center gap-1">
+                <Lock className="w-3 h-3" aria-hidden="true" />
+                Locked Clinical
+              </div>
+              <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-indigo-700 dark:text-indigo-300">
+                {summary?.locked_retention ?? 0}
+              </div>
+            </button>
+          ) : (
+            <button
+              type="button"
+              aria-pressed={statusFilter === 'RESTORED'}
+              onClick={() => {
+                setStatusFilter(statusFilter === 'RESTORED' ? '' : 'RESTORED');
+                setPage(1);
+              }}
+              className={`text-left rounded-2xl border px-4 py-3.5 shadow-xs transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                statusFilter === 'RESTORED'
+                  ? 'bg-emerald-50/70 dark:bg-emerald-500/15 border-emerald-400'
+                  : 'bg-white dark:bg-gray-800/95 border-emerald-200/70 dark:border-emerald-500/25 hover:border-emerald-400/70'
+              }`}
+            >
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                Restored
+              </div>
+              <div className="mt-1 text-2xl font-extrabold font-mono tabular-nums text-emerald-700 dark:text-emerald-300">
+                {summary?.restored_count ?? 0}
+              </div>
+            </button>
+          )}
         </div>
       )}
 
-      {/* Filters Toolbar */}
+      {/* Streamlined 2-Row Filter Bar */}
       <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 p-4 shadow-xs space-y-3">
-        {/* Domain Filter Pills */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => {
-              setEntityType('');
-              setPage(1);
-            }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors cursor-pointer ${
-              entityType === ''
-                ? 'bg-[#0D9488] text-white border-[#0D9488]'
-                : 'bg-slate-50 dark:bg-gray-900/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-gray-700 hover:border-teal-400'
-            }`}
-          >
-            All Domains
-          </button>
-          {allowedTypes.map((typeKey) => {
-            const info = ENTITY_META[typeKey] || { label: typeKey };
-            const active = entityType === typeKey;
-            const count = summary?.by_entity_type?.[typeKey];
-            return (
+        <div className="flex flex-wrap items-center justify-between gap-2.5">
+          {/* Domain Filter Pills */}
+          <div role="group" aria-label="Filter by record domain" className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              aria-pressed={entityType === '' && accountType === ''}
+              onClick={() => {
+                setEntityType('');
+                setAccountType('');
+                setPage(1);
+              }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
+                entityType === '' && accountType === ''
+                  ? 'bg-[#0D9488] text-white border-[#0D9488]'
+                  : 'bg-slate-50 dark:bg-gray-900/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-gray-700 hover:border-teal-400'
+              }`}
+            >
+              All
+            </button>
+            {allowedTypes.map((typeKey) => {
+              const info = ENTITY_META[typeKey] || { label: typeKey };
+              const active = entityType === typeKey;
+              const count = summary?.by_entity_type?.[typeKey];
+              return (
+                <button
+                  key={typeKey}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => {
+                    setAccountType('');
+                    setEntityType(active ? '' : typeKey);
+                    setPage(1);
+                  }}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
+                    active
+                      ? 'bg-[#0D9488] text-white border-[#0D9488]'
+                      : 'bg-slate-50 dark:bg-gray-900/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-gray-700 hover:border-teal-400'
+                  }`}
+                >
+                  <span>{info.label}</span>
+                  {typeof count === 'number' && (
+                    <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono tabular-nums ${active ? 'bg-white/20 text-white' : 'bg-slate-200/70 dark:bg-gray-800 text-slate-500 dark:text-slate-400'}`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Right-aligned Compact Controls */}
+          <div className="flex items-center gap-2 text-xs">
+            {((summary?.example_count ?? 0) > 0 || !includeExamples) && (
               <button
-                key={typeKey}
                 type="button"
+                aria-pressed={includeExamples}
                 onClick={() => {
-                  setEntityType(active ? '' : typeKey);
+                  setIncludeExamples((prev) => !prev);
                   setPage(1);
                 }}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors cursor-pointer ${
-                  active
-                    ? 'bg-[#0D9488] text-white border-[#0D9488]'
-                    : 'bg-slate-50 dark:bg-gray-900/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-gray-700 hover:border-teal-400'
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] ${
+                  includeExamples
+                    ? 'bg-teal-50/70 dark:bg-teal-500/10 text-[#0F766E] dark:text-teal-300 border-teal-200/90 dark:border-teal-500/30'
+                    : 'bg-slate-50 dark:bg-gray-900/60 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-gray-700 hover:border-slate-300'
                 }`}
               >
-                <span>{info.label}</span>
-                {typeof count === 'number' && (
-                  <span className={`px-1.5 py-0.2 rounded-md text-[10px] font-mono tabular-nums ${active ? 'bg-white/20 text-white' : 'bg-slate-200/70 dark:bg-gray-800 text-slate-500 dark:text-slate-400'}`}>
-                    {count}
+                <span>Examples</span>
+                {typeof summary?.example_count === 'number' && (
+                  <span className="font-mono tabular-nums text-[10.5px] opacity-80">
+                    {summary.example_count}
                   </span>
                 )}
               </button>
-            );
-          })}
+            )}
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-[#0F766E] dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-500/10 transition-colors cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Reset ({activeFilterCount})</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Search & Secondary Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 text-xs">
+        <div className={`grid grid-cols-1 sm:grid-cols-2 ${isPatient ? 'lg:grid-cols-4' : 'lg:grid-cols-5'} gap-2.5 text-xs`}>
           <div className="relative lg:col-span-2">
             <label htmlFor="archive-search-input" className="sr-only">
               Search archive reference, title, or reason
@@ -801,7 +1075,7 @@ export function ArchiveCenterPage() {
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search reference code, title, or reason..."
+              placeholder="Search code, title, or reason..."
               className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-50/70 dark:bg-gray-900/60 border border-slate-200 dark:border-gray-700 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
             />
             {searchInput && (
@@ -823,65 +1097,46 @@ export function ArchiveCenterPage() {
               setStatusFilter(e.target.value);
               setPage(1);
             }}
-            className="px-3 py-2 rounded-xl bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
+            className="px-3 py-2 rounded-xl bg-white dark:bg-gray-700/90 border border-slate-200 dark:border-gray-600 text-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
           >
             <option value="">All Statuses</option>
-            <option value="ARCHIVED">Archived (Reversible)</option>
-            <option value="LOCKED_RETENTION">Locked Clinical Retention</option>
-            <option value="RESTORED">Restored</option>
+            <option value="ARCHIVED">Archived</option>
+            <option value="LOCKED_RETENTION">Locked Retention</option>
+            {(!isPatient || (summary?.restored_count ?? 0) > 0) && (
+              <option value="RESTORED">Restored</option>
+            )}
           </select>
 
-          <select
-            aria-label="Filter by retention policy"
-            value={retentionFilter}
-            onChange={(e) => {
-              setRetentionFilter(e.target.value);
-              setPage(1);
-            }}
-            className="px-3 py-2 rounded-xl bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
-          >
-            <option value="">All Retention Policies</option>
-            <option value="CLINICAL_7Y">Clinical (7 Years)</option>
-            <option value="OPERATIONAL_3Y">Operational (3 Years)</option>
-            <option value="ACCOUNT_5Y">Account (5 Years)</option>
-            <option value="CATALOG_LEGACY">Legacy Catalog (3 Years)</option>
-          </select>
-
-          <input
-            type="date"
-            aria-label="Filter by archive date"
-            value={selectedDate}
-            onChange={(e) => {
-              setSelectedDate(e.target.value);
-              setPage(1);
-            }}
-            className="px-3 py-2 rounded-xl bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
-          />
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
-          <label className="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={includeExamples}
+          {!isPatient && (
+            <select
+              aria-label="Filter by retention policy"
+              value={retentionFilter}
               onChange={(e) => {
-                setIncludeExamples(e.target.checked);
+                setRetentionFilter(e.target.value);
                 setPage(1);
               }}
-              className="rounded border-slate-300 text-[#0D9488] focus:ring-[#0D9488]"
-            />
-            <span>Show seeded example audit records</span>
-          </label>
-
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="text-[#0D9488] dark:text-teal-400 font-semibold hover:underline cursor-pointer"
+              className="px-3 py-2 rounded-xl bg-white dark:bg-gray-700/90 border border-slate-200 dark:border-gray-600 text-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
             >
-              Reset Filters
-            </button>
+              <option value="">All Retentions</option>
+              <option value="CLINICAL_7Y">7-Year Clinical</option>
+              <option value="OPERATIONAL_3Y">3-Year Operational</option>
+              <option value="ACCOUNT_5Y">5-Year Account</option>
+              <option value="CATALOG_LEGACY">3-Year Legacy</option>
+            </select>
           )}
+
+          <div className="relative">
+            <input
+              type="date"
+              aria-label="Filter by archive date"
+              value={selectedDate}
+              onChange={(e) => {
+                setSelectedDate(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-3 py-2 rounded-xl bg-white dark:bg-gray-700/90 border border-slate-200 dark:border-gray-600 text-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
+            />
+          </div>
         </div>
       </div>
 
@@ -904,10 +1159,23 @@ export function ArchiveCenterPage() {
 
       {/* Archive Data Table */}
       <div className="bg-white dark:bg-gray-800/95 rounded-2xl border border-slate-200/90 dark:border-gray-700/80 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
+        <MobileSortControl
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onSort={handleSort}
+          options={[
+            { value: 'archived_at', label: 'Archived Date' },
+            { value: 'reference_code', label: 'Reference' },
+            { value: 'entity_type', label: 'Type' },
+            { value: 'title', label: 'Record' },
+            { value: 'retention_until', label: 'Retention' },
+            { value: 'status', label: 'Status' },
+          ]}
+        />
+        <div tabIndex={0} role="region" aria-label="Archived records table" className="overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0D9488]">
           <table role="table" className="tch-responsive-table w-full text-left border-collapse text-xs">
-            <thead role="rowgroup">
-              <tr role="row" className="bg-slate-50/75 dark:bg-gray-900/45 border-b border-slate-100 dark:border-gray-700/80 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            <thead role="rowgroup" className="sticky top-0 z-10">
+              <tr role="row" className="bg-slate-50/95 dark:bg-gray-900/80 border-b border-slate-100 dark:border-gray-700/80 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 <SortableColumnHeader
                   columnKey="reference_code"
                   label="Reference"
@@ -918,14 +1186,14 @@ export function ArchiveCenterPage() {
                 />
                 <SortableColumnHeader
                   columnKey="entity_type"
-                  label="Domain"
+                  label="Type"
                   activeSortBy={sortBy}
                   activeSortDir={sortDir}
                   onSort={handleSort}
                 />
                 <SortableColumnHeader
                   columnKey="title"
-                  label="Archived Record"
+                  label="Record"
                   activeSortBy={sortBy}
                   activeSortDir={sortDir}
                   onSort={handleSort}
@@ -939,7 +1207,7 @@ export function ArchiveCenterPage() {
                 />
                 <SortableColumnHeader
                   columnKey="archived_at"
-                  label="Archived At"
+                  label="Archived"
                   activeSortBy={sortBy}
                   activeSortDir={sortDir}
                   onSort={handleSort}
@@ -956,7 +1224,7 @@ export function ArchiveCenterPage() {
             </thead>
             <tbody role="rowgroup" className="divide-y divide-slate-100 dark:divide-gray-700/70">
               {loading ? (
-                <TableSkeleton.Rows count={6} columns={7} />
+                <TableSkeleton.Rows count={5} columns={7} />
               ) : records.length === 0 ? (
                 <tr>
                   <td role="cell" colSpan={7} className="py-12 px-4 text-center">
@@ -964,13 +1232,22 @@ export function ArchiveCenterPage() {
                       <Archive className="w-5 h-5" aria-hidden="true" />
                     </div>
                     <p className="font-semibold text-slate-700 dark:text-slate-200 text-sm">
-                      No archived records matched your filters.
+                      No archived records found
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                       {hasActiveFilters
-                        ? 'Try clearing active filters or enabling example audit records.'
-                        : 'Archived records will appear here with tamper-evident snapshots.'}
+                        ? 'Try adjusting or clearing your active filters.'
+                        : 'Completed visits and archived records will appear here.'}
                     </p>
+                    {hasActiveFilters && (
+                      <button
+                        type="button"
+                        onClick={resetFilters}
+                        className="mt-3 inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] text-white text-xs font-semibold transition-colors cursor-pointer"
+                      >
+                        Reset Filters
+                      </button>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -981,39 +1258,35 @@ export function ArchiveCenterPage() {
                     pill: 'bg-slate-100 text-slate-700 border-slate-200',
                   };
                   const statusInfo = STATUS_BADGE[row.status] || STATUS_BADGE.ARCHIVED;
+                  const displayTitle = cleanRecordTitle(row);
 
                   return (
                     <tr
                       role="row"
                       key={row.id}
-                      className="hover:bg-slate-50/75 dark:hover:bg-gray-700/30 transition-colors"
+                      onClick={() => handleInspect(row)}
+                      className="hover:bg-slate-50/85 dark:hover:bg-gray-700/35 transition-colors cursor-pointer"
                     >
                       <td role="cell" data-label="Reference" className="py-3.5 px-5 font-mono font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                        <div>{row.reference_code}</div>
-                        {row.is_example && (
-                          <span className="mt-1 inline-flex px-1.5 py-0.5 rounded text-[10px] font-sans font-bold bg-teal-50 dark:bg-teal-500/15 text-[#0F766E] dark:text-teal-300 border border-teal-200/80 dark:border-teal-500/30">
-                            Example
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                          <span>{row.reference_code}</span>
+                          {row.is_example && (
+                            <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold bg-teal-50 dark:bg-teal-500/15 text-[#0F766E] dark:text-teal-300 border border-teal-200/80 dark:border-teal-500/30">
+                              Example
+                            </span>
+                          )}
+                        </div>
                       </td>
 
-                      <td role="cell" data-label="Domain" className="py-3.5 px-4 whitespace-nowrap">
+                      <td role="cell" data-label="Type" className="py-3.5 px-4 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${entityInfo.pill}`}>
                           {row.account_type ? `${row.account_type.charAt(0) + row.account_type.slice(1).toLowerCase()} Account` : entityInfo.singular}
                         </span>
                       </td>
 
-                      <td role="cell" data-label="Archived Record" className="py-3.5 px-4 max-w-[300px]">
-                        <div className="font-semibold text-slate-900 dark:text-slate-100 truncate" title={row.title}>
-                          {row.title}
-                        </div>
-                        {row.archived_email && (
-                          <div className="text-[10.5px] font-mono text-teal-700 dark:text-teal-300 truncate mt-0.5">
-                            {row.archived_email}
-                          </div>
-                        )}
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5" title={row.archive_reason}>
-                          {row.archive_reason}
+                      <td role="cell" data-label="Record" className="py-3.5 px-4 max-w-[320px]">
+                        <div className="font-semibold text-slate-900 dark:text-slate-100 md:truncate" title={displayTitle}>
+                          {displayTitle}
                         </div>
                       </td>
 
@@ -1021,17 +1294,11 @@ export function ArchiveCenterPage() {
                         <div className="font-medium text-slate-700 dark:text-slate-200">
                           {RETENTION_LABELS[row.retention_category] || row.retention_category}
                         </div>
-                        <div className="text-[11px] text-slate-400 dark:text-slate-500 font-mono tabular-nums">
-                          Until {row.retention_until || '—'}
-                        </div>
                       </td>
 
-                      <td role="cell" data-label="Archived At" className="py-3.5 px-4 whitespace-nowrap">
-                        <div className="font-mono text-slate-700 dark:text-slate-200 tabular-nums">
-                          {row.archived_at ? String(row.archived_at).slice(0, 16) : '—'}
-                        </div>
-                        <div className="text-[11px] text-slate-400 dark:text-slate-500">
-                          By {row.archived_by_role}
+                      <td role="cell" data-label="Archived" className="py-3.5 px-4 whitespace-nowrap">
+                        <div className="text-slate-700 dark:text-slate-200 tabular-nums">
+                          {formatShortDateTime(row.archived_at)}
                         </div>
                       </td>
 
@@ -1042,7 +1309,12 @@ export function ArchiveCenterPage() {
                         </span>
                       </td>
 
-                      <td role="cell" data-label="Actions" className="py-3.5 px-5 text-right whitespace-nowrap">
+                      <td
+                        role="cell"
+                        data-label="Actions"
+                        className="py-3.5 px-5 text-right whitespace-nowrap"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <div className="inline-flex items-center justify-end gap-1.5">
                           <button
                             type="button"
@@ -1124,26 +1396,56 @@ export function ArchiveCenterPage() {
             className="fixed inset-0 z-50 bg-slate-900/55 dark:bg-black/75 backdrop-blur-xs flex items-center justify-center p-4"
           >
             <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-2xl w-full max-w-2xl max-h-[90dvh] flex flex-col overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/70 dark:bg-gray-900/50 flex items-center justify-between gap-3">
+              <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/70 dark:bg-gray-900/50 flex items-start sm:items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400">
-                    {inspectRecord.reference_code} · {ENTITY_META[inspectRecord.entity_type]?.singular || inspectRecord.entity_type} #{inspectRecord.entity_id}
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400">
+                    <span>
+                      {inspectRecord.reference_code} · {ENTITY_META[inspectRecord.entity_type]?.singular || inspectRecord.entity_type} #{inspectRecord.entity_id}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyText(inspectRecord.reference_code, 'ref', 'Reference code')}
+                      aria-label="Copy reference code"
+                      title="Copy reference code"
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-teal-400 text-slate-500 dark:text-slate-300 font-sans text-[10px] font-medium transition-colors cursor-pointer"
+                    >
+                      {copiedKey === 'ref' ? (
+                        <Check className="w-3 h-3 text-emerald-500" aria-hidden="true" />
+                      ) : (
+                        <Copy className="w-3 h-3" aria-hidden="true" />
+                      )}
+                      <span>{copiedKey === 'ref' ? 'Copied' : 'Copy'}</span>
+                    </button>
                   </div>
                   <h3 className="text-base font-bold text-slate-900 dark:text-slate-50 truncate mt-0.5">
-                    {inspectRecord.title}
+                    {cleanRecordTitle(inspectRecord)}
                   </h3>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setInspectRecord(null)}
-                  aria-label="Close snapshot inspector"
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-gray-700 cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const rec = inspectRecord;
+                      setInspectRecord(null);
+                      handleOpenCycleHistory(rec);
+                    }}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-indigo-400 text-slate-600 dark:text-slate-300 text-[11px] font-semibold transition-colors cursor-pointer"
+                  >
+                    <History className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>History</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInspectRecord(null)}
+                    aria-label="Close snapshot inspector"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-gray-700 cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
-              <div className="p-6 overflow-y-auto space-y-4 text-xs">
+              <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs">
                 {/* Integrity Digest Banner */}
                 <div
                   className={`p-3.5 rounded-xl border flex items-start gap-3 ${
@@ -1159,7 +1461,7 @@ export function ArchiveCenterPage() {
                   ) : (
                     <Fingerprint className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
                   )}
-                  <div className="min-w-0 space-y-0.5">
+                  <div className="min-w-0 flex-1 space-y-1">
                     <div className="font-bold">
                       {inspectRecord.integrity_verified === false
                         ? 'Integrity Check Warning — Snapshot Digest Mismatch'
@@ -1167,34 +1469,56 @@ export function ArchiveCenterPage() {
                           ? 'Tamper-Evident SHA-256 Integrity Verified'
                           : 'Verifying SHA-256 Snapshot Digest...'}
                     </div>
-                    <div className="font-mono text-[10.5px] opacity-85 break-all">
-                      {inspectRecord.snapshot_sha256 || 'Computing...'}
-                    </div>
+                    {inspectRecord.snapshot_sha256 && (
+                      <details className="group">
+                        <summary className="text-[11px] font-medium opacity-80 cursor-pointer select-none hover:opacity-100">
+                          View cryptographic digest
+                        </summary>
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <code className="font-mono text-[10.5px] opacity-85 break-all flex-1">
+                            {inspectRecord.snapshot_sha256}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyText(inspectRecord.snapshot_sha256, 'sha256', 'SHA-256 digest')}
+                            aria-label="Copy SHA-256 digest"
+                            className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md border border-current/20 hover:bg-black/5 dark:hover:bg-white/10 text-[10.5px] font-semibold cursor-pointer"
+                          >
+                            {copiedKey === 'sha256' ? (
+                              <Check className="w-3 h-3" aria-hidden="true" />
+                            ) : (
+                              <Copy className="w-3 h-3" aria-hidden="true" />
+                            )}
+                            <span>{copiedKey === 'sha256' ? 'Copied' : 'Copy'}</span>
+                          </button>
+                        </div>
+                      </details>
+                    )}
                   </div>
                 </div>
 
                 {/* Provenance Metadata */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-50 dark:bg-gray-900/55 border border-slate-200/80 dark:border-gray-700">
                   <div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Archived At</div>
-                    <div className="font-mono font-semibold text-slate-700 dark:text-slate-200 mt-0.5">
-                      {inspectRecord.archived_at}
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Archived</div>
+                    <div className="font-semibold text-slate-700 dark:text-slate-200 mt-0.5 tabular-nums">
+                      {formatShortDateTime(inspectRecord.archived_at)} · {formatActorRole(inspectRecord.archived_by_role)}
                     </div>
                   </div>
                   <div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Retention Schedule</div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Retention</div>
                     <div className="font-semibold text-slate-700 dark:text-slate-200 mt-0.5">
-                      {RETENTION_LABELS[inspectRecord.retention_category] || inspectRecord.retention_category} (until {inspectRecord.retention_until || '—'})
+                      {RETENTION_LABELS[inspectRecord.retention_category] || inspectRecord.retention_category} · Until {formatShortDate(inspectRecord.retention_until)}
                     </div>
                   </div>
                   <div className="sm:col-span-2">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Audit Reason</div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Reason</div>
                     <div className="text-slate-700 dark:text-slate-200 mt-0.5">{inspectRecord.archive_reason}</div>
                   </div>
                   {inspectRecord.restored_at && (
                     <div className="sm:col-span-2 pt-2 border-t border-slate-200/80 dark:border-gray-700">
                       <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                        Restored At {inspectRecord.restored_at}
+                        Restored {formatShortDateTime(inspectRecord.restored_at)}
                       </div>
                       <div className="text-slate-700 dark:text-slate-200 mt-0.5">
                         {inspectRecord.restore_reason}
@@ -1206,32 +1530,34 @@ export function ArchiveCenterPage() {
                 {/* Snapshot Fields Table */}
                 <div>
                   <div className="font-semibold text-slate-700 dark:text-slate-200 mb-2">
-                    Point-in-Time Snapshot Details
+                    Saved Record Details
                   </div>
                   {loadingDetail && snapshotEntries.length === 0 ? (
                     <div className="p-6 text-center text-slate-400">Loading verified snapshot...</div>
                   ) : (
                     <div className="rounded-xl border border-slate-200 dark:border-gray-700 overflow-hidden">
-                      <table role="table" className="w-full text-left text-xs border-collapse">
-                        <thead className="bg-slate-50 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-700 text-slate-500 dark:text-slate-400 font-semibold">
-                          <tr>
-                            <th className="px-3.5 py-2">Field</th>
-                            <th className="px-3.5 py-2">Preserved Value</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-gray-700/70">
-                          {visibleEntries.map(([k, v]) => (
-                            <tr key={k} className="bg-white dark:bg-gray-800">
-                              <td className="px-3.5 py-2 font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                                {k}
-                              </td>
-                              <td className="px-3.5 py-2 text-slate-800 dark:text-slate-100 break-words">
-                                {formatSnapshotValue(v)}
-                              </td>
+                      <div className="overflow-x-auto">
+                        <table role="table" className="tch-responsive-table w-full text-left text-xs border-collapse">
+                          <thead role="rowgroup" className="bg-slate-50 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-700 text-slate-500 dark:text-slate-400 font-semibold">
+                            <tr role="row">
+                              <th role="columnheader" className="px-3.5 py-2">Field</th>
+                              <th role="columnheader" className="px-3.5 py-2">Value</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody role="rowgroup" className="divide-y divide-slate-100 dark:divide-gray-700/70">
+                            {visibleEntries.map(([k, v]) => (
+                              <tr role="row" key={k} className="bg-white dark:bg-gray-800">
+                                <td role="cell" data-label="Field" className="px-3.5 py-2 font-medium text-slate-600 dark:text-slate-300 md:whitespace-nowrap">
+                                  {formatFieldLabel(k)}
+                                </td>
+                                <td role="cell" data-label="Value" className="px-3.5 py-2 text-slate-800 dark:text-slate-100 tch-wrap-anywhere">
+                                  {formatSnapshotValue(v)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                       {snapshotEntries.length > snapPerPage && (
                         <ServerTableFooter
                           page={safeSnapPage}
@@ -1490,20 +1816,34 @@ export function ArchiveCenterPage() {
             <div className="px-5 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/70 dark:bg-gray-900/50 flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                  {cycleHistoryModal.record?.reference_code} · Archival & Restoration Cycles
+                  {cycleHistoryModal.record?.reference_code} · Archive History
                 </div>
                 <h3 className="font-bold text-base text-slate-900 dark:text-slate-50 truncate">
-                  {cycleHistoryModal.record?.title}
+                  {cleanRecordTitle(cycleHistoryModal.record)}
                 </h3>
               </div>
-              <button
-                type="button"
-                onClick={() => setCycleHistoryModal(null)}
-                aria-label="Close archive cycle history"
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const rec = cycleHistoryModal.record;
+                    setCycleHistoryModal(null);
+                    if (rec) handleInspect(rec);
+                  }}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-teal-400 text-slate-600 dark:text-slate-300 text-[11px] font-semibold transition-colors cursor-pointer"
+                >
+                  <Eye className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>Inspect</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCycleHistoryModal(null)}
+                  aria-label="Close archive cycle history"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
             <div className="p-5 overflow-y-auto space-y-3 text-xs">
               {loadingCycles ? (

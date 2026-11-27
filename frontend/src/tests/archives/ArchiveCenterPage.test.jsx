@@ -169,9 +169,28 @@ describe('ArchiveCenterPage (Role-Aware Compliance Archive Vault)', () => {
       expect(screen.getByText('ARC-EX-APT-001')).toBeInTheDocument();
     });
 
+    // Clean Patient UI: stripped redundant (Example) title suffix, single-line table rows, 3 focused KPIs, no internal retention dropdown
+    expect(screen.getByText('Completed Visit — Dental Prophylaxis')).toBeInTheDocument();
+    expect(screen.queryByText(/Quarterly operational archive/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Until Nov 15, 2029/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Receptionist$/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Past Visits/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Locked Clinical/i })).toBeInTheDocument();
+    expect(screen.queryByText(/Example Records/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Filter by retention policy')).not.toBeInTheDocument();
+
     expect(screen.queryByRole('button', { name: /Archive Record/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Export CSV/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Restore/i })).not.toBeInTheDocument();
+
+    // Clicking Locked Clinical KPI card filters the table server-side
+    fireEvent.click(screen.getByRole('button', { name: /Locked Clinical/i }));
+    await waitFor(() => {
+      expect(archivesApi.list).toHaveBeenLastCalledWith(
+        expect.objectContaining({ status: 'LOCKED_RETENTION' }),
+        expect.any(Object)
+      );
+    });
   });
 
   it('surfaces tamper warning when snapshot SHA-256 verification fails and locks clinical retention for Dentists', async () => {

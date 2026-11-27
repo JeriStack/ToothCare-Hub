@@ -70,6 +70,15 @@ class Database
 
         try {
             $this->pdo = new PDO($dsn, $username, $password, $options);
+            // Align MySQL session time_zone with PHP APP_TIMEZONE (e.g., Asia/Manila -> +08:00)
+            // so NOW() / UNIX_TIMESTAMP() stay synchronized with PHP timestamps.
+            try {
+                $tzName = $this->config->getString('app_timezone', 'Asia/Manila');
+                $offset = (new \DateTimeImmutable('now', new \DateTimeZone($tzName)))->format('P');
+                $this->pdo->exec("SET time_zone = '{$offset}'");
+            } catch (\Throwable) {
+                // Non-fatal fallback if timezone setting fails
+            }
             return $this->pdo;
         } catch (PDOException $e) {
             // Log sanitized diagnostic details (never include password)

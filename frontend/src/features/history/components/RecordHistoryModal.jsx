@@ -77,7 +77,7 @@ export function RecordHistoryModal({ entityType, entityId, title, onClose }) {
     >
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-2xl w-full max-w-3xl max-h-[90dvh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/75 dark:bg-gray-900/55 flex items-center justify-between gap-3">
+        <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/75 dark:bg-gray-900/55 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-500/15 border border-teal-200/80 dark:border-teal-500/30 text-[#0F766E] dark:text-teal-300 flex items-center justify-center shrink-0">
               <History className="w-4 h-4" aria-hidden="true" />
@@ -114,13 +114,13 @@ export function RecordHistoryModal({ entityType, entityId, title, onClose }) {
 
         {/* Subject Banner */}
         {subject && (
-          <div className="px-6 py-3 border-b border-slate-100 dark:border-gray-700/80 bg-white dark:bg-gray-800/90 flex flex-wrap items-center justify-between gap-2 text-xs">
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="px-4 sm:px-6 py-3 border-b border-slate-100 dark:border-gray-700/80 bg-white dark:bg-gray-800/90 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex flex-wrap items-center gap-2 min-w-0">
               <span className="font-semibold text-slate-800 dark:text-slate-100">
                 {subject.name || subject.reference}
               </span>
               {subject.email && (
-                <span className="text-slate-500 dark:text-slate-400 font-mono text-[11px]">
+                <span className="text-slate-500 dark:text-slate-400 font-mono text-[11px] tch-wrap-anywhere">
                   {subject.email}
                 </span>
               )}
@@ -143,7 +143,7 @@ export function RecordHistoryModal({ entityType, entityId, title, onClose }) {
         )}
 
         {/* Timeline Body */}
-        <div className="p-6 overflow-y-auto space-y-4">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-4">
           {loading ? (
             <div className="space-y-3" aria-busy="true">
               {[1, 2, 3].map((i) => (
@@ -165,12 +165,12 @@ export function RecordHistoryModal({ entityType, entityId, title, onClose }) {
               No chronological history events recorded for this record yet.
             </div>
           ) : (
-            <ol className="relative border-l-2 border-slate-200 dark:border-gray-700 ml-3 space-y-4">
+            <ol className="relative border-l-2 border-slate-200 dark:border-gray-700 ml-2 sm:ml-3 space-y-4">
               {events.map((evt, idx) => {
                 const badgeClass = RESULT_BADGE[evt.result] || RESULT_BADGE.SUCCESS;
                 const changes = Array.isArray(evt.changes) ? evt.changes : [];
                 return (
-                  <li key={`${evt.source}-${evt.id}-${idx}`} className="ml-5">
+                  <li key={`${evt.source}-${evt.id}-${idx}`} className="ml-4 sm:ml-5 min-w-0">
                     <span className="absolute -left-[9px] mt-1.5 w-4 h-4 rounded-full bg-white dark:bg-gray-800 border-2 border-[#0D9488] flex items-center justify-center">
                       {evt.result === 'FAILED' || evt.result === 'DENIED' ? (
                         <ShieldAlert className="w-2.5 h-2.5 text-rose-500" aria-hidden="true" />
@@ -179,9 +179,9 @@ export function RecordHistoryModal({ entityType, entityId, title, onClose }) {
                       )}
                     </span>
 
-                    <div className="rounded-xl border border-slate-200/90 dark:border-gray-700/80 bg-slate-50/60 dark:bg-gray-900/45 p-3.5 text-xs space-y-2">
+                    <div className="rounded-xl border border-slate-200/90 dark:border-gray-700/80 bg-slate-50/60 dark:bg-gray-900/45 p-3 sm:p-3.5 text-xs space-y-2 min-w-0">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2 min-w-0">
                           <span className="font-mono text-[10.5px] font-semibold text-slate-500 dark:text-slate-400">
                             {evt.event_ref}
                           </span>
@@ -212,7 +212,7 @@ export function RecordHistoryModal({ entityType, entityId, title, onClose }) {
                       </div>
 
                       {evt.reason && (
-                        <p className="text-slate-600 dark:text-slate-300 italic">
+                        <p className="text-slate-600 dark:text-slate-300 italic tch-wrap-anywhere">
                           “{evt.reason}”
                         </p>
                       )}
@@ -226,16 +226,16 @@ export function RecordHistoryModal({ entityType, entityId, title, onClose }) {
                             {changes.map((c) => (
                               <div
                                 key={c.field}
-                                className="flex flex-wrap items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white dark:bg-gray-800 border border-slate-200/80 dark:border-gray-700 text-[11px]"
+                                className="flex flex-wrap items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white dark:bg-gray-800 border border-slate-200/80 dark:border-gray-700 text-[11px] min-w-0"
                               >
                                 <span className="font-mono font-semibold text-slate-500 dark:text-slate-400">
                                   {c.field}:
                                 </span>
-                                <span className="line-through text-rose-600 dark:text-rose-400">
+                                <span className="line-through text-rose-600 dark:text-rose-400 tch-wrap-anywhere">
                                   {formatDiffVal(c.before)}
                                 </span>
                                 <ArrowRight className="w-3 h-3 text-slate-400 shrink-0" aria-hidden="true" />
-                                <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                                <span className="font-semibold text-emerald-700 dark:text-emerald-300 tch-wrap-anywhere">
                                   {formatDiffVal(c.after)}
                                 </span>
                               </div>

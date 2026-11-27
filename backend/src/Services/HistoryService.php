@@ -301,13 +301,14 @@ class HistoryService
         $apptIds = $this->historyRepo->findAppointmentIdsForPatient($patientId, 60);
 
         $events = [];
+        $isReceptionist = $scope['role'] === 'RECEPTIONIST';
         $auditRows = $this->historyRepo->findAuditEventsForTargets(
             ['patient', 'patients'],
             [$patientId],
             null,
             80
         );
-        if ($patientUserId !== null && $patientUserId > 0) {
+        if (!$isReceptionist && $patientUserId !== null && $patientUserId > 0) {
             $userRows = $this->historyRepo->findAuditEventsForTargets(['user', 'users'], [$patientUserId], null, 40);
             $auditRows = array_merge($auditRows, $userRows);
         }
@@ -320,6 +321,9 @@ class HistoryService
         foreach ($auditRows as $r) {
             $aid = (int) $r['id'];
             if (isset($seenAudit[$aid])) {
+                continue;
+            }
+            if ($isReceptionist && !$this->isReceptionistTimelineEventAllowed($r)) {
                 continue;
             }
             $seenAudit[$aid] = true;
@@ -377,13 +381,14 @@ class HistoryService
         $apptIds = $this->historyRepo->findAppointmentIdsForDentist($dentistId, 60);
 
         $events = [];
+        $isReceptionist = $scope['role'] === 'RECEPTIONIST';
         $auditRows = $this->historyRepo->findAuditEventsForTargets(
             ['dentist', 'dentists', 'dentist_schedules', 'dentist_time_off', 'schedules'],
             [$dentistId],
-            $dentistUserId,
+            $isReceptionist ? null : $dentistUserId,
             80
         );
-        if ($dentistUserId !== null && $dentistUserId > 0) {
+        if (!$isReceptionist && $dentistUserId !== null && $dentistUserId > 0) {
             $auditRows = array_merge(
                 $auditRows,
                 $this->historyRepo->findAuditEventsForTargets(['user', 'users'], [$dentistUserId], null, 40)
@@ -400,6 +405,9 @@ class HistoryService
         foreach ($auditRows as $r) {
             $aid = (int) $r['id'];
             if (isset($seen[$aid])) {
+                continue;
+            }
+            if ($isReceptionist && !$this->isReceptionistTimelineEventAllowed($r)) {
                 continue;
             }
             $seen[$aid] = true;
@@ -593,6 +601,29 @@ class HistoryService
             }
         }
         throw HttpException::forbidden('Patients can only inspect their own account and appointment history.');
+    }
+
+    /**
+     * Filter out restricted security, clinical, and user-account audit rows from Receptionist timelines.
+     *
+     * @param array<string, mixed> $row
+     */
+    private function isReceptionistTimelineEventAllowed(array $row): bool
+    {
+        $action = strtoupper((string) ($row['action'] ?? ''));
+        $targetType = strtolower((string) ($row['target_type'] ?? ''));
+
+        if (
+            str_starts_with($action, 'AUTH_')
+            || str_starts_with($action, 'SECURITY_')
+            || str_starts_with($action, 'ROLE_')
+            || str_starts_with($action, 'PERMISSION_')
+            || str_starts_with($action, 'TREATMENT_RECORD_')
+        ) {
+            return false;
+        }
+
+        return !in_array($targetType, ['user', 'users', 'auth', 'session', 'role', 'roles', 'treatment_record', 'treatment_records'], true);
     }
 
     /**
