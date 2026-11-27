@@ -188,7 +188,7 @@ class AppointmentService
                 'status' => AppointmentValidator::STATUS_PENDING,
                 'chief_complaint' => $validated['chief_complaint'],
                 'operatory_chair' => $chair,
-                'rescheduled_from_id' => $input['rescheduled_from_id'] ?? null,
+                'rescheduled_from_id' => null,
             ], $pdo);
 
             // 9. Record Initial Status History
@@ -574,8 +574,14 @@ class AppointmentService
                 throw HttpException::notFound('Appointment not found.');
             }
 
+            // Role & ownership check: Dentists cannot cancel clinic appointments here
+            $upperRole = strtoupper($userRole);
+            if ($upperRole === 'DENTIST') {
+                throw HttpException::forbidden('Dentists are not authorized to cancel appointments from this endpoint.');
+            }
+
             // Ownership & cancellation cutoff policy check for patients
-            if (strtoupper($userRole) === 'PATIENT') {
+            if ($upperRole === 'PATIENT') {
                 $patient = $this->patientRepo->findByUserId($userId);
                 if (!$patient || (int) $appointment['patient_id'] !== (int) $patient['id']) {
                     throw HttpException::forbidden('You can only cancel your own appointments.');
@@ -1024,9 +1030,15 @@ class AppointmentService
             throw HttpException::notFound('Appointment not found.');
         }
 
-        if (strtoupper($userRole) === 'PATIENT') {
+        $upperRole = strtoupper($userRole);
+        if ($upperRole === 'PATIENT') {
             $patient = $this->patientRepo->findByUserId($userId);
             if (!$patient || (int) $appointment['patient_id'] !== (int) $patient['id']) {
+                throw HttpException::notFound('Appointment not found.');
+            }
+        } elseif ($upperRole === 'DENTIST') {
+            $dentist = $this->dentistRepo->findByUserId($userId);
+            if (!$dentist || (int) $appointment['dentist_id'] !== (int) $dentist['id']) {
                 throw HttpException::notFound('Appointment not found.');
             }
         }
@@ -1211,6 +1223,17 @@ class AppointmentService
     public function listAdminAppointments(array $filters = [], int $page = 1, int $perPage = 20): array
     {
         $normalized = $this->normalizeSearchFilters($filters, true, true);
+        $sort = \App\Support\ServerTableQuery::parseSort(
+            $filters,
+            AppointmentRepository::ADMIN_SORT_ALLOWLIST,
+            'start_at',
+            'DESC',
+            'a.id',
+            true
+        );
+        $normalized['sort_by'] = $sort['sort_by'];
+        $normalized['sort_dir'] = $sort['sort_dir'];
+
         $page = max(1, $page);
         $perPage = max(1, min(100, $perPage));
 
@@ -1368,12 +1391,14 @@ class AppointmentService
 
         return [
             'items' => $result['items'],
-            'meta' => [
-                'total' => $result['total'],
-                'page' => $result['page'],
-                'per_page' => $result['per_page'],
-                'last_page' => $result['total_pages'],
-            ],
+            'meta' => \App\Support\ServerTableQuery::buildMeta(
+                (int) ($result['total_records'] ?? $result['total'] ?? 0),
+                (int) ($result['filtered_records'] ?? $result['total'] ?? 0),
+                (int) ($result['page'] ?? $page),
+                (int) ($result['per_page'] ?? $perPage),
+                'start_at',
+                'ASC'
+            ),
         ];
     }
 

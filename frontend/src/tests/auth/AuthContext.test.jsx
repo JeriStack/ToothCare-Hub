@@ -24,6 +24,9 @@ function TestConsumer() {
       <div data-testid="loading-state">{isLoading ? 'loading' : 'idle'}</div>
       <div data-testid="user-email">{user ? user.email : 'none'}</div>
       <div data-testid="user-role">{user ? user.role : 'none'}</div>
+      <div data-testid="user-permissions">
+        {Array.isArray(user?.permissions) ? user.permissions.join(',') : 'none'}
+      </div>
       <div data-testid="user-name">
         {user?.patient
           ? `${user.patient.first_name} ${user.patient.last_name}`
@@ -296,5 +299,38 @@ describe('AuthContext Backend Verification & State Lifecycle', () => {
       expect(localStorage.getItem('toothcare_user')).not.toBeNull();
     });
     expect(sessionStorage.getItem('toothcare_user')).toBeNull();
+  });
+
+  it('resyncs live DRBAC permissions silently when toothcare:permissions-refresh fires', async () => {
+    authApi.getMe
+      .mockResolvedValueOnce({
+        id: 2,
+        email: 'receptionist@toothcare.local',
+        role: 'RECEPTIONIST',
+        permissions: ['patients.view'],
+      })
+      .mockResolvedValueOnce({
+        id: 2,
+        email: 'receptionist@toothcare.local',
+        role: 'RECEPTIONIST',
+        permissions: ['patients.view', 'reports.view'],
+      });
+
+    render(
+      <AuthProvider>
+        <TestConsumer />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('user-permissions')).toHaveTextContent('patients.view');
+    });
+
+    window.dispatchEvent(new CustomEvent('toothcare:permissions-refresh'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('user-permissions')).toHaveTextContent('patients.view,reports.view');
+    });
+    expect(authApi.getMe).toHaveBeenCalledTimes(2);
   });
 });

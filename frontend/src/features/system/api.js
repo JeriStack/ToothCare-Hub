@@ -13,7 +13,15 @@ export const systemApi = {
   },
 
   /**
-   * Fetch all clinic configuration settings
+   * Fetch publicly readable clinic identity, contact, and booking rules
+   */
+  async getPublicSettings() {
+    const response = await apiClient.get('/clinic/settings');
+    return response.data?.data || {};
+  },
+
+  /**
+   * Fetch all clinic configuration settings (Admin)
    */
   async getSettings() {
     const response = await apiClient.get('/admin/clinic/settings');

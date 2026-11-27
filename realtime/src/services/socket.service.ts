@@ -86,6 +86,11 @@ export function createRealtimeService(
         return;
       }
 
+      if (urlPath === '/internal/presence' && req.method === 'POST') {
+        await internalPublisher.handlePresence(req, res);
+        return;
+      }
+
       // Let Socket.IO handle its own path
       if (urlPath.startsWith(env.socketPath) || urlPath === env.socketPath.replace(/\/$/, '')) {
         return;
@@ -214,10 +219,13 @@ export function createRealtimeService(
     close: () =>
       new Promise((resolve) => {
         clearInterval(revalidateTimer);
+        httpServer.closeIdleConnections?.();
         io.close(() => {
-          httpServer.close(() => {
+          if (httpServer.listening) {
+            httpServer.close(() => resolve());
+          } else {
             resolve();
-          });
+          }
         });
       }),
   };

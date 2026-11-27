@@ -25,15 +25,22 @@ import { AppointmentCardSkeleton } from '../../../components/skeletons/Appointme
 
 
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
+import { ServerTableFooter } from '../../../components/ui/ServerTableControls';
 export function AppointmentHistoryPage({ onNavigateToBook }) {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Filters
+  // Filters & Pagination
   const [activeTab, setActiveTab] = useState('ALL'); // ALL, UPCOMING, PENDING, COMPLETED, CANCELLED
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(6);
+
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab, searchQuery]);
 
   // Modals state
   const [detailModalAppt, setDetailModalAppt] = useState(null);
@@ -125,13 +132,39 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
     }
   };
 
+  // Clinic timezone helpers (Asia/Manila) to stay aligned with backend DATETIME values
+  const getClinicIsoDate = (date = new Date()) => {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Manila',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(date);
+    const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+    return `${map.year}-${map.month}-${map.day}`;
+  };
+
+  const getClinicNowSql = (date = new Date()) => {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Manila',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(date);
+    const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+    return `${map.year}-${map.month}-${map.day} ${map.hour}:${map.minute}:${map.second}`;
+  };
+
   // Open reschedule modal
   const handleOpenReschedule = (appt) => {
     setRescheduleModalAppt(appt);
-    // default date: tomorrow
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    setRescheduleDate(d.toISOString().split('T')[0]);
+    // default date: tomorrow in clinic timezone (Asia/Manila)
+    const tomorrow = new Date(Date.now() + 86400000);
+    setRescheduleDate(getClinicIsoDate(tomorrow));
     setRescheduleSlot(null);
     setRescheduleReason('');
     setRescheduleError(null);
@@ -179,7 +212,7 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
 
   // Filtered appointments
   const filteredAppointments = useMemo(() => {
-    const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    const nowStr = getClinicNowSql();
 
     return appointments.filter((appt) => {
       // Tab filter
@@ -355,20 +388,47 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
             </button>
           )}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredAppointments.map((appt) => (
-            <AppointmentCard
-              key={appt.id}
-              appointment={appt}
-              onViewDetails={handleOpenDetails}
-              onCancel={handleOpenCancel}
-              onReschedule={handleOpenReschedule}
-              role="PATIENT"
-            />
-          ))}
-        </div>
-      )}
+      ) : (() => {
+        const totalPages = Math.max(1, Math.ceil(filteredAppointments.length / perPage));
+        const safePage = Math.min(page, totalPages);
+        const visibleAppointments = filteredAppointments.slice(
+          (safePage - 1) * perPage,
+          safePage * perPage
+        );
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {visibleAppointments.map((appt) => (
+                <AppointmentCard
+                  key={appt.id}
+                  appointment={appt}
+                  onViewDetails={handleOpenDetails}
+                  onCancel={handleOpenCancel}
+                  onReschedule={handleOpenReschedule}
+                  role="PATIENT"
+                />
+              ))}
+            </div>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 overflow-hidden shadow-xs">
+              <ServerTableFooter
+                page={safePage}
+                perPage={perPage}
+                totalRecords={appointments.length}
+                filteredRecords={filteredAppointments.length}
+                totalPages={totalPages}
+                onPageChange={(nextPage) => setPage(nextPage)}
+                onPerPageChange={(nextSize) => {
+                  setPerPage(nextSize);
+                  setPage(1);
+                }}
+                pageSizeOptions={[6, 10, 15, 25]}
+                loading={loading}
+                itemLabel="appointments"
+              />
+            </div>
+          </div>
+        );
+      })()}
 
       {/* DETAIL MODAL / DRAWER */}
       {detailModalAppt && (
@@ -543,7 +603,7 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
 
             <div className="bg-amber-50 dark:bg-amber-950/50 p-3 rounded-xl border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-200 space-y-1">
               <p className="font-semibold">Clinic Cancellation Policy:</p>
-              <p>
+              <p className="text-justify">
                 Appointments cancelled will release the time slot back to the clinic roster. If you need to change your
                 time instead, consider <strong>Rescheduling</strong>.
               </p>
@@ -638,7 +698,7 @@ export function AppointmentHistoryPage({ onNavigateToBook }) {
                 <input
                   type="date"
                   value={rescheduleDate}
-                  min={new Date().toISOString().split('T')[0]}
+                  min={getClinicIsoDate()}
                   onChange={(e) => {
                     setRescheduleDate(e.target.value);
                     setRescheduleSlot(null);

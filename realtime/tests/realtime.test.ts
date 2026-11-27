@@ -408,3 +408,84 @@ test('Realtime CORS allows private LAN dev origins in development but rejects th
   assert.equal(isAllowedRealtimeOrigin('http://192.168.1.56:5173', prodEnv), false);
   assert.equal(isAllowedRealtimeOrigin('http://localhost:5173', prodEnv), false);
 });
+
+test('Messaging realtime events validate non-PII conversationId, reject message bodies, and report authenticated presence', async () => {
+  const safeChatEnvelope = validatePublishEnvelope({
+    eventId: 'msg-event-0001-ok',
+    eventType: 'message.created',
+    recipientUserId: 201,
+    payload: {
+      eventId: 'msg-event-0001-ok',
+      eventType: 'message.created',
+      eventVersion: '1.0',
+      notificationId: null,
+      appointmentId: null,
+      conversationId: 42,
+      entityType: 'messages',
+      entityId: 901,
+      status: 'sent',
+      occurredAt: new Date().toISOString(),
+    },
+  });
+  assert.equal(safeChatEnvelope.valid, true);
+  assert.equal(safeChatEnvelope.envelope?.payload.conversationId, 42);
+
+  // Privacy guard: message text body MUST NEVER pass through the real-time event payload
+  const leakyEnvelope = validatePublishEnvelope({
+    eventId: 'msg-event-0002-bad',
+    eventType: 'message.created',
+    recipientUserId: 201,
+    payload: {
+      eventId: 'msg-event-0002-bad',
+      eventType: 'message.created',
+      eventVersion: '1.0',
+      notificationId: null,
+      appointmentId: null,
+      conversationId: 42,
+      entityType: 'messages',
+      entityId: 902,
+      status: 'sent',
+      body: 'Private patient symptom text must never be broadcast',
+      occurredAt: new Date().toISOString(),
+    },
+  });
+  assert.equal(leakyEnvelope.valid, false);
+
+  const { service, port, tickets } = await startTestServer();
+  let clientOnline: ClientSocket | null = null;
+  try {
+    const tOnline = makeHexTicket('presence201');
+    tickets.register(tOnline, {
+      userId: 201,
+      role: 'DENTIST',
+      dentistId: 7,
+      permissions: ['messages.view', 'messages.send'],
+      sessionIdHash: 'sess-201',
+    });
+    clientOnline = await connectSocket(port, { ticket: tOnline });
+
+    // Unauthenticated presence request is rejected
+    const unauthRes = await fetch(`http://127.0.0.1:${port}/internal/presence`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userIds: [201, 999] }),
+    });
+    assert.equal(unauthRes.status, 401);
+
+    // Signed internal presence lookup accurately identifies online vs offline users
+    const body = JSON.stringify({ userIds: [201, 999] });
+    const headers = service.publisherAuth.signHeaders('POST', '/internal/presence', body);
+    const presenceRes = await fetch(`http://127.0.0.1:${port}/internal/presence`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body,
+    });
+    assert.equal(presenceRes.status, 200);
+    const presenceJson = (await presenceRes.json()) as { ok: boolean; onlineUserIds: number[] };
+    assert.equal(presenceJson.ok, true);
+    assert.deepEqual(presenceJson.onlineUserIds, [201]);
+  } finally {
+    clientOnline?.close();
+    await service.close();
+  }
+});

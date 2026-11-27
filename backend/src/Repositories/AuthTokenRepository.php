@@ -49,17 +49,19 @@ class AuthTokenRepository
     public function findValidToken(string $tokenHash, string $tokenType): ?array
     {
         $pdo = $this->database->getConnection();
+        $nowFormatted = date('Y-m-d H:i:s');
         $stmt = $pdo->prepare('
             SELECT * FROM auth_tokens
             WHERE token_hash = ?
               AND token_type = ?
               AND used_at IS NULL
-              AND expires_at > NOW()
+              AND expires_at > ?
             LIMIT 1
         ');
         $stmt->execute([
             $tokenHash,
             strtoupper($tokenType),
+            $nowFormatted,
         ]);
 
         $row = $stmt->fetch(PDO::FETCH_ASSOC);

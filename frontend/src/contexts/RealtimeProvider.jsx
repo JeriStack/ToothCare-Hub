@@ -64,6 +64,11 @@ export function RealtimeProvider({ children, client = sharedRealtimeClient }) {
     });
 
     const offReconnect = rtClient.onReconnect(() => {
+      try {
+        window.dispatchEvent(new CustomEvent('toothcare:permissions-refresh'));
+      } catch {
+        // Ignore in non-browser environments
+      }
       reconnectSubscribersRef.current.forEach((fn) => {
         try {
           fn();

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Controllers\AppointmentController;
+use App\Controllers\ArchiveController;
 use App\Controllers\AuditLogController;
 use App\Controllers\EmailOutboxController;
 use App\Controllers\AuthController;
@@ -14,7 +15,9 @@ use App\Controllers\DentistController;
 use App\Controllers\DentistScheduleController;
 use App\Controllers\DentistTimeOffController;
 use App\Controllers\HealthController;
+use App\Controllers\HistoryController;
 use App\Controllers\LegalDocumentController;
+use App\Controllers\MessageController;
 use App\Controllers\MetricsController;
 use App\Controllers\NotificationController;
 use App\Controllers\OpenApiDocsController;
@@ -82,6 +85,7 @@ $router->group('/api/v1', function (Router $r): void {
     $r->get('/users/{id}/avatar', [UserController::class, 'serveAvatar'], [AuthenticationMiddleware::class]);
 
     // 3. Public Catalog Endpoints (Active items for booking/discovery)
+    $r->get('/clinic/settings', [ClinicSettingsController::class, 'publicIndex']);
     $r->get('/services', [ServiceController::class, 'listPublic']);
     $r->get('/dentists', [DentistController::class, 'listPublic']);
     $r->get('/dentists/{id}', [DentistController::class, 'showPublic']);
@@ -174,13 +178,13 @@ $router->group('/api/v1', function (Router $r): void {
     $r->patch('/admin/patients/{id}', [PatientController::class, 'update'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('patients.manage', ['ADMIN', 'RECEPTIONIST'])]);
     $r->patch('/admin/patients/{id}/status', [PatientController::class, 'updateStatus'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('users.manage', ['ADMIN'])]);
 
-    // Appointments Lifecycle Review & Triage (Front Desk & Admin)
-    $r->get('/admin/appointments', [AppointmentController::class, 'adminIndex'], [AuthenticationMiddleware::class, $staffPortalGuard, AuthorizationMiddleware::hasPermission('appointments.view', ['RECEPTIONIST', 'ADMIN'])]);
-    $r->get('/admin/appointments/{id}', [AppointmentController::class, 'adminShow'], [AuthenticationMiddleware::class, $staffPortalGuard, AuthorizationMiddleware::hasPermission('appointments.view', ['RECEPTIONIST', 'ADMIN'])]);
-    $r->get('/admin/appointments/{id}/availability', [AppointmentController::class, 'checkAvailability'], [AuthenticationMiddleware::class, $staffPortalGuard, AuthorizationMiddleware::hasPermission('appointments.view', ['RECEPTIONIST', 'ADMIN'])]);
-    $r->patch('/admin/appointments/{id}/confirm', [AppointmentController::class, 'confirm'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('appointments.manage', ['RECEPTIONIST', 'ADMIN'])]);
-    $r->patch('/admin/appointments/{id}/reject', [AppointmentController::class, 'reject'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('appointments.manage', ['RECEPTIONIST', 'ADMIN'])]);
-    $r->patch('/admin/appointments/{id}/complete', [AppointmentController::class, 'complete'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('appointments.complete', ['ADMIN'])]);
+    // Appointments Lifecycle Review & Triage (Front Desk & Admin only — Dentists use /dentist/appointments/*)
+    $r->get('/admin/appointments', [AppointmentController::class, 'adminIndex'], [AuthenticationMiddleware::class, $frontDeskGuard, AuthorizationMiddleware::hasPermission('appointments.view', ['RECEPTIONIST', 'ADMIN'])]);
+    $r->get('/admin/appointments/{id}', [AppointmentController::class, 'adminShow'], [AuthenticationMiddleware::class, $frontDeskGuard, AuthorizationMiddleware::hasPermission('appointments.view', ['RECEPTIONIST', 'ADMIN'])]);
+    $r->get('/admin/appointments/{id}/availability', [AppointmentController::class, 'checkAvailability'], [AuthenticationMiddleware::class, $frontDeskGuard, AuthorizationMiddleware::hasPermission('appointments.view', ['RECEPTIONIST', 'ADMIN'])]);
+    $r->patch('/admin/appointments/{id}/confirm', [AppointmentController::class, 'confirm'], [AuthenticationMiddleware::class, $frontDeskGuard, AuthorizationMiddleware::hasPermission('appointments.manage', ['RECEPTIONIST', 'ADMIN'])]);
+    $r->patch('/admin/appointments/{id}/reject', [AppointmentController::class, 'reject'], [AuthenticationMiddleware::class, $frontDeskGuard, AuthorizationMiddleware::hasPermission('appointments.manage', ['RECEPTIONIST', 'ADMIN'])]);
+    $r->patch('/admin/appointments/{id}/complete', [AppointmentController::class, 'complete'], [AuthenticationMiddleware::class, $frontDeskGuard, AuthorizationMiddleware::hasPermission('appointments.complete', ['ADMIN', 'RECEPTIONIST'])]);
 
     // User & Staff Account Management (Administrator Only)
     $r->get('/admin/users', [UserController::class, 'index'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('users.view', ['ADMIN'])]);
@@ -259,6 +263,25 @@ $router->group('/api/v1', function (Router $r): void {
     $r->put('/treatment-records/{id}', [TreatmentRecordController::class, 'update'], [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN']), AuthorizationMiddleware::hasPermission('treatment_records.amend', ['DENTIST', 'ADMIN'])]);
     $r->get('/appointments/{id}/treatment-record', [TreatmentRecordController::class, 'showByAppointment'], [AuthenticationMiddleware::class, new AuthorizationMiddleware(['DENTIST', 'ADMIN']), AuthorizationMiddleware::hasPermission('treatment_records.view', ['DENTIST', 'ADMIN'])]);
 
+    // Role-Aware Compliance Archive Vault & Multi-Cycle History (Admin, Receptionist, Dentist, Patient — strictly scoped server-side)
+    $r->get('/archives/summary', [ArchiveController::class, 'summary'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('archives.view', ['ADMIN', 'RECEPTIONIST', 'DENTIST', 'PATIENT'])]);
+    $r->get('/archives/eligibility', [ArchiveController::class, 'eligibility'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('archives.create', ['ADMIN', 'RECEPTIONIST', 'DENTIST'])]);
+    $r->get('/archives/export', [ArchiveController::class, 'export'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('archives.export', ['ADMIN', 'RECEPTIONIST'])]);
+    $r->get('/archives', [ArchiveController::class, 'index'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('archives.view', ['ADMIN', 'RECEPTIONIST', 'DENTIST', 'PATIENT'])]);
+    $r->post('/archives', [ArchiveController::class, 'store'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('archives.create', ['ADMIN', 'RECEPTIONIST', 'DENTIST'])]);
+    $r->get('/archives/{id}/history', [ArchiveController::class, 'history'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('archives.view_history', ['ADMIN', 'RECEPTIONIST', 'DENTIST', 'PATIENT'])]);
+    $r->get('/archives/{id}', [ArchiveController::class, 'show'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('archives.view', ['ADMIN', 'RECEPTIONIST', 'DENTIST', 'PATIENT'])]);
+    $r->post('/archives/{id}/restore', [ArchiveController::class, 'restore'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('archives.restore', ['ADMIN'])]);
+
+    // Centralized History Records & Individual Record Timelines (Phase 3 — distinct from forensic Audit Trail & Archive Vault)
+    $r->get('/history/summary', [HistoryController::class, 'summary'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('history.view', ['ADMIN', 'RECEPTIONIST', 'DENTIST', 'PATIENT'])]);
+    $r->get('/history/patients/{id}', [HistoryController::class, 'patientTimeline'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('history.view_patient', ['ADMIN', 'RECEPTIONIST', 'DENTIST', 'PATIENT'])]);
+    $r->get('/history/dentists/{id}', [HistoryController::class, 'dentistTimeline'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('history.view', ['ADMIN', 'RECEPTIONIST', 'DENTIST'])]);
+    $r->get('/history/staff/{id}', [HistoryController::class, 'staffTimeline'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('history.view_staff', ['ADMIN', 'RECEPTIONIST'])]);
+    $r->get('/history/appointments/{id}', [HistoryController::class, 'appointmentTimeline'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('history.view_appointment', ['ADMIN', 'RECEPTIONIST', 'DENTIST', 'PATIENT'])]);
+    $r->get('/history/{id}', [HistoryController::class, 'show'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('history.view_details', ['ADMIN', 'RECEPTIONIST', 'DENTIST', 'PATIENT'])]);
+    $r->get('/history', [HistoryController::class, 'index'], [AuthenticationMiddleware::class, AuthorizationMiddleware::hasPermission('history.view', ['ADMIN', 'RECEPTIONIST', 'DENTIST', 'PATIENT'])]);
+
     // 8. Future Phases - Structured Placeholders
     $notImplemented = fn (string $name) => function (Request $req) use ($name) {
         throw HttpException::notImplemented("Endpoint '{$name}' is planned for Phase 13+ implementation.");
@@ -277,6 +300,27 @@ $router->group('/api/v1', function (Router $r): void {
     $r->post('/notifications/read-all', [NotificationController::class, 'markAllRead'], $patientAuth);
     $r->patch('/notifications/read-all', [NotificationController::class, 'markAllRead'], $patientAuth);
     $r->delete('/notifications/{id}', [NotificationController::class, 'destroy'], $patientAuth);
+
+    // Patient-Dentist Direct Messaging (Strictly scoped to authorized PATIENT & DENTIST participants)
+    $chatViewGuard = [
+        AuthenticationMiddleware::class,
+        new AuthorizationMiddleware(['PATIENT', 'DENTIST']),
+        AuthorizationMiddleware::hasPermission('messages.view', ['PATIENT', 'DENTIST']),
+    ];
+    $chatSendGuard = [
+        AuthenticationMiddleware::class,
+        new AuthorizationMiddleware(['PATIENT', 'DENTIST']),
+        AuthorizationMiddleware::hasPermission('messages.send', ['PATIENT', 'DENTIST']),
+    ];
+    $r->get('/messages/conversations', [MessageController::class, 'listConversations'], $chatViewGuard);
+    $r->get('/messages/unread-count', [MessageController::class, 'unreadCount'], $chatViewGuard);
+    $r->get('/messages/presence', [MessageController::class, 'presence'], $chatViewGuard);
+    $r->post('/messages/conversations', [MessageController::class, 'startConversation'], [...$chatSendGuard, RateLimitMiddleware::perMinute(30, 'messages_start')]);
+    $r->get('/messages/conversations/{id}/messages', [MessageController::class, 'getMessages'], $chatViewGuard);
+    $r->post('/messages/conversations/{id}/messages', [MessageController::class, 'sendMessage'], [...$chatSendGuard, RateLimitMiddleware::perMinute(60, 'messages_send')]);
+    $r->post('/messages/conversations/{id}/delivered', [MessageController::class, 'markDelivered'], $chatViewGuard);
+    $r->post('/messages/conversations/{id}/read', [MessageController::class, 'markRead'], $chatViewGuard);
+    $r->post('/messages/conversations/{id}/typing', [MessageController::class, 'typing'], [...$chatSendGuard, RateLimitMiddleware::perMinute(120, 'messages_typing')]);
 
     // Reports Group
     $r->get('/reports/overview', $notImplemented('GET /api/v1/reports/overview'));

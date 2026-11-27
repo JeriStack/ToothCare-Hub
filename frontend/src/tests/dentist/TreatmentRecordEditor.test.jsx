@@ -163,4 +163,37 @@ describe('TreatmentRecordEditor Component', () => {
     expect(row.className).toMatch(/\[&>button\]:min-h-11/);
     expect(row.className).toMatch(/\[&>button\]:w-full/);
   });
+
+  it('prefills clinical fields when a quick clinical template is selected', () => {
+    render(<TreatmentRecordEditor appointmentId={50} initialRecord={null} onSaved={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Oral Prophylaxis/i }));
+
+    expect(screen.getByLabelText(/Clinical Diagnosis/i).value).toMatch(/supragingival plaque/i);
+    expect(screen.getByLabelText(/Procedure Notes/i).value).toMatch(/ultrasonic scaling/i);
+    expect(screen.getByLabelText(/Post-Op & Home Care/i).value).toMatch(/fluoride toothpaste/i);
+  });
+
+  it('toggles Full Mouth, quadrant selection, and Clear in FDI chart', () => {
+    render(<TreatmentRecordEditor appointmentId={50} initialRecord={null} onSaved={vi.fn()} />);
+
+    const fullMouthBtn = screen.getByRole('button', { name: /Full Mouth/i });
+    fireEvent.click(fullMouthBtn);
+    expect(screen.getByText(/Selected \(32\):/i)).toBeDefined();
+    expect(fullMouthBtn.getAttribute('aria-pressed')).toBe('true');
+
+    // Clicking Full Mouth again toggles all 32 teeth off
+    fireEvent.click(fullMouthBtn);
+    expect(screen.getByText(/Selected \(0\):/i)).toBeDefined();
+    expect(fullMouthBtn.getAttribute('aria-pressed')).toBe('false');
+
+    // Quadrant toggle selects 8 teeth and Clear resets selection
+    const q1Btn = screen.getByRole('button', { name: /Q1 · Upper Right/i });
+    fireEvent.click(q1Btn);
+    expect(screen.getByText(/Selected \(8\):/i)).toBeDefined();
+    expect(q1Btn.getAttribute('aria-pressed')).toBe('true');
+
+    fireEvent.click(screen.getByRole('button', { name: /^Clear$/i }));
+    expect(screen.getByText(/Selected \(0\):/i)).toBeDefined();
+  });
 });

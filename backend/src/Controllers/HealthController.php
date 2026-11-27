@@ -76,13 +76,20 @@ class HealthController
         $dbConnected = $this->database->ping();
         $dbLatencyMs = round((microtime(true) - $dbStart) * 1000, 2);
 
-        // 2. MySQL Thread Count & Table Status
+        // 2. MySQL Thread Count, Uptime & Table Status
         $dbThreads = 1;
         $dbSizeMb = 0.0;
+        $dbUptimeSeconds = null;
         try {
             $thStmt = $pdo->query("SHOW STATUS LIKE 'Threads_connected'");
             $thRow = $thStmt->fetch(PDO::FETCH_ASSOC);
             $dbThreads = (int) ($thRow['Value'] ?? 1);
+
+            $upStmt = $pdo->query("SHOW GLOBAL STATUS LIKE 'Uptime'");
+            $upRow = $upStmt->fetch(PDO::FETCH_ASSOC);
+            if ($upRow && isset($upRow['Value']) && is_numeric($upRow['Value'])) {
+                $dbUptimeSeconds = (int) $upRow['Value'];
+            }
 
             $sizeStmt = $pdo->query("
                 SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS size_mb 
@@ -94,18 +101,41 @@ class HealthController
             // Non-critical diagnostic
         }
 
-        // 3. Memory & System Status
+        // 3. Memory, OPcache & System Status
         $memoryUsage = round(memory_get_usage(true) / 1024 / 1024, 2);
         $memoryPeak = round(memory_get_peak_usage(true) / 1024 / 1024, 2);
+        $memoryLimit = (string) (ini_get('memory_limit') ?: '128M');
+        $opcacheEnabled = false;
+        if (function_exists('opcache_get_status')) {
+            $opStatus = @opcache_get_status(false);
+            $opcacheEnabled = is_array($opStatus) && !empty($opStatus['opcache_enabled']);
+        }
 
-        // 4. Rate Limiting Active Locks
+        // 4. Rate Limiting Active Locks & Realtime Outbox Backlog
         $activeRateLimits = 0;
+        $realtimePending = 0;
+        $realtimeFailed = 0;
         try {
             $rateStmt = $pdo->prepare('SELECT COUNT(*) FROM rate_limits WHERE reset_at > ?');
             $rateStmt->execute([date('Y-m-d H:i:s')]);
             $activeRateLimits = (int) $rateStmt->fetchColumn();
         } catch (\Throwable $e) {
             $activeRateLimits = 0;
+        }
+        try {
+            $rtOutboxStmt = $pdo->query("
+                SELECT
+                    COALESCE(SUM(CASE WHEN status IN ('PENDING', 'PROCESSING', 'FAILED_RETRYABLE') THEN 1 ELSE 0 END), 0) AS pending_count,
+                    COALESCE(SUM(CASE WHEN status IN ('FAILED_PERMANENT', 'FAILED') THEN 1 ELSE 0 END), 0) AS failed_count
+                FROM realtime_outbox
+            ");
+            $rtOutboxRow = $rtOutboxStmt->fetch(PDO::FETCH_ASSOC);
+            if ($rtOutboxRow) {
+                $realtimePending = (int) ($rtOutboxRow['pending_count'] ?? 0);
+                $realtimeFailed = (int) ($rtOutboxRow['failed_count'] ?? 0);
+            }
+        } catch (\Throwable) {
+            // Optional table in minimal test setups
         }
 
         $driver = '';
@@ -216,13 +246,17 @@ class HealthController
                 'latency_ms' => $dbLatencyMs,
                 'threads_connected' => $dbThreads,
                 'size_mb' => $dbSizeMb,
+                'uptime_seconds' => $dbUptimeSeconds,
             ],
             'php_fpm' => [
                 'name' => 'PHP-FPM Runtime',
                 'status' => 'healthy',
                 'version' => PHP_VERSION,
+                'sapi' => PHP_SAPI,
                 'memory_usage_mb' => $memoryUsage,
                 'memory_peak_mb' => $memoryPeak,
+                'memory_limit' => $memoryLimit,
+                'opcache_enabled' => $opcacheEnabled,
             ],
             'realtime' => [
                 'name' => 'Realtime Notification Service',
@@ -232,6 +266,8 @@ class HealthController
                 'port' => $realtimePort,
                 'latency_ms' => $realtimeLatencyMs,
                 'active_connections' => $realtimeActiveConnections,
+                'outbox_pending' => $realtimePending,
+                'outbox_failed' => $realtimeFailed,
             ],
             'rate_limiter' => [
                 'name' => 'Rate Limit Protection Engine',
@@ -248,8 +284,10 @@ class HealthController
             ],
         ];
 
+        $isDegraded = !$dbConnected || ($realtimeConfig->enabled && $realtimeStatus === 'unreachable');
+
         return Response::success([
-            'system_status' => $dbConnected ? 'operational' : 'degraded',
+            'system_status' => $isDegraded ? 'degraded' : 'operational',
             'timestamp' => date('c'),
             'environment' => $this->config->getString('app_env', 'development'),
             'services' => $services,

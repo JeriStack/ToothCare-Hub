@@ -21,6 +21,9 @@ import {
   Activity,
   BarChart3,
   Server,
+  Archive,
+  History,
+  MessageSquare,
 } from 'lucide-react';
 import {
   AuthProvider,
@@ -65,6 +68,10 @@ const AuditTrailPage = lazy(() => import('../features/audit/pages/AuditTrailPage
 const ReportsPage = lazy(() => import('../features/reports/pages/ReportsPage').then((m) => ({ default: m.ReportsPage })));
 const SystemHealthPage = lazy(() => import('../features/system/pages/SystemHealthPage').then((m) => ({ default: m.SystemHealthPage })));
 const StaffProfilePage = lazy(() => import('../features/staff/pages/StaffProfilePage').then((m) => ({ default: m.StaffProfilePage })));
+const ArchiveCenterPage = lazy(() => import('../features/archives/pages/ArchiveCenterPage').then((m) => ({ default: m.ArchiveCenterPage })));
+const HistoryRecordsPage = lazy(() => import('../features/history/pages/HistoryRecordsPage').then((m) => ({ default: m.HistoryRecordsPage })));
+const MessagesPage = lazy(() => import('../features/messages/pages/MessagesPage').then((m) => ({ default: m.MessagesPage })));
+import { useUnreadMessagesBadge } from '../features/messages/hooks/useUnreadMessagesBadge';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { LoadingProvider, useRouteLoading } from '../contexts/LoadingContext';
 import { ThemeProvider } from '../contexts/ThemeContext';
@@ -94,7 +101,7 @@ function getInitialTab() {
   const path = window.location.pathname.toLowerCase();
   if (path.startsWith('/patient/')) {
     const sub = path.replace('/patient/', '').split('/')[0];
-    if (['dashboard', 'book', 'services', 'dentists', 'appointments', 'notifications', 'profile'].includes(sub)) {
+    if (['dashboard', 'book', 'services', 'dentists', 'appointments', 'messages', 'archives', 'notifications', 'profile'].includes(sub)) {
       return sub;
     }
   }
@@ -112,6 +119,8 @@ function getInitialTab() {
         'users',
         'roles',
         'audit',
+        'history',
+        'archives',
         'reports',
         'system',
         'notifications',
@@ -123,7 +132,7 @@ function getInitialTab() {
   }
   if (path.startsWith('/dentist/')) {
     const sub = path.replace('/dentist/', '').split('/')[0];
-    if (['dashboard', 'appointments', 'treatment-records', 'notifications', 'profile'].includes(sub)) {
+    if (['dashboard', 'appointments', 'messages', 'treatment-records', 'archives', 'notifications', 'profile'].includes(sub)) {
       return sub;
     }
   }
@@ -202,7 +211,7 @@ function persistSidebarCollapsedPref(collapsed) {
 }
 
 /** Build role-scoped sidebar navigation sections and items. */
-function getSidebarSections(currentRole, hasPermission, { onPatientNav, onAdminNav, onDentistNav }) {
+function getSidebarSections(currentRole, hasPermission, { onPatientNav, onAdminNav, onDentistNav, unreadMessagesCount = 0 }) {
   if (currentRole === 'PATIENT') {
     return [
       {
@@ -214,6 +223,8 @@ function getSidebarSections(currentRole, hasPermission, { onPatientNav, onAdminN
           { key: 'services', label: 'Services', icon: Sparkles, onSelect: () => onPatientNav('services') },
           { key: 'dentists', label: 'Dentists', icon: Stethoscope, onSelect: () => onPatientNav('dentists') },
           { key: 'appointments', label: 'My Appointments', icon: FileText, onSelect: () => onPatientNav('appointments') },
+          { key: 'messages', label: 'Messages', icon: MessageSquare, badge: unreadMessagesCount, onSelect: () => onPatientNav('messages') },
+          { key: 'archives', label: 'My Archive', icon: Archive, onSelect: () => onPatientNav('archives') },
           { key: 'notifications', label: 'Notifications', icon: Bell, onSelect: () => onPatientNav('notifications') },
           { key: 'profile', label: 'My Profile', icon: Shield, onSelect: () => onPatientNav('profile') },
         ],
@@ -241,6 +252,18 @@ function getSidebarSections(currentRole, hasPermission, { onPatientNav, onAdminN
         icon: Activity,
         onSelect: () => onAdminNav('audit'),
       },
+      (currentRole === 'ADMIN' || hasPermission('history.view')) && {
+        key: 'history',
+        label: 'History Records',
+        icon: History,
+        onSelect: () => onAdminNav('history'),
+      },
+      currentRole === 'ADMIN' && {
+        key: 'archives',
+        label: 'Archive Vault',
+        icon: Archive,
+        onSelect: () => onAdminNav('archives'),
+      },
       hasPermission('reports.view') && {
         key: 'reports',
         label: 'Reports & Analytics',
@@ -266,6 +289,9 @@ function getSidebarSections(currentRole, hasPermission, { onPatientNav, onAdminN
           { key: 'services', label: 'Services & Fees', icon: Stethoscope, onSelect: () => onAdminNav('services') },
           { key: 'dentists', label: 'Dentist Roster', icon: Shield, onSelect: () => onAdminNav('dentists') },
           { key: 'schedules', label: 'Hours & Schedules', icon: Clock, onSelect: () => onAdminNav('schedules') },
+          ...(currentRole === 'RECEPTIONIST'
+            ? [{ key: 'archives', label: 'Archive Vault', icon: Archive, onSelect: () => onAdminNav('archives') }]
+            : []),
           { key: 'profile', label: 'My Profile', icon: Shield, onSelect: () => onAdminNav('profile') },
         ],
       },
@@ -289,7 +315,9 @@ function getSidebarSections(currentRole, hasPermission, { onPatientNav, onAdminN
         items: [
           { key: 'dashboard', label: 'Overview', icon: Clock, onSelect: () => onDentistNav('dashboard') },
           { key: 'appointments', label: 'Assigned Appointments', icon: Calendar, onSelect: () => onDentistNav('appointments') },
+          { key: 'messages', label: 'Messages', icon: MessageSquare, badge: unreadMessagesCount, onSelect: () => onDentistNav('messages') },
           { key: 'treatment-records', label: 'Treatment Records', icon: FileText, onSelect: () => onDentistNav('treatment-records') },
+          { key: 'archives', label: 'Clinical Archive', icon: Archive, onSelect: () => onDentistNav('archives') },
           { key: 'profile', label: 'My Profile', icon: Shield, onSelect: () => onDentistNav('profile') },
         ],
       },
@@ -328,6 +356,8 @@ function AppContent() {
   const [toastMessage, setToastMessage] = useState(null);
   const [bookingPrefill, setBookingPrefill] = useState(null);
   const [selectedDentistAppointmentId, setSelectedDentistAppointmentId] = useState(null);
+  const [adminTriageInitialFilters, setAdminTriageInitialFilters] = useState({ statusFilter: '', date: '' });
+  const [dentistApptInitialStatus, setDentistApptInitialStatus] = useState('ALL');
   const [legalOriginRoute, setLegalOriginRoute] = useState(null);
   const userMenuRef = useRef(null);
   const userMenuTriggerRef = useRef(null);
@@ -336,6 +366,9 @@ function AppContent() {
   const mobileDrawerCloseRef = useRef(null);
   const { triggerRouteTransition } = useRouteLoading();
   const prevNavKeyRef = useRef(null);
+
+  // Live unread direct-message counter (active strictly for Patient & Dentist sessions)
+  const unreadMessagesCount = useUnreadMessagesBadge(isAuthenticated, user?.role);
 
   // Trigger route transition tracking on qualifying navigation, tab, and detail changes
   useEffect(() => {
@@ -357,7 +390,10 @@ function AppContent() {
   };
 
   // Patient Sub-Route Navigation with URL History Sync
-  const handlePatientNav = (tab) => {
+  const handlePatientNav = (tab, options = {}) => {
+    if (tab === 'book' && !options?.preservePrefill) {
+      setBookingPrefill(null);
+    }
     setActiveTab(tab);
     setIsMobileMenuOpen(false);
     setIsUserMenuOpen(false);
@@ -368,8 +404,14 @@ function AppContent() {
   };
 
   // Admin Sub-Route Navigation with URL History Sync
-  const handleAdminNav = (tab) => {
+  const handleAdminNav = (tab, options = {}) => {
     setActiveTab(tab);
+    if (tab === 'triage') {
+      setAdminTriageInitialFilters({
+        statusFilter: options?.statusFilter || '',
+        date: options?.date || '',
+      });
+    }
     setIsMobileMenuOpen(false);
     setIsUserMenuOpen(false);
     const subPath = tab === 'dashboard' ? '/admin' : `/admin/${tab}`;
@@ -379,9 +421,12 @@ function AppContent() {
   };
 
   // Dentist Sub-Route Navigation with URL History Sync
-  const handleDentistNav = (tab) => {
+  const handleDentistNav = (tab, options = {}) => {
     setActiveTab(tab);
-    setSelectedDentistAppointmentId(null);
+    setSelectedDentistAppointmentId(options?.appointmentId ?? null);
+    if (tab === 'appointments') {
+      setDentistApptInitialStatus(options?.statusFilter || 'ALL');
+    }
     setIsMobileMenuOpen(false);
     setIsUserMenuOpen(false);
     const subPath = tab === 'dashboard' ? '/dentist' : `/dentist/${tab}`;
@@ -521,12 +566,38 @@ function AppContent() {
     };
   }, []);
 
+  // Shared helper: map role to its canonical portal route & URL
+  const navigateToRolePortal = (roleValue) => {
+    const normalized = String(roleValue || 'PATIENT').toUpperCase();
+    if (normalized === 'ADMIN' || normalized === 'RECEPTIONIST') {
+      navigateTo('ADMIN', '/admin');
+    } else if (normalized === 'DENTIST') {
+      navigateTo('DENTIST', '/dentist');
+    } else {
+      navigateTo('PATIENT', '/patient');
+    }
+  };
+
+  const renderToastBanner = () =>
+    toastMessage ? (
+      <div
+        role="status"
+        aria-live="polite"
+        className="fixed bottom-4 left-4 right-4 sm:left-auto sm:bottom-6 sm:right-6 sm:max-w-sm z-[60] bg-[#12304A] text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 border border-slate-700 text-xs"
+      >
+        <Sparkles className="w-4 h-4 text-teal-400 shrink-0" aria-hidden="true" />
+        <span className="min-w-0 break-words">{toastMessage}</span>
+      </div>
+    ) : null;
+
+  const isProtectedPortalRoute = (route) =>
+    route === 'PATIENT' || route === 'ADMIN' || route === 'RECEPTIONIST' || route === 'DENTIST';
+
   // Server-Governed Route & Role Authorization Guard
   useEffect(() => {
     if (isLoading) return;
 
-    const isProtectedRoute =
-      currentRoute === 'PATIENT' || currentRoute === 'ADMIN' || currentRoute === 'DENTIST';
+    const isProtectedRoute = isProtectedPortalRoute(currentRoute);
 
     if (isProtectedRoute) {
       if (!isAuthenticated) {
@@ -538,31 +609,35 @@ function AppContent() {
       const role = user?.role?.toUpperCase();
       const isAdminOrReceptionist = role === 'ADMIN' || role === 'RECEPTIONIST';
 
+      if (currentRoute === 'RECEPTIONIST') {
+        if (isAdminOrReceptionist) {
+          navigateTo('ADMIN', '/admin');
+        } else {
+          navigateToRolePortal(role);
+          showToast('Access restricted: Administrative or Front Desk authorization required.');
+        }
+        return;
+      }
+
       if (currentRoute === 'PATIENT' && role !== 'PATIENT') {
-        const dest = isAdminOrReceptionist ? '/admin' : '/dentist';
-        navigateTo(role, dest);
+        navigateToRolePortal(role);
         showToast(
           `Redirected to your authorized ${
             role === 'ADMIN' ? 'administrator' : role === 'RECEPTIONIST' ? 'front desk' : 'dentist'
           } portal.`
         );
       } else if (currentRoute === 'ADMIN' && !isAdminOrReceptionist) {
-        const dest = role === 'DENTIST' ? '/dentist' : '/patient';
-        navigateTo(role, dest);
+        navigateToRolePortal(role);
         showToast('Access restricted: Administrative or Front Desk authorization required.');
       } else if (currentRoute === 'DENTIST' && role !== 'DENTIST') {
-        const dest = isAdminOrReceptionist ? '/admin' : '/patient';
-        navigateTo(role, dest);
+        navigateToRolePortal(role);
         showToast('Access restricted: Dentist clinical authorization required.');
       }
     }
   }, [isLoading, isAuthenticated, user, currentRoute]);
 
   // Loading Session State Guard for Protected Portals
-  if (
-    isLoading &&
-    (currentRoute === 'PATIENT' || currentRoute === 'ADMIN' || currentRoute === 'DENTIST')
-  ) {
+  if (isLoading && isProtectedPortalRoute(currentRoute)) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center transition-colors">
         <div className="flex flex-col items-center gap-3">
@@ -573,78 +648,61 @@ function AppContent() {
     );
   }
 
-  // Unauthenticated Guard for Protected Portals
-  if (
-    !isLoading &&
-    !isAuthenticated &&
-    (currentRoute === 'PATIENT' || currentRoute === 'ADMIN' || currentRoute === 'DENTIST')
-  ) {
-    return (
-      <LoginPage
-        onSuccess={(loggedUser) => {
-          const role = loggedUser?.role?.toUpperCase();
-          const firstName =
-            loggedUser?.patient?.first_name ||
-            loggedUser?.dentist?.first_name ||
-            loggedUser?.first_name ||
-            'User';
-          showToast(`Welcome back, ${firstName}!`);
+  const handleLoginSuccess = (loggedUser) => {
+    const role = loggedUser?.role?.toUpperCase();
+    const firstName =
+      loggedUser?.patient?.first_name ||
+      loggedUser?.dentist?.first_name ||
+      loggedUser?.first_name ||
+      'User';
+    showToast(`Welcome back, ${firstName}!`);
+    navigateToRolePortal(role);
+  };
 
-          if (role === 'ADMIN') {
-            navigateTo('ADMIN', '/admin');
-          } else if (role === 'DENTIST') {
-            navigateTo('DENTIST', '/dentist');
-          } else {
-            navigateTo('PATIENT', '/patient');
-          }
-        }}
-        onNavigateRegister={() => navigateTo('REGISTER', '/register')}
-        onNavigateForgotPassword={() => navigateTo('FORGOT_PASSWORD', '/forgot-password')}
-        onNavigateHome={() => navigateTo('LANDING', '/')}
-      />
+  // Unauthenticated Guard for Protected Portals
+  if (!isLoading && !isAuthenticated && isProtectedPortalRoute(currentRoute)) {
+    return (
+      <>
+        <LoginPage
+          onSuccess={handleLoginSuccess}
+          onNavigateRegister={() => navigateTo('REGISTER', '/register')}
+          onNavigateForgotPassword={() => navigateTo('FORGOT_PASSWORD', '/forgot-password')}
+          onNavigateHome={() => navigateTo('LANDING', '/')}
+        />
+        {renderToastBanner()}
+      </>
     );
   }
 
   // 1. Auth Page Views
   if (currentRoute === 'LOGIN') {
     return (
-      <LoginPage
-        onSuccess={(loggedUser) => {
-          const role = loggedUser?.role?.toUpperCase();
-          const firstName =
-            loggedUser?.patient?.first_name ||
-            loggedUser?.dentist?.first_name ||
-            loggedUser?.first_name ||
-            'User';
-          showToast(`Welcome back, ${firstName}!`);
-
-          if (role === 'ADMIN') {
-            navigateTo('ADMIN', '/admin');
-          } else if (role === 'DENTIST') {
-            navigateTo('DENTIST', '/dentist');
-          } else {
-            navigateTo('PATIENT', '/patient');
-          }
-        }}
-        onNavigateRegister={() => navigateTo('REGISTER', '/register')}
-        onNavigateForgotPassword={() => navigateTo('FORGOT_PASSWORD', '/forgot-password')}
-        onNavigateHome={() => navigateTo('LANDING', '/')}
-      />
+      <>
+        <LoginPage
+          onSuccess={handleLoginSuccess}
+          onNavigateRegister={() => navigateTo('REGISTER', '/register')}
+          onNavigateForgotPassword={() => navigateTo('FORGOT_PASSWORD', '/forgot-password')}
+          onNavigateHome={() => navigateTo('LANDING', '/')}
+        />
+        {renderToastBanner()}
+      </>
     );
   }
 
   if (currentRoute === 'REGISTER') {
     return (
-      <RegisterPage
-        onSuccess={() => {
-          showToast('Account created successfully! Check your email for verification.');
-          navigateTo('LOGIN', '/login');
-        }}
-        onNavigateLogin={() => navigateTo('LOGIN', '/login')}
-        onNavigateHome={() => navigateTo('LANDING', '/')}
-        onNavigateTerms={() => navigateToLegal('TERMS_OF_SERVICE', '/terms-of-service', 'REGISTER')}
-        onNavigatePrivacy={() => navigateToLegal('PRIVACY_POLICY', '/privacy-policy', 'REGISTER')}
-      />
+      <>
+        <RegisterPage
+          onSuccess={() => {
+            showToast('Account created successfully! Check your email for verification.');
+          }}
+          onNavigateLogin={() => navigateTo('LOGIN', '/login')}
+          onNavigateHome={() => navigateTo('LANDING', '/')}
+          onNavigateTerms={() => navigateToLegal('TERMS_OF_SERVICE', '/terms-of-service', 'REGISTER')}
+          onNavigatePrivacy={() => navigateToLegal('PRIVACY_POLICY', '/privacy-policy', 'REGISTER')}
+        />
+        {renderToastBanner()}
+      </>
     );
   }
 
@@ -713,7 +771,7 @@ function AppContent() {
               navigateTo('PATIENT', '/patient');
               setActiveTab('book');
             } else {
-              navigateTo(role, role === 'ADMIN' ? '/admin' : '/dentist');
+              navigateToRolePortal(role);
             }
           } else {
             navigateTo('LOGIN', '/login');
@@ -722,8 +780,7 @@ function AppContent() {
         }}
         onLogin={() => {
           if (isAuthenticated) {
-            const role = user?.role?.toUpperCase() || 'PATIENT';
-            navigateTo(role, `/${role.toLowerCase()}`);
+            navigateToRolePortal(user?.role);
           } else {
             navigateTo('LOGIN', '/login');
           }
@@ -735,7 +792,7 @@ function AppContent() {
               navigateTo('PATIENT', '/patient/appointments');
               setActiveTab('appointments');
             } else {
-              navigateTo(role, `/${role.toLowerCase()}`);
+              navigateToRolePortal(role);
             }
           } else {
             navigateTo('LOGIN', '/login');
@@ -744,7 +801,8 @@ function AppContent() {
         onRegister={() => navigateTo('REGISTER', '/register')}
         onForgotPassword={() => navigateTo('FORGOT_PASSWORD', '/forgot-password')}
         onAdminLogin={() => {
-          if (isAuthenticated && user?.role === 'ADMIN') {
+          const role = user?.role?.toUpperCase();
+          if (isAuthenticated && (role === 'ADMIN' || role === 'RECEPTIONIST')) {
             navigateTo('ADMIN', '/admin');
           } else {
             navigateTo('LOGIN', '/login');
@@ -762,6 +820,7 @@ function AppContent() {
     const LegalPageComponent =
       currentRoute === 'PRIVACY_POLICY' ? PrivacyPolicyPage : TermsOfServicePage;
     return (
+      <>
       <Suspense
         fallback={
           <div className="min-h-dvh flex items-center justify-center bg-[#F5F8FA] dark:bg-gray-900">
@@ -801,7 +860,7 @@ function AppContent() {
                 navigateTo('PATIENT', '/patient');
                 setActiveTab('book');
               } else {
-                navigateTo(role, role === 'ADMIN' ? '/admin' : '/dentist');
+                navigateToRolePortal(role);
               }
             } else {
               navigateTo('LOGIN', '/login');
@@ -810,14 +869,14 @@ function AppContent() {
           }}
           onNavigateLogin={() => {
             if (isAuthenticated) {
-              const role = user?.role?.toUpperCase() || 'PATIENT';
-              navigateTo(role, `/${role.toLowerCase()}`);
+              navigateToRolePortal(user?.role);
             } else {
               navigateTo('LOGIN', '/login');
             }
           }}
           onAdminLogin={() => {
-            if (isAuthenticated && user?.role === 'ADMIN') {
+            const role = user?.role?.toUpperCase();
+            if (isAuthenticated && (role === 'ADMIN' || role === 'RECEPTIONIST')) {
               navigateTo('ADMIN', '/admin');
             } else {
               navigateTo('LOGIN', '/login');
@@ -825,12 +884,15 @@ function AppContent() {
           }}
         />
       </Suspense>
+      {renderToastBanner()}
+      </>
     );
   }
 
   // 2b. Public Landing Page (Production-ready without demo bars)
   if (currentRoute === 'LANDING') {
     return (
+      <>
       <LandingPage
         onHelpSupport={() => navigateTo('HELP_SUPPORT', '/help-support')}
         onTermsOfService={() => navigateToLegal('TERMS_OF_SERVICE', '/terms-of-service')}
@@ -845,7 +907,7 @@ function AppContent() {
               navigateTo('PATIENT', '/patient');
               setActiveTab('book');
             } else {
-              navigateTo(role, role === 'ADMIN' ? '/admin' : '/dentist');
+              navigateToRolePortal(role);
             }
           } else {
             navigateTo('LOGIN', '/login');
@@ -854,20 +916,22 @@ function AppContent() {
         }}
         onLogin={() => {
           if (isAuthenticated) {
-            const role = user?.role?.toUpperCase() || 'PATIENT';
-            navigateTo(role, `/${role.toLowerCase()}`);
+            navigateToRolePortal(user?.role);
           } else {
             navigateTo('LOGIN', '/login');
           }
         }}
         onAdminLogin={() => {
-          if (isAuthenticated && user?.role === 'ADMIN') {
+          const role = user?.role?.toUpperCase();
+          if (isAuthenticated && (role === 'ADMIN' || role === 'RECEPTIONIST')) {
             navigateTo('ADMIN', '/admin');
           } else {
             navigateTo('LOGIN', '/login');
           }
         }}
       />
+      {renderToastBanner()}
+      </>
     );
   }
 
@@ -887,6 +951,7 @@ function AppContent() {
     onPatientNav: handlePatientNav,
     onAdminNav: handleAdminNav,
     onDentistNav: handleDentistNav,
+    unreadMessagesCount,
   });
 
   return (
@@ -942,6 +1007,43 @@ function AppContent() {
           <div className="flex items-center gap-1 sm:gap-3 shrink-0">
             <ThemeToggle variant="header" />
 
+            {/* Direct Messages Shortcut (Patient & Dentist Portals Only) */}
+            {(currentRole === 'PATIENT' || currentRole === 'DENTIST') && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (currentRole === 'PATIENT') {
+                    handlePatientNav('messages');
+                  } else {
+                    handleDentistNav('messages');
+                  }
+                }}
+                aria-label={
+                  unreadMessagesCount > 0
+                    ? `Messages (${unreadMessagesCount} unread)`
+                    : 'Messages'
+                }
+                aria-current={activeTab === 'messages' ? 'page' : undefined}
+                title="Messages"
+                data-testid="header-messages-button"
+                className={`relative inline-flex items-center justify-center min-h-11 min-w-11 p-2 rounded-xl transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 ${
+                  activeTab === 'messages'
+                    ? 'bg-white/15 text-teal-300'
+                    : 'text-slate-200 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                <MessageSquare className="w-5 h-5" aria-hidden="true" />
+                {unreadMessagesCount > 0 && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute top-0.5 right-0.5 flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-[#0B6EFD] dark:bg-blue-500 px-1 text-[10px] font-bold text-white shadow-sm"
+                  >
+                    {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
+                  </span>
+                )}
+              </button>
+            )}
+
             {/* Unified In-App Notifications Dropdown (All Four Authenticated Roles) */}
             <NotificationCenter
               onSelectNotification={(notif) => {
@@ -951,11 +1053,12 @@ function AppContent() {
                 } else if (currentRole === 'DENTIST') {
                   if (refType === 'schedules') {
                     handleDentistNav('dashboard');
+                  } else if (refType === 'accounts') {
+                    handleDentistNav('profile');
                   } else {
-                    if (notif?.reference_id) {
-                      setSelectedDentistAppointmentId(notif.reference_id);
-                    }
-                    handleDentistNav('appointments');
+                    handleDentistNav('appointments', {
+                      appointmentId: notif?.reference_id || null,
+                    });
                   }
                 } else {
                   if (refType === 'schedules') {
@@ -1169,7 +1272,7 @@ function AppContent() {
                       )}
                     </>
                   )}
-                  {section.items.map(({ key, label, icon: Icon, onSelect }) => {
+                  {section.items.map(({ key, label, icon: Icon, badge, onSelect }) => {
                     const isActive = activeTab === key;
                     return (
                       <button
@@ -1178,7 +1281,7 @@ function AppContent() {
                         onClick={onSelect}
                         title={isSidebarCollapsed ? label : undefined}
                         aria-current={isActive ? 'page' : undefined}
-                        className={`w-full min-h-11 lg:min-h-10 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
+                        className={`relative w-full min-h-11 lg:min-h-10 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
                           isSidebarCollapsed ? 'lg:justify-center lg:px-2' : ''
                         } ${
                           isActive
@@ -1189,11 +1292,23 @@ function AppContent() {
                         <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
                         <span
                           className={
-                            isSidebarCollapsed ? 'lg:sr-only whitespace-nowrap' : 'truncate'
+                            isSidebarCollapsed ? 'lg:sr-only whitespace-nowrap' : 'truncate flex-1 text-left'
                           }
                         >
                           {label}
                         </span>
+                        {Number(badge) > 0 && (
+                          <span
+                            aria-label={`${badge} unread`}
+                            className={`inline-flex items-center justify-center rounded-full text-[10px] font-bold text-white bg-[#0B6EFD] dark:bg-blue-500 ${
+                              isSidebarCollapsed
+                                ? 'lg:absolute lg:top-1.5 lg:right-1.5 lg:min-w-[1.1rem] lg:h-4 lg:px-1 min-w-[1.25rem] h-5 px-1.5'
+                                : 'min-w-[1.25rem] h-5 px-1.5 shrink-0'
+                            }`}
+                          >
+                            {badge > 99 ? '99+' : badge}
+                          </span>
+                        )}
                       </button>
                     );
                   })}
@@ -1237,15 +1352,18 @@ function AppContent() {
                 <BookAppointmentPage
                   initialService={bookingPrefill?.service}
                   initialDentist={bookingPrefill?.dentist}
-                  onNavigateToAppointments={() => handlePatientNav('appointments')}
+                  onNavigateToAppointments={() => {
+                    setBookingPrefill(null);
+                    handlePatientNav('appointments');
+                  }}
                 />
               )}
 
               {activeTab === 'services' && (
                 <PatientServicesPage
                   onBookService={(service) => {
-                    setBookingPrefill((prev) => ({ ...prev, service }));
-                    handlePatientNav('book');
+                    setBookingPrefill({ service, dentist: null });
+                    handlePatientNav('book', { preservePrefill: true });
                   }}
                 />
               )}
@@ -1253,14 +1371,22 @@ function AppContent() {
               {activeTab === 'dentists' && (
                 <PatientDentistsPage
                   onBookDentist={(dentist) => {
-                    setBookingPrefill((prev) => ({ ...prev, dentist }));
-                    handlePatientNav('book');
+                    setBookingPrefill({ service: null, dentist });
+                    handlePatientNav('book', { preservePrefill: true });
                   }}
                 />
               )}
 
               {activeTab === 'appointments' && (
                 <AppointmentHistoryPage onNavigateToBook={() => handlePatientNav('book')} />
+              )}
+
+              {activeTab === 'messages' && (
+                <MessagesPage />
+              )}
+
+              {activeTab === 'archives' && (
+                <ArchiveCenterPage />
               )}
 
               {activeTab === 'notifications' && (
@@ -1321,6 +1447,14 @@ function AppContent() {
                 <AuditTrailPage />
               )}
 
+              {activeTab === 'history' && (
+                <HistoryRecordsPage />
+              )}
+
+              {activeTab === 'archives' && (
+                <ArchiveCenterPage />
+              )}
+
               {activeTab === 'reports' && hasPermission('reports.view') && (
                 <ReportsPage />
               )}
@@ -1353,11 +1487,14 @@ function AppContent() {
           {currentRole === 'ADMIN' && (
             <>
               {activeTab === 'dashboard' && (
-                <AdminDashboard onNavigateTab={(tab) => handleAdminNav(tab)} />
+                <AdminDashboard onNavigateTab={(tab, options) => handleAdminNav(tab, options)} />
               )}
 
               {activeTab === 'triage' && (
-                <AdminAppointmentsPage />
+                <AdminAppointmentsPage
+                  initialStatus={adminTriageInitialFilters.statusFilter}
+                  initialDate={adminTriageInitialFilters.date}
+                />
               )}
 
               {activeTab === 'patients' && (
@@ -1392,6 +1529,14 @@ function AppContent() {
                 <AuditTrailPage />
               )}
 
+              {activeTab === 'history' && (
+                <HistoryRecordsPage />
+              )}
+
+              {activeTab === 'archives' && (
+                <ArchiveCenterPage />
+              )}
+
               {activeTab === 'reports' && (
                 <ReportsPage />
               )}
@@ -1422,14 +1567,8 @@ function AppContent() {
               {activeTab === 'dashboard' && (
                 <DentistDashboard
                   dentistId={user?.dentist?.id || user?.id || 1}
-                  onNavigateTab={(tab) => {
-                    setActiveTab(tab);
-                    setSelectedDentistAppointmentId(null);
-                  }}
-                  onSelectAppointment={(id) => {
-                    setSelectedDentistAppointmentId(id);
-                    setActiveTab('appointments');
-                  }}
+                  onNavigateTab={(tab, options) => handleDentistNav(tab, options)}
+                  onSelectAppointment={(id) => handleDentistNav('appointments', { appointmentId: id })}
                 />
               )}
 
@@ -1441,6 +1580,7 @@ function AppContent() {
                   />
                 ) : (
                   <DentistAppointmentsPage
+                    initialStatus={dentistApptInitialStatus}
                     onSelectAppointment={(id) => setSelectedDentistAppointmentId(id)}
                   />
                 )
@@ -1450,14 +1590,25 @@ function AppContent() {
                 <DentistTreatmentRecordsPage />
               )}
 
+              {activeTab === 'messages' && (
+                <MessagesPage />
+              )}
+
+              {activeTab === 'archives' && (
+                <ArchiveCenterPage />
+              )}
+
               {activeTab === 'notifications' && (
                 <PatientNotificationsPage
                   onSelectNotification={(notif) => {
                     if (notif?.reference_type === 'schedules') {
                       handleDentistNav('dashboard');
+                    } else if (notif?.reference_type === 'accounts') {
+                      handleDentistNav('profile');
                     } else {
-                      if (notif?.reference_id) setSelectedDentistAppointmentId(notif.reference_id);
-                      handleDentistNav('appointments');
+                      handleDentistNav('appointments', {
+                        appointmentId: notif?.reference_id || null,
+                      });
                     }
                   }}
                 />
@@ -1482,16 +1633,7 @@ function AppContent() {
       <NotificationToastContainer />
 
       {/* Floating Toast Feedback */}
-      {toastMessage && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed bottom-4 left-4 right-4 sm:left-auto sm:bottom-6 sm:right-6 sm:max-w-sm z-[60] bg-[#12304A] text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 border border-slate-700 text-xs"
-        >
-          <Sparkles className="w-4 h-4 text-teal-400 shrink-0" aria-hidden="true" />
-          <span className="min-w-0 break-words">{toastMessage}</span>
-        </div>
-      )}
+      {renderToastBanner()}
 
       {/* Authenticated Legal Re-Acceptance Workflow (only triggered on material policy updates) */}
       {isAuthenticated && user?.legal_status?.requires_reacceptance && (

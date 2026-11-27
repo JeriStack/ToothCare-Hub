@@ -290,14 +290,15 @@ class AvailabilityServiceTest extends TestCase
     }
 
     /**
-     * 12. Date outside booking horizon (>90d, rejected)
+     * 12. Date outside booking horizon (enforced from clinic_settings booking_advance_days_max)
      */
     public function testDateOutsideBookingHorizonIsRejected(): void
     {
-        $futureDate = $this->simulatedNow->modify('+95 days')->format('Y-m-d');
+        $horizonDays = $this->service->getEffectiveMaxBookingHorizonDays();
+        $futureDate = $this->simulatedNow->modify('+' . ($horizonDays + 5) . ' days')->format('Y-m-d');
 
         $this->expectException(HttpException::class);
-        $this->expectExceptionMessage('exceeds the maximum booking horizon of 90 days');
+        $this->expectExceptionMessage("exceeds the maximum booking horizon of {$horizonDays} days");
         $this->service->getAvailability(1, 1, $futureDate, $futureDate, $this->simulatedNow);
     }
 

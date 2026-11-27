@@ -102,6 +102,8 @@ while ($running) {
             $logger->info('Realtime outbox batch processed', array_merge(['worker_id' => $workerId], $result));
         }
     } catch (Throwable $e) {
+        // Reset cached PDO handle so long-running daemons recover after MySQL restarts or wait_timeout disconnects
+        App\Core\Database::getInstance()->setConnection(null);
         $logger->error('Realtime outbox worker cycle failed', [
             'worker_id' => $workerId,
             'error' => $e->getMessage(),

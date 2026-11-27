@@ -18,13 +18,19 @@ import {
   Shield,
   FileText,
   Eye,
-  MapPin
+  MapPin,
+  Copy,
+  Check,
+  ShieldCheck,
+  History
 } from 'lucide-react';
 import { patientsApi } from '../api';
+import { RecordHistoryModal } from '../../history/components/RecordHistoryModal';
 import { useAuth } from '../../auth';
 import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
 import { MobileSortControl } from '../../../components/ui/MobileSortControl';
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
+import { ServerTableFooter } from '../../../components/ui/ServerTableControls';
 
 const GENDER_OPTIONS = [
   { value: 'MALE', label: 'Male' },
@@ -93,11 +99,27 @@ export function PatientListPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [sortBy, setSortBy] = useState('created_at');
   const [sortDir, setSortDir] = useState('DESC');
+  const [perPage, setPerPage] = useState(10);
   const [page, setPage] = useState(1);
 
   // Modal State for View & Edit
   const [viewingPatient, setViewingPatient] = useState(null);
+  const [copiedField, setCopiedField] = useState(null);
   const [loadingViewId, setLoadingViewId] = useState(null);
+  const [historyPatient, setHistoryPatient] = useState(null);
+
+  const handleCopyContact = async (field, value) => {
+    if (!value) return;
+    try {
+      await navigator.clipboard?.writeText(String(value));
+      setCopiedField(field);
+      setTimeout(() => {
+        setCopiedField((prev) => (prev === field ? null : prev));
+      }, 1600);
+    } catch {
+      // Clipboard API unavailable in non-secure context
+    }
+  };
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -135,7 +157,7 @@ export function PatientListPage() {
     try {
       const params = {
         page,
-        per_page: 10,
+        per_page: perPage,
         sort_by: sortBy,
         sort_dir: sortDir,
       };
@@ -152,7 +174,7 @@ export function PatientListPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, sortBy, sortDir, search, genderFilter, statusFilter]);
+  }, [page, perPage, sortBy, sortDir, search, genderFilter, statusFilter]);
 
   useEffect(() => {
     fetchPatients();
@@ -280,7 +302,7 @@ export function PatientListPage() {
       {/* Toast Notification */}
       {toast && (
         <div
-          className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm text-white ${
+          className={`fixed bottom-4 left-4 right-4 sm:left-auto sm:bottom-6 sm:right-6 sm:max-w-sm z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm text-white ${
             toast.type === 'error' ? 'bg-rose-600' : 'bg-emerald-600'
           }`}
         >
@@ -497,6 +519,15 @@ export function PatientListPage() {
                           >
                             <Eye className="w-3.5 h-3.5" aria-hidden="true" />
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => setHistoryPatient(patient)}
+                            className="w-8 h-8 rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800/80 text-slate-600 dark:text-slate-300 hover:text-indigo-700 dark:hover:text-indigo-300 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 inline-flex items-center justify-center transition-colors cursor-pointer"
+                            title="View Patient History Timeline"
+                            aria-label={`History for ${patient.first_name} ${patient.last_name}`}
+                          >
+                            <History className="w-3.5 h-3.5" aria-hidden="true" />
+                          </button>
                           {canManagePatients && (
                             <button
                               type="button"
@@ -534,474 +565,698 @@ export function PatientListPage() {
           </>
         )}
 
-        {/* Pagination Bar */}
+        {/* Unified Server-Side Pagination */}
         {meta.total > 0 && (
-          <div className="px-5 py-3.5 border-t border-slate-100 dark:border-gray-700/80 bg-slate-50/50 dark:bg-gray-900/35 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
-            <div className="tabular-nums">
-              Showing <span className="font-semibold text-slate-700 dark:text-slate-200">{(meta.page - 1) * meta.per_page + 1}</span> to{' '}
-              <span className="font-semibold text-slate-700 dark:text-slate-200">
-                {Math.min(meta.page * meta.per_page, meta.total)}
-              </span>{' '}
-              of <span className="font-semibold text-slate-700 dark:text-slate-200">{meta.total}</span> patients
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={meta.page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="px-3 py-1.5 border border-slate-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-              >
-                Previous
-              </button>
-              <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-gray-800 text-slate-700 dark:text-slate-200 font-semibold tabular-nums">
-                Page {meta.page} of {meta.last_page}
-              </span>
-              <button
-                type="button"
-                disabled={meta.page >= meta.last_page}
-                onClick={() => setPage((p) => p + 1)}
-                className="px-3 py-1.5 border border-slate-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-              >
-                Next
-              </button>
-            </div>
-          </div>
+          <ServerTableFooter
+            page={meta.current_page || meta.page || page}
+            perPage={meta.per_page || perPage}
+            totalRecords={meta.total_records ?? meta.total ?? 0}
+            filteredRecords={meta.filtered_records ?? meta.total ?? 0}
+            totalPages={meta.total_pages || meta.last_page || 1}
+            onPageChange={(nextPage) => setPage(nextPage)}
+            onPerPageChange={(nextSize) => {
+              setPerPage(nextSize);
+              setPage(1);
+            }}
+            pageSizeOptions={[5, 10, 15, 25, 50]}
+            loading={loading}
+            itemLabel="patients"
+          />
         )}
       </div>
       )}
 
       {/* Read-Only Patient Information Modal */}
-      {viewingPatient && (
-        <DialogOverlay
-          onClose={() => setViewingPatient(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/45 dark:bg-black/65 backdrop-blur-sm"
-        >
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 w-full max-w-xl overflow-hidden max-h-[90dvh] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/60 dark:bg-gray-900/40">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-full bg-teal-50 dark:bg-teal-500/15 border border-teal-200/80 dark:border-teal-500/30 text-[#0F766E] dark:text-teal-300 flex items-center justify-center font-bold text-sm shrink-0">
-                  {getPatientInitials(viewingPatient.first_name, viewingPatient.last_name)}
-                </div>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-base font-bold text-slate-900 dark:text-slate-50 truncate">
-                      {viewingPatient.first_name} {viewingPatient.last_name}
-                    </h2>
-                    <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
-                        viewingPatient.is_active
-                          ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-500/25'
-                          : 'bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-gray-600'
-                      }`}
-                    >
+      {viewingPatient && (() => {
+        const age = calculateAge(viewingPatient.date_of_birth);
+        const visitCount = Number(viewingPatient.appointment_count ?? 0);
+        const alertActive = hasClinicalAlert(viewingPatient.medical_alerts);
+        const hasAddress = Boolean(String(viewingPatient.address || '').trim());
+        const hasEmergencyName = Boolean(String(viewingPatient.emergency_contact_name || '').trim());
+        const hasEmergencyPhone = Boolean(String(viewingPatient.emergency_contact_phone || '').trim());
+
+        return (
+          <DialogOverlay
+            onClose={() => setViewingPatient(null)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/70 backdrop-blur-sm"
+          >
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-slate-200/90 dark:border-gray-700/80 w-full max-w-xl overflow-hidden max-h-[90dvh] flex flex-col">
+              {/* Header */}
+              <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-100 dark:border-gray-700/80 bg-slate-50/70 dark:bg-gray-900/50">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  {viewingPatient.avatar_url ? (
+                    <img
+                      src={viewingPatient.avatar_url}
+                      alt={`${viewingPatient.first_name} ${viewingPatient.last_name}`}
+                      className="w-11 h-11 rounded-full object-cover border border-teal-200 dark:border-teal-500/35 shrink-0"
+                    />
+                  ) : (
+                    <div className="w-11 h-11 rounded-full bg-teal-50 dark:bg-teal-500/15 ring-1 ring-inset ring-teal-200/90 dark:ring-teal-500/30 text-[#0F766E] dark:text-teal-300 flex items-center justify-center font-bold text-sm shrink-0">
+                      {getPatientInitials(viewingPatient.first_name, viewingPatient.last_name)}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-base font-bold text-slate-900 dark:text-slate-50 truncate">
+                        {viewingPatient.first_name} {viewingPatient.last_name}
+                      </h2>
                       <span
-                        className={`w-1.5 h-1.5 rounded-full ${viewingPatient.is_active ? 'bg-emerald-500' : 'bg-slate-400'}`}
-                        aria-hidden="true"
-                      />
-                      {viewingPatient.is_active ? 'Active' : 'Disabled'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
-                    Patient #{viewingPatient.id} · Registered {formatReadableDate(viewingPatient.created_at)}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setViewingPatient(null)}
-                aria-label="Close patient information"
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg p-1 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-5 overflow-y-auto flex-1 text-xs">
-              {/* Demographics & Visits */}
-              <div className="grid grid-cols-3 gap-3 p-3.5 rounded-xl bg-slate-50 dark:bg-gray-900/50 border border-slate-200/80 dark:border-gray-700">
-                <div>
-                  <span className="text-slate-400 dark:text-slate-500 block">Date of Birth</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-100 tabular-nums mt-0.5 block">
-                    {formatReadableDate(viewingPatient.date_of_birth)}
-                    {calculateAge(viewingPatient.date_of_birth) !== null && ` (${calculateAge(viewingPatient.date_of_birth)}y)`}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-400 dark:text-slate-500 block">Gender</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-100 mt-0.5 block">
-                    {formatGenderLabel(viewingPatient.gender)}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-400 dark:text-slate-500 block">Total Bookings</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-100 tabular-nums mt-0.5 block">
-                    {viewingPatient.appointment_count ?? 0} visits
-                  </span>
-                </div>
-              </div>
-
-              {/* Contact Information */}
-              <div className="space-y-2.5">
-                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                  Contact Information
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl border border-slate-200/80 dark:border-gray-700 bg-white dark:bg-gray-900/30">
-                  <div className="flex items-start gap-2">
-                    <Phone className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" aria-hidden="true" />
-                    <div>
-                      <span className="text-slate-400 dark:text-slate-500 block">Phone Number</span>
-                      <span className="font-semibold text-slate-800 dark:text-slate-100 tabular-nums">
-                        {viewingPatient.phone || 'Not provided'}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold border ${
+                          viewingPatient.is_active
+                            ? 'bg-emerald-50 dark:bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-500/30'
+                            : 'bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-gray-600'
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${viewingPatient.is_active ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-slate-400'}`}
+                          aria-hidden="true"
+                        />
+                        {viewingPatient.is_active ? 'Active' : 'Disabled'}
                       </span>
                     </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <Mail className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" aria-hidden="true" />
-                    <div className="min-w-0">
-                      <span className="text-slate-400 dark:text-slate-500 block">Account Email</span>
-                      <span className="font-semibold text-slate-800 dark:text-slate-100 break-all">
-                        {viewingPatient.email || 'Not provided'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2 sm:col-span-2 pt-2 border-t border-slate-100 dark:border-gray-700/70">
-                    <MapPin className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" aria-hidden="true" />
-                    <div>
-                      <span className="text-slate-400 dark:text-slate-500 block">Residential Address</span>
-                      <span className="font-medium text-slate-800 dark:text-slate-100">
-                        {viewingPatient.address || 'No residential address recorded'}
-                      </span>
-                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
+                      Patient #{viewingPatient.id} · Registered {formatReadableDate(viewingPatient.created_at)}
+                    </p>
                   </div>
                 </div>
-              </div>
-
-              {/* Emergency Contact */}
-              <div className="space-y-2.5">
-                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                  Emergency Contact
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl border border-slate-200/80 dark:border-gray-700 bg-white dark:bg-gray-900/30">
-                  <div>
-                    <span className="text-slate-400 dark:text-slate-500 block">Contact Person</span>
-                    <span className="font-semibold text-slate-800 dark:text-slate-100">
-                      {viewingPatient.emergency_contact_name || 'Not specified'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 dark:text-slate-500 block">Emergency Phone</span>
-                    <span className="font-semibold text-slate-800 dark:text-slate-100 tabular-nums">
-                      {viewingPatient.emergency_contact_phone || 'Not specified'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Clinical Medical Alerts */}
-              <div
-                className={`p-3.5 rounded-xl border ${
-                  hasClinicalAlert(viewingPatient.medical_alerts)
-                    ? 'border-rose-200 dark:border-rose-800/70 bg-rose-50/60 dark:bg-rose-950/30'
-                    : 'border-slate-200/80 dark:border-gray-700 bg-slate-50/50 dark:bg-gray-900/30'
-                }`}
-              >
-                <div
-                  className={`flex items-center gap-1.5 font-semibold mb-1 ${
-                    hasClinicalAlert(viewingPatient.medical_alerts)
-                      ? 'text-rose-800 dark:text-rose-200'
-                      : 'text-slate-600 dark:text-slate-300'
-                  }`}
-                >
-                  <HeartPulse
-                    className={`w-3.5 h-3.5 ${
-                      hasClinicalAlert(viewingPatient.medical_alerts)
-                        ? 'text-rose-500 dark:text-rose-400'
-                        : 'text-slate-400'
-                    }`}
-                    aria-hidden="true"
-                  />
-                  <span>Clinical Medical Alerts</span>
-                </div>
-                <p
-                  className={`leading-relaxed ${
-                    hasClinicalAlert(viewingPatient.medical_alerts)
-                      ? 'text-rose-700 dark:text-rose-200'
-                      : 'text-slate-500 dark:text-slate-400'
-                  }`}
-                >
-                  {hasClinicalAlert(viewingPatient.medical_alerts)
-                    ? viewingPatient.medical_alerts
-                    : 'No medical alerts, allergies, or systemic conditions recorded.'}
-                </p>
-              </div>
-            </div>
-
-            <div className="px-6 py-4 border-t border-slate-100 dark:border-gray-700 bg-slate-50/50 dark:bg-gray-900/35 flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                onClick={() => setViewingPatient(null)}
-                className="px-4 py-2 rounded-lg border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-              >
-                Close
-              </button>
-              {canManagePatients && (
                 <button
                   type="button"
-                  onClick={() => {
-                    const target = viewingPatient;
-                    setViewingPatient(null);
-                    openDetailsModal(target);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-[#0D9488] text-white text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
+                  onClick={() => setViewingPatient(null)}
+                  aria-label="Close patient information"
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-gray-700/70 rounded-xl p-1.5 transition-colors cursor-pointer shrink-0"
                 >
-                  <Edit2 className="w-3.5 h-3.5" aria-hidden="true" />
-                  <span>Edit Profile</span>
+                  <X className="w-5 h-5" />
                 </button>
-              )}
-            </div>
-          </div>
-        </DialogOverlay>
-      )}
-
-      {/* Patient View & Edit Modal */}
-      {isModalOpen && selectedPatient && (
-        <DialogOverlay
-          onClose={() => setIsModalOpen(false)} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-black/65 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90dvh] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-gray-700 bg-slate-50/50 dark:bg-gray-900/40">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-teal-50 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 rounded-lg">
-                  <User className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-                    Patient Profile #{selectedPatient.id}
-                  </h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Linked User ID #{selectedPatient.user_id} • Registered on{' '}
-                    {selectedPatient.created_at?.split(' ')[0] || 'Unknown'}
-                  </p>
-                </div>
               </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg p-1"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            <form onSubmit={handleFormSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
-              {formErrors.general && (
-                <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-sm rounded-lg">
-                  {formErrors.general}
-                </div>
-              )}
-
-              {/* Patient Overview Summary */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-slate-50 dark:bg-gray-900/50 rounded-xl border border-slate-200 dark:border-gray-700 text-xs">
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400 block">Account Email:</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-100 break-all">{selectedPatient.email}</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400 block">Account Status:</span>
-                  <span
-                    className={`font-semibold ${
-                      selectedPatient.is_active ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-600 dark:text-slate-400'
-                    }`}
+              {/* Body */}
+              <div className="p-6 space-y-5 overflow-y-auto flex-1 text-xs">
+                {/* Active Clinical Alert Banner (Promoted to Top When Present) */}
+                {alertActive && (
+                  <div
+                    role="alert"
+                    className="p-3.5 rounded-xl border border-rose-200 dark:border-rose-500/35 border-l-4 border-l-rose-500 bg-rose-50/80 dark:bg-rose-950/40 space-y-1"
                   >
-                    {selectedPatient.is_active ? 'Active' : 'Disabled'}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400 block">Total Bookings:</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-100">
-                    {selectedPatient.appointment_count ?? '0'} records
-                  </span>
-                </div>
-              </div>
-
-              {/* Names */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                    First Name <span className="text-rose-500 dark:text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.first_name}
-                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                    className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                    Last Name <span className="text-rose-500 dark:text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.last_name}
-                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                    className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* DOB, Gender, Phone */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                    Date of Birth <span className="text-rose-500 dark:text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.date_of_birth}
-                    onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
-                    className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                    Gender
-                  </label>
-                  <select
-                    value={formData.gender}
-                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                    className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                  >
-                    {GENDER_OPTIONS.map((g) => (
-                      <option key={g.value} value={g.value}>
-                        {g.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                    Phone <span className="text-rose-500 dark:text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Address */}
-              <div>
-                <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                  Residential Address
-                </label>
-                <input
-                  type="text"
-                  placeholder="Street, Barangay, City, Province"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                />
-              </div>
-
-              {/* Emergency Contact */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                    Emergency Contact Name
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Parent, Spouse, Guardian"
-                    value={formData.emergency_contact_name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, emergency_contact_name: e.target.value })
-                    }
-                    className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-600 dark:text-slate-300 mb-1">
-                    Emergency Contact Phone
-                  </label>
-                  <input
-                    type="tel"
-                    placeholder="+63 917 000 0000"
-                    value={formData.emergency_contact_phone}
-                    onChange={(e) =>
-                      setFormData({ ...formData, emergency_contact_phone: e.target.value })
-                    }
-                    className="w-full px-3.5 py-2 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Medical Alerts Banner & Input */}
-              <div className="p-3.5 rounded-xl border border-amber-200 dark:border-amber-800/70 bg-amber-50/50 dark:bg-amber-950/30 space-y-2">
-                <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200 font-semibold text-xs">
-                  <HeartPulse className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  Clinical Medical Alerts, Allergies, or Systemic Conditions
-                </div>
-                <textarea
-                  rows="2"
-                  placeholder="e.g., Allergic to penicillin, Asthma, Hypertension, Bleeding diathesis, Diabetic on insulin..."
-                  value={formData.medical_alerts}
-                  onChange={(e) => setFormData({ ...formData, medical_alerts: e.target.value })}
-                  className="w-full px-3.5 py-2 border border-amber-300 dark:border-amber-700 bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
-                />
-                <p className="text-[11px] text-amber-700 dark:text-amber-300">
-                  These alerts appear prominently on dentist appointment screens and treatment records.
-                </p>
-              </div>
-
-              {/* Actions */}
-              <div className={`flex flex-wrap items-center gap-3 pt-4 border-t border-slate-100 dark:border-gray-700 ${canManageAccountStatus ? 'justify-between' : 'justify-end'}`}>
-                {canManageAccountStatus && (
-                  <button
-                    type="button"
-                    onClick={() => handleStatusToggleClick(selectedPatient)}
-                    className={`text-xs font-semibold px-3 py-2 rounded-lg border transition-colors cursor-pointer ${
-                      selectedPatient.is_active
-                        ? 'border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/50'
-                        : 'border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
-                    }`}
-                  >
-                    {selectedPatient.is_active ? 'Disable Account Login' : 'Enable Account Login'}
-                  </button>
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">
+                      <HeartPulse className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                      <span>Clinical Medical Alert</span>
+                    </div>
+                    <p className="text-xs font-medium text-rose-900 dark:text-rose-100 leading-relaxed">
+                      {viewingPatient.medical_alerts}
+                    </p>
+                  </div>
                 )}
 
-                <div className="flex items-center gap-3">
+                {/* Key Demographics Strip */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div className="p-3 rounded-xl bg-slate-50/85 dark:bg-gray-900/55 border border-slate-200/80 dark:border-gray-700/80 space-y-1">
+                    <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                      <Calendar className="w-3 h-3 text-teal-600 dark:text-teal-400" aria-hidden="true" />
+                      Date of Birth
+                    </span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-100 tabular-nums block">
+                      {formatReadableDate(viewingPatient.date_of_birth)}
+                      {age !== null && (
+                        <span className="text-slate-500 dark:text-slate-400 font-medium"> ({age}y)</span>
+                      )}
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-slate-50/85 dark:bg-gray-900/55 border border-slate-200/80 dark:border-gray-700/80 space-y-1">
+                    <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                      <User className="w-3 h-3 text-teal-600 dark:text-teal-400" aria-hidden="true" />
+                      Gender
+                    </span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-100 block">
+                      {formatGenderLabel(viewingPatient.gender)}
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-slate-50/85 dark:bg-gray-900/55 border border-slate-200/80 dark:border-gray-700/80 space-y-1">
+                    <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                      <FileText className="w-3 h-3 text-teal-600 dark:text-teal-400" aria-hidden="true" />
+                      Total Bookings
+                    </span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-100 tabular-nums block">
+                      {visitCount} {visitCount === 1 ? 'visit' : 'visits'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Contact Information */}
+                <div className="space-y-2">
+                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    Contact Information
+                  </h3>
+                  <div className="rounded-xl border border-slate-200/80 dark:border-gray-700/80 bg-white dark:bg-gray-900/40 divide-y divide-slate-100 dark:divide-gray-700/70">
+                    {/* Phone Row */}
+                    <div className="px-3.5 py-3 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shrink-0">
+                          <Phone className="w-3.5 h-3.5" aria-hidden="true" />
+                        </span>
+                        <div className="min-w-0">
+                          <span className="text-[10.5px] text-slate-400 dark:text-slate-500 block">Phone Number</span>
+                          {viewingPatient.phone ? (
+                            <a
+                              href={`tel:${viewingPatient.phone}`}
+                              className="font-semibold text-slate-800 dark:text-slate-100 hover:text-teal-600 dark:hover:text-teal-300 tabular-nums block truncate transition-colors"
+                            >
+                              {viewingPatient.phone}
+                            </a>
+                          ) : (
+                            <span className="text-slate-400 dark:text-slate-500 italic block">Not provided</span>
+                          )}
+                        </div>
+                      </div>
+                      {viewingPatient.phone && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopyContact('phone', viewingPatient.phone)}
+                          aria-label="Copy phone number"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10.5px] font-semibold text-slate-500 dark:text-slate-400 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors shrink-0 cursor-pointer"
+                        >
+                          {copiedField === 'phone' ? (
+                            <>
+                              <Check className="w-3 h-3 text-emerald-500" aria-hidden="true" />
+                              <span className="text-emerald-600 dark:text-emerald-400">Copied</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" aria-hidden="true" />
+                              <span>Copy</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Email Row */}
+                    <div className="px-3.5 py-3 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shrink-0">
+                          <Mail className="w-3.5 h-3.5" aria-hidden="true" />
+                        </span>
+                        <div className="min-w-0">
+                          <span className="text-[10.5px] text-slate-400 dark:text-slate-500 block">Account Email</span>
+                          {viewingPatient.email ? (
+                            <a
+                              href={`mailto:${viewingPatient.email}`}
+                              title={viewingPatient.email}
+                              className="font-semibold text-slate-800 dark:text-slate-100 hover:text-teal-600 dark:hover:text-teal-300 block truncate transition-colors"
+                            >
+                              {viewingPatient.email}
+                            </a>
+                          ) : (
+                            <span className="text-slate-400 dark:text-slate-500 italic block">Not provided</span>
+                          )}
+                        </div>
+                      </div>
+                      {viewingPatient.email && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopyContact('email', viewingPatient.email)}
+                          aria-label="Copy account email"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10.5px] font-semibold text-slate-500 dark:text-slate-400 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors shrink-0 cursor-pointer"
+                        >
+                          {copiedField === 'email' ? (
+                            <>
+                              <Check className="w-3 h-3 text-emerald-500" aria-hidden="true" />
+                              <span className="text-emerald-600 dark:text-emerald-400">Copied</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" aria-hidden="true" />
+                              <span>Copy</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Address Row */}
+                    <div className="px-3.5 py-3 flex items-start gap-2.5">
+                      <span className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shrink-0 mt-0.5">
+                        <MapPin className="w-3.5 h-3.5" aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0">
+                        <span className="text-[10.5px] text-slate-400 dark:text-slate-500 block">Residential Address</span>
+                        <span
+                          className={`block leading-relaxed ${
+                            hasAddress
+                              ? 'font-medium text-slate-800 dark:text-slate-100'
+                              : 'text-slate-400 dark:text-slate-500 italic'
+                          }`}
+                        >
+                          {hasAddress ? viewingPatient.address : 'Not recorded'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Emergency Contact */}
+                <div className="space-y-2">
+                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    Emergency Contact
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl border border-slate-200/80 dark:border-gray-700/80 bg-white dark:bg-gray-900/40">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shrink-0">
+                        <User className="w-3.5 h-3.5" aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0">
+                        <span className="text-[10.5px] text-slate-400 dark:text-slate-500 block">Contact Person</span>
+                        <span
+                          className={`block truncate ${
+                            hasEmergencyName
+                              ? 'font-semibold text-slate-800 dark:text-slate-100'
+                              : 'text-slate-400 dark:text-slate-500 italic'
+                          }`}
+                        >
+                          {hasEmergencyName ? viewingPatient.emergency_contact_name : 'Not specified'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shrink-0">
+                        <Phone className="w-3.5 h-3.5" aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0">
+                        <span className="text-[10.5px] text-slate-400 dark:text-slate-500 block">Emergency Phone</span>
+                        {hasEmergencyPhone ? (
+                          <a
+                            href={`tel:${viewingPatient.emergency_contact_phone}`}
+                            className="font-semibold text-slate-800 dark:text-slate-100 hover:text-teal-600 dark:hover:text-teal-300 tabular-nums block truncate transition-colors"
+                          >
+                            {viewingPatient.emergency_contact_phone}
+                          </a>
+                        ) : (
+                          <span className="text-slate-400 dark:text-slate-500 italic block">Not specified</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Clear Medical Alert Status (When None Recorded) */}
+                {!alertActive && (
+                  <div className="px-3.5 py-3 rounded-xl border border-slate-200/80 dark:border-gray-700/80 bg-slate-50/70 dark:bg-gray-900/40 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                        <ShieldCheck className="w-4 h-4" aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0">
+                        <span className="font-semibold text-slate-700 dark:text-slate-200 block">
+                          Clinical Medical Alerts
+                        </span>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 block">
+                          No known allergies or systemic conditions recorded.
+                        </span>
+                      </div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10.5px] font-semibold bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-500/25 shrink-0">
+                      Clear
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-3.5 border-t border-slate-100 dark:border-gray-700/80 bg-slate-50/60 dark:bg-gray-900/45 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setViewingPatient(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+                {canManagePatients && (
                   <button
                     type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 font-medium text-sm rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                    onClick={() => {
+                      const target = viewingPatient;
+                      setViewingPatient(null);
+                      openDetailsModal(target);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-[#0D9488] text-white text-xs font-semibold transition-colors shadow-xs cursor-pointer"
                   >
-                    Cancel
+                    <Edit2 className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>Edit Profile</span>
                   </button>
-                  {canManagePatients && (
-                    <button
-                      type="submit"
-                      disabled={formSubmitting}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 dark:bg-[#0F766E] hover:bg-teal-700 dark:hover:bg-teal-600 text-white font-medium text-sm rounded-lg shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
-                    >
-                      {formSubmitting && <RefreshCw className="w-4 h-4 animate-spin" />}
-                      Save Profile Changes
-                    </button>
-                  )}
-                </div>
+                )}
               </div>
-            </form>
-          </div>
-        </DialogOverlay>
-      )}
+            </div>
+          </DialogOverlay>
+        );
+      })()}
+
+      {/* Patient View & Edit Modal */}
+      {isModalOpen && selectedPatient && (() => {
+        const visitCount = Number(selectedPatient.appointment_count ?? 0);
+        const isActive = Boolean(selectedPatient.is_active);
+        const alertLength = (formData.medical_alerts || '').length;
+
+        return (
+          <DialogOverlay
+            onClose={() => setIsModalOpen(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/70 backdrop-blur-sm"
+          >
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-slate-200/90 dark:border-gray-700/80 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90dvh] flex flex-col">
+              {/* Header */}
+              <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-100 dark:border-gray-700/80 bg-slate-50/70 dark:bg-gray-900/50">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  {selectedPatient.avatar_url ? (
+                    <img
+                      src={selectedPatient.avatar_url}
+                      alt={`${selectedPatient.first_name} ${selectedPatient.last_name}`}
+                      className="w-11 h-11 rounded-full object-cover border border-teal-200 dark:border-teal-500/35 shrink-0"
+                    />
+                  ) : (
+                    <div className="w-11 h-11 rounded-full bg-teal-50 dark:bg-teal-500/15 ring-1 ring-inset ring-teal-200/90 dark:ring-teal-500/30 text-[#0F766E] dark:text-teal-300 flex items-center justify-center font-bold text-sm shrink-0">
+                      {getPatientInitials(selectedPatient.first_name, selectedPatient.last_name)}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-base font-bold text-slate-900 dark:text-slate-50 truncate">
+                        Edit Patient Profile
+                      </h2>
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold border ${
+                          isActive
+                            ? 'bg-emerald-50 dark:bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-500/30'
+                            : 'bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-gray-600'
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-slate-400'}`}
+                          aria-hidden="true"
+                        />
+                        {isActive ? 'Active' : 'Disabled'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums truncate">
+                      Patient #{selectedPatient.id} · User #{selectedPatient.user_id} · Registered {formatReadableDate(selectedPatient.created_at)}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  aria-label="Close edit patient profile"
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-gray-700/70 rounded-xl p-1.5 transition-colors cursor-pointer shrink-0"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleFormSubmit} className="flex flex-col flex-1 min-h-0">
+                <div className="p-6 space-y-5 overflow-y-auto flex-1">
+                  {formErrors.general && (
+                    <div
+                      role="alert"
+                      className="flex items-center gap-2 p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/70 text-rose-700 dark:text-rose-200 text-xs font-medium rounded-xl"
+                    >
+                      <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
+                      <span>{formErrors.general}</span>
+                    </div>
+                  )}
+
+                  {/* Account Snapshot Bar */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                    <div className="px-3.5 py-2.5 rounded-xl bg-slate-50/85 dark:bg-gray-900/55 border border-slate-200/80 dark:border-gray-700/80 flex items-center gap-2.5 min-w-0">
+                      <span className="w-7 h-7 rounded-lg bg-white dark:bg-gray-800 border border-slate-200/70 dark:border-gray-700 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+                        <Mail className="w-3.5 h-3.5" aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0">
+                        <span className="text-[10.5px] text-slate-400 dark:text-slate-500 block">Account Email</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-100 block truncate" title={selectedPatient.email}>
+                          {selectedPatient.email || 'Not linked'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="px-3.5 py-2.5 rounded-xl bg-slate-50/85 dark:bg-gray-900/55 border border-slate-200/80 dark:border-gray-700/80 flex items-center gap-2.5">
+                      <span className="w-7 h-7 rounded-lg bg-white dark:bg-gray-800 border border-slate-200/70 dark:border-gray-700 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+                        <FileText className="w-3.5 h-3.5" aria-hidden="true" />
+                      </span>
+                      <div>
+                        <span className="text-[10.5px] text-slate-400 dark:text-slate-500 block">Total Bookings</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-100 tabular-nums block">
+                          {visitCount} {visitCount === 1 ? 'visit' : 'visits'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Personal Details */}
+                  <div className="space-y-3.5">
+                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                      Personal Details
+                    </h3>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="edit-patient-first-name"
+                          className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                        >
+                          First Name <span className="text-rose-500 dark:text-rose-400">*</span>
+                        </label>
+                        <input
+                          id="edit-patient-first-name"
+                          type="text"
+                          required
+                          value={formData.first_name}
+                          onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                          className="w-full px-3.5 py-2.5 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 rounded-xl text-sm focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="edit-patient-last-name"
+                          className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                        >
+                          Last Name <span className="text-rose-500 dark:text-rose-400">*</span>
+                        </label>
+                        <input
+                          id="edit-patient-last-name"
+                          type="text"
+                          required
+                          value={formData.last_name}
+                          onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                          className="w-full px-3.5 py-2.5 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 rounded-xl text-sm focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="edit-patient-dob"
+                          className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                        >
+                          Date of Birth <span className="text-rose-500 dark:text-rose-400">*</span>
+                        </label>
+                        <input
+                          id="edit-patient-dob"
+                          type="date"
+                          required
+                          value={formData.date_of_birth}
+                          onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
+                          className="w-full px-3.5 py-2.5 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 rounded-xl text-sm tabular-nums focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="edit-patient-gender"
+                          className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                        >
+                          Gender
+                        </label>
+                        <select
+                          id="edit-patient-gender"
+                          value={formData.gender}
+                          onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                          className="w-full px-3.5 py-2.5 border border-slate-300 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors"
+                        >
+                          {GENDER_OPTIONS.map((g) => (
+                            <option key={g.value} value={g.value}>
+                              {g.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="edit-patient-phone"
+                          className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                        >
+                          Phone <span className="text-rose-500 dark:text-rose-400">*</span>
+                        </label>
+                        <input
+                          id="edit-patient-phone"
+                          type="tel"
+                          required
+                          value={formData.phone}
+                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                          className="w-full px-3.5 py-2.5 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 rounded-xl text-sm tabular-nums focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Address & Emergency Contact */}
+                  <div className="space-y-3.5 pt-1 border-t border-slate-100 dark:border-gray-700/70">
+                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 pt-3">
+                      Address &amp; Emergency Contact
+                    </h3>
+
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="edit-patient-address"
+                        className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                      >
+                        <span>Residential Address</span>
+                        <span className="text-[10px] font-medium normal-case tracking-normal text-slate-400 dark:text-slate-500">
+                          Optional
+                        </span>
+                      </label>
+                      <input
+                        id="edit-patient-address"
+                        type="text"
+                        placeholder="Street, Barangay, City, Province"
+                        value={formData.address}
+                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                        className="w-full px-3.5 py-2.5 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl text-sm focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="edit-patient-ec-name"
+                          className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                        >
+                          <span>Emergency Contact Name</span>
+                          <span className="text-[10px] font-medium normal-case tracking-normal text-slate-400 dark:text-slate-500">
+                            Optional
+                          </span>
+                        </label>
+                        <input
+                          id="edit-patient-ec-name"
+                          type="text"
+                          placeholder="e.g., Parent, Spouse, Guardian"
+                          value={formData.emergency_contact_name}
+                          onChange={(e) =>
+                            setFormData({ ...formData, emergency_contact_name: e.target.value })
+                          }
+                          className="w-full px-3.5 py-2.5 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl text-sm focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="edit-patient-ec-phone"
+                          className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                        >
+                          <span>Emergency Contact Phone</span>
+                          <span className="text-[10px] font-medium normal-case tracking-normal text-slate-400 dark:text-slate-500">
+                            Optional
+                          </span>
+                        </label>
+                        <input
+                          id="edit-patient-ec-phone"
+                          type="tel"
+                          placeholder="+63 917 000 0000"
+                          value={formData.emergency_contact_phone}
+                          onChange={(e) =>
+                            setFormData({ ...formData, emergency_contact_phone: e.target.value })
+                          }
+                          className="w-full px-3.5 py-2.5 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl text-sm tabular-nums focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] dark:focus:border-teal-400 focus:outline-none transition-colors"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Clinical Medical Alerts */}
+                  <div className="p-4 rounded-xl border border-amber-200/90 dark:border-amber-500/30 bg-amber-50/60 dark:bg-amber-950/25 space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <label
+                        htmlFor="edit-patient-alerts"
+                        className="flex items-center gap-2 text-amber-900 dark:text-amber-200 font-semibold text-xs"
+                      >
+                        <HeartPulse className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" aria-hidden="true" />
+                        <span>Clinical Medical Alerts &amp; Allergies</span>
+                      </label>
+                      <span className="text-[11px] text-amber-700/80 dark:text-amber-300/70 tabular-nums shrink-0">
+                        {alertLength} / 500
+                      </span>
+                    </div>
+                    <textarea
+                      id="edit-patient-alerts"
+                      rows="2"
+                      maxLength={500}
+                      placeholder="e.g., Allergic to penicillin, Asthma, Hypertension, Diabetic on insulin..."
+                      value={formData.medical_alerts}
+                      onChange={(e) => setFormData({ ...formData, medical_alerts: e.target.value })}
+                      className="w-full px-3.5 py-2.5 border border-amber-300/80 dark:border-amber-600/60 bg-white dark:bg-gray-900/70 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl text-sm leading-relaxed focus:ring-2 focus:ring-amber-500/25 focus:border-amber-500 focus:outline-none transition-colors"
+                    />
+                    <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80">
+                      Leave blank if none. Recorded alerts surface on dentist appointment views and treatment charts.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Pinned Footer Actions */}
+                <div className="px-6 py-3.5 border-t border-slate-100 dark:border-gray-700/80 bg-slate-50/60 dark:bg-gray-900/45 flex flex-wrap items-center justify-between gap-2.5">
+                  <div>
+                    {canManageAccountStatus && (
+                      <button
+                        type="button"
+                        onClick={() => handleStatusToggleClick(selectedPatient)}
+                        className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border transition-colors cursor-pointer ${
+                          isActive
+                            ? 'border-amber-300/80 dark:border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-500/10'
+                            : 'border-emerald-300/80 dark:border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10'
+                        }`}
+                      >
+                        <Power className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span>{isActive ? 'Disable Account Login' : 'Enable Account Login'}</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2.5 ml-auto">
+                    <button
+                      type="button"
+                      onClick={() => setIsModalOpen(false)}
+                      className="px-4 py-2 rounded-xl border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    {canManagePatients && (
+                      <button
+                        type="submit"
+                        disabled={formSubmitting}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0D9488] dark:bg-[#0F766E] hover:bg-[#0F766E] dark:hover:bg-[#0D9488] text-white font-semibold text-xs shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                      >
+                        {formSubmitting && <RefreshCw className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}
+                        <span>Save Profile Changes</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </form>
+            </div>
+          </DialogOverlay>
+        );
+      })()}
 
       {/* Confirmation Dialog */}
       {canManageAccountStatus && confirmModal.isOpen && confirmModal.patient && (
@@ -1027,7 +1282,7 @@ export function PatientListPage() {
               </div>
             </div>
 
-            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed text-justify">
               {confirmModal.targetStatus === 0
                 ? 'Disabling this account will revoke login access and online booking privileges for this patient. All past clinical records, appointments, and diagnostic data will remain completely intact.'
                 : 'Enabling this account will restore full access for the patient to log in and schedule appointments.'}
@@ -1059,6 +1314,14 @@ export function PatientListPage() {
             </div>
           </div>
         </DialogOverlay>
+      )}
+      {historyPatient && (
+        <RecordHistoryModal
+          entityType="patient"
+          entityId={historyPatient.id}
+          title={`${historyPatient.first_name} ${historyPatient.last_name} — Patient History`}
+          onClose={() => setHistoryPatient(null)}
+        />
       )}
     </div>
   );

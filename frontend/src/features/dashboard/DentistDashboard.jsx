@@ -162,6 +162,7 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
   // Today's Queue interactive filters
   const [queueSearch, setQueueSearch] = useState('');
   const [queueStatusFilter, setQueueStatusFilter] = useState('ALL');
+  const [showAllLeaves, setShowAllLeaves] = useState(false);
 
   // Leave Request Modal State
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
@@ -447,6 +448,7 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
             subtitle: 'Scheduled for today',
             ariaLabel: `Today's Visits: ${metrics.todayCount} scheduled`,
             targetTab: 'appointments',
+            navOptions: { statusFilter: 'ALL' },
             Icon: Calendar,
             accentBar: 'from-teal-500/80 via-teal-400/60 to-transparent',
             glow: 'group-hover:bg-teal-500/10 dark:group-hover:bg-teal-400/10',
@@ -463,6 +465,7 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
             subtitle: 'Confirmed clinical visits',
             ariaLabel: `Upcoming Confirmed: ${metrics.upcomingCount} visits`,
             targetTab: 'appointments',
+            navOptions: { statusFilter: 'CONFIRMED' },
             Icon: CheckCircle2,
             accentBar: 'from-emerald-500/80 via-emerald-400/60 to-transparent',
             glow: 'group-hover:bg-emerald-500/10 dark:group-hover:bg-emerald-400/10',
@@ -479,6 +482,7 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
             subtitle: 'Pending approval',
             ariaLabel: `Awaiting Review: ${metrics.pendingCount} visits`,
             targetTab: 'appointments',
+            navOptions: { statusFilter: 'PENDING' },
             Icon: Clock,
             accentBar: 'from-amber-500/85 via-amber-400/60 to-transparent',
             glow: 'group-hover:bg-amber-500/10 dark:group-hover:bg-amber-400/10',
@@ -504,11 +508,11 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
             dot: 'bg-sky-500 dark:bg-sky-400',
             subText: 'text-sky-700 dark:text-sky-300',
           },
-        ].map(({ key, label, value, subtitle, ariaLabel, targetTab, Icon, accentBar, glow, hoverBorder, iconWrap, dot, subText }) => (
+        ].map(({ key, label, value, subtitle, ariaLabel, targetTab, navOptions, Icon, accentBar, glow, hoverBorder, iconWrap, dot, subText }) => (
           <button
             key={key}
             type="button"
-            onClick={() => onNavigateTab && onNavigateTab(targetTab)}
+            onClick={() => onNavigateTab && (navOptions ? onNavigateTab(targetTab, navOptions) : onNavigateTab(targetTab))}
             aria-label={ariaLabel}
             className={`relative overflow-hidden text-left p-5 rounded-2xl bg-white dark:bg-gray-800/90 border border-slate-200/90 dark:border-gray-700/80 shadow-xs hover:shadow-md hover:-translate-y-0.5 ${hoverBorder} transition-all duration-200 cursor-pointer group focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0D9488]`}
           >
@@ -1036,7 +1040,7 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
               </div>
             ) : (
               <div className="space-y-2.5 text-xs">
-                {timeOffList.slice(0, 3).map((t) => (
+                {(showAllLeaves ? timeOffList : timeOffList.slice(0, 3)).map((t) => (
                   <div
                     key={t.id}
                     className="p-3 rounded-xl bg-amber-50/55 dark:bg-amber-500/[0.07] border border-amber-200/75 dark:border-amber-500/25 space-y-1.5"
@@ -1058,6 +1062,16 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
                     </p>
                   </div>
                 ))}
+
+                {timeOffList.length > 3 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllLeaves((prev) => !prev)}
+                    className="w-full py-1.5 rounded-lg text-[11px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer"
+                  >
+                    {showAllLeaves ? 'Show fewer leaves' : `Show all ${timeOffList.length} leaves`}
+                  </button>
+                )}
 
                 <button
                   type="button"
@@ -1165,9 +1179,9 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
             e.preventDefault();
             closeLeaveModal();
           }}
-          className="p-0 m-auto bg-white dark:bg-gray-800 text-slate-900 dark:text-slate-100 rounded-2xl max-w-[540px] w-[calc(100%-2rem)] shadow-2xl border border-slate-200 dark:border-gray-700 overflow-hidden"
+          className="p-0 m-auto bg-white dark:bg-gray-800 text-slate-900 dark:text-slate-100 rounded-2xl max-w-[540px] w-[calc(100%-2rem)] max-h-[90dvh] flex flex-col shadow-2xl border border-slate-200 dark:border-gray-700 overflow-hidden"
         >
-          <div className="px-6 py-4 bg-gradient-to-r from-[#F8FAFC] to-white dark:from-gray-800 dark:to-gray-800 border-b border-slate-100 dark:border-gray-700 flex items-center justify-between gap-4">
+          <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-[#F8FAFC] to-white dark:from-gray-800 dark:to-gray-800 border-b border-slate-100 dark:border-gray-700 flex items-center justify-between gap-4 shrink-0">
             <div className="flex items-center gap-3">
               <span className="w-9 h-9 rounded-xl bg-[#F0FDFA] dark:bg-teal-900/50 border border-[#CCFBF1] dark:border-teal-800 text-[#0D9488] dark:text-teal-300 flex items-center justify-center shrink-0">
                 <Coffee className="w-4 h-4" />
@@ -1181,13 +1195,13 @@ export function DentistDashboard({ dentistId = 1, onNavigateTab, onSelectAppoint
               onClick={closeLeaveModal}
               disabled={leaveSubmitting}
               aria-label="Close dialog"
-              className="w-9 h-9 rounded-xl text-slate-500 dark:text-slate-400 hover:text-[#12304A] dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors shrink-0 disabled:opacity-50 cursor-pointer"
+              className="w-11 h-11 sm:w-9 sm:h-9 rounded-xl text-slate-500 dark:text-slate-400 hover:text-[#12304A] dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors shrink-0 disabled:opacity-50 cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          <form onSubmit={handleLeaveSubmit} className="p-6 space-y-5">
+          <form onSubmit={handleLeaveSubmit} className="p-4 sm:p-6 space-y-5 overflow-y-auto">
             <div className="rounded-xl bg-slate-50 dark:bg-gray-900/60 border border-slate-200/80 dark:border-gray-700 px-4 py-3 flex items-start gap-2.5">
               <Shield className="w-4 h-4 text-[#0D9488] dark:text-teal-400 shrink-0 mt-0.5" />
               <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300 text-justify">

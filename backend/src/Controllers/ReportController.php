@@ -164,13 +164,13 @@ class ReportController
             }
         }
 
-        // Optional filter: search (patient name)
+        // Optional filter: search (patient name, wildcard-escaped for literal matching)
         $rawSearch = $request->getQuery('search');
         if ($rawSearch !== null && is_string($rawSearch) && trim($rawSearch) !== '') {
             $cleanSearch = mb_substr(trim($rawSearch), 0, 120);
-            $escaped = str_replace(['%', '_'], ['\\%', '\\_'], $cleanSearch);
+            $escaped = \App\Support\ServerTableQuery::escapeLike($cleanSearch);
             $term = '%' . $escaped . '%';
-            $whereClauses[] = 'EXISTS (SELECT 1 FROM patients p_f WHERE p_f.id = a.patient_id AND (p_f.first_name LIKE :p_search1 OR p_f.last_name LIKE :p_search2))';
+            $whereClauses[] = "EXISTS (SELECT 1 FROM patients p_f WHERE p_f.id = a.patient_id AND (p_f.first_name LIKE :p_search1 ESCAPE '!' OR p_f.last_name LIKE :p_search2 ESCAPE '!'))";
             $params[':p_search1'] = $term;
             $params[':p_search2'] = $term;
             $appliedFilters['search'] = $cleanSearch;
@@ -253,9 +253,14 @@ class ReportController
             LEFT JOIN services s ON a.service_id = s.id
             WHERE {$whereSql}
             ORDER BY a.start_at DESC, a.id DESC
-            LIMIT {$perPage} OFFSET {$offset}
+            LIMIT :limit OFFSET :offset
         ");
-        $listStmt->execute($params);
+        foreach ($params as $k => $v) {
+            $listStmt->bindValue($k, $v);
+        }
+        $listStmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
+        $listStmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $listStmt->execute();
         $appointmentRows = $listStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         foreach ($appointmentRows as &$appt) {
             $appt['id'] = (int) $appt['id'];
@@ -275,7 +280,6 @@ class ReportController
         $rejected = $statusCounts['REJECTED'] ?? 0;
         $completionRate = $total > 0 ? round(($completed / $total) * 100, 1) : 0.0;
         $cancellationRate = $total > 0 ? round(($cancelled / $total) * 100, 1) : 0.0;
-        $lastPage = max(1, (int) ceil($total / $perPage));
 
         return Response::success([
             'date_range' => ['start_date' => $range['start_date'], 'end_date' => $range['end_date']],
@@ -293,12 +297,7 @@ class ReportController
             'status_distribution' => $statusCounts,
             'daily_timeline' => $dailyRows,
             'appointments' => $appointmentRows,
-            'appointments_meta' => [
-                'total' => $total,
-                'page' => $page,
-                'per_page' => $perPage,
-                'last_page' => $lastPage,
-            ],
+            'appointments_meta' => \App\Support\ServerTableQuery::buildMeta($total, $total, $page, $perPage),
         ]);
     }
 

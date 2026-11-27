@@ -34,6 +34,10 @@ class RealtimeOutboxService
     public const EVENT_ACCOUNT_CREATED = 'account.created';
     public const EVENT_ACCOUNT_UPDATED = 'account.updated';
     public const EVENT_NOTIFICATION_CREATED = 'notification.created';
+    public const EVENT_MESSAGE_CREATED = 'message.created';
+    public const EVENT_MESSAGE_DELIVERED = 'message.delivered';
+    public const EVENT_MESSAGE_READ = 'message.read';
+    public const EVENT_MESSAGE_TYPING = 'message.typing';
 
     /** @var list<string> */
     public const ALLOWED_EVENTS = [
@@ -48,6 +52,10 @@ class RealtimeOutboxService
         self::EVENT_ACCOUNT_CREATED,
         self::EVENT_ACCOUNT_UPDATED,
         self::EVENT_NOTIFICATION_CREATED,
+        self::EVENT_MESSAGE_CREATED,
+        self::EVENT_MESSAGE_DELIVERED,
+        self::EVENT_MESSAGE_READ,
+        self::EVENT_MESSAGE_TYPING,
     ];
 
     /** @var list<string> Backoff delays in seconds after attempt 1, 2, 3, 4... */
@@ -103,12 +111,15 @@ class RealtimeOutboxService
 
         // Strictly minimal, versioned, non-clinical, non-PII payload contract
         $appointmentId = isset($metadata['appointmentId']) ? (int) $metadata['appointmentId'] : null;
+        $conversationId = isset($metadata['conversationId']) && (int) $metadata['conversationId'] > 0
+            ? (int) $metadata['conversationId']
+            : null;
         $entityType = isset($metadata['entityType']) && is_string($metadata['entityType']) && $metadata['entityType'] !== ''
             ? strtolower(trim($metadata['entityType']))
-            : ($appointmentId !== null ? 'appointments' : 'notifications');
+            : ($conversationId !== null ? 'messages' : ($appointmentId !== null ? 'appointments' : 'notifications'));
         $entityId = isset($metadata['entityId'])
             ? (int) $metadata['entityId']
-            : ($appointmentId ?? $notificationId);
+            : ($appointmentId ?? $conversationId ?? $notificationId);
 
         $payload = [
             'eventId' => $eventId,
@@ -116,6 +127,7 @@ class RealtimeOutboxService
             'eventVersion' => self::EVENT_VERSION,
             'notificationId' => $notificationId,
             'appointmentId' => $appointmentId,
+            'conversationId' => $conversationId,
             'entityType' => $entityType,
             'entityId' => $entityId,
             'status' => isset($metadata['status']) ? strtolower((string) $metadata['status']) : null,
@@ -225,6 +237,80 @@ class RealtimeOutboxService
             $this->logger->warning('Best-effort realtime dispatch skipped; worker will retry', [
                 'error' => $e->getMessage(),
             ]);
+        }
+    }
+
+    /**
+     * Best-effort ephemeral real-time event dispatch (used for transient typing signals).
+     * Never persists to realtime_outbox and never throws.
+     *
+     * @param array<string, mixed> $metadata
+     */
+    public function publishEphemeralBestEffort(string $eventType, int $recipientUserId, array $metadata = []): void
+    {
+        if (!$this->config->enabled || !$this->config->hasSecret() || $recipientUserId <= 0) {
+            return;
+        }
+
+        if (!in_array($eventType, self::ALLOWED_EVENTS, true)) {
+            return;
+        }
+
+        $eventId = self::generateEventId();
+        $occurredAt = gmdate('Y-m-d\TH:i:s\Z');
+        $conversationId = isset($metadata['conversationId']) && (int) $metadata['conversationId'] > 0
+            ? (int) $metadata['conversationId']
+            : null;
+
+        $envelope = [
+            'eventId' => $eventId,
+            'eventType' => $eventType,
+            'recipientUserId' => $recipientUserId,
+            'payload' => [
+                'eventId' => $eventId,
+                'eventType' => $eventType,
+                'eventVersion' => self::EVENT_VERSION,
+                'notificationId' => null,
+                'appointmentId' => null,
+                'conversationId' => $conversationId,
+                'entityType' => 'messages',
+                'entityId' => $conversationId,
+                'status' => isset($metadata['status']) ? strtolower((string) $metadata['status']) : null,
+                'occurredAt' => $occurredAt,
+            ],
+        ];
+
+        try {
+            $this->publisher->publishEvent($envelope);
+        } catch (Throwable $e) {
+            $this->logger->debug('Ephemeral realtime dispatch skipped', [
+                'eventType' => $eventType,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Query online presence for a bounded list of user IDs from the realtime server.
+     *
+     * @param list<int> $userIds
+     * @return list<int>
+     */
+    public function queryOnlineUserIds(array $userIds): array
+    {
+        if (!$this->config->enabled || !$this->config->hasSecret() || empty($userIds)) {
+            return [];
+        }
+
+        $clean = array_values(array_unique(array_filter(array_map('intval', $userIds), static fn (int $id): bool => $id > 0)));
+        if (empty($clean)) {
+            return [];
+        }
+
+        try {
+            return $this->publisher->queryPresence($clean);
+        } catch (Throwable $e) {
+            return [];
         }
     }
 

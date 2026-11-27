@@ -262,7 +262,8 @@ class DentistRepository
         $perPage = min(100, max(1, $perPage));
         $offset = ($page - 1) * $perPage;
 
-        $sortColumn = self::SORT_ALLOWLIST[$sortBy] ?? 'd.last_name';
+        $resolvedSortKey = array_key_exists($sortBy, self::SORT_ALLOWLIST) ? $sortBy : 'name';
+        $sortColumn = self::SORT_ALLOWLIST[$resolvedSortKey];
         $direction = strtoupper($sortDir) === 'DESC' ? 'DESC' : 'ASC';
 
         $where = [];
@@ -270,8 +271,8 @@ class DentistRepository
 
         // Search: name, license, specialization, or email
         if (!empty($filters['search'])) {
-            $searchTerm = '%' . str_replace(['%', '_'], ['\\%', '\\_'], trim((string) $filters['search'])) . '%';
-            $where[] = '(d.first_name LIKE ? OR d.last_name LIKE ? OR d.license_number LIKE ? OR d.specialization LIKE ? OR u.email LIKE ?)';
+            $searchTerm = '%' . \App\Support\ServerTableQuery::escapeLike((string) $filters['search']) . '%';
+            $where[] = "(d.first_name LIKE ? ESCAPE '!' OR d.last_name LIKE ? ESCAPE '!' OR d.license_number LIKE ? ESCAPE '!' OR d.specialization LIKE ? ESCAPE '!' OR u.email LIKE ? ESCAPE '!')";
             $params[] = $searchTerm;
             $params[] = $searchTerm;
             $params[] = $searchTerm;
@@ -291,9 +292,10 @@ class DentistRepository
             $params[] = trim((string) $filters['specialization']);
         }
 
-        $whereSql = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+        $hasFilters = !empty($where);
+        $whereSql = $hasFilters ? 'WHERE ' . implode(' AND ', $where) : '';
 
-        // Total count
+        // Filtered count
         $countSql = "
             SELECT COUNT(*) 
             FROM dentists d
@@ -302,7 +304,11 @@ class DentistRepository
         ";
         $countStmt = $pdo->prepare($countSql);
         $countStmt->execute($params);
-        $totalItems = (int) $countStmt->fetchColumn();
+        $filteredItems = (int) $countStmt->fetchColumn();
+
+        $totalRecords = $hasFilters
+            ? (int) $pdo->query('SELECT COUNT(*) FROM dentists d INNER JOIN users u ON d.user_id = u.id')->fetchColumn()
+            : $filteredItems;
 
         // Paginated items
         $sql = "
@@ -316,25 +322,40 @@ class DentistRepository
             INNER JOIN users u ON d.user_id = u.id
             {$whereSql}
             ORDER BY {$sortColumn} {$direction}, d.id {$direction}
-            LIMIT {$perPage} OFFSET {$offset}
+            LIMIT ? OFFSET ?
         ";
 
         $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
+        $pos = 1;
+        foreach ($params as $val) {
+            $stmt->bindValue($pos++, $val);
+        }
+        $stmt->bindValue($pos++, $perPage, PDO::PARAM_INT);
+        $stmt->bindValue($pos, $offset, PDO::PARAM_INT);
+        $stmt->execute();
         $items = array_map(
             fn (array $row): array => $this->stripInternalFields($this->hydrateAvatarFields($row)),
             $stmt->fetchAll(PDO::FETCH_ASSOC)
         );
 
-        $totalPages = $totalItems > 0 ? (int) ceil($totalItems / $perPage) : 1;
+        $totalPages = $filteredItems > 0 ? (int) ceil($filteredItems / $perPage) : 1;
 
         return [
             'items' => $items,
             'pagination' => [
                 'current_page' => $page,
+                'page' => $page,
                 'per_page' => $perPage,
-                'total_items' => $totalItems,
+                'total' => $filteredItems,
+                'total_items' => $filteredItems,
+                'total_records' => $totalRecords,
+                'filtered_records' => $filteredItems,
+                'last_page' => $totalPages,
                 'total_pages' => $totalPages,
+                'sorting' => [
+                    'sort_by' => $resolvedSortKey,
+                    'sort_dir' => strtolower($direction),
+                ],
             ],
         ];
     }
@@ -356,7 +377,7 @@ class DentistRepository
                 u.email
             FROM dentists d
             INNER JOIN users u ON d.user_id = u.id
-            WHERE d.is_active = 1
+            WHERE d.is_active = 1 AND u.is_active = 1
             ORDER BY d.last_name ASC, d.first_name ASC
         ');
 

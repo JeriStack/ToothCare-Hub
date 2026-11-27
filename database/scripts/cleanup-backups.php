@@ -10,7 +10,22 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../../backend/vendor/autoload.php';
+$autoloadCandidates = [
+    __DIR__ . '/../../vendor/autoload.php',
+    __DIR__ . '/../../backend/vendor/autoload.php',
+];
+$autoloadPath = null;
+foreach ($autoloadCandidates as $candidate) {
+    if (is_file($candidate)) {
+        $autoloadPath = $candidate;
+        break;
+    }
+}
+if ($autoloadPath === null) {
+    fwrite(STDERR, "[FATAL] Unable to locate Composer autoloader.\n");
+    exit(1);
+}
+require_once $autoloadPath;
 
 use App\Services\DatabaseBackupService;
 

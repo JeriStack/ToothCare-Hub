@@ -117,14 +117,29 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     fetchCurrentUser();
 
+    let lastPermRefreshAt = 0;
+
     const handleUnauthorized = () => {
       clearStoredAuthUser();
       setUser(null);
     };
 
+    const handlePermissionsRefresh = () => {
+      const now = Date.now();
+      if (now - lastPermRefreshAt < 1500) {
+        return;
+      }
+      lastPermRefreshAt = now;
+      void fetchCurrentUser({ silent: true });
+    };
+
     window.addEventListener('toothcare:unauthorized', handleUnauthorized);
+    window.addEventListener('toothcare:permissions-refresh', handlePermissionsRefresh);
+    window.addEventListener('toothcare:forbidden', handlePermissionsRefresh);
     return () => {
       window.removeEventListener('toothcare:unauthorized', handleUnauthorized);
+      window.removeEventListener('toothcare:permissions-refresh', handlePermissionsRefresh);
+      window.removeEventListener('toothcare:forbidden', handlePermissionsRefresh);
     };
   }, [fetchCurrentUser]);
 
@@ -215,7 +230,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const verifyEmail = async (token) => {
+  const verifyEmail = useCallback(async (token) => {
     try {
       const result = await authApi.verifyEmail(token);
       return { success: true, data: result };
@@ -226,9 +241,9 @@ export function AuthProvider({ children }) {
         'Email verification link is invalid or has expired.';
       return { success: false, error: message };
     }
-  };
+  }, []);
 
-  const resendVerification = async (email) => {
+  const resendVerification = useCallback(async (email) => {
     try {
       const result = await authApi.resendVerification(email);
       return { success: true, data: result };
@@ -239,7 +254,7 @@ export function AuthProvider({ children }) {
         'Unable to resend verification link.';
       return { success: false, error: message };
     }
-  };
+  }, []);
 
   const hasPermission = useCallback(
     (slug) => {

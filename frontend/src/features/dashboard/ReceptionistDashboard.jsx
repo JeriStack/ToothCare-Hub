@@ -28,6 +28,7 @@ import { DashboardSkeleton } from '../../components/skeletons/DashboardSkeleton'
 import { useDashboardSync } from '../../hooks/useDashboardSync';
 import { DASHBOARD_SYNC_DOMAINS } from '../../services/realtime/dashboardSync';
 import { DialogOverlay } from '../../components/ui/DialogOverlay';
+import { ServerTableFooter } from '../../components/ui/ServerTableControls';
 
 function formatClockTime(dateTimeStr) {
   if (!dateTimeStr) return '--:--';
@@ -124,9 +125,15 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
-  // Filters for Today's Schedule
+  // Filters & Pagination for Today's Schedule
   const [searchQuery, setSearchQuery] = useState('');
   const [attendanceFilter, setAttendanceFilter] = useState('ALL');
+  const [schedulePage, setSchedulePage] = useState(1);
+  const [schedulePerPage, setSchedulePerPage] = useState(8);
+
+  useEffect(() => {
+    setSchedulePage(1);
+  }, [searchQuery, attendanceFilter]);
 
   // Modals state
   const [checkInTarget, setCheckInTarget] = useState(null);
@@ -221,7 +228,8 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
 
     setIsUpdatingAttendance(true);
     try {
-      await receptionistApi.updateAttendance(attendanceModalTarget.id, attendanceStatusChoice, attendanceNotes || null);
+      const targetAppointmentId = attendanceModalTarget.appointment_id ?? attendanceModalTarget.id;
+      await receptionistApi.updateAttendance(targetAppointmentId, attendanceStatusChoice, attendanceNotes || null);
       triggerToast(`Attendance updated for ${attendanceModalTarget.patient_first_name} ${attendanceModalTarget.patient_last_name}.`);
       setAttendanceModalTarget(null);
       setAttendanceNotes('');
@@ -301,6 +309,13 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
     return matchesSearch && matchesFilter;
   });
 
+  const scheduleTotalPages = Math.max(1, Math.ceil(filteredSchedule.length / schedulePerPage));
+  const safeSchedulePage = Math.min(schedulePage, scheduleTotalPages);
+  const paginatedSchedule = filteredSchedule.slice(
+    (safeSchedulePage - 1) * schedulePerPage,
+    safeSchedulePage * schedulePerPage
+  );
+
   const receptionistName =
     user?.first_name
       ? `${user.first_name} ${user.last_name || ''}`.trim()
@@ -312,7 +327,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
     <div className="space-y-8 pb-12">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#12304A] dark:bg-slate-900 text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 border border-teal-500/30 dark:border-teal-400/30 text-sm animate-in fade-in slide-in-from-bottom-3 duration-200">
+        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:bottom-6 sm:right-6 sm:max-w-sm z-50 bg-[#12304A] dark:bg-slate-900 text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 border border-teal-500/30 dark:border-teal-400/30 text-sm animate-in fade-in slide-in-from-bottom-3 duration-200">
           <CheckCircle2 className="w-5 h-5 text-teal-400 flex-shrink-0" />
           <span>{toastMessage}</span>
         </div>
@@ -658,7 +673,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                   </tr>
                 </thead>
                 <tbody role="rowgroup" className="divide-y divide-slate-100 dark:divide-gray-700/70">
-                  {filteredSchedule.map((apt) => {
+                  {paginatedSchedule.map((apt) => {
                     const startTime = formatClockTime(apt.start_at);
                     const endTime = formatClockTime(apt.end_at);
                     const isArrived = apt.attendance_status && apt.attendance_status !== 'NOT_ARRIVED';
@@ -776,26 +791,23 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
             )}
           </div>
 
-          {/* Subtle Schedule Footer */}
+          {/* Schedule Pagination Footer */}
           {schedule.length > 0 && (
-            <div className="px-5 py-3 border-t border-slate-100 dark:border-gray-700/80 bg-slate-50/50 dark:bg-gray-900/35 flex items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
-              <span className="tabular-nums">
-                Showing <strong className="font-semibold text-slate-700 dark:text-slate-200">{filteredSchedule.length}</strong> of{' '}
-                <strong className="font-semibold text-slate-700 dark:text-slate-200">{schedule.length}</strong> scheduled today
-              </span>
-              {(searchQuery || attendanceFilter !== 'ALL') && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchQuery('');
-                    setAttendanceFilter('ALL');
-                  }}
-                  className="font-semibold text-[#0F766E] dark:text-teal-400 hover:underline cursor-pointer"
-                >
-                  Clear filters
-                </button>
-              )}
-            </div>
+            <ServerTableFooter
+              page={safeSchedulePage}
+              perPage={schedulePerPage}
+              totalRecords={schedule.length}
+              filteredRecords={filteredSchedule.length}
+              totalPages={scheduleTotalPages}
+              onPageChange={(nextPage) => setSchedulePage(nextPage)}
+              onPerPageChange={(nextSize) => {
+                setSchedulePerPage(nextSize);
+                setSchedulePage(1);
+              }}
+              pageSizeOptions={[5, 8, 10, 15, 25]}
+              loading={loading || refreshing}
+              itemLabel="appointments"
+            />
           )}
         </section>
 
@@ -853,9 +865,11 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
               ) : (
                 <div className="divide-y divide-slate-100 dark:divide-gray-700/70 -my-1">
                   {waitingList.map((item) => {
-                    const isInChair = item.status === 'IN_CONSULTATION';
+                    const itemApptId = item.appointment_id ?? item.id;
+                    const itemStatus = item.attendance_status ?? item.status;
+                    const isInChair = itemStatus === 'IN_CONSULTATION';
                     return (
-                      <div key={item.id} className="py-3 first:pt-1 last:pb-1 flex items-start justify-between gap-3">
+                      <div key={itemApptId} className="py-3 first:pt-1 last:pb-1 flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 min-w-0">
                           <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-gray-900/80 border border-slate-200/80 dark:border-gray-700 text-slate-700 dark:text-slate-200 flex items-center justify-center text-[11px] font-semibold shrink-0 mt-0.5">
                             {getInitials(item.patient_first_name, item.patient_last_name)}
@@ -1167,7 +1181,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
             )}
 
             <form onSubmit={handleRegisterPatient} className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">First Name *</label>
                   <input
@@ -1190,7 +1204,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Email Address *</label>
                   <input
@@ -1214,7 +1228,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Date of Birth</label>
                   <input
@@ -1249,7 +1263,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Emergency Contact Name</label>
                   <input

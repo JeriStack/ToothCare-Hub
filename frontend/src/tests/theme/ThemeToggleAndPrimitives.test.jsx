@@ -102,4 +102,127 @@ describe('ThemeToggle & Themed UI Primitives', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByText('Visit Summary').className).toContain('dark:text-gray-50');
   });
+
+  it('animates theme switches via View Transitions circular ripple when supported, and falls back or respects reduced motion', async () => {
+    const animateMock = vi.fn();
+    const originalAnimate = document.documentElement.animate;
+    const originalStartVT = document.startViewTransition;
+    const originalMatchMedia = window.matchMedia;
+
+    // 1. View Transitions API path
+    window.matchMedia = vi.fn().mockReturnValue({ matches: false });
+    document.documentElement.animate = animateMock;
+    document.startViewTransition = vi.fn((cb) => {
+      cb();
+      return { ready: Promise.resolve(), finished: Promise.resolve() };
+    });
+
+    const { unmount } = render(
+      <ThemeProvider>
+        <ThemeToggle variant="surface" />
+      </ThemeProvider>
+    );
+
+    fireEvent.click(screen.getByTestId('theme-toggle'), { clientX: 200, clientY: 40 });
+    expect(document.startViewTransition).toHaveBeenCalledTimes(1);
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
+
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(animateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clipPath: expect.arrayContaining([expect.stringContaining('circle(0px at 200px 40px)')]),
+        opacity: [0.92, 1],
+      }),
+      expect.objectContaining({
+        pseudoElement: '::view-transition-new(root)',
+        fill: 'both',
+      })
+    );
+    expect(document.documentElement.classList.contains('theme-view-transition')).toBe(false);
+
+    // 1b. Rapid consecutive toggles safely cancel/skip in-flight transition and keep class until latest finishes
+    let resolveFirstFinished;
+    let resolveSecondFinished;
+    const firstSkip = vi.fn();
+    const secondSkip = vi.fn();
+    const cancelFirstAnim = vi.fn();
+    animateMock.mockReturnValueOnce({ cancel: cancelFirstAnim }).mockReturnValueOnce({ cancel: vi.fn() });
+
+    document.startViewTransition = vi
+      .fn()
+      .mockImplementationOnce((cb) => {
+        cb();
+        return {
+          ready: Promise.resolve(),
+          finished: new Promise((resolve) => {
+            resolveFirstFinished = resolve;
+          }),
+          skipTransition: firstSkip,
+        };
+      })
+      .mockImplementationOnce((cb) => {
+        cb();
+        return {
+          ready: Promise.resolve(),
+          finished: new Promise((resolve) => {
+            resolveSecondFinished = resolve;
+          }),
+          skipTransition: secondSkip,
+        };
+      });
+
+    fireEvent.click(screen.getByTestId('theme-toggle'), { clientX: 100, clientY: 50 });
+    await Promise.resolve();
+    expect(document.documentElement.classList.contains('theme-view-transition')).toBe(true);
+
+    // Toggle again while first transition is still active
+    fireEvent.click(screen.getByTestId('theme-toggle'), { clientX: 100, clientY: 50 });
+    expect(firstSkip).toHaveBeenCalledTimes(1);
+    expect(cancelFirstAnim).toHaveBeenCalledTimes(1);
+
+    // First transition settling late must NOT prematurely strip the class for the second transition
+    resolveFirstFinished();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(document.documentElement.classList.contains('theme-view-transition')).toBe(true);
+
+    // Second transition finishing cleans up cleanly
+    resolveSecondFinished();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(document.documentElement.classList.contains('theme-view-transition')).toBe(false);
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
+
+    // 2. Reduced motion skips view transition and CSS fallback
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+    document.startViewTransition.mockClear();
+    fireEvent.click(screen.getByTestId('theme-toggle'));
+    expect(document.startViewTransition).not.toHaveBeenCalled();
+    expect(document.documentElement.classList.contains('theme-transitioning')).toBe(false);
+    expect(document.documentElement.classList.contains('dark')).toBe(false);
+
+    unmount();
+
+    // 3. CSS fallback when startViewTransition is unavailable
+    window.matchMedia = vi.fn().mockReturnValue({ matches: false });
+    delete document.startViewTransition;
+    vi.useFakeTimers();
+
+    render(
+      <ThemeProvider>
+        <ThemeToggle variant="surface" />
+      </ThemeProvider>
+    );
+
+    fireEvent.click(screen.getByTestId('theme-toggle'));
+    expect(document.documentElement.classList.contains('theme-transitioning')).toBe(true);
+    vi.advanceTimersByTime(260);
+    expect(document.documentElement.classList.contains('theme-transitioning')).toBe(false);
+
+    vi.useRealTimers();
+    document.documentElement.animate = originalAnimate;
+    document.startViewTransition = originalStartVT;
+    window.matchMedia = originalMatchMedia;
+  });
 });

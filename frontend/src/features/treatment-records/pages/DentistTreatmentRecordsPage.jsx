@@ -10,37 +10,66 @@ import {
   AlertTriangle,
   Stethoscope,
   X,
+  Plus,
 } from 'lucide-react';
 import { treatmentRecordsApi } from '../api';
+import { appointmentsApi } from '../../appointments/api';
 import { TreatmentRecordViewer } from '../components/TreatmentRecordViewer';
 import { TreatmentRecordEditor } from '../components/TreatmentRecordEditor';
 import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
+import { ServerTableFooter } from '../../../components/ui/ServerTableControls';
 
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 export function DentistTreatmentRecordsPage() {
   const [records, setRecords] = useState([]);
+  const [pendingVisits, setPendingVisits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
-  const [meta, setMeta] = useState({ total: 0, page: 1, per_page: 20, last_page: 1 });
+  const [perPage, setPerPage] = useState(10);
+  const [meta, setMeta] = useState({ total: 0, page: 1, per_page: 10, last_page: 1 });
 
   // Viewer / Editor modal state
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [isEditingModal, setIsEditingModal] = useState(false);
+  const [documentingVisit, setDocumentingVisit] = useState(null);
 
   const fetchRecords = async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await treatmentRecordsApi.list({
-        page,
-        per_page: 20,
-      });
+      const [data, completedRes, documentedIndexRes] = await Promise.all([
+        treatmentRecordsApi.list({
+          page,
+          per_page: perPage,
+        }),
+        appointmentsApi.listDentist({ status: 'COMPLETED', per_page: 50 }).catch(() => ({ items: [] })),
+        page === 1 && perPage >= 100
+          ? Promise.resolve(null)
+          : treatmentRecordsApi.list({ page: 1, per_page: 100 }).catch(() => null),
+      ]);
       const items = Array.isArray(data) ? data : data.items || [];
-      const resMeta = data.meta || { total: items.length, page, per_page: 20, last_page: 1 };
+      const resMeta = data.meta || {
+        total: items.length,
+        page,
+        per_page: perPage,
+        last_page: Math.max(1, Math.ceil(items.length / perPage)),
+      };
       setRecords(items);
       setMeta(resMeta);
+
+      const completedItems = Array.isArray(completedRes) ? completedRes : completedRes?.items || [];
+      const indexedItems = Array.isArray(documentedIndexRes)
+        ? documentedIndexRes
+        : documentedIndexRes?.items || items;
+      const documentedApptIds = new Set([
+        ...items.map((r) => Number(r.appointment_id)),
+        ...indexedItems.map((r) => Number(r.appointment_id)),
+      ]);
+      setPendingVisits(
+        completedItems.filter((a) => !a.has_treatment_record && !documentedApptIds.has(Number(a.id)))
+      );
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Failed to load treatment records.');
     } finally {
@@ -50,7 +79,7 @@ export function DentistTreatmentRecordsPage() {
 
   useEffect(() => {
     fetchRecords();
-  }, [page]);
+  }, [page, perPage]);
 
   const filteredRecords = records.filter((r) => {
     if (!searchQuery.trim()) return true;
@@ -78,6 +107,54 @@ export function DentistTreatmentRecordsPage() {
           </p>
         </div>
       </div>
+
+      {/* Pending Clinical Documentation Panel (Completed visits missing procedure notes) */}
+      {!loading && !error && pendingVisits.length > 0 && (
+        <div className="bg-amber-50/75 dark:bg-amber-500/[0.08] rounded-2xl border border-amber-200/90 dark:border-amber-500/30 p-5 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" aria-hidden="true" />
+              <h3 className="text-sm font-bold text-amber-950 dark:text-amber-200">
+                Completed Visits Awaiting Clinical Documentation ({pendingVisits.length})
+              </h3>
+            </div>
+            <span className="text-[11px] font-medium text-amber-800 dark:text-amber-300">
+              Select a completed visit below to author procedure notes
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            {pendingVisits.map((visit) => (
+              <div
+                key={visit.id}
+                className="p-3.5 rounded-xl bg-white dark:bg-gray-800/95 border border-amber-200/70 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+              >
+                <div className="space-y-0.5 text-xs">
+                  <div className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <span>#{visit.id}</span>
+                    <span>
+                      {visit.patient_first_name} {visit.patient_last_name}
+                    </span>
+                  </div>
+                  <p className="text-slate-500 dark:text-slate-400">
+                    <span className="font-medium text-slate-700 dark:text-slate-200">{visit.service_name || 'Dental Visit'}</span>
+                    {' · '}
+                    <span className="tabular-nums">{visit.start_at ? visit.start_at.slice(0, 16) : 'Completed'}</span>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDocumentingVisit(visit)}
+                  className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>Document Now</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Search and Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-slate-200 dark:border-gray-700 p-4 shadow-xs">
@@ -235,6 +312,21 @@ export function DentistTreatmentRecordsPage() {
               </tbody>
             </table>
           </div>
+          <ServerTableFooter
+            page={meta.current_page || meta.page || page}
+            perPage={meta.per_page || perPage}
+            totalRecords={meta.total_records ?? meta.total ?? filteredRecords.length}
+            filteredRecords={searchQuery.trim() ? filteredRecords.length : (meta.filtered_records ?? meta.total ?? filteredRecords.length)}
+            totalPages={meta.total_pages || meta.last_page || 1}
+            onPageChange={(nextPage) => setPage(nextPage)}
+            onPerPageChange={(nextSize) => {
+              setPerPage(nextSize);
+              setPage(1);
+            }}
+            pageSizeOptions={[5, 10, 15, 25, 50]}
+            loading={loading}
+            itemLabel="records"
+          />
         </div>
       )}
 
@@ -278,6 +370,43 @@ export function DentistTreatmentRecordsPage() {
                   onEdit={() => setIsEditingModal(true)}
                 />
               )}
+            </div>
+          </div>
+        </DialogOverlay>
+      )}
+      {/* New Clinical Record Creation Modal for Completed Visits */}
+      {documentingVisit && (
+        <DialogOverlay
+          onClose={() => setDocumentingVisit(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/70 backdrop-blur-xs overflow-y-auto"
+        >
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-slate-200 dark:border-gray-700 shadow-2xl max-w-3xl w-full my-8 max-h-[90dvh] overflow-y-auto">
+            <div className="p-4 border-b border-slate-100 dark:border-gray-700 flex items-center justify-between sticky top-0 bg-white dark:bg-gray-800 z-10">
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <Stethoscope className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                <span>
+                  Document Visit #{documentingVisit.id} — {documentingVisit.patient_first_name} {documentingVisit.patient_last_name}
+                </span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setDocumentingVisit(null)}
+                aria-label="Close clinical record editor"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5">
+              <TreatmentRecordEditor
+                appointmentId={documentingVisit.id}
+                onSaved={() => {
+                  setDocumentingVisit(null);
+                  fetchRecords();
+                }}
+                onCancel={() => setDocumentingVisit(null)}
+              />
             </div>
           </div>
         </DialogOverlay>

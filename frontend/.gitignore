@@ -4,5 +4,9 @@ dist/*
 .env
 .env.*
 !.env.example
+.npmrc
 coverage/
 *.local
+*.log
+*.har
+*.heapsnapshot

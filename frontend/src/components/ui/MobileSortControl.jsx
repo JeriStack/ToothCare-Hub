@@ -13,7 +13,7 @@ import { ArrowDown, ArrowUp } from 'lucide-react';
  */
 export function MobileSortControl({ options, sortBy, sortDir, onSort, label = 'Sort by' }) {
   const selectId = useId();
-  const isAsc = sortDir === 'ASC';
+  const isAsc = String(sortDir || '').toUpperCase() === 'ASC';
 
   return (
     <div className="tch-mobile-sort items-center gap-2 px-4 py-3 border-b border-slate-100 dark:border-gray-700">

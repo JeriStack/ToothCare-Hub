@@ -32,6 +32,21 @@ class AuditLogRepository
         'websocket_ticket',
     ];
 
+    private const TARGET_TYPE_ALIASES = [
+        'users' => ['users', 'user'],
+        'patients' => ['patients', 'patient'],
+        'dentists' => ['dentists', 'dentist'],
+        'appointments' => ['appointments', 'appointment'],
+        'services' => ['services', 'service'],
+        'roles' => ['roles', 'role'],
+        'treatment_records' => ['treatment_records', 'treatment_record'],
+        'legal_documents' => ['legal_documents', 'legal_document'],
+        'email_outbox' => ['email_outbox', 'email_job', 'email_jobs'],
+        'clinic_settings' => ['clinic_settings', 'settings'],
+        'audit_logs' => ['audit_logs', 'audit_log'],
+        'archives' => ['archives', 'archive', 'archive_record', 'archive_records'],
+    ];
+
     public function __construct(?Database $database = null)
     {
         $this->database = $database ?? Database::getInstance();
@@ -114,7 +129,8 @@ class AuditLogRepository
         string $sortBy = 'created_at',
         string $sortDir = 'DESC',
         int $page = 1,
-        int $perPage = 25
+        int $perPage = 25,
+        int $maxPerPage = 100
     ): array {
         $pdo = $this->database->getConnection();
 
@@ -122,8 +138,8 @@ class AuditLogRepository
         $params = [];
 
         if (!empty($filters['search'])) {
-            $search = '%' . trim((string) $filters['search']) . '%';
-            $where[] = '(al.action LIKE ? OR al.target_type LIKE ? OR al.ip_address LIKE ? OR u.email LIKE ?)';
+            $search = '%' . \App\Support\ServerTableQuery::escapeLike((string) $filters['search']) . '%';
+            $where[] = "(al.action LIKE ? ESCAPE '!' OR al.target_type LIKE ? ESCAPE '!' OR al.ip_address LIKE ? ESCAPE '!' OR u.email LIKE ? ESCAPE '!')";
             $params[] = $search;
             $params[] = $search;
             $params[] = $search;
@@ -149,14 +165,24 @@ class AuditLogRepository
             }
         }
 
-        if (!empty($filters['action_prefix'])) {
-            $where[] = 'al.action LIKE ?';
-            $params[] = trim((string) $filters['action_prefix']) . '%';
+        if (!empty($filters['action_prefix']) && trim((string) $filters['action_prefix']) !== '') {
+            $where[] = "al.action LIKE ? ESCAPE '!'";
+            $params[] = \App\Support\ServerTableQuery::escapeLike((string) $filters['action_prefix']) . '%';
         }
 
         if (!empty($filters['target_type'])) {
-            $where[] = 'al.target_type = ?';
-            $params[] = trim((string) $filters['target_type']);
+            $normalizedTarget = strtolower(trim((string) $filters['target_type']));
+            $aliases = self::TARGET_TYPE_ALIASES[$normalizedTarget] ?? [$normalizedTarget];
+            if (count($aliases) === 1) {
+                $where[] = 'al.target_type = ?';
+                $params[] = $aliases[0];
+            } else {
+                $placeholders = implode(', ', array_fill(0, count($aliases), '?'));
+                $where[] = "al.target_type IN ({$placeholders})";
+                foreach ($aliases as $alias) {
+                    $params[] = $alias;
+                }
+            }
         }
 
         if (!empty($filters['actor_user_id'])) {
@@ -164,17 +190,25 @@ class AuditLogRepository
             $params[] = (int) $filters['actor_user_id'];
         }
 
-        if (!empty($filters['date_from'])) {
+        $dateFrom = !empty($filters['date_from'])
+            ? trim((string) $filters['date_from'])
+            : (!empty($filters['date']) ? trim((string) $filters['date']) : '');
+        $dateTo = !empty($filters['date_to'])
+            ? trim((string) $filters['date_to'])
+            : (!empty($filters['date']) ? trim((string) $filters['date']) : '');
+
+        if ($dateFrom !== '') {
             $where[] = 'al.created_at >= ?';
-            $params[] = trim((string) $filters['date_from']) . ' 00:00:00';
+            $params[] = $dateFrom . ' 00:00:00';
         }
 
-        if (!empty($filters['date_to'])) {
+        if ($dateTo !== '') {
             $where[] = 'al.created_at <= ?';
-            $params[] = trim((string) $filters['date_to']) . ' 23:59:59';
+            $params[] = $dateTo . ' 23:59:59';
         }
 
-        $whereSql = count($where) > 0 ? 'WHERE ' . implode(' AND ', $where) : '';
+        $hasFilters = count($where) > 0;
+        $whereSql = $hasFilters ? 'WHERE ' . implode(' AND ', $where) : '';
 
         $countStmt = $pdo->prepare("
             SELECT COUNT(*) 
@@ -183,14 +217,19 @@ class AuditLogRepository
             {$whereSql}
         ");
         $countStmt->execute($params);
-        $total = (int) $countStmt->fetchColumn();
+        $filteredTotal = (int) $countStmt->fetchColumn();
+
+        $totalRecords = $hasFilters
+            ? (int) $pdo->query('SELECT COUNT(*) FROM audit_logs')->fetchColumn()
+            : $filteredTotal;
 
         $allowedSort = ['created_at' => 'al.created_at', 'id' => 'al.id', 'action' => 'al.action'];
-        $sortCol = $allowedSort[$sortBy] ?? 'al.created_at';
+        $resolvedSortKey = array_key_exists($sortBy, $allowedSort) ? $sortBy : 'created_at';
+        $sortCol = $allowedSort[$resolvedSortKey];
         $direction = strtoupper($sortDir) === 'ASC' ? 'ASC' : 'DESC';
 
         $page = max(1, $page);
-        $perPage = max(1, min(100, $perPage));
+        $perPage = max(1, min(max(1, $maxPerPage), $perPage));
         $offset = ($page - 1) * $perPage;
 
         $stmt = $pdo->prepare("
@@ -203,9 +242,15 @@ class AuditLogRepository
             LEFT JOIN users u ON al.actor_user_id = u.id
             {$whereSql}
             ORDER BY {$sortCol} {$direction}, al.id {$direction}
-            LIMIT {$perPage} OFFSET {$offset}
+            LIMIT ? OFFSET ?
         ");
-        $stmt->execute($params);
+        $pos = 1;
+        foreach ($params as $val) {
+            $stmt->bindValue($pos++, $val);
+        }
+        $stmt->bindValue($pos++, $perPage, PDO::PARAM_INT);
+        $stmt->bindValue($pos, $offset, PDO::PARAM_INT);
+        $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $data = array_map(function ($row) {
@@ -231,12 +276,14 @@ class AuditLogRepository
 
         return [
             'data' => $data,
-            'meta' => [
-                'total' => $total,
-                'page' => $page,
-                'per_page' => $perPage,
-                'last_page' => (int) ceil($total / $perPage) ?: 1,
-            ],
+            'meta' => \App\Support\ServerTableQuery::buildMeta(
+                $totalRecords,
+                $filteredTotal,
+                $page,
+                $perPage,
+                $resolvedSortKey,
+                $direction
+            ),
         ];
     }
 
@@ -247,7 +294,7 @@ class AuditLogRepository
      */
     public function exportCsv(array $filters = []): string
     {
-        $result = $this->list($filters, 'created_at', 'DESC', 1, 2000);
+        $result = $this->list($filters, 'created_at', 'DESC', 1, 2000, 2000);
         $rows = $result['data'];
 
         $fp = fopen('php://temp', 'r+');

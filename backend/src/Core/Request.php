@@ -364,22 +364,28 @@ class Request
 
     public function getClientIp(): string
     {
-        $forwarded = $this->getHeader('x-forwarded-for');
-        if ($forwarded !== null && $forwarded !== '') {
-            $parts = explode(',', $forwarded);
-            $client = trim($parts[0]);
-            if (filter_var($client, FILTER_VALIDATE_IP)) {
-                return $client;
-            }
-        }
-
+        // Prefer X-Real-IP (authoritatively set by edge Nginx from $remote_addr) so
+        // untrusted callers cannot spoof client-supplied leftmost X-Forwarded-For values.
         $realIp = $this->getHeader('x-real-ip');
         if ($realIp !== null && filter_var($realIp, FILTER_VALIDATE_IP)) {
             return $realIp;
         }
 
-        $remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-        return filter_var($remoteAddr, FILTER_VALIDATE_IP) ? (string) $remoteAddr : '127.0.0.1';
+        $remoteAddr = $_SERVER['REMOTE_ADDR'] ?? null;
+        if (is_string($remoteAddr) && filter_var($remoteAddr, FILTER_VALIDATE_IP)) {
+            return $remoteAddr;
+        }
+
+        $forwarded = $this->getHeader('x-forwarded-for');
+        if ($forwarded !== null && $forwarded !== '') {
+            $parts = array_values(array_filter(array_map('trim', explode(',', $forwarded))));
+            $lastHop = end($parts);
+            if (is_string($lastHop) && filter_var($lastHop, FILTER_VALIDATE_IP)) {
+                return $lastHop;
+            }
+        }
+
+        return '127.0.0.1';
     }
 }
 

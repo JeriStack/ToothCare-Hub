@@ -13,6 +13,7 @@ import {
   Award,
   Building2,
   RotateCcw,
+  ChevronDown,
 } from 'lucide-react';
 import { useAuth } from '../../auth/context/AuthContext';
 import { dentistsApi } from '../api';
@@ -60,6 +61,7 @@ export function DentistProfilePage({ onProfileUpdated }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [formErrors, setFormErrors] = useState({});
+  const [showAccountDetails, setShowAccountDetails] = useState(false);
 
   const loadProfile = async () => {
     setIsLoading(true);
@@ -307,33 +309,56 @@ export function DentistProfilePage({ onProfileUpdated }) {
                   />
                 </div>
 
-                <dl className="pt-2 space-y-2 text-xs">
-                  {profile?.license_number && (
-                    <div className="flex items-center justify-between gap-2">
-                      <dt className="text-slate-600 dark:text-slate-400">PRC License</dt>
-                      <dd className="font-semibold text-[#12304A] dark:text-slate-100">{profile.license_number}</dd>
-                    </div>
+                <div className="pt-2 border-t border-slate-100 dark:border-gray-700/80">
+                  <button
+                    type="button"
+                    onClick={() => setShowAccountDetails((prev) => !prev)}
+                    aria-expanded={showAccountDetails}
+                    aria-controls="dentist-account-details"
+                    className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-50/80 dark:bg-gray-900/50 hover:bg-slate-100/90 dark:hover:bg-gray-700/60 border border-slate-200/80 dark:border-gray-700/80 transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0D9488]"
+                  >
+                    <span>Account Details</span>
+                    <ChevronDown
+                      className={`w-4 h-4 text-slate-500 dark:text-slate-400 transition-transform duration-200 ${
+                        showAccountDetails ? 'rotate-180' : ''
+                      }`}
+                      aria-hidden="true"
+                    />
+                  </button>
+
+                  {showAccountDetails && (
+                    <dl
+                      id="dentist-account-details"
+                      className="mt-2.5 p-3 rounded-xl bg-slate-50/70 dark:bg-gray-900/45 border border-slate-100 dark:border-gray-700/75 space-y-2 text-xs"
+                    >
+                      {profile?.license_number && (
+                        <div className="flex items-center justify-between gap-2">
+                          <dt className="text-slate-600 dark:text-slate-400">PRC License</dt>
+                          <dd className="font-semibold text-[#12304A] dark:text-slate-100">{profile.license_number}</dd>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between gap-2">
+                        <dt className="text-slate-600 dark:text-slate-400">Assigned Chair</dt>
+                        <dd className="font-semibold text-[#12304A] dark:text-slate-100">
+                          {formData.default_operatory_chair || 'Chair 1'}
+                        </dd>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <dt className="text-slate-600 dark:text-slate-400">Practice Status</dt>
+                        <dd className="inline-flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-300">
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                          {profile?.is_active === 0 ? 'Inactive' : 'Active & Licensed'}
+                        </dd>
+                      </div>
+                      {typeof profile?.appointment_count === 'number' && (
+                        <div className="flex items-center justify-between gap-2">
+                          <dt className="text-slate-600 dark:text-slate-400">Assigned Visits</dt>
+                          <dd className="font-semibold text-[#12304A] dark:text-slate-100 tabular-nums">{profile.appointment_count}</dd>
+                        </div>
+                      )}
+                    </dl>
                   )}
-                  <div className="flex items-center justify-between gap-2">
-                    <dt className="text-slate-600 dark:text-slate-400">Assigned Chair</dt>
-                    <dd className="font-semibold text-[#12304A] dark:text-slate-100">
-                      {formData.default_operatory_chair || 'Chair 1'}
-                    </dd>
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <dt className="text-slate-600 dark:text-slate-400">Practice Status</dt>
-                    <dd className="inline-flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-300">
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                      {profile?.is_active === 0 ? 'Inactive' : 'Active & Licensed'}
-                    </dd>
-                  </div>
-                  {typeof profile?.appointment_count === 'number' && (
-                    <div className="flex items-center justify-between gap-2">
-                      <dt className="text-slate-600 dark:text-slate-400">Assigned Visits</dt>
-                      <dd className="font-semibold text-[#12304A] dark:text-slate-100">{profile.appointment_count}</dd>
-                    </div>
-                  )}
-                </dl>
+                </div>
               </div>
             </div>
           </section>
