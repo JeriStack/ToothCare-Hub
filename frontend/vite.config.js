@@ -1,7 +1,15 @@
+import http from 'node:http';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 const BENIGN_WS_PROXY_ERRORS = new Set(['ECONNABORTED', 'ECONNRESET', 'EPIPE']);
+const BENIGN_HTTP_CLIENT_ABORT_ERRORS = new Set(['ECONNABORTED', 'EPIPE']);
+const API_PROXY_TARGET = process.env.VITE_PROXY_TARGET || 'http://127.0.0.1:8080';
+
+// Disable upstream keep-alive pooling for the dev HTTP proxy so Node 20+/24's default
+// keepAlive globalAgent does not reuse stale sockets dropped by Docker Desktop / wslrelay.exe
+// (which causes intermittent `Error: read ECONNRESET` on `/api/*` requests after brief idleness).
+const apiProxyAgent = new http.Agent({ keepAlive: false });
 
 export default defineConfig({
   plugins: [react()],
@@ -10,11 +18,37 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8080',
-        changeOrigin: true
+        target: API_PROXY_TARGET,
+        changeOrigin: true,
+        agent: apiProxyAgent,
+        headers: {
+          Connection: 'close',
+        },
+        timeout: 30000,
+        proxyTimeout: 30000,
+        configure(proxy) {
+          proxy.on('error', (err, req, res) => {
+            if (req?.destroyed || BENIGN_HTTP_CLIENT_ABORT_ERRORS.has(err?.code)) {
+              return;
+            }
+            console.error(`[vite] api proxy error (${req?.url || 'unknown'}):`, err?.code || err?.message || err);
+            if (res && !res.headersSent && typeof res.writeHead === 'function') {
+              res.writeHead(502, { 'Content-Type': 'application/json' });
+              res.end(
+                JSON.stringify({
+                  data: null,
+                  error: {
+                    code: 'UPSTREAM_UNAVAILABLE',
+                    message: 'Unable to reach the backend API server. Please ensure Docker services are running.',
+                  },
+                })
+              );
+            }
+          });
+        },
       },
       '/socket.io': {
-        target: 'http://127.0.0.1:8080',
+        target: API_PROXY_TARGET,
         changeOrigin: true,
         ws: true,
         configure(proxy) {
