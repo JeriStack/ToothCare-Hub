@@ -37,6 +37,9 @@ vi.mock('../../features/dentists/pages/DentistProfilePage', () => ({
 vi.mock('../../features/staff/pages/StaffProfilePage', () => ({
   StaffProfilePage: () => <div>StaffProfilePageMock</div>,
 }));
+vi.mock('../../features/messages/pages/MessagesPage', () => ({
+  MessagesPage: () => <div>MessagesPageMock</div>,
+}));
 
 describe('Portal Header Identity & Account Dropdown', () => {
   const logoutMock = vi.fn().mockResolvedValue(true);
@@ -450,5 +453,74 @@ describe('Portal Header Identity & Account Dropdown', () => {
     expect(screen.queryByTestId('global-loading-bar')).not.toBeInTheDocument();
 
     startSpy.mockRestore();
+  });
+
+  it('shows the header Messages icon shortcut for Patient and Dentist portals, navigates to Messages, and hides it for Admin', async () => {
+    // 1. Patient portal: header Messages button present and navigates to /patient/messages
+    window.history.pushState({}, '', '/patient');
+    mockUseAuth.mockReturnValue({
+      user: {
+        id: 20,
+        role: 'PATIENT',
+        patient: { id: 5, first_name: 'Juan', last_name: 'Dela Cruz' },
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      logout: logoutMock,
+      hasPermission: () => true,
+      refreshUser: vi.fn(),
+    });
+
+    const { unmount } = render(<App />);
+    const patientMsgBtn = screen.getByTestId('header-messages-button');
+    expect(patientMsgBtn).toBeInTheDocument();
+    fireEvent.click(patientMsgBtn);
+    expect(await screen.findByText('MessagesPageMock')).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/patient/messages');
+    expect(patientMsgBtn).toHaveAttribute('aria-current', 'page');
+    unmount();
+
+    // 2. Dentist portal: header Messages button present and navigates to /dentist/messages
+    window.history.pushState({}, '', '/dentist');
+    mockUseAuth.mockReturnValue({
+      user: {
+        id: 21,
+        role: 'DENTIST',
+        dentist: { id: 6, first_name: 'Maria', last_name: 'Santos' },
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      logout: logoutMock,
+      hasPermission: () => true,
+      refreshUser: vi.fn(),
+    });
+
+    const { unmount: unmountDentist } = render(<App />);
+    const dentistMsgBtn = screen.getByTestId('header-messages-button');
+    expect(dentistMsgBtn).toBeInTheDocument();
+    fireEvent.click(dentistMsgBtn);
+    expect(await screen.findByText('MessagesPageMock')).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/dentist/messages');
+    unmountDentist();
+
+    // 3. Admin portal: header Messages button must NOT be rendered
+    window.history.pushState({}, '', '/admin');
+    mockUseAuth.mockReturnValue({
+      user: {
+        id: 1,
+        first_name: 'Admin',
+        last_name: 'User',
+        role: 'ADMIN',
+        permissions: ['dashboard.view'],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      logout: logoutMock,
+      hasPermission: () => true,
+      refreshUser: vi.fn(),
+    });
+
+    render(<App />);
+    expect(screen.queryByTestId('header-messages-button')).not.toBeInTheDocument();
   });
 });

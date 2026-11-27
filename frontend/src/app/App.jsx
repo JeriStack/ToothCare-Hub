@@ -1007,6 +1007,43 @@ function AppContent() {
           <div className="flex items-center gap-1 sm:gap-3 shrink-0">
             <ThemeToggle variant="header" />
 
+            {/* Direct Messages Shortcut (Patient & Dentist Portals Only) */}
+            {(currentRole === 'PATIENT' || currentRole === 'DENTIST') && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (currentRole === 'PATIENT') {
+                    handlePatientNav('messages');
+                  } else {
+                    handleDentistNav('messages');
+                  }
+                }}
+                aria-label={
+                  unreadMessagesCount > 0
+                    ? `Messages (${unreadMessagesCount} unread)`
+                    : 'Messages'
+                }
+                aria-current={activeTab === 'messages' ? 'page' : undefined}
+                title="Messages"
+                data-testid="header-messages-button"
+                className={`relative inline-flex items-center justify-center min-h-11 min-w-11 p-2 rounded-xl transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 ${
+                  activeTab === 'messages'
+                    ? 'bg-white/15 text-teal-300'
+                    : 'text-slate-200 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                <MessageSquare className="w-5 h-5" aria-hidden="true" />
+                {unreadMessagesCount > 0 && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute top-0.5 right-0.5 flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-[#0B6EFD] dark:bg-blue-500 px-1 text-[10px] font-bold text-white shadow-sm"
+                  >
+                    {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
+                  </span>
+                )}
+              </button>
+            )}
+
             {/* Unified In-App Notifications Dropdown (All Four Authenticated Roles) */}
             <NotificationCenter
               onSelectNotification={(notif) => {
