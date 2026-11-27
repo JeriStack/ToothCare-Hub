@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Mail, RefreshCw, RotateCcw, Ban, AlertTriangle, CheckCircle, Clock, Cpu } from 'lucide-react';
 import { emailOutboxApi } from '../emailOutboxApi';
+import { ServerTableFooter } from '../../../components/ui/ServerTableControls';
 
 const STATUS_LABELS = {
   PENDING: 'Pending',
@@ -85,6 +86,9 @@ function Metric({ label, value, tone = 'default' }) {
 export function EmailDeliveryPanel({ refreshSignal = 0 }) {
   const [stats, setStats] = useState(null);
   const [jobs, setJobs] = useState([]);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(5);
+  const [jobsMeta, setJobsMeta] = useState({ total: 0, page: 1, per_page: 5, last_page: 1 });
   const [denied, setDenied] = useState(false);
   const [jobsDenied, setJobsDenied] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -101,15 +105,30 @@ export function EmailDeliveryPanel({ refreshSignal = 0 }) {
       else setMessage({ type: 'error', text: 'Could not load email delivery statistics.' });
     }
     try {
-      const res = await emailOutboxApi.getJobs({ failuresOnly: true, perPage: 10 });
-      setJobs(res.data || []);
+      const res = await emailOutboxApi.getJobs({ failuresOnly: true, page, perPage });
+      const rows = res?.data || [];
+      const m = res?.meta || {};
+      const total = Number(m.filtered_records ?? m.total ?? rows.length);
+      const lastPage = Math.max(1, Number(m.total_pages ?? m.last_page ?? Math.ceil(total / perPage)));
+      if (page > lastPage) {
+        setPage(lastPage);
+      }
+      setJobs(rows);
+      setJobsMeta({
+        total,
+        total_records: Number(m.total_records ?? total),
+        filtered_records: total,
+        page: Number(m.current_page ?? m.page ?? page),
+        per_page: Number(m.per_page ?? perPage),
+        last_page: lastPage,
+      });
       setJobsDenied(false);
     } catch (err) {
       if (err?.response?.status === 403) setJobsDenied(true);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, perPage]);
 
   useEffect(() => {
     load();
@@ -396,6 +415,21 @@ export function EmailDeliveryPanel({ refreshSignal = 0 }) {
                   ))}
                 </tbody>
               </table>
+              <ServerTableFooter
+                page={jobsMeta.page}
+                perPage={jobsMeta.per_page}
+                totalRecords={jobsMeta.total_records ?? jobsMeta.total}
+                filteredRecords={jobsMeta.filtered_records ?? jobsMeta.total}
+                totalPages={jobsMeta.last_page}
+                onPageChange={(nextPage) => setPage(nextPage)}
+                onPerPageChange={(nextSize) => {
+                  setPerPage(nextSize);
+                  setPage(1);
+                }}
+                pageSizeOptions={[5, 10, 15, 25]}
+                loading={loading}
+                itemLabel="failed jobs"
+              />
             </div>
           )}
         </div>

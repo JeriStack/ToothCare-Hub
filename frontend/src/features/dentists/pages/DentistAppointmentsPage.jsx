@@ -5,13 +5,13 @@ import {
   Search,
   AlertTriangle,
   ChevronRight,
-  ChevronLeft,
   RefreshCw,
   X,
   Phone,
 } from 'lucide-react';
 import { appointmentsApi } from '../../appointments/api';
 import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
+import { ServerTableFooter } from '../../../components/ui/ServerTableControls';
 import { useDashboardSync } from '../../../hooks/useDashboardSync';
 import { DASHBOARD_SYNC_DOMAINS } from '../../../services/realtime/dashboardSync';
 
@@ -128,7 +128,8 @@ export function DentistAppointmentsPage({ initialStatus = 'ALL', onSelectAppoint
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [meta, setMeta] = useState({ total: 0, page: 1, per_page: 20, last_page: 1 });
+  const [perPage, setPerPage] = useState(10);
+  const [meta, setMeta] = useState({ total: 0, total_records: 0, filtered_records: 0, page: 1, per_page: 10, last_page: 1 });
   const [refreshKey, setRefreshKey] = useState(0);
   const requestSeqRef = useRef(0);
 
@@ -153,7 +154,7 @@ export function DentistAppointmentsPage({ initialStatus = 'ALL', onSelectAppoint
       const effectiveSearch = overrideSearch !== null ? overrideSearch : debouncedSearch;
       const params = {
         page,
-        per_page: 20,
+        per_page: perPage,
       };
       if (statusFilter !== 'ALL') {
         params.status = statusFilter;
@@ -166,7 +167,7 @@ export function DentistAppointmentsPage({ initialStatus = 'ALL', onSelectAppoint
       if (seq !== requestSeqRef.current) return;
 
       const items = Array.isArray(res) ? res : res?.items || [];
-      const resMeta = res?.meta || { total: items.length, page, per_page: 20, last_page: 1 };
+      const resMeta = res?.meta || { total: items.length, total_records: items.length, filtered_records: items.length, page, per_page: perPage, last_page: 1 };
 
       setAppointments(items);
       setMeta(resMeta);
@@ -178,7 +179,7 @@ export function DentistAppointmentsPage({ initialStatus = 'ALL', onSelectAppoint
         setLoading(false);
       }
     }
-  }, [statusFilter, debouncedSearch, page, refreshKey]);
+  }, [statusFilter, debouncedSearch, page, perPage, refreshKey]);
 
   useEffect(() => {
     fetchAppointments();
@@ -495,43 +496,22 @@ export function DentistAppointmentsPage({ initialStatus = 'ALL', onSelectAppoint
               </table>
             </div>
 
-            {/* Pagination Footer */}
-            <div className="px-5 py-3.5 border-t border-slate-100 dark:border-gray-700/80 bg-slate-50/50 dark:bg-gray-900/35 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
-              <div className="tabular-nums">
-                Showing{' '}
-                <span className="font-semibold text-slate-700 dark:text-slate-200">
-                  {(meta.page - 1) * meta.per_page + 1}
-                </span>{' '}
-                to{' '}
-                <span className="font-semibold text-slate-700 dark:text-slate-200">
-                  {Math.min(meta.page * meta.per_page, meta.total)}
-                </span>{' '}
-                of <span className="font-semibold text-slate-700 dark:text-slate-200">{meta.total}</span> visits
-              </div>
-              {meta.last_page > 1 && (
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-slate-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 dark:text-slate-200 font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" /> Previous
-                  </button>
-                  <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-gray-800 text-slate-700 dark:text-slate-200 font-semibold tabular-nums">
-                    Page {page} of {meta.last_page}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={page >= meta.last_page}
-                    onClick={() => setPage((p) => Math.min(meta.last_page, p + 1))}
-                    className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-slate-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 dark:text-slate-200 font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
-                  >
-                    Next <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
-                  </button>
-                </div>
-              )}
-            </div>
+            {/* Unified Server-Side Pagination Footer */}
+            <ServerTableFooter
+              page={meta.current_page || meta.page || page}
+              perPage={meta.per_page || perPage}
+              totalRecords={meta.total_records ?? meta.total ?? appointments.length}
+              filteredRecords={meta.filtered_records ?? meta.total ?? appointments.length}
+              totalPages={meta.total_pages || meta.last_page || 1}
+              onPageChange={(nextPage) => setPage(nextPage)}
+              onPerPageChange={(nextSize) => {
+                setPerPage(nextSize);
+                setPage(1);
+              }}
+              pageSizeOptions={[5, 10, 15, 25, 50]}
+              loading={loading}
+              itemLabel="visits"
+            />
           </>
         )}
       </div>

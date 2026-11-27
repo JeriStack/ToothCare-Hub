@@ -260,35 +260,36 @@ class UserRepository
         $params = [];
 
         if (!empty($filters['search'])) {
-            $search = '%' . trim((string) $filters['search']) . '%';
-            $where[] = '(u.email LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ? OR d.first_name LIKE ? OR d.last_name LIKE ? OR p.first_name LIKE ? OR p.last_name LIKE ?)';
-            $params[] = $search;
-            $params[] = $search;
-            $params[] = $search;
-            $params[] = $search;
-            $params[] = $search;
-            $params[] = $search;
-            $params[] = $search;
+            $search = '%' . \App\Support\ServerTableQuery::escapeLike((string) $filters['search']) . '%';
+            $where[] = "(u.email LIKE :s1 ESCAPE '!' OR u.first_name LIKE :s2 ESCAPE '!' OR u.last_name LIKE :s3 ESCAPE '!' OR d.first_name LIKE :s4 ESCAPE '!' OR d.last_name LIKE :s5 ESCAPE '!' OR p.first_name LIKE :s6 ESCAPE '!' OR p.last_name LIKE :s7 ESCAPE '!')";
+            $params[':s1'] = $search;
+            $params[':s2'] = $search;
+            $params[':s3'] = $search;
+            $params[':s4'] = $search;
+            $params[':s5'] = $search;
+            $params[':s6'] = $search;
+            $params[':s7'] = $search;
         }
 
         if (!empty($filters['role'])) {
-            $where[] = 'u.role = ?';
-            $params[] = strtoupper((string) $filters['role']);
+            $where[] = 'u.role = :role';
+            $params[':role'] = strtoupper((string) $filters['role']);
         }
 
         if (isset($filters['is_active']) && $filters['is_active'] !== null && $filters['is_active'] !== '') {
-            $where[] = 'u.is_active = ?';
-            $params[] = (int) $filters['is_active'];
+            $where[] = 'u.is_active = :is_active';
+            $params[':is_active'] = (int) $filters['is_active'];
         }
 
         if (isset($filters['email_verified']) && $filters['email_verified'] !== null && $filters['email_verified'] !== '') {
-            $where[] = 'u.email_verified = ?';
-            $params[] = (int) $filters['email_verified'];
+            $where[] = 'u.email_verified = :email_verified';
+            $params[':email_verified'] = (int) $filters['email_verified'];
         }
 
-        $whereSql = count($where) > 0 ? 'WHERE ' . implode(' AND ', $where) : '';
+        $hasFilters = count($where) > 0;
+        $whereSql = $hasFilters ? 'WHERE ' . implode(' AND ', $where) : '';
 
-        // Count total matching records
+        // Filtered count
         $countSql = "
             SELECT COUNT(DISTINCT u.id)
             FROM users u
@@ -297,12 +298,21 @@ class UserRepository
             {$whereSql}
         ";
         $countStmt = $pdo->prepare($countSql);
-        $countStmt->execute($params);
-        $total = (int) $countStmt->fetchColumn();
+        foreach ($params as $k => $v) {
+            $countStmt->bindValue($k, $v);
+        }
+        $countStmt->execute();
+        $filteredTotal = (int) $countStmt->fetchColumn();
+
+        // Unfiltered total count
+        $totalRecords = $hasFilters
+            ? (int) $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn()
+            : $filteredTotal;
 
         // Sort direction and column validation
         $allowedSort = ['created_at' => 'u.created_at', 'email' => 'u.email', 'role' => 'u.role', 'id' => 'u.id'];
-        $sortColumn = $allowedSort[$sortBy] ?? 'u.created_at';
+        $resolvedSortKey = array_key_exists($sortBy, $allowedSort) ? $sortBy : 'created_at';
+        $sortColumn = $allowedSort[$resolvedSortKey];
         $direction = strtoupper($sortDir) === 'ASC' ? 'ASC' : 'DESC';
 
         $page = max(1, $page);
@@ -319,11 +329,16 @@ class UserRepository
             LEFT JOIN patients p ON p.user_id = u.id
             {$whereSql}
             ORDER BY {$sortColumn} {$direction}, u.id {$direction}
-            LIMIT {$perPage} OFFSET {$offset}
+            LIMIT :limit OFFSET :offset
         ";
 
         $stmt = $pdo->prepare($selectSql);
-        $stmt->execute($params);
+        foreach ($params as $k => $v) {
+            $stmt->bindValue($k, $v);
+        }
+        $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Normalize display name
@@ -376,12 +391,14 @@ class UserRepository
 
         return [
             'data' => $data,
-            'meta' => [
-                'total' => $total,
-                'page' => $page,
-                'per_page' => $perPage,
-                'last_page' => (int) ceil($total / $perPage) ?: 1,
-            ],
+            'meta' => \App\Support\ServerTableQuery::buildMeta(
+                $totalRecords,
+                $filteredTotal,
+                $page,
+                $perPage,
+                $resolvedSortKey,
+                $direction
+            ),
         ];
     }
 

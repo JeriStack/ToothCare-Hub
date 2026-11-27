@@ -23,6 +23,7 @@ import {
 import { auditApi } from '../api';
 import { TableSkeleton } from '../../../components/skeletons';
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
+import { ServerTableFooter } from '../../../components/ui/ServerTableControls';
 
 const MODULE_OPTIONS = [
   { value: '', label: 'All Modules' },
@@ -37,6 +38,7 @@ const MODULE_OPTIONS = [
   { value: 'email_outbox', label: 'Email Outbox' },
   { value: 'clinic_settings', label: 'Clinic Settings' },
   { value: 'audit_logs', label: 'Audit Logs' },
+  { value: 'archives', label: 'Archives' },
 ];
 
 const DATE_PRESETS = [
@@ -123,7 +125,7 @@ function getRoleBadgeStyle(role = '') {
 export function AuditTrailPage() {
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'security'
   const [logs, setLogs] = useState([]);
-  const [meta, setMeta] = useState({ total: 0, page: 1, per_page: 25, last_page: 1 });
+  const [meta, setMeta] = useState({ total: 0, total_records: 0, filtered_records: 0, page: 1, per_page: 10, last_page: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [exporting, setExporting] = useState(false);
@@ -135,12 +137,18 @@ export function AuditTrailPage() {
   const [selectedDate, setSelectedDate] = useState('');
   const [datePreset, setDatePreset] = useState('all'); // 'all' | 'today' | '7d' | '30d' | 'custom'
   const [sortDir, setSortDir] = useState('DESC'); // 'DESC' | 'ASC'
-  const [perPage, setPerPage] = useState(25);
+  const [perPage, setPerPage] = useState(10);
   const [page, setPage] = useState(1);
 
   // Payload Inspector Modal
   const [inspectingLog, setInspectingLog] = useState(null);
+  const [diffPage, setDiffPage] = useState(1);
+  const [diffPerPage, setDiffPerPage] = useState(6);
   const [copiedKey, setCopiedKey] = useState(null);
+
+  useEffect(() => {
+    setDiffPage(1);
+  }, [inspectingLog]);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -262,9 +270,6 @@ export function AuditTrailPage() {
     () => MODULE_OPTIONS.find((m) => m.value === targetType)?.label || targetType,
     [targetType]
   );
-
-  const rangeStart = meta.total === 0 ? 0 : (meta.page - 1) * meta.per_page + 1;
-  const rangeEnd = Math.min(meta.total, meta.page * meta.per_page);
 
   return (
     <div className="space-y-5">
@@ -517,6 +522,8 @@ export function AuditTrailPage() {
               }}
               className="w-full appearance-none pl-3 pr-8 py-2 bg-slate-50 dark:bg-gray-900/70 border border-slate-200 dark:border-gray-700 rounded-xl text-xs sm:text-sm text-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0D9488]/25 focus:border-[#0D9488] cursor-pointer"
             >
+              <option value={5}>5 per page</option>
+              <option value={10}>10 per page</option>
               <option value={25}>25 per page</option>
               <option value={50}>50 per page</option>
               <option value={100}>100 per page</option>
@@ -776,35 +783,23 @@ export function AuditTrailPage() {
           </div>
         )}
 
-        {/* Pagination */}
+        {/* Unified Server-Side Pagination */}
         {meta.total > 0 && (
-          <div className="px-5 py-3.5 border-t border-slate-100 dark:border-gray-700/80 bg-slate-50/50 dark:bg-gray-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-600 dark:text-slate-300">
-            <span className="tabular-nums">
-              Showing <strong className="text-slate-900 dark:text-slate-100">{rangeStart}–{rangeEnd}</strong> of{' '}
-              <strong className="text-slate-900 dark:text-slate-100">{Number(meta.total).toLocaleString()}</strong> entries
-              {meta.last_page > 1 ? ` · Page ${meta.page} of ${meta.last_page}` : ''}
-            </span>
-            {meta.last_page > 1 && (
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-600 rounded-lg font-semibold disabled:opacity-45 hover:border-teal-400 dark:hover:border-teal-500 transition-colors cursor-pointer disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
-                <button
-                  type="button"
-                  disabled={page >= meta.last_page}
-                  onClick={() => setPage((p) => p + 1)}
-                  className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-600 rounded-lg font-semibold disabled:opacity-45 hover:border-teal-400 dark:hover:border-teal-500 transition-colors cursor-pointer disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
-              </div>
-            )}
-          </div>
+          <ServerTableFooter
+            page={meta.current_page || meta.page || page}
+            perPage={meta.per_page || perPage}
+            totalRecords={meta.total_records ?? meta.total ?? 0}
+            filteredRecords={meta.filtered_records ?? meta.total ?? 0}
+            totalPages={meta.total_pages || meta.last_page || 1}
+            onPageChange={(nextPage) => setPage(nextPage)}
+            onPerPageChange={(nextSize) => {
+              setPerPage(nextSize);
+              setPage(1);
+            }}
+            pageSizeOptions={[5, 10, 25, 50, 100]}
+            loading={loading}
+            itemLabel="entries"
+          />
         )}
       </div>
 
@@ -940,7 +935,20 @@ export function AuditTrailPage() {
               )}
 
               {/* Before vs. After Change Comparison */}
-              {(inspectingLog.payload?.before || inspectingLog.payload?.after) && (
+              {(inspectingLog.payload?.before || inspectingLog.payload?.after) && (() => {
+                const diffFields = Array.from(
+                  new Set([
+                    ...Object.keys(inspectingLog.payload?.before || {}),
+                    ...Object.keys(inspectingLog.payload?.after || {}),
+                  ])
+                );
+                const diffTotalPages = Math.max(1, Math.ceil(diffFields.length / diffPerPage));
+                const safeDiffPage = Math.min(diffPage, diffTotalPages);
+                const visibleDiffFields = diffFields.slice(
+                  (safeDiffPage - 1) * diffPerPage,
+                  safeDiffPage * diffPerPage
+                );
+                return (
                 <div>
                   <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 block mb-2">
                     Before vs. After Change Comparison
@@ -964,12 +972,7 @@ export function AuditTrailPage() {
                         </tr>
                       </thead>
                       <tbody role="rowgroup" className="divide-y divide-slate-100 dark:divide-gray-700/70">
-                        {Array.from(
-                          new Set([
-                            ...Object.keys(inspectingLog.payload?.before || {}),
-                            ...Object.keys(inspectingLog.payload?.after || {}),
-                          ])
-                        ).map((field) => {
+                        {visibleDiffFields.map((field) => {
                           const formatVal = (val) => {
                             if (val === undefined) return '—';
                             if (val === null) return 'null';
@@ -1007,9 +1010,26 @@ export function AuditTrailPage() {
                         })}
                       </tbody>
                     </table>
+                    {diffFields.length > diffPerPage && (
+                      <ServerTableFooter
+                        page={safeDiffPage}
+                        perPage={diffPerPage}
+                        totalRecords={diffFields.length}
+                        filteredRecords={diffFields.length}
+                        totalPages={diffTotalPages}
+                        onPageChange={(nextPage) => setDiffPage(nextPage)}
+                        onPerPageChange={(nextSize) => {
+                          setDiffPerPage(nextSize);
+                          setDiffPage(1);
+                        }}
+                        pageSizeOptions={[6, 12, 25]}
+                        itemLabel="fields"
+                      />
+                    )}
                   </div>
                 </div>
-              )}
+                );
+              })()}
 
               {/* Raw Sanitized Payload JSON */}
               <div>

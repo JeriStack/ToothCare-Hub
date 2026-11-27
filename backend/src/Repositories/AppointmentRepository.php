@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Core\Database;
+use App\Support\ServerTableQuery;
 use PDO;
 
 /**
@@ -13,6 +14,16 @@ use PDO;
  */
 class AppointmentRepository
 {
+    public const ADMIN_SORT_ALLOWLIST = [
+        'id' => 'a.id',
+        'start_at' => 'a.start_at',
+        'created_at' => 'a.created_at',
+        'status' => 'a.status',
+        'patient_name' => ['p.last_name', 'p.first_name'],
+        'dentist_name' => ['d.last_name', 'd.first_name'],
+        'service_name' => 's.name',
+    ];
+
     private Database $database;
 
     public function __construct(?Database $database = null)
@@ -500,14 +511,24 @@ class AppointmentRepository
         }
 
         $whereClause = implode(' AND ', $where);
+        $hasUserFilters = count($where) > 1;
 
-        // Count total
+        // Filtered count (strictly scoped to patient_id)
         $countStmt = $pdo->prepare("SELECT COUNT(*) FROM appointments a WHERE {$whereClause}");
         $countStmt->execute($params);
-        $total = (int) $countStmt->fetchColumn();
+        $filteredTotal = (int) $countStmt->fetchColumn();
+
+        // Unfiltered authorized count for this patient (prevents inferring other patients' records)
+        if ($hasUserFilters) {
+            $baseStmt = $pdo->prepare('SELECT COUNT(*) FROM appointments WHERE patient_id = :patient_id');
+            $baseStmt->execute([':patient_id' => $patientId]);
+            $totalRecords = (int) $baseStmt->fetchColumn();
+        } else {
+            $totalRecords = $filteredTotal;
+        }
 
         $offset = max(0, ($page - 1) * $perPage);
-        $totalPages = $total > 0 ? (int) ceil($total / $perPage) : 1;
+        $totalPages = $filteredTotal > 0 ? (int) ceil($filteredTotal / $perPage) : 1;
 
         $sql = "
             SELECT a.*,
@@ -531,7 +552,9 @@ class AppointmentRepository
 
         return [
             'items' => $stmt->fetchAll(PDO::FETCH_ASSOC),
-            'total' => $total,
+            'total' => $filteredTotal,
+            'total_records' => $totalRecords,
+            'filtered_records' => $filteredTotal,
             'page' => $page,
             'per_page' => $perPage,
             'total_pages' => $totalPages,
@@ -539,17 +562,17 @@ class AppointmentRepository
     }
 
     /**
-     * List all appointments with comprehensive administrative filtering and pagination.
+     * List all appointments with comprehensive administrative filtering, allowlisted sorting, and pagination.
      *
      * @param array<string, mixed> $filters
-     * @return array{items: list<array<string, mixed>>, total: int, page: int, per_page: int, total_pages: int}
+     * @return array<string, mixed>
      */
     public function findAllFiltered(array $filters = [], int $page = 1, int $perPage = 20): array
     {
         $pdo = $this->database->getConnection();
         $page = max(1, $page);
         $perPage = max(1, min(100, $perPage));
-        $where = ['1=1'];
+        $where = [];
         $params = [];
 
         if (!empty($filters['status'])) {
@@ -576,20 +599,20 @@ class AppointmentRepository
             $where[] = 'a.start_at <= :to';
             $params[':to'] = (string) $filters['to'];
         }
-        if (!empty($filters['search'])) {
+        if (!empty($filters['search']) && trim((string) $filters['search']) !== '') {
             $rawSearch = trim((string) $filters['search']);
-            $escaped = str_replace(['%', '_'], ['\\%', '\\_'], $rawSearch);
+            $escaped = ServerTableQuery::escapeLike($rawSearch);
             $searchTerm = '%' . $escaped . '%';
             $isSqlite = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite';
             $fullNameExpr = $isSqlite
-                ? "(p.first_name || ' ' || p.last_name) LIKE :search6"
-                : "CONCAT(p.first_name, ' ', p.last_name) LIKE :search6";
+                ? "(p.first_name || ' ' || p.last_name) LIKE :search6 ESCAPE '!'"
+                : "CONCAT(p.first_name, ' ', p.last_name) LIKE :search6 ESCAPE '!'";
             $searchParts = [
-                'p.first_name LIKE :search1',
-                'p.last_name LIKE :search2',
-                'u_p.email LIKE :search3',
-                'p.phone LIKE :search4',
-                's.name LIKE :search5',
+                "p.first_name LIKE :search1 ESCAPE '!'",
+                "p.last_name LIKE :search2 ESCAPE '!'",
+                "u_p.email LIKE :search3 ESCAPE '!'",
+                "p.phone LIKE :search4 ESCAPE '!'",
+                "s.name LIKE :search5 ESCAPE '!'",
                 $fullNameExpr,
             ];
             $params[':search1'] = $searchTerm;
@@ -609,8 +632,19 @@ class AppointmentRepository
             $where[] = '(' . implode(' OR ', $searchParts) . ')';
         }
 
-        $whereClause = implode(' AND ', $where);
+        $hasFilters = count($where) > 0;
+        $whereClause = $hasFilters ? implode(' AND ', $where) : '1=1';
 
+        $sort = ServerTableQuery::parseSort(
+            $filters,
+            self::ADMIN_SORT_ALLOWLIST,
+            'start_at',
+            'DESC',
+            'a.id',
+            false
+        );
+
+        // Filtered record count
         $countStmt = $pdo->prepare("
             SELECT COUNT(*)
             FROM appointments a
@@ -621,13 +655,23 @@ class AppointmentRepository
             WHERE {$whereClause}
         ");
         $countStmt->execute($params);
-        $total = (int) $countStmt->fetchColumn();
+        $filteredTotal = (int) $countStmt->fetchColumn();
+
+        // Unfiltered total count (avoids extra query when no filters are active)
+        $totalRecords = $hasFilters
+            ? (int) $pdo->query('SELECT COUNT(*) FROM appointments')->fetchColumn()
+            : $filteredTotal;
 
         $offset = max(0, ($page - 1) * $perPage);
-        $totalPages = $total > 0 ? (int) ceil($total / $perPage) : 1;
+        $totalPages = $filteredTotal > 0 ? (int) ceil($filteredTotal / $perPage) : 1;
 
         $sql = "
-            SELECT a.*,
+            SELECT a.id, a.patient_id, a.dentist_id, a.service_id,
+                   a.start_at, a.end_at, a.duration_snapshot, a.price_snapshot,
+                   a.status, a.chief_complaint, a.operatory_chair,
+                   a.rescheduled_from_id, a.cancellation_reason, a.cancelled_by_user_id,
+                   a.cancelled_at, a.reviewed_by_user_id, a.reviewed_at, a.completed_at,
+                   a.created_at, a.updated_at,
                    COALESCE(NULLIF(a.operatory_chair, ''), d.default_operatory_chair, 'Chair 1') AS dentist_room_number,
                    p.first_name AS patient_first_name, p.last_name AS patient_last_name, p.phone AS patient_phone,
                    u_p.email AS patient_email,
@@ -640,7 +684,7 @@ class AppointmentRepository
             JOIN dentists d ON a.dentist_id = d.id
             JOIN services s ON a.service_id = s.id
             WHERE {$whereClause}
-            ORDER BY a.start_at DESC, a.id DESC
+            ORDER BY {$sort['order_by_sql']}
             LIMIT :limit OFFSET :offset
         ";
 
@@ -654,10 +698,16 @@ class AppointmentRepository
 
         return [
             'items' => $stmt->fetchAll(PDO::FETCH_ASSOC),
-            'total' => $total,
+            'total' => $filteredTotal,
+            'total_records' => $totalRecords,
+            'filtered_records' => $filteredTotal,
             'page' => $page,
             'per_page' => $perPage,
             'total_pages' => $totalPages,
+            'sorting' => [
+                'sort_by' => $sort['sort_by'],
+                'sort_dir' => $sort['sort_dir'],
+            ],
         ];
     }
 
@@ -702,17 +752,17 @@ class AppointmentRepository
         }
         if ($search !== null && trim($search) !== '') {
             $rawSearch = trim($search);
-            $term = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $rawSearch) . '%';
+            $term = '%' . ServerTableQuery::escapeLike($rawSearch) . '%';
             $driver = (string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
             $fullNameExpr = $driver === 'sqlite'
                 ? "(p.first_name || ' ' || p.last_name)"
                 : "CONCAT(p.first_name, ' ', p.last_name)";
             $searchClauses = [
-                'p.first_name LIKE :s1',
-                'p.last_name LIKE :s2',
-                "{$fullNameExpr} LIKE :s3",
-                'p.phone LIKE :s4',
-                's.name LIKE :s5',
+                "p.first_name LIKE :s1 ESCAPE '!'",
+                "p.last_name LIKE :s2 ESCAPE '!'",
+                "{$fullNameExpr} LIKE :s3 ESCAPE '!'",
+                "p.phone LIKE :s4 ESCAPE '!'",
+                "s.name LIKE :s5 ESCAPE '!'",
             ];
             $params[':s1'] = $term;
             $params[':s2'] = $term;
@@ -730,6 +780,7 @@ class AppointmentRepository
         }
 
         $whereSql = implode(' AND ', $where);
+        $hasUserFilters = count($where) > 1;
 
         $countStmt = $pdo->prepare("
             SELECT COUNT(*)
@@ -739,10 +790,18 @@ class AppointmentRepository
             WHERE {$whereSql}
         ");
         $countStmt->execute($params);
-        $total = (int) $countStmt->fetchColumn();
+        $filteredTotal = (int) $countStmt->fetchColumn();
+
+        if ($hasUserFilters) {
+            $baseStmt = $pdo->prepare('SELECT COUNT(*) FROM appointments WHERE dentist_id = :dentist_id');
+            $baseStmt->execute([':dentist_id' => $dentistId]);
+            $totalRecords = (int) $baseStmt->fetchColumn();
+        } else {
+            $totalRecords = $filteredTotal;
+        }
 
         $offset = ($page - 1) * $perPage;
-        $totalPages = $total > 0 ? (int) ceil($total / $perPage) : 1;
+        $totalPages = $filteredTotal > 0 ? (int) ceil($filteredTotal / $perPage) : 1;
 
         $stmt = $pdo->prepare("
             SELECT a.*,
@@ -766,7 +825,9 @@ class AppointmentRepository
 
         return [
             'items' => $stmt->fetchAll(PDO::FETCH_ASSOC),
-            'total' => $total,
+            'total' => $filteredTotal,
+            'total_records' => $totalRecords,
+            'filtered_records' => $filteredTotal,
             'page' => $page,
             'per_page' => $perPage,
             'total_pages' => $totalPages,
@@ -812,8 +873,8 @@ class AppointmentRepository
             $params[] = $status;
         }
         if ($search !== null && trim($search) !== '') {
-            $term = '%' . str_replace(['%', '_'], ['\\%', '\\_'], trim($search)) . '%';
-            $sql .= ' AND (p.first_name LIKE ? OR p.last_name LIKE ? OR s.name LIKE ?)';
+            $term = '%' . ServerTableQuery::escapeLike($search) . '%';
+            $sql .= " AND (p.first_name LIKE ? ESCAPE '!' OR p.last_name LIKE ? ESCAPE '!' OR s.name LIKE ? ESCAPE '!')";
             $params[] = $term;
             $params[] = $term;
             $params[] = $term;

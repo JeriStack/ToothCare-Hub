@@ -270,13 +270,104 @@ paths:
     get:
       tags:
         - Appointments
-      summary: 'List & Filter Clinic Appointments (Admin/Receptionist, Paginated)'
+      summary: 'List & Filter Clinic Appointments (Admin/Receptionist, Server-Side Paginated & Sortable)'
       operationId: listAdminAppointments
+      parameters:
+        -
+          name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        -
+          name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+            minimum: 1
+        -
+          name: search
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 120
+        -
+          name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - PENDING
+              - CONFIRMED
+              - COMPLETED
+              - CANCELLED
+              - REJECTED
+              - NO_SHOW
+        -
+          name: dentist_id
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        -
+          name: service_id
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        -
+          name: start_date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        -
+          name: end_date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        -
+          name: sort_by
+          in: query
+          required: false
+          schema:
+            type: string
+            default: start_at
+            enum:
+              - id
+              - start_at
+              - created_at
+              - status
+              - patient_name
+              - dentist_name
+              - service_name
+        -
+          name: sort_dir
+          in: query
+          required: false
+          schema:
+            type: string
+            default: desc
+            enum:
+              - asc
+              - desc
       responses:
         '200':
-          description: 'Paginated appointments'
+          description: 'Paginated appointments with total_records, filtered_records, sorting, and triage summary'
         '422':
-          description: 'Invalid filters'
+          description: 'Invalid pagination, filter, date range, or sort parameters'
       security:
         -
           CookieAuth: []
@@ -2079,6 +2170,535 @@ paths:
         -
           CookieAuth: []
           CsrfToken: []
+  /archives:
+    get:
+      tags:
+        - Archives
+      summary: 'List Role-Scoped Archived Records (Server-Side Paginated & Sortable)'
+      operationId: listArchives
+      parameters:
+        -
+          name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        -
+          name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 10
+            maximum: 100
+            minimum: 1
+        -
+          name: entity_type
+          in: query
+          schema:
+            type: string
+            enum:
+              - appointment
+              - treatment_record
+              - patient
+              - dentist
+              - service
+              - user
+        -
+          name: account_type
+          in: query
+          schema:
+            type: string
+            enum:
+              - PATIENT
+              - DENTIST
+              - RECEPTIONIST
+              - ADMIN
+        -
+          name: archived_by_user_id
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        -
+          name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - ARCHIVED
+              - RESTORED
+              - LOCKED_RETENTION
+        -
+          name: retention_category
+          in: query
+          schema:
+            type: string
+            enum:
+              - CLINICAL_7Y
+              - OPERATIONAL_3Y
+              - ACCOUNT_5Y
+              - CATALOG_LEGACY
+        -
+          name: search
+          in: query
+          schema:
+            type: string
+            maxLength: 120
+        -
+          name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+        -
+          name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+        -
+          name: include_examples
+          in: query
+          schema:
+            type: boolean
+            default: true
+        -
+          name: sort_by
+          in: query
+          schema:
+            type: string
+            default: archived_at
+            enum:
+              - archived_at
+              - entity_type
+              - account_type
+              - status
+              - retention_until
+              - title
+              - reference_code
+              - id
+        -
+          name: sort_dir
+          in: query
+          schema:
+            type: string
+            default: desc
+            enum:
+              - asc
+              - desc
+      responses:
+        '200':
+          description: 'Paginated role-scoped archive records'
+        '403':
+          description: 'Unauthorized entity type or permission'
+        '422':
+          description: 'Invalid filters or sorting'
+      security:
+        -
+          CookieAuth: []
+    post:
+      tags:
+        - Archives
+      summary: 'Archive Eligible Live Entity with Tamper-Evident SHA-256 Snapshot & Unresolved Appointment Guards'
+      operationId: createArchiveRecord
+      responses:
+        '201':
+          description: 'Archive record created'
+        '403':
+          description: 'Role/ownership denied'
+        '409':
+          description: 'Already archived, unresolved appointments, or last-admin safeguard'
+        '422':
+          description: 'Validation error'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /archives/summary:
+    get:
+      tags:
+        - Archives
+      summary: 'Get Role-Scoped Archive KPIs, Account Category Counts & Actor Capabilities'
+      operationId: getArchiveSummary
+      responses:
+        '200':
+          description: 'Archive summary metrics and capabilities'
+      security:
+        -
+          CookieAuth: []
+  /archives/eligibility:
+    get:
+      tags:
+        - Archives
+      summary: 'Pre-Check Entity Archival Eligibility & Blocking Unresolved Appointments'
+      operationId: checkArchiveEligibility
+      parameters:
+        -
+          name: entity_type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - appointment
+              - treatment_record
+              - patient
+              - dentist
+              - service
+              - user
+        -
+          name: entity_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: 'Eligibility report with blockers and operational consequences'
+        '403':
+          description: Unauthorized
+        '404':
+          description: 'Entity not found'
+      security:
+        -
+          CookieAuth: []
+  /archives/export:
+    get:
+      tags:
+        - Archives
+      summary: 'Export Filtered Role-Scoped Archives to CSV (Admin/Receptionist)'
+      operationId: exportArchivesCsv
+      responses:
+        '200':
+          description: 'CSV export stream'
+        '403':
+          description: 'Requires archives.export'
+      security:
+        -
+          CookieAuth: []
+  '/archives/{id}/history':
+    get:
+      tags:
+        - Archives
+      summary: 'Get Multi-Cycle Archival & Restoration Ledger for Archived Entity'
+      operationId: getArchiveCycleHistory
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Chronological archive/restore/rearchive cycle history'
+        '403':
+          description: Unauthorized
+        '404':
+          description: 'Archive record not found'
+      security:
+        -
+          CookieAuth: []
+  '/archives/{id}':
+    get:
+      tags:
+        - Archives
+      summary: 'Inspect Single Archive Snapshot with SHA-256 Verification'
+      operationId: getArchiveDetail
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Archive snapshot & integrity digest'
+        '403':
+          description: 'Ownership/role denied'
+        '404':
+          description: 'Archive record not found'
+      security:
+        -
+          CookieAuth: []
+  '/archives/{id}/restore':
+    post:
+      tags:
+        - Archives
+      summary: 'Restore Soft-Archived Record to Active Operations (Admin Only)'
+      operationId: restoreArchiveRecord
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Record restored with post-restore review notices'
+        '403':
+          description: 'Requires archives.restore'
+        '409':
+          description: 'Immutable clinical lock, email conflict, or already restored'
+      security:
+        -
+          CookieAuth: []
+          CsrfToken: []
+  /history:
+    get:
+      tags:
+        - History
+      summary: 'List Chronological History Records (Server-Side Paginated, Filterable, Sortable)'
+      operationId: listHistoryRecords
+      parameters:
+        -
+          name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        -
+          name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 10
+            maximum: 100
+            minimum: 1
+        -
+          name: category
+          in: query
+          schema:
+            type: string
+            enum:
+              - PATIENT
+              - STAFF
+              - APPOINTMENT
+              - SECURITY
+              - ADMIN
+        -
+          name: actor_role
+          in: query
+          schema:
+            type: string
+            enum:
+              - ADMIN
+              - RECEPTIONIST
+              - DENTIST
+              - PATIENT
+              - SYSTEM
+        -
+          name: actor_user_id
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        -
+          name: module
+          in: query
+          schema:
+            type: string
+        -
+          name: action
+          in: query
+          schema:
+            type: string
+        -
+          name: result
+          in: query
+          schema:
+            type: string
+            enum:
+              - SUCCESS
+              - FAILED
+              - DENIED
+              - WARNING
+        -
+          name: record_ref
+          in: query
+          schema:
+            type: string
+        -
+          name: search
+          in: query
+          schema:
+            type: string
+            maxLength: 120
+        -
+          name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+        -
+          name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+        -
+          name: sort_by
+          in: query
+          schema:
+            type: string
+            default: created_at
+            enum:
+              - created_at
+              - id
+              - action
+              - module
+              - actor_role
+        -
+          name: sort_dir
+          in: query
+          schema:
+            type: string
+            default: desc
+            enum:
+              - asc
+              - desc
+      responses:
+        '200':
+          description: 'Paginated role-scoped history events with Asia/Manila timestamps and value diffs'
+        '403':
+          description: 'Requires history.view'
+        '422':
+          description: 'Invalid filter or sorting parameter'
+      security:
+        -
+          CookieAuth: []
+  /history/summary:
+    get:
+      tags:
+        - History
+      summary: 'Get Database-Calculated History Records Dashboard KPI Counts'
+      operationId: getHistorySummary
+      responses:
+        '200':
+          description: 'Total, patient, staff, appointment, security, and administrative activity counts'
+      security:
+        -
+          CookieAuth: []
+  '/history/{id}':
+    get:
+      tags:
+        - History
+      summary: 'Get Single History Event with Sanitized Previous/Updated Value Comparison'
+      operationId: getHistoryEventDetail
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Sanitized history event details'
+        '403':
+          description: Unauthorized
+        '404':
+          description: 'Event not found'
+      security:
+        -
+          CookieAuth: []
+  '/history/patients/{id}':
+    get:
+      tags:
+        - History
+      summary: 'Get Chronological Patient Lifecycle Timeline'
+      operationId: getPatientHistoryTimeline
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Patient chronological history'
+        '403':
+          description: 'Unauthorized patient access'
+        '404':
+          description: 'Patient not found'
+      security:
+        -
+          CookieAuth: []
+  '/history/dentists/{id}':
+    get:
+      tags:
+        - History
+      summary: 'Get Chronological Dentist Practice Timeline'
+      operationId: getDentistHistoryTimeline
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Dentist chronological history'
+        '403':
+          description: 'Unauthorized dentist access'
+        '404':
+          description: 'Dentist not found'
+      security:
+        -
+          CookieAuth: []
+  '/history/staff/{id}':
+    get:
+      tags:
+        - History
+      summary: 'Get Chronological Receptionist or Administrator Activity Timeline'
+      operationId: getStaffHistoryTimeline
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Staff chronological history'
+        '403':
+          description: 'Unauthorized staff access'
+        '404':
+          description: 'User not found'
+      security:
+        -
+          CookieAuth: []
+  '/history/appointments/{id}':
+    get:
+      tags:
+        - History
+      summary: 'Get Chronological Appointment Lifecycle & Reassignment Timeline'
+      operationId: getAppointmentHistoryTimeline
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Appointment chronological history'
+        '403':
+          description: 'Unauthorized appointment access'
+        '404':
+          description: 'Appointment not found'
+      security:
+        -
+          CookieAuth: []
   /services:
     get:
       tags:
@@ -3418,3 +4038,9 @@ tags:
   -
     name: Legal
     description: 'Public Terms of Service and Privacy Policy documents, versioning, and auditable user legal acceptance records'
+  -
+    name: Archives
+    description: Archives
+  -
+    name: History
+    description: History

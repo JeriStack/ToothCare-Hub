@@ -1,10 +1,13 @@
 export const THEME_STORAGE_KEY = 'toothcare_theme';
 const THEME_TRANSITION_CLASS = 'theme-transitioning';
 const THEME_VIEW_TRANSITION_CLASS = 'theme-view-transition';
-const THEME_FALLBACK_DURATION_MS = 320;
-const THEME_VIEW_TRANSITION_DURATION_MS = 480;
+const THEME_FALLBACK_DURATION_MS = 240;
+const THEME_VIEW_TRANSITION_DURATION_MS = 380;
 
 let fallbackTransitionTimer = null;
+let activeViewTransitionSeq = 0;
+let activeViewTransition = null;
+let activeViewAnimation = null;
 
 export const THEMES = {
   LIGHT: 'light',
@@ -68,8 +71,9 @@ export function extractTransitionOrigin(source) {
 }
 
 /**
- * Runs a theme change with a smooth global circular View Transition ripple
- * (when supported and reduced-motion is off) or a synchronized CSS cross-fade fallback.
+ * Runs a theme change with a smooth GPU-composited circular View Transition reveal
+ * (when supported and reduced-motion is off) or a lightweight synchronized CSS fallback.
+ * Safely cancels in-flight transitions on rapid toggles to prevent mid-animation flicker.
  */
 export function runThemeTransition(applyUpdate, originSource = null) {
   if (typeof document === 'undefined' || typeof window === 'undefined' || prefersReducedMotion()) {
@@ -80,58 +84,96 @@ export function runThemeTransition(applyUpdate, originSource = null) {
   const root = document.documentElement;
   const origin = extractTransitionOrigin(originSource);
 
+  if (fallbackTransitionTimer !== null) {
+    window.clearTimeout(fallbackTransitionTimer);
+    fallbackTransitionTimer = null;
+    root.classList.remove(THEME_TRANSITION_CLASS);
+  }
+
   if (typeof document.startViewTransition === 'function' && typeof root.animate === 'function' && origin) {
-    const x = origin.x;
-    const y = origin.y;
-    const endRadius = Math.hypot(
-      Math.max(x, window.innerWidth - x),
-      Math.max(y, window.innerHeight - y)
+    const x = Math.round(origin.x);
+    const y = Math.round(origin.y);
+    const endRadius = Math.ceil(
+      Math.hypot(
+        Math.max(x, window.innerWidth - x),
+        Math.max(y, window.innerHeight - y)
+      )
     );
 
+    // Abort any in-flight theme view transition cleanly so rapid toggles never fight or flash
+    if (activeViewAnimation) {
+      try {
+        activeViewAnimation.cancel();
+      } catch {
+        // Ignore already-finished animation
+      }
+      activeViewAnimation = null;
+    }
+    if (activeViewTransition && typeof activeViewTransition.skipTransition === 'function') {
+      try {
+        activeViewTransition.skipTransition();
+      } catch {
+        // Ignore already-settled transition
+      }
+      activeViewTransition = null;
+    }
+
+    const seq = ++activeViewTransitionSeq;
     root.classList.add(THEME_VIEW_TRANSITION_CLASS);
 
     try {
       const transition = document.startViewTransition(() => {
         applyUpdate();
       });
+      activeViewTransition = transition;
 
       Promise.resolve(transition?.ready)
         .then(() => {
-          root.animate(
+          if (seq !== activeViewTransitionSeq) {
+            return;
+          }
+          activeViewAnimation = root.animate(
             {
               clipPath: [
                 `circle(0px at ${x}px ${y}px)`,
                 `circle(${endRadius}px at ${x}px ${y}px)`,
               ],
+              opacity: [0.92, 1],
             },
             {
               duration: THEME_VIEW_TRANSITION_DURATION_MS,
-              easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+              easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+              fill: 'both',
               pseudoElement: '::view-transition-new(root)',
             }
           );
         })
         .catch(() => {
-          // Ignore aborted transitions (e.g. rapid toggles)
+          // Ignore aborted transitions (e.g. rapid toggles or backgrounded tabs)
         });
 
       Promise.resolve(transition?.finished)
         .catch(() => {})
         .finally(() => {
-          root.classList.remove(THEME_VIEW_TRANSITION_CLASS);
+          if (seq === activeViewTransitionSeq) {
+            activeViewTransition = null;
+            activeViewAnimation = null;
+            root.classList.remove(THEME_VIEW_TRANSITION_CLASS);
+          }
         });
       return;
     } catch {
-      root.classList.remove(THEME_VIEW_TRANSITION_CLASS);
+      if (seq === activeViewTransitionSeq) {
+        activeViewTransition = null;
+        activeViewAnimation = null;
+        root.classList.remove(THEME_VIEW_TRANSITION_CLASS);
+      }
     }
   }
 
-  // Graceful CSS cross-fade fallback for browsers without View Transitions API
+  // Graceful lightweight CSS cross-fade fallback for browsers without View Transitions API
   root.classList.add(THEME_TRANSITION_CLASS);
   applyUpdate();
-  if (fallbackTransitionTimer !== null) {
-    window.clearTimeout(fallbackTransitionTimer);
-  }
   fallbackTransitionTimer = window.setTimeout(() => {
     root.classList.remove(THEME_TRANSITION_CLASS);
     fallbackTransitionTimer = null;
@@ -195,12 +237,18 @@ export function applyThemeToDocument(theme) {
   const root = document.documentElement;
   const isDark = normalized === THEMES.DARK;
 
-  root.classList.toggle('dark', isDark);
-  root.dataset.theme = normalized;
-  root.style.colorScheme = normalized;
+  if (root.classList.contains('dark') !== isDark) {
+    root.classList.toggle('dark', isDark);
+  }
+  if (root.dataset.theme !== normalized) {
+    root.dataset.theme = normalized;
+  }
+  if (root.style.colorScheme !== normalized) {
+    root.style.colorScheme = normalized;
+  }
 
   const meta = document.querySelector('meta[name="color-scheme"]');
-  if (meta) {
+  if (meta && meta.getAttribute('content') !== normalized) {
     meta.setAttribute('content', normalized);
   }
 

@@ -232,71 +232,82 @@ class AppointmentController
 
         $role = strtoupper((string) ($user['role'] ?? 'PATIENT'));
         $queryParams = $request->getQueryParams();
-        $page = isset($queryParams['page']) ? max(1, (int) $queryParams['page']) : 1;
-        $rawLimit = $queryParams['per_page'] ?? $queryParams['limit'] ?? 20;
-        $perPage = max(1, min(100, (int) $rawLimit));
+        $paging = \App\Support\ServerTableQuery::parsePagination($queryParams, 20, 100);
+        $page = $paging['page'];
+        $perPage = $paging['per_page'];
 
         if ($role === 'ADMIN' || $role === 'RECEPTIONIST') {
             $result = $this->appointmentService->listAdminAppointments($queryParams, $page, $perPage);
             return Response::paginated(
                 $result['items'] ?? [],
-                [
-                    'total' => $result['total'] ?? 0,
-                    'page' => $result['page'] ?? $page,
-                    'per_page' => $result['per_page'] ?? $perPage,
-                    'last_page' => $result['total_pages'] ?? 1,
-                ]
+                \App\Support\ServerTableQuery::buildMeta(
+                    (int) ($result['total_records'] ?? $result['total'] ?? 0),
+                    (int) ($result['filtered_records'] ?? $result['total'] ?? 0),
+                    (int) ($result['page'] ?? $page),
+                    (int) ($result['per_page'] ?? $perPage),
+                    $result['sorting']['sort_by'] ?? 'start_at',
+                    $result['sorting']['sort_dir'] ?? 'DESC'
+                )
             );
         }
 
         if ($role === 'DENTIST') {
             $result = $this->appointmentService->listDentistAppointments((int) $user['id'], $queryParams);
-            return Response::paginated(
-                $result['items'] ?? [],
-                $result['meta'] ?? [
-                    'total' => 0,
-                    'page' => $page,
-                    'per_page' => $perPage,
-                    'last_page' => 1,
-                ]
-            );
+            $meta = $result['meta'] ?? [
+                'total' => 0,
+                'total_records' => 0,
+                'filtered_records' => 0,
+                'page' => $page,
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'last_page' => 1,
+                'total_pages' => 1,
+            ];
+            return Response::paginated($result['items'] ?? [], $meta);
         }
 
         // Default: PATIENT — strictly scoped to authenticated patient
         $result = $this->appointmentService->listPatientAppointments((int) $user['id'], $queryParams);
         return Response::paginated(
             $result['items'] ?? [],
-            [
-                'total' => $result['total'] ?? 0,
-                'page' => $result['page'] ?? $page,
-                'per_page' => $result['per_page'] ?? $perPage,
-                'last_page' => $result['total_pages'] ?? 1,
-            ]
+            \App\Support\ServerTableQuery::buildMeta(
+                (int) ($result['total_records'] ?? $result['total'] ?? 0),
+                (int) ($result['filtered_records'] ?? $result['total'] ?? 0),
+                (int) ($result['page'] ?? $page),
+                (int) ($result['per_page'] ?? $perPage),
+                'start_at',
+                'DESC'
+            )
         );
     }
 
     /**
      * GET /api/v1/admin/appointments
-     * Administrative filterable & paginated appointments overview.
+     * Administrative filterable, sortable, & paginated appointments overview.
      */
     public function adminIndex(Request $request): Response
     {
         $queryParams = $request->getQueryParams();
-        $page = isset($queryParams['page']) ? max(1, (int) $queryParams['page']) : 1;
-        $rawLimit = $queryParams['per_page'] ?? $queryParams['limit'] ?? 20;
-        $perPage = max(1, min(100, (int) $rawLimit));
+        $paging = \App\Support\ServerTableQuery::parsePagination($queryParams, 20, 100);
+        $page = $paging['page'];
+        $perPage = $paging['per_page'];
 
         $result = $this->appointmentService->listAdminAppointments($queryParams, $page, $perPage);
 
-        $meta = [
-            'total' => $result['total'] ?? 0,
-            'page' => $result['page'] ?? $page,
-            'per_page' => $result['per_page'] ?? $perPage,
-            'last_page' => $result['total_pages'] ?? 1,
-        ];
+        $extra = [];
         if (isset($result['summary'])) {
-            $meta['summary'] = $result['summary'];
+            $extra['summary'] = $result['summary'];
         }
+
+        $meta = \App\Support\ServerTableQuery::buildMeta(
+            (int) ($result['total_records'] ?? $result['total'] ?? 0),
+            (int) ($result['filtered_records'] ?? $result['total'] ?? 0),
+            (int) ($result['page'] ?? $page),
+            (int) ($result['per_page'] ?? $perPage),
+            $result['sorting']['sort_by'] ?? 'start_at',
+            $result['sorting']['sort_dir'] ?? 'DESC',
+            $extra
+        );
 
         return Response::paginated($result['items'] ?? [], $meta);
     }

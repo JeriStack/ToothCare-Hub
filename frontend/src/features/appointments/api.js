@@ -93,17 +93,26 @@ export const appointmentsApi = {
   },
 
   /**
-   * List appointments for administrators with filters and pagination
+   * List appointments for administrators with filters, server-side sorting, pagination,
+   * and optional AbortSignal for cancelling stale requests.
    */
-  async listAdmin(params = {}) {
-    const res = await apiClient.get('/admin/appointments', { params });
+  async listAdmin(params = {}, options = {}) {
+    const reqOptions = { params };
+    if (options && options.signal) {
+      reqOptions.signal = options.signal;
+    }
+    const res = await apiClient.get('/admin/appointments', reqOptions);
     const rawData = res.data?.data;
     const items = Array.isArray(rawData) ? rawData : (Array.isArray(rawData?.items) ? rawData.items : []);
     const meta = res.data?.meta || rawData?.meta || {
       total: items.length,
+      total_records: items.length,
+      filtered_records: items.length,
       page: 1,
+      current_page: 1,
       per_page: 15,
       last_page: 1,
+      total_pages: 1,
     };
     return {
       data: items,

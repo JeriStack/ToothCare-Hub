@@ -70,13 +70,14 @@ class EmailOutboxController
             'event_type' => preg_match('/^[A-Z_]{1,64}$/', (string) $request->getQuery('event_type', '')) === 1 ? (string) $request->getQuery('event_type') : null,
             'failures_only' => filter_var($request->getQuery('failures_only', 'false'), FILTER_VALIDATE_BOOLEAN),
         ];
-        $page = max(1, (int) $request->getQuery('page', 1));
-        $rawPerPage = $request->getQuery('per_page') ?? $request->getQuery('limit') ?? 25;
-        $perPage = max(1, min(100, (int) $rawPerPage));
+        $paging = \App\Support\ServerTableQuery::parsePagination($request->getQueryParams(), 10, 100);
+        $page = $paging['page'];
+        $perPage = $paging['per_page'];
         $result = $this->repository->list($filters, $page, $perPage);
+        $total = (int) ($result['total'] ?? 0);
         return Response::paginated(
             array_map(fn(array $r): array => $this->present($r), $result['data']),
-            ['page' => $page, 'per_page' => $perPage, 'total' => $result['total'], 'total_pages' => (int) ceil($result['total'] / $perPage)]
+            \App\Support\ServerTableQuery::buildMeta($total, $total, $page, $perPage)
         );
     }
     /** GET /api/v1/admin/email-outbox/jobs/{id} */

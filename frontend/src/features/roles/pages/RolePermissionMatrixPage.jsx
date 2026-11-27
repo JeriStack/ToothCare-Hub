@@ -29,9 +29,12 @@ import {
   BarChart3,
   Settings,
   Activity,
+  Archive,
+  History,
 } from 'lucide-react';
 import { rolesApi } from '../api';
 import { PermissionMatrixSkeleton } from '../../../components/skeletons';
+import { ServerTableFooter } from '../../../components/ui/ServerTableControls';
 
 const DEFAULT_PROTECTED_ADMIN_PERMISSIONS = [
   'users.view',
@@ -45,6 +48,8 @@ function getModuleIcon(modName = '') {
   switch (String(modName).toLowerCase()) {
     case 'appointments':
       return Calendar;
+    case 'archives':
+      return Archive;
     case 'clinical':
       return ClipboardList;
     case 'dashboard':
@@ -53,6 +58,8 @@ function getModuleIcon(modName = '') {
       return Stethoscope;
     case 'email':
       return Mail;
+    case 'history':
+      return History;
     case 'legal':
       return FileText;
     case 'patients':
@@ -133,6 +140,12 @@ export function RolePermissionMatrixPage() {
   const [focusedRoleId, setFocusedRoleId] = useState(null);
   const [showModifiedOnly, setShowModifiedOnly] = useState(false);
   const [collapsedModules, setCollapsedModules] = useState({});
+  const [modulePage, setModulePage] = useState(1);
+  const [modulesPerPage, setModulesPerPage] = useState(4);
+
+  useEffect(() => {
+    setModulePage(1);
+  }, [searchQuery, selectedModule, showModifiedOnly]);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -398,6 +411,13 @@ export function RolePermissionMatrixPage() {
       setCollapsedModules(next);
     }
   };
+
+  const moduleTotalPages = Math.max(1, Math.ceil(filteredModuleEntries.length / modulesPerPage));
+  const safeModulePage = Math.min(modulePage, moduleTotalPages);
+  const paginatedModuleEntries = filteredModuleEntries.slice(
+    (safeModulePage - 1) * modulesPerPage,
+    safeModulePage * modulesPerPage
+  );
 
   if (loading && roles.length === 0) {
     return <PermissionMatrixSkeleton />;
@@ -843,6 +863,7 @@ export function RolePermissionMatrixPage() {
             </p>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="tch-matrix-table w-full text-left border-collapse">
               <thead>
@@ -873,7 +894,7 @@ export function RolePermissionMatrixPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-gray-700/70 text-sm">
-                {filteredModuleEntries.map(([moduleName, perms]) => {
+                {paginatedModuleEntries.map(([moduleName, perms]) => {
                   const isCollapsed = Boolean(collapsedModules[moduleName]);
                   return (
                     <React.Fragment key={moduleName}>
@@ -1015,6 +1036,22 @@ export function RolePermissionMatrixPage() {
               </tbody>
             </table>
           </div>
+          <ServerTableFooter
+            page={safeModulePage}
+            perPage={modulesPerPage}
+            totalRecords={Object.keys(groupedPermissions).length}
+            filteredRecords={filteredModuleEntries.length}
+            totalPages={moduleTotalPages}
+            onPageChange={(nextPage) => setModulePage(nextPage)}
+            onPerPageChange={(nextSize) => {
+              setModulesPerPage(nextSize);
+              setModulePage(1);
+            }}
+            pageSizeOptions={[2, 4, 6, 10]}
+            loading={loading}
+            itemLabel="modules"
+          />
+          </>
         )}
       </div>
     </div>

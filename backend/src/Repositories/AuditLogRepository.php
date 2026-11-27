@@ -44,6 +44,7 @@ class AuditLogRepository
         'email_outbox' => ['email_outbox', 'email_job', 'email_jobs'],
         'clinic_settings' => ['clinic_settings', 'settings'],
         'audit_logs' => ['audit_logs', 'audit_log'],
+        'archives' => ['archives', 'archive', 'archive_record', 'archive_records'],
     ];
 
     public function __construct(?Database $database = null)
@@ -136,8 +137,8 @@ class AuditLogRepository
         $params = [];
 
         if (!empty($filters['search'])) {
-            $search = '%' . trim((string) $filters['search']) . '%';
-            $where[] = '(al.action LIKE ? OR al.target_type LIKE ? OR al.ip_address LIKE ? OR u.email LIKE ?)';
+            $search = '%' . \App\Support\ServerTableQuery::escapeLike((string) $filters['search']) . '%';
+            $where[] = "(al.action LIKE ? ESCAPE '!' OR al.target_type LIKE ? ESCAPE '!' OR al.ip_address LIKE ? ESCAPE '!' OR u.email LIKE ? ESCAPE '!')";
             $params[] = $search;
             $params[] = $search;
             $params[] = $search;
@@ -163,9 +164,9 @@ class AuditLogRepository
             }
         }
 
-        if (!empty($filters['action_prefix'])) {
-            $where[] = 'al.action LIKE ?';
-            $params[] = trim((string) $filters['action_prefix']) . '%';
+        if (!empty($filters['action_prefix']) && trim((string) $filters['action_prefix']) !== '') {
+            $where[] = "al.action LIKE ? ESCAPE '!'";
+            $params[] = \App\Support\ServerTableQuery::escapeLike((string) $filters['action_prefix']) . '%';
         }
 
         if (!empty($filters['target_type'])) {
@@ -205,7 +206,8 @@ class AuditLogRepository
             $params[] = $dateTo . ' 23:59:59';
         }
 
-        $whereSql = count($where) > 0 ? 'WHERE ' . implode(' AND ', $where) : '';
+        $hasFilters = count($where) > 0;
+        $whereSql = $hasFilters ? 'WHERE ' . implode(' AND ', $where) : '';
 
         $countStmt = $pdo->prepare("
             SELECT COUNT(*) 
@@ -214,10 +216,15 @@ class AuditLogRepository
             {$whereSql}
         ");
         $countStmt->execute($params);
-        $total = (int) $countStmt->fetchColumn();
+        $filteredTotal = (int) $countStmt->fetchColumn();
+
+        $totalRecords = $hasFilters
+            ? (int) $pdo->query('SELECT COUNT(*) FROM audit_logs')->fetchColumn()
+            : $filteredTotal;
 
         $allowedSort = ['created_at' => 'al.created_at', 'id' => 'al.id', 'action' => 'al.action'];
-        $sortCol = $allowedSort[$sortBy] ?? 'al.created_at';
+        $resolvedSortKey = array_key_exists($sortBy, $allowedSort) ? $sortBy : 'created_at';
+        $sortCol = $allowedSort[$resolvedSortKey];
         $direction = strtoupper($sortDir) === 'ASC' ? 'ASC' : 'DESC';
 
         $page = max(1, $page);
@@ -234,9 +241,15 @@ class AuditLogRepository
             LEFT JOIN users u ON al.actor_user_id = u.id
             {$whereSql}
             ORDER BY {$sortCol} {$direction}, al.id {$direction}
-            LIMIT {$perPage} OFFSET {$offset}
+            LIMIT ? OFFSET ?
         ");
-        $stmt->execute($params);
+        $pos = 1;
+        foreach ($params as $val) {
+            $stmt->bindValue($pos++, $val);
+        }
+        $stmt->bindValue($pos++, $perPage, PDO::PARAM_INT);
+        $stmt->bindValue($pos, $offset, PDO::PARAM_INT);
+        $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $data = array_map(function ($row) {
@@ -262,12 +275,14 @@ class AuditLogRepository
 
         return [
             'data' => $data,
-            'meta' => [
-                'total' => $total,
-                'page' => $page,
-                'per_page' => $perPage,
-                'last_page' => (int) ceil($total / $perPage) ?: 1,
-            ],
+            'meta' => \App\Support\ServerTableQuery::buildMeta(
+                $totalRecords,
+                $filteredTotal,
+                $page,
+                $perPage,
+                $resolvedSortKey,
+                $direction
+            ),
         ];
     }
 

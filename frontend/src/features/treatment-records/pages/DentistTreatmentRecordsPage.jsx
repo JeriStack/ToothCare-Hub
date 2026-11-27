@@ -17,6 +17,7 @@ import { appointmentsApi } from '../../appointments/api';
 import { TreatmentRecordViewer } from '../components/TreatmentRecordViewer';
 import { TreatmentRecordEditor } from '../components/TreatmentRecordEditor';
 import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
+import { ServerTableFooter } from '../../../components/ui/ServerTableControls';
 
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
 export function DentistTreatmentRecordsPage() {
@@ -26,7 +27,8 @@ export function DentistTreatmentRecordsPage() {
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
-  const [meta, setMeta] = useState({ total: 0, page: 1, per_page: 20, last_page: 1 });
+  const [perPage, setPerPage] = useState(10);
+  const [meta, setMeta] = useState({ total: 0, page: 1, per_page: 10, last_page: 1 });
 
   // Viewer / Editor modal state
   const [selectedRecord, setSelectedRecord] = useState(null);
@@ -40,12 +42,17 @@ export function DentistTreatmentRecordsPage() {
       const [data, completedRes] = await Promise.all([
         treatmentRecordsApi.list({
           page,
-          per_page: 20,
+          per_page: perPage,
         }),
         appointmentsApi.listDentist({ status: 'COMPLETED', per_page: 50 }).catch(() => ({ items: [] })),
       ]);
       const items = Array.isArray(data) ? data : data.items || [];
-      const resMeta = data.meta || { total: items.length, page, per_page: 20, last_page: 1 };
+      const resMeta = data.meta || {
+        total: items.length,
+        page,
+        per_page: perPage,
+        last_page: Math.max(1, Math.ceil(items.length / perPage)),
+      };
       setRecords(items);
       setMeta(resMeta);
 
@@ -61,7 +68,7 @@ export function DentistTreatmentRecordsPage() {
 
   useEffect(() => {
     fetchRecords();
-  }, [page]);
+  }, [page, perPage]);
 
   const filteredRecords = records.filter((r) => {
     if (!searchQuery.trim()) return true;
@@ -294,6 +301,21 @@ export function DentistTreatmentRecordsPage() {
               </tbody>
             </table>
           </div>
+          <ServerTableFooter
+            page={meta.current_page || meta.page || page}
+            perPage={meta.per_page || perPage}
+            totalRecords={meta.total_records ?? meta.total ?? filteredRecords.length}
+            filteredRecords={searchQuery.trim() ? filteredRecords.length : (meta.filtered_records ?? meta.total ?? filteredRecords.length)}
+            totalPages={meta.total_pages || meta.last_page || 1}
+            onPageChange={(nextPage) => setPage(nextPage)}
+            onPerPageChange={(nextSize) => {
+              setPerPage(nextSize);
+              setPage(1);
+            }}
+            pageSizeOptions={[5, 10, 15, 25, 50]}
+            loading={loading}
+            itemLabel="records"
+          />
         </div>
       )}
 

@@ -22,6 +22,7 @@ import { servicesApi } from '../api';
 import { useAuth } from '../../auth';
 import { TableSkeleton } from '../../../components/skeletons/TableSkeleton';
 import { MobileSortControl } from '../../../components/ui/MobileSortControl';
+import { ServerTableFooter } from '../../../components/ui/ServerTableControls';
 
 
 import { DialogOverlay } from '../../../components/ui/DialogOverlay';
@@ -80,6 +81,7 @@ export function ServicesPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [sortDir, setSortDir] = useState('ASC');
+  const [perPage, setPerPage] = useState(10);
   const [page, setPage] = useState(1);
 
   // Modal State
@@ -117,7 +119,7 @@ export function ServicesPage() {
     try {
       const params = {
         page,
-        per_page: 10,
+        per_page: perPage,
         sort_by: sortBy,
         sort_dir: sortDir,
       };
@@ -134,7 +136,7 @@ export function ServicesPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, sortBy, sortDir, search, categoryFilter, statusFilter]);
+  }, [page, perPage, sortBy, sortDir, search, categoryFilter, statusFilter]);
 
   useEffect(() => {
     fetchServices();
@@ -533,38 +535,23 @@ export function ServicesPage() {
           </>
         )}
 
-        {/* Pagination Bar */}
+        {/* Unified Server-Side Pagination */}
         {meta.total > 0 && (
-          <div className="px-5 py-3.5 border-t border-slate-100 dark:border-gray-700/80 bg-slate-50/50 dark:bg-gray-900/35 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
-            <div className="tabular-nums">
-              Showing <span className="font-semibold text-slate-700 dark:text-slate-200">{(meta.page - 1) * meta.per_page + 1}</span> to{' '}
-              <span className="font-semibold text-slate-700 dark:text-slate-200">
-                {Math.min(meta.page * meta.per_page, meta.total)}
-              </span>{' '}
-              of <span className="font-semibold text-slate-700 dark:text-slate-200">{meta.total}</span> procedures
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={meta.page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="px-3 py-1.5 border border-slate-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-              >
-                Previous
-              </button>
-              <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-gray-800 text-slate-700 dark:text-slate-200 font-semibold tabular-nums">
-                Page {meta.page} of {meta.last_page}
-              </span>
-              <button
-                type="button"
-                disabled={meta.page >= meta.last_page}
-                onClick={() => setPage((p) => p + 1)}
-                className="px-3 py-1.5 border border-slate-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-              >
-                Next
-              </button>
-            </div>
-          </div>
+          <ServerTableFooter
+            page={meta.current_page || meta.page || page}
+            perPage={meta.per_page || perPage}
+            totalRecords={meta.total_records ?? meta.total ?? 0}
+            filteredRecords={meta.filtered_records ?? meta.total ?? 0}
+            totalPages={meta.total_pages || meta.last_page || 1}
+            onPageChange={(nextPage) => setPage(nextPage)}
+            onPerPageChange={(nextSize) => {
+              setPerPage(nextSize);
+              setPage(1);
+            }}
+            pageSizeOptions={[5, 10, 15, 25, 50]}
+            loading={loading}
+            itemLabel="procedures"
+          />
         )}
       </div>
       )}

@@ -112,7 +112,29 @@ final class AppointmentsClinicalPaths
     public function rescheduleAppointment(): void {}
 
     // --- Admin / Front Desk Appointments Triage ---
-    #[OA\Get(path: '/admin/appointments', operationId: 'listAdminAppointments', summary: 'List & Filter Clinic Appointments (Admin/Receptionist, Paginated)', tags: ['Appointments'], security: [['CookieAuth' => []]], responses: [new OA\Response(response: 200, description: 'Paginated appointments'), new OA\Response(response: 422, description: 'Invalid filters')])]
+    #[OA\Get(
+        path: '/admin/appointments',
+        operationId: 'listAdminAppointments',
+        summary: 'List & Filter Clinic Appointments (Admin/Receptionist, Server-Side Paginated & Sortable)',
+        tags: ['Appointments'],
+        security: [['CookieAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', minimum: 1, default: 1)),
+            new OA\Parameter(name: 'per_page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', minimum: 1, maximum: 100, default: 20)),
+            new OA\Parameter(name: 'search', in: 'query', required: false, schema: new OA\Schema(type: 'string', maxLength: 120)),
+            new OA\Parameter(name: 'status', in: 'query', required: false, schema: new OA\Schema(type: 'string', enum: ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'REJECTED', 'NO_SHOW'])),
+            new OA\Parameter(name: 'dentist_id', in: 'query', required: false, schema: new OA\Schema(type: 'integer', minimum: 1)),
+            new OA\Parameter(name: 'service_id', in: 'query', required: false, schema: new OA\Schema(type: 'integer', minimum: 1)),
+            new OA\Parameter(name: 'start_date', in: 'query', required: false, schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'end_date', in: 'query', required: false, schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'sort_by', in: 'query', required: false, schema: new OA\Schema(type: 'string', enum: ['id', 'start_at', 'created_at', 'status', 'patient_name', 'dentist_name', 'service_name'], default: 'start_at')),
+            new OA\Parameter(name: 'sort_dir', in: 'query', required: false, schema: new OA\Schema(type: 'string', enum: ['asc', 'desc'], default: 'desc')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Paginated appointments with total_records, filtered_records, sorting, and triage summary'),
+            new OA\Response(response: 422, description: 'Invalid pagination, filter, date range, or sort parameters'),
+        ]
+    )]
     public function adminAppointments(): void {}
 
     #[OA\Get(path: '/admin/appointments/{id}', operationId: 'getAdminAppointment', summary: 'Get Appointment Details with Audit Trail (Admin/Receptionist)', tags: ['Appointments'], security: [['CookieAuth' => []]], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Appointment details')])]

@@ -28,6 +28,7 @@ import { DashboardSkeleton } from '../../components/skeletons/DashboardSkeleton'
 import { useDashboardSync } from '../../hooks/useDashboardSync';
 import { DASHBOARD_SYNC_DOMAINS } from '../../services/realtime/dashboardSync';
 import { DialogOverlay } from '../../components/ui/DialogOverlay';
+import { ServerTableFooter } from '../../components/ui/ServerTableControls';
 
 function formatClockTime(dateTimeStr) {
   if (!dateTimeStr) return '--:--';
@@ -124,9 +125,15 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
-  // Filters for Today's Schedule
+  // Filters & Pagination for Today's Schedule
   const [searchQuery, setSearchQuery] = useState('');
   const [attendanceFilter, setAttendanceFilter] = useState('ALL');
+  const [schedulePage, setSchedulePage] = useState(1);
+  const [schedulePerPage, setSchedulePerPage] = useState(8);
+
+  useEffect(() => {
+    setSchedulePage(1);
+  }, [searchQuery, attendanceFilter]);
 
   // Modals state
   const [checkInTarget, setCheckInTarget] = useState(null);
@@ -300,6 +307,13 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
 
     return matchesSearch && matchesFilter;
   });
+
+  const scheduleTotalPages = Math.max(1, Math.ceil(filteredSchedule.length / schedulePerPage));
+  const safeSchedulePage = Math.min(schedulePage, scheduleTotalPages);
+  const paginatedSchedule = filteredSchedule.slice(
+    (safeSchedulePage - 1) * schedulePerPage,
+    safeSchedulePage * schedulePerPage
+  );
 
   const receptionistName =
     user?.first_name
@@ -658,7 +672,7 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
                   </tr>
                 </thead>
                 <tbody role="rowgroup" className="divide-y divide-slate-100 dark:divide-gray-700/70">
-                  {filteredSchedule.map((apt) => {
+                  {paginatedSchedule.map((apt) => {
                     const startTime = formatClockTime(apt.start_at);
                     const endTime = formatClockTime(apt.end_at);
                     const isArrived = apt.attendance_status && apt.attendance_status !== 'NOT_ARRIVED';
@@ -776,26 +790,23 @@ export function ReceptionistDashboard({ user, onNavigateTab }) {
             )}
           </div>
 
-          {/* Subtle Schedule Footer */}
+          {/* Schedule Pagination Footer */}
           {schedule.length > 0 && (
-            <div className="px-5 py-3 border-t border-slate-100 dark:border-gray-700/80 bg-slate-50/50 dark:bg-gray-900/35 flex items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
-              <span className="tabular-nums">
-                Showing <strong className="font-semibold text-slate-700 dark:text-slate-200">{filteredSchedule.length}</strong> of{' '}
-                <strong className="font-semibold text-slate-700 dark:text-slate-200">{schedule.length}</strong> scheduled today
-              </span>
-              {(searchQuery || attendanceFilter !== 'ALL') && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchQuery('');
-                    setAttendanceFilter('ALL');
-                  }}
-                  className="font-semibold text-[#0F766E] dark:text-teal-400 hover:underline cursor-pointer"
-                >
-                  Clear filters
-                </button>
-              )}
-            </div>
+            <ServerTableFooter
+              page={safeSchedulePage}
+              perPage={schedulePerPage}
+              totalRecords={schedule.length}
+              filteredRecords={filteredSchedule.length}
+              totalPages={scheduleTotalPages}
+              onPageChange={(nextPage) => setSchedulePage(nextPage)}
+              onPerPageChange={(nextSize) => {
+                setSchedulePerPage(nextSize);
+                setSchedulePage(1);
+              }}
+              pageSizeOptions={[5, 8, 10, 15, 25]}
+              loading={loading || refreshing}
+              itemLabel="appointments"
+            />
           )}
         </section>
 
