@@ -16,6 +16,10 @@ export const REALTIME_EVENTS = Object.freeze({
   ACCOUNT_CREATED: 'account.created',
   ACCOUNT_UPDATED: 'account.updated',
   NOTIFICATION_CREATED: 'notification.created',
+  MESSAGE_CREATED: 'message.created',
+  MESSAGE_DELIVERED: 'message.delivered',
+  MESSAGE_READ: 'message.read',
+  MESSAGE_TYPING: 'message.typing',
 });
 
 export const SUBSCRIBED_REALTIME_EVENTS = Object.freeze(Object.values(REALTIME_EVENTS));

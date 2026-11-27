@@ -664,6 +664,50 @@ class TestDb
             ]);
         }
 
+        // Migration 038: Patient-Dentist Messaging tables & DRBAC permissions
+        $pdo->exec('
+            CREATE TABLE IF NOT EXISTS conversations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                patient_id INTEGER NOT NULL,
+                dentist_id INTEGER NOT NULL,
+                appointment_id INTEGER NULL,
+                status TEXT NOT NULL DEFAULT "ACTIVE",
+                last_message_id INTEGER NULL,
+                last_message_at TEXT NULL,
+                last_message_preview TEXT NULL,
+                last_message_sender_user_id INTEGER NULL,
+                patient_unread_count INTEGER NOT NULL DEFAULT 0,
+                dentist_unread_count INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(patient_id, dentist_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS conversation_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                conversation_id INTEGER NOT NULL,
+                sender_user_id INTEGER NOT NULL,
+                sender_role TEXT NOT NULL,
+                client_message_id TEXT NULL,
+                body TEXT NOT NULL,
+                appointment_id INTEGER NULL,
+                delivered_at TEXT NULL,
+                read_at TEXT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(conversation_id, sender_user_id, client_message_id)
+            );
+
+            INSERT OR IGNORE INTO permissions (name, slug, module, description) VALUES
+                ("View Direct Messages", "messages.view", "messages", "Access own Patient-Dentist direct message conversations and history"),
+                ("Send Direct Messages", "messages.send", "messages", "Send direct messages and read/typing updates in own Patient-Dentist conversations");
+
+            INSERT OR IGNORE INTO role_permissions (role_id, permission_id, granted_at)
+            SELECT r.id, p.id, CURRENT_TIMESTAMP
+            FROM roles r
+            JOIN permissions p ON p.slug IN ("messages.view", "messages.send")
+            WHERE r.slug IN ("patient", "dentist");
+        ');
+
         return $pdo;
     }
 }

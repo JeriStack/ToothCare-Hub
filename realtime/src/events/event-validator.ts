@@ -39,6 +39,10 @@ const FORBIDDEN_FIELDS = new Set<string>([
   'email',
   'phone',
   'address',
+  'body',
+  'message_body',
+  'messageBody',
+  'content',
 ]);
 
 export interface EventValidationResult {
@@ -113,9 +117,20 @@ export function validatePublishEnvelope(raw: unknown): EventValidationResult {
     return { valid: false, error: 'payload.appointmentId must be a positive integer or null.' };
   }
 
+  const hasConversationId = payload.conversationId !== undefined;
+  const conversationId =
+    payload.conversationId === null || payload.conversationId === undefined
+      ? null
+      : Number(payload.conversationId);
+  if (conversationId !== null && (!Number.isInteger(conversationId) || conversationId <= 0)) {
+    return { valid: false, error: 'payload.conversationId must be a positive integer or null.' };
+  }
+
   const rawEntityType =
     typeof payload.entityType === 'string' && payload.entityType.trim() !== ''
       ? payload.entityType.trim().toLowerCase()
+      : conversationId !== null
+      ? 'messages'
       : appointmentId !== null
       ? 'appointments'
       : 'notifications';
@@ -125,7 +140,7 @@ export function validatePublishEnvelope(raw: unknown): EventValidationResult {
 
   const entityId =
     payload.entityId === null || payload.entityId === undefined
-      ? (appointmentId ?? notificationId)
+      ? (appointmentId ?? conversationId ?? notificationId)
       : Number(payload.entityId);
   if (entityId !== null && (!Number.isInteger(entityId) || entityId <= 0)) {
     return { valid: false, error: 'payload.entityId must be a positive integer or null.' };
@@ -144,23 +159,26 @@ export function validatePublishEnvelope(raw: unknown): EventValidationResult {
   }
 
   // Construct strictly sanitized minimal payload
+  const sanitizedPayload = {
+    eventId,
+    eventType: eventType as RealtimeEventType,
+    eventVersion,
+    notificationId,
+    appointmentId,
+    ...(hasConversationId ? { conversationId } : {}),
+    entityType: rawEntityType as RealtimeEntityType,
+    entityId,
+    status,
+    occurredAt,
+  };
+
   return {
     valid: true,
     envelope: {
       eventId,
       eventType: eventType as RealtimeEventType,
       recipientUserId,
-      payload: {
-        eventId,
-        eventType: eventType as RealtimeEventType,
-        eventVersion,
-        notificationId,
-        appointmentId,
-        entityType: rawEntityType as RealtimeEntityType,
-        entityId,
-        status,
-        occurredAt,
-      },
+      payload: sanitizedPayload,
     },
   };
 }

@@ -17,6 +17,7 @@ use App\Controllers\DentistTimeOffController;
 use App\Controllers\HealthController;
 use App\Controllers\HistoryController;
 use App\Controllers\LegalDocumentController;
+use App\Controllers\MessageController;
 use App\Controllers\MetricsController;
 use App\Controllers\NotificationController;
 use App\Controllers\OpenApiDocsController;
@@ -299,6 +300,27 @@ $router->group('/api/v1', function (Router $r): void {
     $r->post('/notifications/read-all', [NotificationController::class, 'markAllRead'], $patientAuth);
     $r->patch('/notifications/read-all', [NotificationController::class, 'markAllRead'], $patientAuth);
     $r->delete('/notifications/{id}', [NotificationController::class, 'destroy'], $patientAuth);
+
+    // Patient-Dentist Direct Messaging (Strictly scoped to authorized PATIENT & DENTIST participants)
+    $chatViewGuard = [
+        AuthenticationMiddleware::class,
+        new AuthorizationMiddleware(['PATIENT', 'DENTIST']),
+        AuthorizationMiddleware::hasPermission('messages.view', ['PATIENT', 'DENTIST']),
+    ];
+    $chatSendGuard = [
+        AuthenticationMiddleware::class,
+        new AuthorizationMiddleware(['PATIENT', 'DENTIST']),
+        AuthorizationMiddleware::hasPermission('messages.send', ['PATIENT', 'DENTIST']),
+    ];
+    $r->get('/messages/conversations', [MessageController::class, 'listConversations'], $chatViewGuard);
+    $r->get('/messages/unread-count', [MessageController::class, 'unreadCount'], $chatViewGuard);
+    $r->get('/messages/presence', [MessageController::class, 'presence'], $chatViewGuard);
+    $r->post('/messages/conversations', [MessageController::class, 'startConversation'], [...$chatSendGuard, RateLimitMiddleware::perMinute(30, 'messages_start')]);
+    $r->get('/messages/conversations/{id}/messages', [MessageController::class, 'getMessages'], $chatViewGuard);
+    $r->post('/messages/conversations/{id}/messages', [MessageController::class, 'sendMessage'], [...$chatSendGuard, RateLimitMiddleware::perMinute(60, 'messages_send')]);
+    $r->post('/messages/conversations/{id}/delivered', [MessageController::class, 'markDelivered'], $chatViewGuard);
+    $r->post('/messages/conversations/{id}/read', [MessageController::class, 'markRead'], $chatViewGuard);
+    $r->post('/messages/conversations/{id}/typing', [MessageController::class, 'typing'], [...$chatSendGuard, RateLimitMiddleware::perMinute(120, 'messages_typing')]);
 
     // Reports Group
     $r->get('/reports/overview', $notImplemented('GET /api/v1/reports/overview'));

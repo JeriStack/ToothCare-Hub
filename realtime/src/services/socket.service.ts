@@ -86,6 +86,11 @@ export function createRealtimeService(
         return;
       }
 
+      if (urlPath === '/internal/presence' && req.method === 'POST') {
+        await internalPublisher.handlePresence(req, res);
+        return;
+      }
+
       // Let Socket.IO handle its own path
       if (urlPath.startsWith(env.socketPath) || urlPath === env.socketPath.replace(/\/$/, '')) {
         return;

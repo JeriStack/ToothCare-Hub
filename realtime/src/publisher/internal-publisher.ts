@@ -167,6 +167,51 @@ export class InternalPublisherHandler {
     });
   }
 
+  async handlePresence(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const correlationId = crypto.randomUUID();
+
+    let rawBody: string;
+    try {
+      rawBody = await readBody(req);
+    } catch {
+      sendJson(res, 413, { ok: false, error: 'PAYLOAD_TOO_LARGE' });
+      return;
+    }
+
+    const authResult = this.auth.verifyIncoming('POST', '/internal/presence', req.headers, rawBody);
+    if (!authResult.valid) {
+      this.logger.warn('Rejected unauthenticated internal presence request', {
+        correlationId,
+        reason: authResult.reason,
+      });
+      sendJson(res, 401, { ok: false, error: authResult.reason });
+      return;
+    }
+
+    let parsed: { userIds?: unknown };
+    try {
+      parsed = JSON.parse(rawBody) as { userIds?: unknown };
+    } catch {
+      sendJson(res, 400, { ok: false, error: 'INVALID_JSON' });
+      return;
+    }
+
+    const ids = Array.isArray(parsed.userIds)
+      ? parsed.userIds
+          .map((n) => Number(n))
+          .filter((n) => Number.isInteger(n) && n > 0)
+          .slice(0, 100)
+      : [];
+
+    const onlineUserIds = Array.from(new Set(ids)).filter((uid) => this.registry.countForUser(uid) > 0);
+
+    sendJson(res, 200, {
+      ok: true,
+      onlineUserIds,
+      correlationId,
+    });
+  }
+
   private checkRateLimit(): boolean {
     const now = Date.now();
     if (now - this.windowStartMs >= 60_000) {

@@ -23,6 +23,7 @@ import {
   Server,
   Archive,
   History,
+  MessageSquare,
 } from 'lucide-react';
 import {
   AuthProvider,
@@ -69,6 +70,8 @@ const SystemHealthPage = lazy(() => import('../features/system/pages/SystemHealt
 const StaffProfilePage = lazy(() => import('../features/staff/pages/StaffProfilePage').then((m) => ({ default: m.StaffProfilePage })));
 const ArchiveCenterPage = lazy(() => import('../features/archives/pages/ArchiveCenterPage').then((m) => ({ default: m.ArchiveCenterPage })));
 const HistoryRecordsPage = lazy(() => import('../features/history/pages/HistoryRecordsPage').then((m) => ({ default: m.HistoryRecordsPage })));
+const MessagesPage = lazy(() => import('../features/messages/pages/MessagesPage').then((m) => ({ default: m.MessagesPage })));
+import { useUnreadMessagesBadge } from '../features/messages/hooks/useUnreadMessagesBadge';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { LoadingProvider, useRouteLoading } from '../contexts/LoadingContext';
 import { ThemeProvider } from '../contexts/ThemeContext';
@@ -98,7 +101,7 @@ function getInitialTab() {
   const path = window.location.pathname.toLowerCase();
   if (path.startsWith('/patient/')) {
     const sub = path.replace('/patient/', '').split('/')[0];
-    if (['dashboard', 'book', 'services', 'dentists', 'appointments', 'archives', 'notifications', 'profile'].includes(sub)) {
+    if (['dashboard', 'book', 'services', 'dentists', 'appointments', 'messages', 'archives', 'notifications', 'profile'].includes(sub)) {
       return sub;
     }
   }
@@ -129,7 +132,7 @@ function getInitialTab() {
   }
   if (path.startsWith('/dentist/')) {
     const sub = path.replace('/dentist/', '').split('/')[0];
-    if (['dashboard', 'appointments', 'treatment-records', 'archives', 'notifications', 'profile'].includes(sub)) {
+    if (['dashboard', 'appointments', 'messages', 'treatment-records', 'archives', 'notifications', 'profile'].includes(sub)) {
       return sub;
     }
   }
@@ -208,7 +211,7 @@ function persistSidebarCollapsedPref(collapsed) {
 }
 
 /** Build role-scoped sidebar navigation sections and items. */
-function getSidebarSections(currentRole, hasPermission, { onPatientNav, onAdminNav, onDentistNav }) {
+function getSidebarSections(currentRole, hasPermission, { onPatientNav, onAdminNav, onDentistNav, unreadMessagesCount = 0 }) {
   if (currentRole === 'PATIENT') {
     return [
       {
@@ -220,6 +223,7 @@ function getSidebarSections(currentRole, hasPermission, { onPatientNav, onAdminN
           { key: 'services', label: 'Services', icon: Sparkles, onSelect: () => onPatientNav('services') },
           { key: 'dentists', label: 'Dentists', icon: Stethoscope, onSelect: () => onPatientNav('dentists') },
           { key: 'appointments', label: 'My Appointments', icon: FileText, onSelect: () => onPatientNav('appointments') },
+          { key: 'messages', label: 'Messages', icon: MessageSquare, badge: unreadMessagesCount, onSelect: () => onPatientNav('messages') },
           { key: 'archives', label: 'My Archive', icon: Archive, onSelect: () => onPatientNav('archives') },
           { key: 'notifications', label: 'Notifications', icon: Bell, onSelect: () => onPatientNav('notifications') },
           { key: 'profile', label: 'My Profile', icon: Shield, onSelect: () => onPatientNav('profile') },
@@ -311,6 +315,7 @@ function getSidebarSections(currentRole, hasPermission, { onPatientNav, onAdminN
         items: [
           { key: 'dashboard', label: 'Overview', icon: Clock, onSelect: () => onDentistNav('dashboard') },
           { key: 'appointments', label: 'Assigned Appointments', icon: Calendar, onSelect: () => onDentistNav('appointments') },
+          { key: 'messages', label: 'Messages', icon: MessageSquare, badge: unreadMessagesCount, onSelect: () => onDentistNav('messages') },
           { key: 'treatment-records', label: 'Treatment Records', icon: FileText, onSelect: () => onDentistNav('treatment-records') },
           { key: 'archives', label: 'Clinical Archive', icon: Archive, onSelect: () => onDentistNav('archives') },
           { key: 'profile', label: 'My Profile', icon: Shield, onSelect: () => onDentistNav('profile') },
@@ -361,6 +366,9 @@ function AppContent() {
   const mobileDrawerCloseRef = useRef(null);
   const { triggerRouteTransition } = useRouteLoading();
   const prevNavKeyRef = useRef(null);
+
+  // Live unread direct-message counter (active strictly for Patient & Dentist sessions)
+  const unreadMessagesCount = useUnreadMessagesBadge(isAuthenticated, user?.role);
 
   // Trigger route transition tracking on qualifying navigation, tab, and detail changes
   useEffect(() => {
@@ -943,6 +951,7 @@ function AppContent() {
     onPatientNav: handlePatientNav,
     onAdminNav: handleAdminNav,
     onDentistNav: handleDentistNav,
+    unreadMessagesCount,
   });
 
   return (
@@ -1226,7 +1235,7 @@ function AppContent() {
                       )}
                     </>
                   )}
-                  {section.items.map(({ key, label, icon: Icon, onSelect }) => {
+                  {section.items.map(({ key, label, icon: Icon, badge, onSelect }) => {
                     const isActive = activeTab === key;
                     return (
                       <button
@@ -1235,7 +1244,7 @@ function AppContent() {
                         onClick={onSelect}
                         title={isSidebarCollapsed ? label : undefined}
                         aria-current={isActive ? 'page' : undefined}
-                        className={`w-full min-h-11 lg:min-h-10 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
+                        className={`relative w-full min-h-11 lg:min-h-10 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D9488] dark:focus-visible:ring-teal-400 ${
                           isSidebarCollapsed ? 'lg:justify-center lg:px-2' : ''
                         } ${
                           isActive
@@ -1246,11 +1255,23 @@ function AppContent() {
                         <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
                         <span
                           className={
-                            isSidebarCollapsed ? 'lg:sr-only whitespace-nowrap' : 'truncate'
+                            isSidebarCollapsed ? 'lg:sr-only whitespace-nowrap' : 'truncate flex-1 text-left'
                           }
                         >
                           {label}
                         </span>
+                        {Number(badge) > 0 && (
+                          <span
+                            aria-label={`${badge} unread`}
+                            className={`inline-flex items-center justify-center rounded-full text-[10px] font-bold text-white bg-[#0B6EFD] dark:bg-blue-500 ${
+                              isSidebarCollapsed
+                                ? 'lg:absolute lg:top-1.5 lg:right-1.5 lg:min-w-[1.1rem] lg:h-4 lg:px-1 min-w-[1.25rem] h-5 px-1.5'
+                                : 'min-w-[1.25rem] h-5 px-1.5 shrink-0'
+                            }`}
+                          >
+                            {badge > 99 ? '99+' : badge}
+                          </span>
+                        )}
                       </button>
                     );
                   })}
@@ -1321,6 +1342,10 @@ function AppContent() {
 
               {activeTab === 'appointments' && (
                 <AppointmentHistoryPage onNavigateToBook={() => handlePatientNav('book')} />
+              )}
+
+              {activeTab === 'messages' && (
+                <MessagesPage />
               )}
 
               {activeTab === 'archives' && (
@@ -1526,6 +1551,10 @@ function AppContent() {
 
               {activeTab === 'treatment-records' && (
                 <DentistTreatmentRecordsPage />
+              )}
+
+              {activeTab === 'messages' && (
+                <MessagesPage />
               )}
 
               {activeTab === 'archives' && (

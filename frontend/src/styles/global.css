@@ -52,6 +52,20 @@
   --scrollbar-thumb: #CBD5E1;
   --scrollbar-thumb-hover: #94A3B8;
   --backdrop-overlay: rgba(15, 23, 42, 0.55);
+
+  /* Messenger-style Patient-Dentist Chat Semantic Tokens — Light Mode */
+  --chat-surface: #FFFFFF;
+  --chat-sidebar-surface: #FFFFFF;
+  --chat-subtle-surface: #F8FAFC;
+  --chat-item-hover: #F1F5F9;
+  --chat-item-active: #EBF5FF;
+  --chat-bubble-in-bg: #F1F5F9;
+  --chat-bubble-in-text: #0F172A;
+  --chat-bubble-out-bg: #0B6EFD;
+  --chat-bubble-out-text: #FFFFFF;
+  --chat-composer-bg: #F1F5F9;
+  --chat-divider: #E2E8F0;
+  --chat-online: #16A34A;
 }
 
 :root.dark,
@@ -99,6 +113,20 @@
   --scrollbar-thumb: #374151;
   --scrollbar-thumb-hover: #4B5563;
   --backdrop-overlay: rgba(2, 6, 23, 0.72);
+
+  /* Messenger-style Patient-Dentist Chat Semantic Tokens — Dark Mode */
+  --chat-surface: #1F2937;
+  --chat-sidebar-surface: #1F2937;
+  --chat-subtle-surface: #182230;
+  --chat-item-hover: #263244;
+  --chat-item-active: rgba(37, 99, 235, 0.22);
+  --chat-bubble-in-bg: #2B3648;
+  --chat-bubble-in-text: #F3F4F6;
+  --chat-bubble-out-bg: #2563EB;
+  --chat-bubble-out-text: #FFFFFF;
+  --chat-composer-bg: #111827;
+  --chat-divider: #374151;
+  --chat-online: #22C55E;
 }
 
 html {
@@ -174,7 +202,45 @@ html.theme-view-transition::view-transition-new(root) {
 }
 
 /* Legacy WebKit scrollbar fallback scoped strictly when standard scrollbar-color is unsupported */
+.tch-chat-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+.tch-chat-textarea {
+  field-sizing: content;
+  height: auto;
+  width: 100%;
+  min-block-size: 2.5rem;
+  max-block-size: 7.5rem;
+}
+
+@keyframes tch-typing-dot {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+
+.tch-typing-dot {
+  animation: tch-typing-dot 1.2s infinite ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tch-typing-dot {
+    animation: none;
+    opacity: 0.75;
+  }
+}
+
 @supports not (scrollbar-color: auto) {
+  .tch-chat-scroll {
+    scrollbar-width: auto;
+  }
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
